@@ -1,10 +1,10 @@
 export type IntakeBatchSourceType =
   | "FREEFORM_NOTES"
   | "CSV_UPLOAD"
-  | "EMAIL_TEXT";
+  | "EMAIL";
 
 export type IntakeBatchStatus =
-  | "PENDING"
+  | "DRAFT"
   | "PROCESSING"
   | "COMPLETED"
   | "FAILED";
@@ -18,4 +18,8 @@ export type IntakeBatchSummary = {
   itemCount: number;
   createdAt: string;
   updatedAt: string;
+};
+
+export type ListIntakeBatchesResponse = {
+  intakeBatches: IntakeBatchSummary[];
 };

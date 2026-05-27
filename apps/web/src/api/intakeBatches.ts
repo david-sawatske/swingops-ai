@@ -1,6 +1,11 @@
 import { apiGet } from "./client";
-import type { IntakeBatchSummary } from "../types/intake";
+import type {
+  IntakeBatchSummary,
+  ListIntakeBatchesResponse,
+} from "../types/intake";
 
 export async function listIntakeBatches(): Promise<IntakeBatchSummary[]> {
-  return apiGet<IntakeBatchSummary[]>("/intake-batches");
+  const response = await apiGet<ListIntakeBatchesResponse>("/intake-batches");
+
+  return response.intakeBatches;
 }
