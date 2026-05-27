@@ -62,6 +62,13 @@ function App() {
         title="Intake Batches"
         description="Messy golf trade-in notes, CSV rows, and email text imported for workflow processing."
       >
+        {!isLoadingIntakeBatches && !intakeBatchesError ? (
+          <p className="section-summary">
+            {intakeBatches.length} intake{" "}
+            {intakeBatches.length === 1 ? "batch" : "batches"} loaded
+          </p>
+        ) : null}
+
         {isLoadingIntakeBatches ? <p>Loading intake batches…</p> : null}
 
         {intakeBatchesError ? (

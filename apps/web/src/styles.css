@@ -164,3 +164,10 @@ h1 {
 .intake-batch-card dl > div:nth-child(3) {
   text-align: center;
 }
+
+.section-summary {
+  margin: 0 0 14px;
+  color: #647062;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
