@@ -6,3 +6,351 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum GolfClubCategory {
+  DRIVER
+  FAIRWAY_WOOD
+  HYBRID
+  IRON_SET
+  WEDGE
+  PUTTER
+}
+
+enum ShaftFlex {
+  LADIES
+  SENIOR
+  REGULAR
+  STIFF
+  X_STIFF
+}
+
+enum Dexterity {
+  RIGHT
+  LEFT
+}
+
+enum ClubCondition {
+  NEW
+  EXCELLENT
+  VERY_GOOD
+  GOOD
+  FAIR
+}
+
+enum IntakeBatchStatus {
+  DRAFT
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  NEEDS_REVIEW
+}
+
+enum IntakeItemStatus {
+  PENDING
+  PROCESSING
+  STRUCTURED
+  NEEDS_REVIEW
+  FAILED
+}
+
+enum IntakeSourceType {
+  FREEFORM_NOTES
+  BAD_CSV
+  EMAIL
+  PDF_TEXT
+  MANUAL_ENTRY
+}
+
+enum WorkflowRunStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  NEEDS_REVIEW
+  CANCELLED
+}
+
+enum WorkflowStepStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  SKIPPED
+  RETRYING
+}
+
+enum WorkflowStepType {
+  PARSE_INPUT
+  NORMALIZE_DATA
+  EXTRACT_GOLF_CLUB_FIELDS
+  VALIDATE_STRUCTURED_OUTPUT
+  CREATE_REVIEW_ITEM
+  PERSIST_GOLF_CLUB
+}
+
+enum ToolCallStatus {
+  STARTED
+  SUCCEEDED
+  FAILED
+  RETRIED
+}
+
+enum ModelCallStatus {
+  STARTED
+  SUCCEEDED
+  FAILED
+  RETRIED
+  SKIPPED
+}
+
+enum ModelProviderName {
+  MOCK
+  OPENAI
+  ANTHROPIC
+  AZURE_OPENAI
+  OLLAMA
+}
+
+enum ReviewQueueStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+enum ReviewReason {
+  MISSING_REQUIRED_FIELDS
+  LOW_CONFIDENCE
+  VALIDATION_FAILED
+  AMBIGUOUS_INPUT
+  POSSIBLE_DUPLICATE
+  MANUAL_REVIEW_REQUESTED
+}
+
+model IntakeBatch {
+  id          String            @id @default(cuid())
+  name        String
+  description String?
+  sourceType  IntakeSourceType  @map("source_type")
+  status      IntakeBatchStatus @default(DRAFT)
+  itemCount   Int               @default(0) @map("item_count")
+
+  items        IntakeItem[]
+  workflowRuns WorkflowRun[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([sourceType])
+  @@map("intake_batches")
+}
+
+model IntakeItem {
+  id            String           @id @default(cuid())
+  intakeBatchId String           @map("intake_batch_id")
+  rawText       String           @map("raw_text")
+  sourceRowNumber Int?           @map("source_row_number")
+  status        IntakeItemStatus @default(PENDING)
+
+  intakeBatch      IntakeBatch       @relation(fields: [intakeBatchId], references: [id], onDelete: Cascade)
+  golfClubs        GolfClub[]
+  workflowRuns     WorkflowRun[]
+  reviewQueueItems ReviewQueueItem[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([intakeBatchId])
+  @@index([status])
+  @@map("intake_items")
+}
+
+model GolfClub {
+  id           String @id @default(cuid())
+  intakeItemId String? @map("intake_item_id")
+
+  brand    String
+  model    String
+  category GolfClubCategory
+
+  loft        String?
+  shaftBrand String?    @map("shaft_brand")
+  shaftFlex  ShaftFlex? @map("shaft_flex")
+  dexterity  Dexterity?
+
+  condition ClubCondition
+
+  gripCondition String? @map("grip_condition")
+  length        String?
+  notes         String?
+
+  confidenceScore Float    @map("confidence_score")
+  missingFields   String[] @default([]) @map("missing_fields")
+
+  intakeItem       IntakeItem?       @relation(fields: [intakeItemId], references: [id], onDelete: SetNull)
+  reviewQueueItems ReviewQueueItem[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([intakeItemId])
+  @@index([brand])
+  @@index([category])
+  @@index([condition])
+  @@map("golf_clubs")
+}
+
+model WorkflowRun {
+  id            String             @id @default(cuid())
+  intakeBatchId String?            @map("intake_batch_id")
+  intakeItemId  String?            @map("intake_item_id")
+  workflowName  String             @map("workflow_name")
+  status        WorkflowRunStatus  @default(QUEUED)
+
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  errorMessage String?  @map("error_message")
+
+  intakeBatch      IntakeBatch?      @relation(fields: [intakeBatchId], references: [id], onDelete: SetNull)
+  intakeItem       IntakeItem?       @relation(fields: [intakeItemId], references: [id], onDelete: SetNull)
+  steps            WorkflowStep[]
+  toolCallLogs     ToolCallLog[]
+  modelCallLogs    ModelCallLog[]
+  reviewQueueItems ReviewQueueItem[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([intakeBatchId])
+  @@index([intakeItemId])
+  @@index([status])
+  @@index([workflowName])
+  @@map("workflow_runs")
+}
+
+model WorkflowStep {
+  id            String             @id @default(cuid())
+  workflowRunId String             @map("workflow_run_id")
+
+  stepName   String             @map("step_name")
+  stepType   WorkflowStepType   @map("step_type")
+  status     WorkflowStepStatus @default(PENDING)
+  orderIndex Int                @map("order_index")
+
+  inputJson  Json? @map("input_json")
+  outputJson Json? @map("output_json")
+
+  errorMessage String? @map("error_message")
+  retryCount   Int     @default(0) @map("retry_count")
+
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+
+  workflowRun   WorkflowRun    @relation(fields: [workflowRunId], references: [id], onDelete: Cascade)
+  toolCallLogs  ToolCallLog[]
+  modelCallLogs ModelCallLog[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([workflowRunId])
+  @@index([status])
+  @@index([stepType])
+  @@map("workflow_steps")
+}
+
+model ToolCallLog {
+  id             String          @id @default(cuid())
+  workflowRunId  String?         @map("workflow_run_id")
+  workflowStepId String?         @map("workflow_step_id")
+
+  toolName String         @map("tool_name")
+  status   ToolCallStatus @default(STARTED)
+
+  inputJson  Json? @map("input_json")
+  outputJson Json? @map("output_json")
+
+  errorMessage String? @map("error_message")
+
+  startedAt   DateTime  @default(now()) @map("started_at")
+  completedAt DateTime? @map("completed_at")
+
+  workflowRun  WorkflowRun?  @relation(fields: [workflowRunId], references: [id], onDelete: SetNull)
+  workflowStep WorkflowStep? @relation(fields: [workflowStepId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([workflowRunId])
+  @@index([workflowStepId])
+  @@index([toolName])
+  @@index([status])
+  @@map("tool_call_logs")
+}
+
+model ModelCallLog {
+  id             String          @id @default(cuid())
+  workflowRunId  String?         @map("workflow_run_id")
+  workflowStepId String?         @map("workflow_step_id")
+
+  provider ModelProviderName
+  model    String
+  status   ModelCallStatus @default(STARTED)
+
+  promptTokens     Int?   @map("prompt_tokens")
+  completionTokens Int?   @map("completion_tokens")
+  totalTokens      Int?   @map("total_tokens")
+  latencyMs        Int?   @map("latency_ms")
+  estimatedCostUsd Float? @map("estimated_cost_usd")
+
+  requestJson  Json? @map("request_json")
+  responseJson Json? @map("response_json")
+
+  errorMessage String? @map("error_message")
+
+  startedAt   DateTime  @default(now()) @map("started_at")
+  completedAt DateTime? @map("completed_at")
+
+  workflowRun  WorkflowRun?  @relation(fields: [workflowRunId], references: [id], onDelete: SetNull)
+  workflowStep WorkflowStep? @relation(fields: [workflowStepId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([workflowRunId])
+  @@index([workflowStepId])
+  @@index([provider])
+  @@index([model])
+  @@index([status])
+  @@map("model_call_logs")
+}
+
+model ReviewQueueItem {
+  id            String             @id @default(cuid())
+  intakeItemId  String?            @map("intake_item_id")
+  golfClubId    String?            @map("golf_club_id")
+  workflowRunId String?            @map("workflow_run_id")
+
+  reason ReviewReason
+  status ReviewQueueStatus @default(OPEN)
+
+  originalText         String? @map("original_text")
+  proposedGolfClubJson Json?   @map("proposed_golf_club_json")
+
+  reviewerNotes String?   @map("reviewer_notes")
+  resolvedAt    DateTime? @map("resolved_at")
+
+  intakeItem  IntakeItem?  @relation(fields: [intakeItemId], references: [id], onDelete: SetNull)
+  golfClub    GolfClub?    @relation(fields: [golfClubId], references: [id], onDelete: SetNull)
+  workflowRun WorkflowRun? @relation(fields: [workflowRunId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([intakeItemId])
+  @@index([golfClubId])
+  @@index([workflowRunId])
+  @@index([reason])
+  @@index([status])
+  @@map("review_queue_items")
+}
