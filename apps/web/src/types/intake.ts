@@ -20,6 +20,21 @@ export type IntakeBatchSummary = {
   updatedAt: string;
 };
 
+export type IntakeBatchItemInput = {
+  rawText: string;
+};
+
+export type CreateIntakeBatchRequest = {
+  name: string;
+  description?: string;
+  sourceType: IntakeBatchSourceType;
+  items: IntakeBatchItemInput[];
+};
+
+export type CreateIntakeBatchResponse = {
+  intakeBatch: IntakeBatchSummary;
+};
+
 export type ListIntakeBatchesResponse = {
   intakeBatches: IntakeBatchSummary[];
 };
