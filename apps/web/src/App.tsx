@@ -3,6 +3,10 @@ import { listIntakeBatches } from "./api/intakeBatches";
 import { DashboardSection } from "./components/DashboardSection";
 import { EmptyState } from "./components/EmptyState";
 import type { IntakeBatchSummary } from "./types/intake";
+import {
+  formatIntakeBatchSourceType,
+  formatIntakeBatchStatus,
+} from "./utils/intakeLabels";
 
 function App() {
   const [intakeBatches, setIntakeBatches] = useState<IntakeBatchSummary[]>([]);
@@ -90,12 +94,12 @@ function App() {
                 <dl>
                   <div>
                     <dt>Status</dt>
-                    <dd>{batch.status}</dd>
+                    <dd>{formatIntakeBatchStatus(batch.status)}</dd>
                   </div>
 
                   <div>
                     <dt>Source</dt>
-                    <dd>{batch.sourceType}</dd>
+                    <dd>{formatIntakeBatchSourceType(batch.sourceType)}</dd>
                   </div>
 
                   <div>
