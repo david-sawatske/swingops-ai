@@ -9,6 +9,9 @@ coverage
 .next
 .vite
 
+# TypeScript
+*.tsbuildinfo
+
 # Environment files
 .env
 .env.*
