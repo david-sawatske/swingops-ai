@@ -1,11 +1,13 @@
 import { FormEvent, useEffect, useState } from "react";
 import {
   createIntakeBatch,
+  getIntakeBatch,
   listIntakeBatches,
 } from "./api/intakeBatches";
 import { DashboardSection } from "./components/DashboardSection";
 import { EmptyState } from "./components/EmptyState";
 import type {
+  IntakeBatchDetail,
   IntakeBatchSourceType,
   IntakeBatchSummary,
 } from "./types/intake";
@@ -21,6 +23,11 @@ function App() {
   const [intakeBatchesError, setIntakeBatchesError] = useState<string | null>(
     null,
   );
+
+  const [selectedBatchDetail, setSelectedBatchDetail] =
+    useState<IntakeBatchDetail | null>(null);
+  const [isLoadingBatchDetail, setIsLoadingBatchDetail] = useState(false);
+  const [batchDetailError, setBatchDetailError] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -56,6 +63,25 @@ function App() {
     void loadIntakeBatches();
   }, []);
 
+  async function handleSelectBatch(intakeBatchId: string) {
+    try {
+      setIsLoadingBatchDetail(true);
+      setBatchDetailError(null);
+
+      const detail = await getIntakeBatch(intakeBatchId);
+
+      setSelectedBatchDetail(detail);
+    } catch (error) {
+      setBatchDetailError(
+        error instanceof Error
+          ? error.message
+          : "Unable to load intake batch details.",
+      );
+    } finally {
+      setIsLoadingBatchDetail(false);
+    }
+  }
+
   async function handleCreateBatch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -86,6 +112,7 @@ function App() {
       setCreateBatchSuccess(`Created intake batch: ${createdBatch.name}`);
 
       await loadIntakeBatches();
+      await handleSelectBatch(createdBatch.id);
     } catch (error) {
       setCreateBatchError(
         error instanceof Error
@@ -177,6 +204,55 @@ function App() {
       </DashboardSection>
 
       <DashboardSection
+        title="Selected Intake Batch"
+        description="Raw trade-in items that will become workflow input for future AI processing."
+      >
+        {isLoadingBatchDetail ? <p>Loading batch details…</p> : null}
+
+        {batchDetailError ? (
+          <EmptyState
+            title="Unable to load selected batch"
+            message={batchDetailError}
+          />
+        ) : null}
+
+        {!isLoadingBatchDetail && !batchDetailError && !selectedBatchDetail ? (
+          <EmptyState
+            title="No intake batch selected"
+            message="Choose View Details on an intake batch to inspect its raw trade-in items."
+          />
+        ) : null}
+
+        {!isLoadingBatchDetail && !batchDetailError && selectedBatchDetail ? (
+          <div className="batch-detail">
+            <div className="batch-detail__header">
+              <h3>{selectedBatchDetail.intakeBatch.name}</h3>
+              <p>
+                {selectedBatchDetail.intakeBatch.description ??
+                  "No description provided."}
+              </p>
+            </div>
+
+            <div className="raw-item-list">
+              {selectedBatchDetail.items.map((item, index) => (
+                <article className="raw-item-card" key={item.id}>
+                  <span>Item {index + 1}</span>
+                  <p>{item.rawText}</p>
+                </article>
+              ))}
+            </div>
+
+            {selectedBatchDetail.workflowRuns.length === 0 ? (
+              <EmptyState
+                title="No workflow runs yet"
+                message="Workflow execution will be connected in a later slice."
+              />
+            ) : null}
+          </div>
+        ) : null}
+      </DashboardSection>
+
+      <DashboardSection
         title="Intake Batches"
         description="Messy golf trade-in notes, CSV rows, and email text imported for workflow processing."
       >
@@ -216,22 +292,31 @@ function App() {
                   <p>{batch.description ?? "No description provided."}</p>
                 </div>
 
-                <dl>
-                  <div>
-                    <dt>Status</dt>
-                    <dd>{formatIntakeBatchStatus(batch.status)}</dd>
-                  </div>
+                <div className="intake-batch-card__actions">
+                  <dl>
+                    <div>
+                      <dt>Status</dt>
+                      <dd>{formatIntakeBatchStatus(batch.status)}</dd>
+                    </div>
 
-                  <div>
-                    <dt>Source</dt>
-                    <dd>{formatIntakeBatchSourceType(batch.sourceType)}</dd>
-                  </div>
+                    <div>
+                      <dt>Source</dt>
+                      <dd>{formatIntakeBatchSourceType(batch.sourceType)}</dd>
+                    </div>
 
-                  <div>
-                    <dt>Items</dt>
-                    <dd>{batch.itemCount}</dd>
-                  </div>
-                </dl>
+                    <div>
+                      <dt>Items</dt>
+                      <dd>{batch.itemCount}</dd>
+                    </div>
+                  </dl>
+
+                  <button
+                    onClick={() => void handleSelectBatch(batch.id)}
+                    type="button"
+                  >
+                    View Details
+                  </button>
+                </div>
               </article>
             ))}
           </div>

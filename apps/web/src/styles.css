@@ -293,3 +293,62 @@ h1 {
   background: #edf7ed;
   color: #2f6b31;
 }
+
+.intake-batch-card__actions {
+  display: grid;
+  gap: 12px;
+  justify-items: end;
+}
+
+.intake-batch-card__actions button {
+  border: 1px solid #2e402b;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #2e402b;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 8px 12px;
+}
+
+.batch-detail {
+  display: grid;
+  gap: 16px;
+}
+
+.batch-detail__header h3 {
+  margin: 0 0 6px;
+  font-size: 1.1rem;
+}
+
+.batch-detail__header p {
+  margin: 0;
+  color: #647062;
+  line-height: 1.5;
+}
+
+.raw-item-list {
+  display: grid;
+  gap: 10px;
+}
+
+.raw-item-card {
+  padding: 14px;
+  border: 1px solid #d9dfd4;
+  border-radius: 12px;
+  background: #f8faf6;
+}
+
+.raw-item-card span {
+  display: block;
+  margin-bottom: 6px;
+  color: #647062;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.raw-item-card p {
+  margin: 0;
+  line-height: 1.5;
+}
