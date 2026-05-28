@@ -8,6 +8,7 @@ import {
   dismissReviewQueueItem,
   executeWorkflowRun,
   getWorkflowRun,
+  listWorkflowRuns,
   listReviewQueueItems,
   resolveReviewQueueItem,
   startWorkflowForIntakeBatch,
@@ -21,6 +22,7 @@ import type {
 } from "./types/intake";
 import type {
   GlobalReviewQueueItem,
+  GlobalWorkflowRunSummary,
   ModelCallLog,
   ReviewQueueItem,
   WorkflowExecutionScenario,
@@ -137,7 +139,6 @@ function ModelRouteCard({
       </dl>
 
       <p className="model-route-card__reason">
-        {getStringField(routingDecision, "reason")}
       </p>
     </article>
   );
@@ -149,6 +150,15 @@ function App() {
   const [intakeBatchesError, setIntakeBatchesError] = useState<string | null>(
     null,
   );
+
+  const [globalWorkflowRuns, setGlobalWorkflowRuns] = useState<
+    GlobalWorkflowRunSummary[]
+  >([]);
+  const [isLoadingGlobalWorkflowRuns, setIsLoadingGlobalWorkflowRuns] =
+    useState(true);
+  const [globalWorkflowRunsError, setGlobalWorkflowRunsError] = useState<
+    string | null
+  >(null);
 
   const [globalReviewQueueItems, setGlobalReviewQueueItems] = useState<
     GlobalReviewQueueItem[]
@@ -216,6 +226,14 @@ function App() {
     (item) => item.status === "OPEN" || item.status === "IN_REVIEW",
   ).length;
 
+  const workflowRunStatusCounts = globalWorkflowRuns.reduce<
+    Record<string, number>
+  >((counts, run) => {
+    counts[run.status] = (counts[run.status] ?? 0) + 1;
+
+    return counts;
+  }, {});
+
   async function loadIntakeBatches() {
     try {
       setIsLoadingIntakeBatches(true);
@@ -232,6 +250,25 @@ function App() {
       );
     } finally {
       setIsLoadingIntakeBatches(false);
+    }
+  }
+
+  async function loadGlobalWorkflowRuns() {
+    try {
+      setIsLoadingGlobalWorkflowRuns(true);
+      setGlobalWorkflowRunsError(null);
+
+      const response = await listWorkflowRuns();
+
+      setGlobalWorkflowRuns(response.workflowRuns);
+    } catch (error) {
+      setGlobalWorkflowRunsError(
+        error instanceof Error
+          ? error.message
+          : "Unable to load workflow runs.",
+      );
+    } finally {
+      setIsLoadingGlobalWorkflowRuns(false);
     }
   }
 
@@ -256,6 +293,7 @@ function App() {
 
   useEffect(() => {
     void loadIntakeBatches();
+    void loadGlobalWorkflowRuns();
     void loadGlobalReviewQueueItems();
   }, []);
 
@@ -354,6 +392,7 @@ function App() {
         } workflow simulation: ${result.workflowRun.workflowName}`,
       );
 
+      await loadGlobalWorkflowRuns();
       await loadGlobalReviewQueueItems();
       await refreshSelectedBatchDetail();
     } catch (error) {
@@ -393,6 +432,7 @@ function App() {
         });
       }
 
+      await loadGlobalWorkflowRuns();
       await loadGlobalReviewQueueItems();
 
       if (
@@ -463,6 +503,7 @@ function App() {
 
       await loadIntakeBatches();
       await handleSelectBatch(createdBatch.id);
+      await loadGlobalWorkflowRuns();
       await loadGlobalReviewQueueItems();
     } catch (error) {
       setCreateBatchError(
@@ -502,6 +543,7 @@ function App() {
       const refreshedDetail = await getIntakeBatch(intakeBatchId);
 
       setSelectedBatchDetail(refreshedDetail);
+      await loadGlobalWorkflowRuns();
       await loadGlobalReviewQueueItems();
     } catch (error) {
       setStartWorkflowError(

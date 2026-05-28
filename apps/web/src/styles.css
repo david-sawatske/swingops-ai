@@ -714,3 +714,85 @@ h1 {
     grid-template-columns: 1fr;
   }
 }
+
+.global-workflow-run-list {
+  display: grid;
+  gap: 12px;
+}
+
+.global-workflow-run-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #d9dfd4;
+  border-radius: 14px;
+  background: #f8faf6;
+}
+
+.global-workflow-run-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.global-workflow-run-card__header h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.global-workflow-run-card__header p,
+.global-workflow-run-card__meta {
+  margin: 0;
+  color: #647062;
+  line-height: 1.5;
+}
+
+.global-workflow-run-card__header button {
+  align-self: flex-start;
+  border: 1px solid #2e402b;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #2e402b;
+  cursor: pointer;
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 7px 10px;
+}
+
+.global-workflow-run-card__header button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.global-workflow-run-card__context {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.global-workflow-run-card__context dt {
+  color: #647062;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.global-workflow-run-card__context dd {
+  margin: 4px 0 0;
+  color: #2e402b;
+  font-size: 0.85rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .global-workflow-run-card__header {
+    flex-direction: column;
+  }
+
+  .global-workflow-run-card__context {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

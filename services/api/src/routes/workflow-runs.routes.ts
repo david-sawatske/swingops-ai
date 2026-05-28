@@ -38,6 +38,48 @@ function serializeWorkflowRun(run: {
   };
 }
 
+function serializeIntakeBatch(batch: {
+  id: string;
+  name: string;
+  description: string | null;
+  sourceType: string;
+  status: string;
+  itemCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}) {
+  return {
+    id: batch.id,
+    name: batch.name,
+    description: batch.description,
+    sourceType: batch.sourceType,
+    status: batch.status,
+    itemCount: batch.itemCount,
+    createdAt: batch.createdAt.toISOString(),
+    updatedAt: batch.updatedAt.toISOString()
+  };
+}
+
+function serializeIntakeItem(item: {
+  id: string;
+  intakeBatchId: string;
+  rawText: string;
+  sourceRowNumber: number | null;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+}) {
+  return {
+    id: item.id,
+    intakeBatchId: item.intakeBatchId,
+    rawText: item.rawText,
+    sourceRowNumber: item.sourceRowNumber,
+    status: item.status,
+    createdAt: item.createdAt.toISOString(),
+    updatedAt: item.updatedAt.toISOString()
+  };
+}
+
 function serializeWorkflowStep(step: {
   id: string;
   workflowRunId: string;
@@ -170,7 +212,103 @@ function serializeReviewQueueItem(item: {
   };
 }
 
+function serializeWorkflowRunListItem(run: {
+  id: string;
+  intakeBatchId: string | null;
+  intakeItemId: string | null;
+  workflowName: string;
+  status: string;
+  startedAt: Date | null;
+  completedAt: Date | null;
+  errorMessage: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  intakeBatch: {
+    id: string;
+    name: string;
+    description: string | null;
+    sourceType: string;
+    status: string;
+    itemCount: number;
+    createdAt: Date;
+    updatedAt: Date;
+  } | null;
+  intakeItem: {
+    id: string;
+    intakeBatchId: string;
+    rawText: string;
+    sourceRowNumber: number | null;
+    status: string;
+    createdAt: Date;
+    updatedAt: Date;
+  } | null;
+  modelCallLogs: {
+    id: string;
+    workflowRunId: string | null;
+    workflowStepId: string | null;
+    provider: string;
+    model: string;
+    status: string;
+    promptTokens: number | null;
+    completionTokens: number | null;
+    totalTokens: number | null;
+    latencyMs: number | null;
+    estimatedCostUsd: number | null;
+    requestJson: unknown;
+    responseJson: unknown;
+    errorMessage: string | null;
+    startedAt: Date;
+    completedAt: Date | null;
+    createdAt: Date;
+  }[];
+  reviewQueueItems: {
+    status: string;
+  }[];
+}) {
+  const openReviewQueueItemCount = run.reviewQueueItems.filter(
+    (item) => item.status === "OPEN" || item.status === "IN_REVIEW"
+  ).length;
+
+  return {
+    ...serializeWorkflowRun(run),
+    intakeBatch: run.intakeBatch ? serializeIntakeBatch(run.intakeBatch) : null,
+    intakeItem: run.intakeItem ? serializeIntakeItem(run.intakeItem) : null,
+    latestModelCallLog: run.modelCallLogs[0]
+      ? serializeModelCallLog(run.modelCallLogs[0])
+      : null,
+    totalReviewQueueItemCount: run.reviewQueueItems.length,
+    openReviewQueueItemCount
+  };
+}
+
 export async function workflowRunRoutes(app: FastifyInstance): Promise<void> {
+  app.get("/workflow-runs", async () => {
+    const workflowRuns = await prisma.workflowRun.findMany({
+      orderBy: {
+        createdAt: "desc"
+      },
+      include: {
+        intakeBatch: true,
+        intakeItem: true,
+        modelCallLogs: {
+          orderBy: {
+            createdAt: "desc"
+          },
+          take: 1
+        },
+        reviewQueueItems: {
+          select: {
+            status: true
+          }
+        }
+      }
+    });
+
+    return {
+      workflowRuns: workflowRuns.map(serializeWorkflowRunListItem)
+    };
+  });
+
   app.get("/workflow-runs/:id", async (request, reply) => {
     const parsedParams = workflowRunParamsSchema.safeParse(request.params);
 

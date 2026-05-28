@@ -5,6 +5,247 @@ import { prisma } from "../lib/prisma.js";
 import { createMockModelCallLogForWorkflowRun } from "../workflows/workflow-model-logging.js";
 
 describe("workflow run routes", () => {
+  describe("GET /workflow-runs", () => {
+    it("returns a workflow run list response", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/workflow-runs"
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(Array.isArray(body.workflowRuns)).toBe(true);
+
+      await app.close();
+    });
+
+    it("returns workflow runs with intake context", async () => {
+      const app = buildApp();
+
+      const intakeBatch = await prisma.intakeBatch.create({
+        data: {
+          name: "Workflow Runs Dashboard Batch",
+          sourceType: "FREEFORM_NOTES",
+          itemCount: 1,
+          items: {
+            create: [
+              {
+                rawText: "Callaway Rogue ST Max driver, stiff, RH"
+              }
+            ]
+          }
+        },
+        include: {
+          items: true
+        }
+      });
+
+      const intakeItem = intakeBatch.items[0];
+
+      expect(intakeItem).toBeDefined();
+
+      const workflowRun = await prisma.workflowRun.create({
+        data: {
+          intakeBatchId: intakeBatch.id,
+          intakeItemId: intakeItem!.id,
+          workflowName: "workflow-runs-dashboard-list",
+          status: "QUEUED"
+        }
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/workflow-runs"
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+      const listedRun = body.workflowRuns.find(
+        (run: { id: string }) => run.id === workflowRun.id
+      );
+
+      expect(listedRun).toMatchObject({
+        id: workflowRun.id,
+        intakeBatchId: intakeBatch.id,
+        intakeItemId: intakeItem!.id,
+        workflowName: "workflow-runs-dashboard-list",
+        status: "QUEUED",
+        intakeBatch: {
+          id: intakeBatch.id,
+          name: "Workflow Runs Dashboard Batch"
+        },
+        intakeItem: {
+          id: intakeItem!.id,
+          rawText: "Callaway Rogue ST Max driver, stiff, RH"
+        },
+        latestModelCallLog: null,
+        totalReviewQueueItemCount: 0,
+        openReviewQueueItemCount: 0
+      });
+
+      await prisma.workflowRun.delete({
+        where: {
+          id: workflowRun.id
+        }
+      });
+      await prisma.intakeBatch.delete({
+        where: {
+          id: intakeBatch.id
+        }
+      });
+
+      await app.close();
+    });
+
+    it("includes the latest model call log for each workflow run", async () => {
+      const app = buildApp();
+
+      const workflowRun = await prisma.workflowRun.create({
+        data: {
+          workflowName: "workflow-runs-dashboard-model-log"
+        }
+      });
+
+      await prisma.modelCallLog.create({
+        data: {
+          workflowRunId: workflowRun.id,
+          provider: "MOCK",
+          model: "older-model-route",
+          status: "SUCCEEDED",
+          latencyMs: 42,
+          estimatedCostUsd: 0,
+          requestJson: {
+            routingGoal: "LOW_COST"
+          },
+          responseJson: {
+            routingDecision: {
+              provider: "MOCK",
+              model: "older-model-route"
+            }
+          },
+          startedAt: new Date("2026-01-01T00:00:00.000Z"),
+          completedAt: new Date("2026-01-01T00:00:01.000Z"),
+          createdAt: new Date("2026-01-01T00:00:01.000Z")
+        }
+      });
+
+      await prisma.modelCallLog.create({
+        data: {
+          workflowRunId: workflowRun.id,
+          provider: "MOCK",
+          model: "latest-model-route",
+          status: "SUCCEEDED",
+          latencyMs: 24,
+          estimatedCostUsd: 0,
+          requestJson: {
+            routingGoal: "QUALITY"
+          },
+          responseJson: {
+            routingDecision: {
+              provider: "MOCK",
+              model: "latest-model-route",
+              estimatedCostTier: "FREE",
+              expectedLatencyTier: "LOW",
+              qualityTier: "LOW"
+            }
+          },
+          startedAt: new Date("2026-01-02T00:00:00.000Z"),
+          completedAt: new Date("2026-01-02T00:00:01.000Z"),
+          createdAt: new Date("2026-01-02T00:00:01.000Z")
+        }
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/workflow-runs"
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+      const listedRun = body.workflowRuns.find(
+        (run: { id: string }) => run.id === workflowRun.id
+      );
+
+      expect(listedRun.latestModelCallLog).toMatchObject({
+        workflowRunId: workflowRun.id,
+        provider: "MOCK",
+        model: "latest-model-route",
+        status: "SUCCEEDED",
+        latencyMs: 24,
+        estimatedCostUsd: 0,
+        requestJson: {
+          routingGoal: "QUALITY"
+        }
+      });
+
+      await prisma.workflowRun.delete({
+        where: {
+          id: workflowRun.id
+        }
+      });
+
+      await app.close();
+    });
+
+    it("includes review queue counts for each workflow run", async () => {
+      const app = buildApp();
+
+      const workflowRun = await prisma.workflowRun.create({
+        data: {
+          workflowName: "workflow-runs-dashboard-review-counts",
+          reviewQueueItems: {
+            create: [
+              {
+                reason: "LOW_CONFIDENCE",
+                status: "OPEN",
+                originalText: "TM driver, shaft unknown"
+              },
+              {
+                reason: "AMBIGUOUS_INPUT",
+                status: "IN_REVIEW",
+                originalText: "Ping irons maybe 5-PW"
+              },
+              {
+                reason: "MISSING_REQUIRED_FIELDS",
+                status: "RESOLVED",
+                originalText: "Odyssey putter"
+              }
+            ]
+          }
+        }
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/workflow-runs"
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+      const listedRun = body.workflowRuns.find(
+        (run: { id: string }) => run.id === workflowRun.id
+      );
+
+      expect(listedRun.totalReviewQueueItemCount).toBe(3);
+      expect(listedRun.openReviewQueueItemCount).toBe(2);
+
+      await prisma.workflowRun.delete({
+        where: {
+          id: workflowRun.id
+        }
+      });
+
+      await app.close();
+    });
+  });
+
   describe("GET /workflow-runs/:id", () => {
     it("returns a workflow run with persisted model call logs", async () => {
       const app = buildApp();

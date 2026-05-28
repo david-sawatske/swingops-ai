@@ -142,6 +142,14 @@ export type ReviewQueueIntakeBatchSummary = {
   updatedAt: string;
 };
 
+export type GlobalWorkflowRunSummary = WorkflowRunSummary & {
+  intakeBatch: ReviewQueueIntakeBatchSummary | null;
+  intakeItem: ReviewQueueIntakeItemSummary | null;
+  latestModelCallLog: ModelCallLog | null;
+  totalReviewQueueItemCount: number;
+  openReviewQueueItemCount: number;
+};
+
 export type GlobalReviewQueueItem = ReviewQueueItem & {
   workflowRun: WorkflowRunSummary | null;
   intakeItem: ReviewQueueIntakeItemSummary | null;
@@ -173,6 +181,10 @@ export type ExecuteWorkflowRunResponse = {
   steps: WorkflowStep[];
   toolCallLogs: ToolCallLog[];
   reviewQueueItems: ReviewQueueItem[];
+};
+
+export type ListWorkflowRunsResponse = {
+  workflowRuns: GlobalWorkflowRunSummary[];
 };
 
 export type ListReviewQueueItemsResponse = {

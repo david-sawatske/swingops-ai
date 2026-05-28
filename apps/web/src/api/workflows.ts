@@ -3,6 +3,7 @@ import type {
   ExecuteWorkflowRunRequest,
   ExecuteWorkflowRunResponse,
   ListReviewQueueItemsResponse,
+  ListWorkflowRunsResponse,
   ReviewQueueItemActionRequest,
   ReviewQueueItemActionResponse,
   StartWorkflowResponse,
@@ -26,6 +27,10 @@ export async function executeWorkflowRun(
     `/workflow-runs/${workflowRunId}/execute`,
     request,
   );
+}
+
+export async function listWorkflowRuns(): Promise<ListWorkflowRunsResponse> {
+  return apiGet<ListWorkflowRunsResponse>("/workflow-runs");
 }
 
 export async function getWorkflowRun(

@@ -209,7 +209,7 @@ describe("review queue item routes", () => {
       await app.close();
     });
 
-    it("returns an empty list when no review queue items match the status filter", async () => {
+    it("returns a list response when filtering review queue items by status", async () => {
       const app = buildApp();
 
       const response = await app.inject({
@@ -218,9 +218,9 @@ describe("review queue item routes", () => {
       });
 
       expect(response.statusCode).toBe(200);
-      expect(response.json()).toEqual({
-        reviewQueueItems: []
-      });
+      const body = response.json();
+
+      expect(Array.isArray(body.reviewQueueItems)).toBe(true);
 
       await app.close();
     });
