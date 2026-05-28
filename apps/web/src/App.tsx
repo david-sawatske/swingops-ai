@@ -6,10 +6,10 @@ import {
 import { DashboardSection } from "./components/DashboardSection";
 import { EmptyState } from "./components/EmptyState";
 import type {
-  CreateIntakeBatchRequest,
   IntakeBatchSourceType,
   IntakeBatchSummary,
 } from "./types/intake";
+import { buildCreateIntakeBatchRequest } from "./utils/intakeForm";
 import {
   formatIntakeBatchSourceType,
   formatIntakeBatchStatus,
@@ -59,31 +59,25 @@ function App() {
   async function handleCreateBatch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const trimmedName = name.trim();
-    const rawItems = rawText
-      .split("\n")
-      .map((item) => item.trim())
-      .filter(Boolean);
+    const result = buildCreateIntakeBatchRequest({
+      name,
+      description,
+      sourceType,
+      rawText,
+    });
 
-    if (!trimmedName || rawItems.length === 0) {
-      setCreateBatchError("Name and at least one raw text line are required.");
+    if (!result.ok) {
+      setCreateBatchError(result.error);
       setCreateBatchSuccess(null);
       return;
     }
-
-    const request: CreateIntakeBatchRequest = {
-      name: trimmedName,
-      description: description.trim() || undefined,
-      sourceType,
-      items: rawItems.map((item) => ({ rawText: item })),
-    };
 
     try {
       setIsCreatingBatch(true);
       setCreateBatchError(null);
       setCreateBatchSuccess(null);
 
-      const createdBatch = await createIntakeBatch(request);
+      const createdBatch = await createIntakeBatch(result.request);
 
       setName("");
       setDescription("");
