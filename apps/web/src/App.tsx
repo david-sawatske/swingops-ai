@@ -4,7 +4,10 @@ import {
   getIntakeBatch,
   listIntakeBatches,
 } from "./api/intakeBatches";
-import { startWorkflowForIntakeBatch } from "./api/workflows";
+import {
+  getWorkflowRun,
+  startWorkflowForIntakeBatch,
+} from "./api/workflows";
 import { DashboardSection } from "./components/DashboardSection";
 import { EmptyState } from "./components/EmptyState";
 import type {
@@ -12,7 +15,7 @@ import type {
   IntakeBatchSourceType,
   IntakeBatchSummary,
 } from "./types/intake";
-import type { ModelCallLog } from "./types/workflow";
+import type { ModelCallLog, WorkflowRunDetail } from "./types/workflow";
 import { buildCreateIntakeBatchRequest } from "./utils/intakeForm";
 import {
   formatIntakeBatchSourceType,
@@ -58,6 +61,60 @@ function getRoutingGoal(modelCallLog: ModelCallLog | null): string {
   return typeof routingGoal === "string" ? routingGoal : "—";
 }
 
+function ModelRouteCard({
+  modelCallLog,
+  title = "Model Route Logged",
+}: {
+  modelCallLog: ModelCallLog;
+  title?: string;
+}) {
+  const routingDecision = getRoutingDecision(modelCallLog);
+  const routingGoal = getRoutingGoal(modelCallLog);
+
+  return (
+    <article className="model-route-card">
+      <div>
+        <span className="model-route-card__eyebrow">{title}</span>
+        <h4>
+          {modelCallLog.provider} / {modelCallLog.model}
+        </h4>
+        <p>Mock model call recorded for workflow run {modelCallLog.workflowRunId}</p>
+      </div>
+
+      <dl>
+        <div>
+          <dt>Status</dt>
+          <dd>{modelCallLog.status}</dd>
+        </div>
+
+        <div>
+          <dt>Goal</dt>
+          <dd>{routingGoal}</dd>
+        </div>
+
+        <div>
+          <dt>Cost</dt>
+          <dd>{getStringField(routingDecision, "estimatedCostTier")}</dd>
+        </div>
+
+        <div>
+          <dt>Latency</dt>
+          <dd>{getStringField(routingDecision, "expectedLatencyTier")}</dd>
+        </div>
+
+        <div>
+          <dt>Quality</dt>
+          <dd>{getStringField(routingDecision, "qualityTier")}</dd>
+        </div>
+      </dl>
+
+      <p className="model-route-card__reason">
+        {getStringField(routingDecision, "reason")}
+      </p>
+    </article>
+  );
+}
+
 function App() {
   const [intakeBatches, setIntakeBatches] = useState<IntakeBatchSummary[]>([]);
   const [isLoadingIntakeBatches, setIsLoadingIntakeBatches] = useState(true);
@@ -69,6 +126,14 @@ function App() {
     useState<IntakeBatchDetail | null>(null);
   const [isLoadingBatchDetail, setIsLoadingBatchDetail] = useState(false);
   const [batchDetailError, setBatchDetailError] = useState<string | null>(null);
+
+  const [selectedWorkflowRunDetail, setSelectedWorkflowRunDetail] =
+    useState<WorkflowRunDetail | null>(null);
+  const [isLoadingWorkflowRunDetail, setIsLoadingWorkflowRunDetail] =
+    useState(false);
+  const [workflowRunDetailError, setWorkflowRunDetailError] = useState<
+    string | null
+  >(null);
 
   const [isStartingWorkflow, setIsStartingWorkflow] = useState(false);
   const [startWorkflowError, setStartWorkflowError] = useState<string | null>(
@@ -90,9 +155,6 @@ function App() {
   const [createBatchSuccess, setCreateBatchSuccess] = useState<string | null>(
     null,
   );
-
-  const latestRoutingDecision = getRoutingDecision(latestModelCallLog);
-  const latestRoutingGoal = getRoutingGoal(latestModelCallLog);
 
   async function loadIntakeBatches() {
     try {
@@ -124,6 +186,8 @@ function App() {
       setStartWorkflowError(null);
       setStartWorkflowSuccess(null);
       setLatestModelCallLog(null);
+      setSelectedWorkflowRunDetail(null);
+      setWorkflowRunDetailError(null);
 
       const detail = await getIntakeBatch(intakeBatchId);
 
@@ -136,6 +200,25 @@ function App() {
       );
     } finally {
       setIsLoadingBatchDetail(false);
+    }
+  }
+
+  async function handleSelectWorkflowRun(workflowRunId: string) {
+    try {
+      setIsLoadingWorkflowRunDetail(true);
+      setWorkflowRunDetailError(null);
+
+      const detail = await getWorkflowRun(workflowRunId);
+
+      setSelectedWorkflowRunDetail(detail);
+    } catch (error) {
+      setWorkflowRunDetailError(
+        error instanceof Error
+          ? error.message
+          : "Unable to load workflow run detail.",
+      );
+    } finally {
+      setIsLoadingWorkflowRunDetail(false);
     }
   }
 
@@ -193,6 +276,8 @@ function App() {
       setStartWorkflowError(null);
       setStartWorkflowSuccess(null);
       setLatestModelCallLog(null);
+      setSelectedWorkflowRunDetail(null);
+      setWorkflowRunDetailError(null);
 
       const response = await startWorkflowForIntakeBatch(intakeBatchId);
 
@@ -349,58 +434,7 @@ function App() {
             ) : null}
 
             {latestModelCallLog ? (
-              <article className="model-route-card">
-                <div>
-                  <span className="model-route-card__eyebrow">
-                    Model Route Logged
-                  </span>
-                  <h4>
-                    {latestModelCallLog.provider} / {latestModelCallLog.model}
-                  </h4>
-                  <p>
-                    Mock model call recorded for workflow run{" "}
-                    {latestModelCallLog.workflowRunId}
-                  </p>
-                </div>
-
-                <dl>
-                  <div>
-                    <dt>Status</dt>
-                    <dd>{latestModelCallLog.status}</dd>
-                  </div>
-
-                  <div>
-                    <dt>Goal</dt>
-                    <dd>{latestRoutingGoal}</dd>
-                  </div>
-
-                  <div>
-                    <dt>Cost</dt>
-                    <dd>
-                      {getStringField(latestRoutingDecision, "estimatedCostTier")}
-                    </dd>
-                  </div>
-
-                  <div>
-                    <dt>Latency</dt>
-                    <dd>
-                      {getStringField(
-                        latestRoutingDecision,
-                        "expectedLatencyTier",
-                      )}
-                    </dd>
-                  </div>
-
-                  <div>
-                    <dt>Quality</dt>
-                    <dd>{getStringField(latestRoutingDecision, "qualityTier")}</dd>
-                  </div>
-                </dl>
-
-                <p className="model-route-card__reason">
-                  {getStringField(latestRoutingDecision, "reason")}
-                </p>
-              </article>
+              <ModelRouteCard modelCallLog={latestModelCallLog} />
             ) : null}
 
             <div className="raw-item-list">
@@ -428,11 +462,58 @@ function App() {
                       <p>{run.id}</p>
                     </div>
 
-                    <strong>{run.status}</strong>
+                    <div className="workflow-run-card__actions">
+                      <strong>{run.status}</strong>
+
+                      <button
+                        disabled={isLoadingWorkflowRunDetail}
+                        onClick={() => void handleSelectWorkflowRun(run.id)}
+                        type="button"
+                      >
+                        View Logs
+                      </button>
+                    </div>
                   </article>
                 ))}
               </div>
             )}
+
+            {isLoadingWorkflowRunDetail ? <p>Loading workflow run logs…</p> : null}
+
+            {workflowRunDetailError ? (
+              <p className="form-message form-message--error">
+                {workflowRunDetailError}
+              </p>
+            ) : null}
+
+            {selectedWorkflowRunDetail ? (
+              <div className="workflow-run-detail-panel">
+                <div>
+                  <span className="model-route-card__eyebrow">
+                    Workflow Run Detail
+                  </span>
+                  <h4>{selectedWorkflowRunDetail.workflowRun.workflowName}</h4>
+                  <p>{selectedWorkflowRunDetail.workflowRun.id}</p>
+                </div>
+
+                {selectedWorkflowRunDetail.modelCallLogs.length === 0 ? (
+                  <EmptyState
+                    title="No model call logs"
+                    message="This workflow run does not have persisted model call logs yet."
+                  />
+                ) : (
+                  <div className="workflow-model-log-list">
+                    {selectedWorkflowRunDetail.modelCallLogs.map((log) => (
+                      <ModelRouteCard
+                        key={log.id}
+                        modelCallLog={log}
+                        title="Persisted Model Route"
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : null}
           </div>
         ) : null}
       </DashboardSection>

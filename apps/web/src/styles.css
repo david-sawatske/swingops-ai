@@ -480,3 +480,61 @@ h1 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.workflow-run-card__actions {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+
+.workflow-run-card__actions button {
+  border: 1px solid #2e402b;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #2e402b;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 7px 10px;
+}
+
+.workflow-run-card__actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.workflow-run-detail-panel {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #d9dfd4;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.workflow-run-detail-panel h4 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.workflow-run-detail-panel p {
+  margin: 0;
+  color: #647062;
+  font-size: 0.85rem;
+}
+
+.workflow-model-log-list {
+  display: grid;
+  gap: 12px;
+}
+
+@media (max-width: 720px) {
+  .workflow-run-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .workflow-run-card__actions {
+    justify-items: start;
+  }
+}
