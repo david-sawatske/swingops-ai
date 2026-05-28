@@ -199,6 +199,23 @@ export async function toolRoutes(app: FastifyInstance): Promise<void> {
     });
   });
 
+  app.post("/mcp/tools/invocations/execute-readonly", async (request, reply) => {
+    const parsedBody = readOnlyToolInvocationBodySchema.safeParse(
+      request.body ?? {}
+    );
+
+    if (!parsedBody.success) {
+      return reply.status(400).send({
+        error: "Invalid read-only tool invocation request",
+        details: parsedBody.error.flatten()
+      });
+    }
+
+    return executeReadOnlyToolInvocation(
+      toReadOnlyInvocationInput(parsedBody.data)
+    );
+  });
+
   app.get("/mcp/tools", async (request, reply) => {
     const parsedQuery = listAgentToolsQuerySchema.safeParse(request.query ?? {});
 

@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { previewModelRouting } from "./api/modelRouting";
+import { executeReadOnlyToolInvocation } from "./api/mcp";
 import {
   createIntakeBatch,
   getIntakeBatch,
@@ -16,6 +17,9 @@ import {
 } from "./api/workflows";
 import { DashboardSection } from "./components/DashboardSection";
 import { EmptyState } from "./components/EmptyState";
+import type {
+  ExecuteReadOnlyToolInvocationResponse,
+} from "./types/mcp";
 import type {
   ModelRouteCandidateSummary,
   ModelRouteRejectedCandidate,
@@ -68,6 +72,85 @@ const WORKFLOW_RUN_STATUS_FILTERS: WorkflowRunStatusFilter[] = [
   "NEEDS_REVIEW",
   "FAILED",
   "CANCELLED",
+];
+
+type ReadOnlyMcpToolName =
+  | "swingops.workflowRuns.list"
+  | "swingops.workflowRuns.get"
+  | "swingops.reviewQueueItems.list"
+  | "swingops.intakeBatches.list"
+  | "swingops.reviewQueueItems.resolve";
+
+type ReadOnlyMcpToolDemoOption = {
+  name: ReadOnlyMcpToolName;
+  label: string;
+  description: string;
+  category: "INTAKE" | "WORKFLOW" | "REVIEW_QUEUE";
+  riskLevel: "LOW" | "HIGH";
+  enabled: boolean;
+  mutatesData: boolean;
+  requiresHumanApproval: boolean;
+  blockedDemo: boolean;
+};
+
+const READ_ONLY_MCP_TOOL_OPTIONS: ReadOnlyMcpToolDemoOption[] = [
+  {
+    name: "swingops.workflowRuns.list",
+    label: "List workflow runs",
+    description: "Reads workflow run summaries from internal SwingOps data.",
+    category: "WORKFLOW",
+    riskLevel: "LOW",
+    enabled: true,
+    mutatesData: false,
+    requiresHumanApproval: false,
+    blockedDemo: false,
+  },
+  {
+    name: "swingops.reviewQueueItems.list",
+    label: "List review queue items",
+    description: "Reads human-review queue items without changing their status.",
+    category: "REVIEW_QUEUE",
+    riskLevel: "LOW",
+    enabled: true,
+    mutatesData: false,
+    requiresHumanApproval: false,
+    blockedDemo: false,
+  },
+  {
+    name: "swingops.intakeBatches.list",
+    label: "List intake batches",
+    description: "Reads imported golf trade-in intake batches.",
+    category: "INTAKE",
+    riskLevel: "LOW",
+    enabled: true,
+    mutatesData: false,
+    requiresHumanApproval: false,
+    blockedDemo: false,
+  },
+  {
+    name: "swingops.workflowRuns.get",
+    label: "Get workflow run detail",
+    description:
+      "Reads one workflow run with steps, model logs, tool logs, and review items.",
+    category: "WORKFLOW",
+    riskLevel: "LOW",
+    enabled: true,
+    mutatesData: false,
+    requiresHumanApproval: false,
+    blockedDemo: false,
+  },
+  {
+    name: "swingops.reviewQueueItems.resolve",
+    label: "Blocked demo: resolve review item",
+    description:
+      "Mutation tool intentionally blocked by the read-only connector surface.",
+    category: "REVIEW_QUEUE",
+    riskLevel: "HIGH",
+    enabled: false,
+    mutatesData: true,
+    requiresHumanApproval: true,
+    blockedDemo: true,
+  },
 ];
 
 function formatEnumLabel(value: string): string {
@@ -174,6 +257,34 @@ function formatJson(value: unknown): string {
   }
 
   return JSON.stringify(value, null, 2);
+}
+
+function formatConnectorJson(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "No connector result returned.";
+  }
+
+  return JSON.stringify(value, null, 2);
+}
+
+function getReadOnlyMcpToolInput(
+  toolName: ReadOnlyMcpToolName,
+  workflowRunId: string,
+): unknown {
+  if (toolName === "swingops.workflowRuns.get") {
+    return {
+      id: workflowRunId,
+    };
+  }
+
+  if (toolName === "swingops.reviewQueueItems.resolve") {
+    return {
+      id: "blocked-demo-review-item",
+      reviewerNotes: "Blocked demo only. Mutations are disabled on this surface.",
+    };
+  }
+
+  return {};
 }
 
 function getReviewActionFallbackNote(action: "resolve" | "dismiss") {
@@ -333,6 +444,90 @@ function ToolCallLogCard({ toolCallLog }: { toolCallLog: ToolCallLog }) {
   );
 }
 
+function ReadOnlyMcpConnectorResultCard({
+  result,
+}: {
+  result: ExecuteReadOnlyToolInvocationResponse;
+}) {
+  const tool = result.policyEvaluation.tool;
+
+  return (
+    <article className="read-only-mcp-result-card">
+      <div className="read-only-mcp-result-card__header">
+        <div>
+          <span className="model-route-card__eyebrow">
+            {result.invocation.status === "SUCCEEDED"
+              ? "Executed read-only connector"
+              : "Blocked by connector policy"}
+          </span>
+          <h3>{result.invocation.toolName}</h3>
+          <p>
+            Policy checked before execution. External MCP transport remains off;
+            this demo uses the internal connector invocation surface.
+          </p>
+        </div>
+
+        <span>{result.invocation.status}</span>
+      </div>
+
+      <dl className="read-only-mcp-result-card__metadata">
+        <div>
+          <dt>Policy Decision</dt>
+          <dd>{result.policyEvaluation.decision}</dd>
+        </div>
+
+        <div>
+          <dt>Reason Codes</dt>
+          <dd>{result.policyEvaluation.reasonCodes.join(", ")}</dd>
+        </div>
+
+        <div>
+          <dt>Execution Attempted</dt>
+          <dd>{String(result.invocation.executionAttempted)}</dd>
+        </div>
+
+        <div>
+          <dt>Persisted ToolCallLog</dt>
+          <dd>{result.invocation.toolCallLogId}</dd>
+        </div>
+
+        <div>
+          <dt>Risk Level</dt>
+          <dd>{tool?.riskLevel ?? "—"}</dd>
+        </div>
+
+        <div>
+          <dt>Mutates Data</dt>
+          <dd>{tool ? String(tool.mutatesData) : "—"}</dd>
+        </div>
+
+        <div>
+          <dt>Requires Approval</dt>
+          <dd>{tool ? String(tool.requiresHumanApproval) : "—"}</dd>
+        </div>
+
+        <div>
+          <dt>Enabled</dt>
+          <dd>{tool ? String(tool.enabled) : "—"}</dd>
+        </div>
+      </dl>
+
+      <p className="read-only-mcp-result-card__reason">
+        {result.policyEvaluation.reason}
+      </p>
+
+      <div className="read-only-mcp-result-card__preview">
+        <strong>Connector Result Preview</strong>
+        <pre>
+          {formatConnectorJson(
+            result.connectorResult?.data ?? result.invocation.outputJson,
+          )}
+        </pre>
+      </div>
+    </article>
+  );
+}
+
 function App() {
   const [intakeBatches, setIntakeBatches] = useState<IntakeBatchSummary[]>([]);
   const [isLoadingIntakeBatches, setIsLoadingIntakeBatches] = useState(true);
@@ -417,6 +612,18 @@ function App() {
     string | null
   >(null);
 
+  const [selectedReadOnlyMcpToolName, setSelectedReadOnlyMcpToolName] =
+    useState<ReadOnlyMcpToolName>("swingops.workflowRuns.list");
+  const [selectedReadOnlyMcpWorkflowRunId, setSelectedReadOnlyMcpWorkflowRunId] =
+    useState("");
+  const [readOnlyMcpInvocationResult, setReadOnlyMcpInvocationResult] =
+    useState<ExecuteReadOnlyToolInvocationResponse | null>(null);
+  const [isExecutingReadOnlyMcpTool, setIsExecutingReadOnlyMcpTool] =
+    useState(false);
+  const [readOnlyMcpInvocationError, setReadOnlyMcpInvocationError] = useState<
+    string | null
+  >(null);
+
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [sourceType, setSourceType] =
@@ -449,6 +656,17 @@ function App() {
 
   const selectedWorkflowRunId =
     selectedWorkflowRunDetail?.workflowRun.id ?? null;
+  const firstAvailableWorkflowRunId = globalWorkflowRuns[0]?.id ?? "";
+  const selectedMcpWorkflowRunId =
+    selectedReadOnlyMcpWorkflowRunId || firstAvailableWorkflowRunId;
+  const readOnlyMcpToolOptions = READ_ONLY_MCP_TOOL_OPTIONS.filter(
+    (tool) =>
+      tool.name !== "swingops.workflowRuns.get" || Boolean(selectedMcpWorkflowRunId),
+  );
+  const selectedReadOnlyMcpTool =
+    READ_ONLY_MCP_TOOL_OPTIONS.find(
+      (tool) => tool.name === selectedReadOnlyMcpToolName,
+    ) ?? READ_ONLY_MCP_TOOL_OPTIONS[0];
 
   async function loadIntakeBatches() {
     try {
@@ -793,6 +1011,65 @@ function App() {
       );
     } finally {
       setIsPreviewingModelRouting(false);
+    }
+  }
+
+  async function handleExecuteReadOnlyMcpTool(
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+
+    if (
+      selectedReadOnlyMcpToolName === "swingops.workflowRuns.get" &&
+      !selectedMcpWorkflowRunId
+    ) {
+      setReadOnlyMcpInvocationError(
+        "Create or select a workflow run before using the get-by-id connector demo.",
+      );
+      return;
+    }
+
+    try {
+      setIsExecutingReadOnlyMcpTool(true);
+      setReadOnlyMcpInvocationError(null);
+
+      const result = await executeReadOnlyToolInvocation({
+        toolName: selectedReadOnlyMcpToolName,
+        inputJson: getReadOnlyMcpToolInput(
+          selectedReadOnlyMcpToolName,
+          selectedMcpWorkflowRunId,
+        ),
+        requestedBy: "agent.web-readonly-demo",
+        workflowRunId:
+          selectedReadOnlyMcpToolName === "swingops.workflowRuns.get"
+            ? selectedMcpWorkflowRunId
+            : undefined,
+        executionMode: selectedReadOnlyMcpTool.blockedDemo
+          ? "HUMAN_APPROVED"
+          : "AGENT_AUTONOMOUS",
+        humanApprovalGranted: selectedReadOnlyMcpTool.blockedDemo,
+      });
+
+      setReadOnlyMcpInvocationResult(result);
+      await loadGlobalWorkflowRuns();
+      await loadGlobalReviewQueueItems();
+
+      if (
+        selectedWorkflowRunDetail &&
+        result.invocation.workflowRunId === selectedWorkflowRunDetail.workflowRun.id
+      ) {
+        await refreshSelectedWorkflowRunDetail(
+          selectedWorkflowRunDetail.workflowRun.id,
+        );
+      }
+    } catch (error) {
+      setReadOnlyMcpInvocationError(
+        error instanceof Error
+          ? error.message
+          : "Unable to execute read-only MCP connector demo.",
+      );
+    } finally {
+      setIsExecutingReadOnlyMcpTool(false);
     }
   }
 
@@ -1193,6 +1470,109 @@ function App() {
             ))}
           </div>
         ) : null}
+      </DashboardSection>
+
+      <DashboardSection
+        title="Read-Only MCP Connector Demo"
+        description="Execute safe internal connector tools, show policy checks, block mutation tools, and persist ToolCallLog audit records."
+      >
+        <form
+          className="read-only-mcp-demo-form"
+          onSubmit={handleExecuteReadOnlyMcpTool}
+        >
+          <label>
+            Tool
+            <select
+              onChange={(event) =>
+                setSelectedReadOnlyMcpToolName(
+                  event.target.value as ReadOnlyMcpToolName,
+                )
+              }
+              value={selectedReadOnlyMcpToolName}
+            >
+              {readOnlyMcpToolOptions.map((tool) => (
+                <option key={tool.name} value={tool.name}>
+                  {tool.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {selectedReadOnlyMcpToolName === "swingops.workflowRuns.get" ? (
+            <label>
+              Workflow Run
+              <select
+                onChange={(event) =>
+                  setSelectedReadOnlyMcpWorkflowRunId(event.target.value)
+                }
+                value={selectedMcpWorkflowRunId}
+              >
+                {globalWorkflowRuns.map((run) => (
+                  <option key={run.id} value={run.id}>
+                    {run.workflowName} / {run.status}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
+          <article className="read-only-mcp-tool-card">
+            <div>
+              <span className="model-route-card__eyebrow">
+                {selectedReadOnlyMcpTool.blockedDemo
+                  ? "Blocked mutation demo"
+                  : "Safe read-only tool"}
+              </span>
+              <h3>{selectedReadOnlyMcpTool.name}</h3>
+              <p>{selectedReadOnlyMcpTool.description}</p>
+            </div>
+
+            <dl>
+              <div>
+                <dt>Risk</dt>
+                <dd>{selectedReadOnlyMcpTool.riskLevel}</dd>
+              </div>
+
+              <div>
+                <dt>Mutates Data</dt>
+                <dd>{String(selectedReadOnlyMcpTool.mutatesData)}</dd>
+              </div>
+
+              <div>
+                <dt>Requires Approval</dt>
+                <dd>{String(selectedReadOnlyMcpTool.requiresHumanApproval)}</dd>
+              </div>
+
+              <div>
+                <dt>Enabled</dt>
+                <dd>{formatEnabledLabel(selectedReadOnlyMcpTool.enabled)}</dd>
+              </div>
+            </dl>
+          </article>
+
+          {readOnlyMcpInvocationError ? (
+            <p className="form-message form-message--error">
+              {readOnlyMcpInvocationError}
+            </p>
+          ) : null}
+
+          <button disabled={isExecutingReadOnlyMcpTool} type="submit">
+            {isExecutingReadOnlyMcpTool
+              ? "Executing connector…"
+              : selectedReadOnlyMcpTool.blockedDemo
+                ? "Run Blocked Demo"
+                : "Execute Read-Only Tool"}
+          </button>
+        </form>
+
+        {readOnlyMcpInvocationResult ? (
+          <ReadOnlyMcpConnectorResultCard result={readOnlyMcpInvocationResult} />
+        ) : (
+          <EmptyState
+            title="No connector invocation yet"
+            message="Choose a safe read-only connector or the blocked mutation demo to see policy enforcement and persisted audit logs."
+          />
+        )}
       </DashboardSection>
 
       <DashboardSection

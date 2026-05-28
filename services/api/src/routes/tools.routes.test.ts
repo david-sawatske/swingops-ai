@@ -439,6 +439,143 @@ describe("tool routes", () => {
     });
   });
 
+  describe("POST /mcp/tools/invocations/execute-readonly", () => {
+    it("executes safe read-only tools and persists an executed ToolCallLog", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/mcp/tools/invocations/execute-readonly",
+        payload: {
+          toolName: "swingops.intakeBatches.list",
+          requestedBy: "agent.route-readonly-test"
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.invocation).toMatchObject({
+        toolName: "swingops.intakeBatches.list",
+        status: "SUCCEEDED",
+        requestedBy: "agent.route-readonly-test",
+        workflowRunId: null,
+        workflowStepId: null,
+        inputJson: null,
+        executionAttempted: true,
+        toolCallLogId: expect.any(String)
+      });
+      expect(body.policyEvaluation).toMatchObject({
+        decision: "ALLOW",
+        reasonCodes: ["TOOL_ALLOWED"],
+        executionMode: "AGENT_AUTONOMOUS",
+        executionEnabled: true,
+        tool: {
+          name: "swingops.intakeBatches.list",
+          enabled: true,
+          riskLevel: "LOW",
+          mutatesData: false,
+          requiresHumanApproval: false
+        }
+      });
+      expect(body.connectorResult).toMatchObject({
+        metadata: {
+          readOnly: true,
+          mutatesData: false,
+          externalTransport: false
+        },
+        data: {
+          intakeBatches: expect.any(Array)
+        }
+      });
+      expect(body.toolCallLog).toMatchObject({
+        id: body.invocation.toolCallLogId,
+        workflowRunId: null,
+        workflowStepId: null,
+        toolName: "swingops.intakeBatches.list",
+        status: "SUCCEEDED",
+        errorMessage: null
+      });
+      expect(body.executionMetadata).toMatchObject({
+        route: "POST /mcp/tools/invocations/execute-readonly",
+        externalTransport: false,
+        readOnlyOnly: true,
+        mutationToolsEnabled: false,
+        policyCheckedBeforeExecution: true
+      });
+
+      await app.close();
+    });
+
+    it("blocks mutating tools on the read-only invocation surface", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/mcp/tools/invocations/execute-readonly",
+        payload: {
+          toolName: "swingops.reviewQueueItems.resolve",
+          inputJson: {
+            id: "review-item-1",
+            reviewerNotes: "Looks correct."
+          },
+          executionMode: "HUMAN_APPROVED",
+          humanApprovalGranted: true
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.invocation).toMatchObject({
+        toolName: "swingops.reviewQueueItems.resolve",
+        status: "BLOCKED",
+        executionAttempted: false
+      });
+      expect(body.policyEvaluation).toMatchObject({
+        decision: "BLOCK",
+        reasonCodes: ["TOOL_DISABLED"],
+        executionEnabled: false,
+        humanApprovalGranted: true,
+        tool: {
+          enabled: false,
+          mutatesData: true,
+          requiresHumanApproval: true
+        }
+      });
+      expect(body.connectorResult).toBeNull();
+      expect(body.toolCallLog).toMatchObject({
+        toolName: "swingops.reviewQueueItems.resolve",
+        status: "FAILED",
+        errorMessage: "Tool is disabled and cannot be executed."
+      });
+
+      await app.close();
+    });
+
+    it("returns 400 for invalid read-only invocation payloads", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/mcp/tools/invocations/execute-readonly",
+        payload: {
+          toolName: "",
+          executionMode: "NOT_A_MODE"
+        }
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().error).toBe(
+        "Invalid read-only tool invocation request"
+      );
+
+      await app.close();
+    });
+  });
+
   describe("GET /mcp/tools", () => {
     it("returns the MCP-style internal tool registry preview", async () => {
       const app = buildApp();
