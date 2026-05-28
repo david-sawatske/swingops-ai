@@ -23,6 +23,140 @@ const createIntakeBatchBodySchema = z.object({
     .default([])
 });
 
+const paramsWithIdSchema = z.object({
+  id: z.string().min(1)
+});
+
+const tradeInWorkflowSteps = [
+  {
+    stepName: "Parse intake input",
+    stepType: "PARSE_INPUT",
+    orderIndex: 1
+  },
+  {
+    stepName: "Normalize trade-in data",
+    stepType: "NORMALIZE_DATA",
+    orderIndex: 2
+  },
+  {
+    stepName: "Extract golf club fields",
+    stepType: "EXTRACT_GOLF_CLUB_FIELDS",
+    orderIndex: 3
+  },
+  {
+    stepName: "Validate structured output",
+    stepType: "VALIDATE_STRUCTURED_OUTPUT",
+    orderIndex: 4
+  },
+  {
+    stepName: "Create review item when needed",
+    stepType: "CREATE_REVIEW_ITEM",
+    orderIndex: 5
+  }
+] as const;
+
+function serializeIntakeBatch(batch: {
+  id: string;
+  name: string;
+  description: string | null;
+  sourceType: string;
+  status: string;
+  itemCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}) {
+  return {
+    id: batch.id,
+    name: batch.name,
+    description: batch.description,
+    sourceType: batch.sourceType,
+    status: batch.status,
+    itemCount: batch.itemCount,
+    createdAt: batch.createdAt.toISOString(),
+    updatedAt: batch.updatedAt.toISOString()
+  };
+}
+
+function serializeIntakeItem(item: {
+  id: string;
+  intakeBatchId: string;
+  rawText: string;
+  sourceRowNumber: number | null;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+}) {
+  return {
+    id: item.id,
+    intakeBatchId: item.intakeBatchId,
+    rawText: item.rawText,
+    sourceRowNumber: item.sourceRowNumber,
+    status: item.status,
+    createdAt: item.createdAt.toISOString(),
+    updatedAt: item.updatedAt.toISOString()
+  };
+}
+
+function serializeWorkflowRun(run: {
+  id: string;
+  intakeBatchId: string | null;
+  intakeItemId: string | null;
+  workflowName: string;
+  status: string;
+  startedAt: Date | null;
+  completedAt: Date | null;
+  errorMessage: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}) {
+  return {
+    id: run.id,
+    intakeBatchId: run.intakeBatchId,
+    intakeItemId: run.intakeItemId,
+    workflowName: run.workflowName,
+    status: run.status,
+    startedAt: run.startedAt?.toISOString() ?? null,
+    completedAt: run.completedAt?.toISOString() ?? null,
+    errorMessage: run.errorMessage,
+    createdAt: run.createdAt.toISOString(),
+    updatedAt: run.updatedAt.toISOString()
+  };
+}
+
+function serializeWorkflowStep(step: {
+  id: string;
+  workflowRunId: string;
+  stepName: string;
+  stepType: string;
+  status: string;
+  orderIndex: number;
+  inputJson: unknown;
+  outputJson: unknown;
+  errorMessage: string | null;
+  retryCount: number;
+  startedAt: Date | null;
+  completedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}) {
+  return {
+    id: step.id,
+    workflowRunId: step.workflowRunId,
+    stepName: step.stepName,
+    stepType: step.stepType,
+    status: step.status,
+    orderIndex: step.orderIndex,
+    inputJson: step.inputJson,
+    outputJson: step.outputJson,
+    errorMessage: step.errorMessage,
+    retryCount: step.retryCount,
+    startedAt: step.startedAt?.toISOString() ?? null,
+    completedAt: step.completedAt?.toISOString() ?? null,
+    createdAt: step.createdAt.toISOString(),
+    updatedAt: step.updatedAt.toISOString()
+  };
+}
+
 export async function intakeBatchRoutes(app: FastifyInstance): Promise<void> {
   app.get("/intake-batches", async () => {
     const intakeBatches = await prisma.intakeBatch.findMany({
@@ -32,16 +166,7 @@ export async function intakeBatchRoutes(app: FastifyInstance): Promise<void> {
     });
 
     return {
-      intakeBatches: intakeBatches.map((batch) => ({
-        id: batch.id,
-        name: batch.name,
-        description: batch.description,
-        sourceType: batch.sourceType,
-        status: batch.status,
-        itemCount: batch.itemCount,
-        createdAt: batch.createdAt.toISOString(),
-        updatedAt: batch.updatedAt.toISOString()
-      }))
+      intakeBatches: intakeBatches.map(serializeIntakeBatch)
     };
   });
 
@@ -88,34 +213,70 @@ export async function intakeBatchRoutes(app: FastifyInstance): Promise<void> {
     });
 
     return reply.status(201).send({
-      intakeBatch: {
-        id: intakeBatch.id,
-        name: intakeBatch.name,
-        description: intakeBatch.description,
-        sourceType: intakeBatch.sourceType,
-        status: intakeBatch.status,
-        itemCount: intakeBatch.itemCount,
-        createdAt: intakeBatch.createdAt.toISOString(),
-        updatedAt: intakeBatch.updatedAt.toISOString()
+      intakeBatch: serializeIntakeBatch(intakeBatch),
+      items: intakeBatch.items.map(serializeIntakeItem)
+    });
+  });
+
+  app.post("/intake-batches/:id/start-workflow", async (request, reply) => {
+    const parsedParams = paramsWithIdSchema.safeParse(request.params);
+
+    if (!parsedParams.success) {
+      return reply.status(400).send({
+        error: "Invalid intake batch id",
+        details: parsedParams.error.flatten()
+      });
+    }
+
+    const intakeBatch = await prisma.intakeBatch.findUnique({
+      where: {
+        id: parsedParams.data.id
+      }
+    });
+
+    if (!intakeBatch) {
+      return reply.status(404).send({
+        error: "Intake batch not found"
+      });
+    }
+
+    const workflowRun = await prisma.workflowRun.create({
+      data: {
+        intakeBatchId: intakeBatch.id,
+        workflowName: "trade-in-intake-v1",
+        status: "QUEUED",
+        steps: {
+          create: tradeInWorkflowSteps.map((step) => ({
+            stepName: step.stepName,
+            stepType: step.stepType,
+            orderIndex: step.orderIndex,
+            status: "PENDING",
+            inputJson: {
+              intakeBatchId: intakeBatch.id,
+              intakeBatchName: intakeBatch.name,
+              sourceType: intakeBatch.sourceType,
+              itemCount: intakeBatch.itemCount
+            }
+          }))
+        }
       },
-      items: intakeBatch.items.map((item) => ({
-        id: item.id,
-        intakeBatchId: item.intakeBatchId,
-        rawText: item.rawText,
-        sourceRowNumber: item.sourceRowNumber,
-        status: item.status,
-        createdAt: item.createdAt.toISOString(),
-        updatedAt: item.updatedAt.toISOString()
-      }))
+      include: {
+        steps: {
+          orderBy: {
+            orderIndex: "asc"
+          }
+        }
+      }
+    });
+
+    return reply.status(201).send({
+      workflowRun: serializeWorkflowRun(workflowRun),
+      steps: workflowRun.steps.map(serializeWorkflowStep)
     });
   });
 
   app.get("/intake-batches/:id", async (request, reply) => {
-    const paramsSchema = z.object({
-      id: z.string().min(1)
-    });
-
-    const parsedParams = paramsSchema.safeParse(request.params);
+    const parsedParams = paramsWithIdSchema.safeParse(request.params);
 
     if (!parsedParams.success) {
       return reply.status(400).send({
@@ -149,37 +310,9 @@ export async function intakeBatchRoutes(app: FastifyInstance): Promise<void> {
     }
 
     return {
-      intakeBatch: {
-        id: intakeBatch.id,
-        name: intakeBatch.name,
-        description: intakeBatch.description,
-        sourceType: intakeBatch.sourceType,
-        status: intakeBatch.status,
-        itemCount: intakeBatch.itemCount,
-        createdAt: intakeBatch.createdAt.toISOString(),
-        updatedAt: intakeBatch.updatedAt.toISOString()
-      },
-      items: intakeBatch.items.map((item) => ({
-        id: item.id,
-        intakeBatchId: item.intakeBatchId,
-        rawText: item.rawText,
-        sourceRowNumber: item.sourceRowNumber,
-        status: item.status,
-        createdAt: item.createdAt.toISOString(),
-        updatedAt: item.updatedAt.toISOString()
-      })),
-      workflowRuns: intakeBatch.workflowRuns.map((run) => ({
-        id: run.id,
-        intakeBatchId: run.intakeBatchId,
-        intakeItemId: run.intakeItemId,
-        workflowName: run.workflowName,
-        status: run.status,
-        startedAt: run.startedAt?.toISOString() ?? null,
-        completedAt: run.completedAt?.toISOString() ?? null,
-        errorMessage: run.errorMessage,
-        createdAt: run.createdAt.toISOString(),
-        updatedAt: run.updatedAt.toISOString()
-      }))
+      intakeBatch: serializeIntakeBatch(intakeBatch),
+      items: intakeBatch.items.map(serializeIntakeItem),
+      workflowRuns: intakeBatch.workflowRuns.map(serializeWorkflowRun)
     };
   });
 }

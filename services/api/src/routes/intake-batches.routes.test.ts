@@ -62,6 +62,77 @@ describe("intake batch routes", () => {
     });
   });
 
+  describe("POST /intake-batches/:id/start-workflow", () => {
+    it("creates a queued workflow run with planned workflow steps", async () => {
+      const app = buildApp();
+
+      const createResponse = await app.inject({
+        method: "POST",
+        url: "/intake-batches",
+        payload: {
+          name: "Workflow start batch",
+          description: "Created before starting workflow",
+          sourceType: "FREEFORM_NOTES",
+          items: [
+            {
+              rawText:
+                "TaylorMade Stealth 2 driver, 10.5, stiff shaft, RH"
+            }
+          ]
+        }
+      });
+
+      expect(createResponse.statusCode).toBe(201);
+
+      const createdBody = createResponse.json();
+      const batchId = createdBody.intakeBatch.id;
+
+      const workflowResponse = await app.inject({
+        method: "POST",
+        url: `/intake-batches/${batchId}/start-workflow`
+      });
+
+      expect(workflowResponse.statusCode).toBe(201);
+
+      const workflowBody = workflowResponse.json();
+
+      expect(workflowBody.workflowRun.intakeBatchId).toBe(batchId);
+      expect(workflowBody.workflowRun.intakeItemId).toBeNull();
+      expect(workflowBody.workflowRun.workflowName).toBe("trade-in-intake-v1");
+      expect(workflowBody.workflowRun.status).toBe("QUEUED");
+
+      expect(workflowBody.steps).toHaveLength(5);
+      expect(workflowBody.steps.map((step: { stepType: string }) => step.stepType)).toEqual([
+        "PARSE_INPUT",
+        "NORMALIZE_DATA",
+        "EXTRACT_GOLF_CLUB_FIELDS",
+        "VALIDATE_STRUCTURED_OUTPUT",
+        "CREATE_REVIEW_ITEM"
+      ]);
+      expect(workflowBody.steps[0].status).toBe("PENDING");
+      expect(workflowBody.steps[0].orderIndex).toBe(1);
+
+      await app.close();
+    });
+
+    it("returns 404 when starting a workflow for a missing intake batch", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/intake-batches/not-real/start-workflow"
+      });
+
+      expect(response.statusCode).toBe(404);
+
+      const body = response.json();
+
+      expect(body.error).toBe("Intake batch not found");
+
+      await app.close();
+    });
+  });
+
   describe("GET /intake-batches/:id", () => {
     it("returns an intake batch with items and workflow runs", async () => {
       const app = buildApp();
