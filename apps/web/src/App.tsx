@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { previewModelRouting } from "./api/modelRouting";
 import {
   createIntakeBatch,
   getIntakeBatch,
@@ -15,6 +16,13 @@ import {
 } from "./api/workflows";
 import { DashboardSection } from "./components/DashboardSection";
 import { EmptyState } from "./components/EmptyState";
+import type {
+  ModelRouteCandidateSummary,
+  ModelRouteRejectedCandidate,
+  ModelRoutingGoal,
+  ModelTaskType,
+  PreviewModelRoutingResponse,
+} from "./types/ai";
 import type {
   IntakeBatchDetail,
   IntakeBatchSourceType,
@@ -37,6 +45,20 @@ import {
 
 type WorkflowRunStatusFilter = "ALL" | WorkflowRunStatus;
 
+const MODEL_TASK_TYPES: ModelTaskType[] = [
+  "INTAKE_PARSING",
+  "FIELD_NORMALIZATION",
+  "VALIDATION",
+  "REVIEW_SUMMARY",
+];
+
+const MODEL_ROUTING_GOALS: ModelRoutingGoal[] = [
+  "LOW_COST",
+  "LOW_LATENCY",
+  "HIGH_QUALITY",
+  "LOCAL_ONLY",
+];
+
 const WORKFLOW_RUN_STATUS_FILTERS: WorkflowRunStatusFilter[] = [
   "ALL",
   "QUEUED",
@@ -46,6 +68,17 @@ const WORKFLOW_RUN_STATUS_FILTERS: WorkflowRunStatusFilter[] = [
   "FAILED",
   "CANCELLED",
 ];
+
+function formatEnumLabel(value: string): string {
+  return value
+    .split("_")
+    .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function formatEnabledLabel(value: boolean): string {
+  return value ? "Enabled" : "Disabled";
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -225,6 +258,21 @@ function App() {
   >(null);
   const [latestModelCallLog, setLatestModelCallLog] =
     useState<ModelCallLog | null>(null);
+
+  const [modelRoutingTaskType, setModelRoutingTaskType] =
+    useState<ModelTaskType>("INTAKE_PARSING");
+  const [modelRoutingGoal, setModelRoutingGoal] =
+    useState<ModelRoutingGoal>("HIGH_QUALITY");
+  const [modelRoutingRequireJson, setModelRoutingRequireJson] = useState(true);
+  const [modelRoutingAllowDisabledProviders, setModelRoutingAllowDisabledProviders] =
+    useState(true);
+  const [modelRoutingPreview, setModelRoutingPreview] =
+    useState<PreviewModelRoutingResponse | null>(null);
+  const [isPreviewingModelRouting, setIsPreviewingModelRouting] =
+    useState(false);
+  const [modelRoutingPreviewError, setModelRoutingPreviewError] = useState<
+    string | null
+  >(null);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -576,6 +624,32 @@ function App() {
       );
     } finally {
       setIsStartingWorkflow(false);
+    }
+  }
+
+  async function handlePreviewModelRouting(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    try {
+      setIsPreviewingModelRouting(true);
+      setModelRoutingPreviewError(null);
+
+      const preview = await previewModelRouting({
+        taskType: modelRoutingTaskType,
+        preferredGoal: modelRoutingGoal,
+        requireJson: modelRoutingRequireJson,
+        allowDisabledProvidersForSimulation: modelRoutingAllowDisabledProviders,
+      });
+
+      setModelRoutingPreview(preview);
+    } catch (error) {
+      setModelRoutingPreviewError(
+        error instanceof Error
+          ? error.message
+          : "Unable to preview model routing.",
+      );
+    } finally {
+      setIsPreviewingModelRouting(false);
     }
   }
 
