@@ -33,6 +33,7 @@ import type {
   GlobalWorkflowRunSummary,
   ModelCallLog,
   ReviewQueueItem,
+  ToolCallLog,
   WorkflowExecutionScenario,
   WorkflowRunDetail,
   WorkflowRunStatus,
@@ -119,6 +120,54 @@ function getRoutingGoal(modelCallLog: ModelCallLog | null): string {
   return typeof routingGoal === "string" ? routingGoal : "—";
 }
 
+function getBooleanField(
+  record: Record<string, unknown> | null,
+  fieldName: string,
+): string {
+  if (!record) {
+    return "—";
+  }
+
+  const value = record[fieldName];
+
+  return typeof value === "boolean" ? String(value) : "—";
+}
+
+function getStringListField(
+  record: Record<string, unknown> | null,
+  fieldName: string,
+): string {
+  if (!record) {
+    return "—";
+  }
+
+  const value = record[fieldName];
+
+  if (!Array.isArray(value)) {
+    return "—";
+  }
+
+  const strings = value.filter((item): item is string => typeof item === "string");
+
+  return strings.length > 0 ? strings.join(", ") : "—";
+}
+
+function getToolCallOutputJson(
+  toolCallLog: ToolCallLog,
+): Record<string, unknown> | null {
+  return isRecord(toolCallLog.outputJson) ? toolCallLog.outputJson : null;
+}
+
+function isAuditOnlyToolCallLog(toolCallLog: ToolCallLog): boolean {
+  const outputJson = getToolCallOutputJson(toolCallLog);
+
+  return outputJson?.previewOnly === true;
+}
+
+function formatToolCallTimestamp(value: string | null): string {
+  return value ?? "—";
+}
+
 function formatJson(value: unknown): string {
   if (value === null || value === undefined) {
     return "No proposed golf club data captured.";
@@ -186,6 +235,100 @@ function ModelRouteCard({
 
       <p className="model-route-card__reason">
       </p>
+    </article>
+  );
+}
+
+function ToolCallLogCard({ toolCallLog }: { toolCallLog: ToolCallLog }) {
+  const outputJson = getToolCallOutputJson(toolCallLog);
+  const isAuditOnly = isAuditOnlyToolCallLog(toolCallLog);
+
+  return (
+    <article
+      className={
+        isAuditOnly
+          ? "workflow-tool-log-card workflow-tool-log-card--audit-only"
+          : "workflow-tool-log-card workflow-tool-log-card--executed"
+      }
+    >
+      <div className="workflow-tool-log-card__body">
+        <div className="workflow-tool-log-card__header">
+          <div>
+            <span className="model-route-card__eyebrow">
+              {isAuditOnly
+                ? "Audit-only planned MCP invocation"
+                : "Executed tool call"}
+            </span>
+            <strong>{toolCallLog.toolName}</strong>
+            <p>{toolCallLog.workflowStepId ?? "Run-level tool log"}</p>
+          </div>
+
+          <span>{toolCallLog.status}</span>
+        </div>
+
+        {isAuditOnly ? (
+          <>
+            <p className="workflow-tool-log-card__audit-note">
+              Planned preview log only. No tool execution was attempted and no
+              actual tool output is present.
+            </p>
+
+            <dl className="workflow-tool-log-card__metadata">
+              <div>
+                <dt>Policy Decision</dt>
+                <dd>{getStringField(outputJson, "policyDecision")}</dd>
+              </div>
+
+              <div>
+                <dt>Reason Codes</dt>
+                <dd>{getStringListField(outputJson, "policyReasonCodes")}</dd>
+              </div>
+
+              <div>
+                <dt>Invocation Status</dt>
+                <dd>{getStringField(outputJson, "invocationStatus")}</dd>
+              </div>
+
+              <div>
+                <dt>Requested By</dt>
+                <dd>{getStringField(outputJson, "requestedBy")}</dd>
+              </div>
+
+              <div>
+                <dt>Execution Attempted</dt>
+                <dd>{getBooleanField(outputJson, "executionAttempted")}</dd>
+              </div>
+
+              <div>
+                <dt>Preview Only</dt>
+                <dd>{getBooleanField(outputJson, "previewOnly")}</dd>
+              </div>
+            </dl>
+          </>
+        ) : (
+          <dl className="workflow-tool-log-card__metadata">
+            <div>
+              <dt>Started</dt>
+              <dd>{formatToolCallTimestamp(toolCallLog.startedAt)}</dd>
+            </div>
+
+            <div>
+              <dt>Completed</dt>
+              <dd>{formatToolCallTimestamp(toolCallLog.completedAt)}</dd>
+            </div>
+
+            <div>
+              <dt>Workflow Run</dt>
+              <dd>{toolCallLog.workflowRunId ?? "—"}</dd>
+            </div>
+
+            <div>
+              <dt>Workflow Step</dt>
+              <dd>{toolCallLog.workflowStepId ?? "—"}</dd>
+            </div>
+          </dl>
+        )}
+      </div>
     </article>
   );
 }
@@ -918,6 +1061,14 @@ function App() {
                   </div>
 
                   <div>
+                    <dt>Tool Audit Logs</dt>
+                    <dd>
+                      {run.auditOnlyToolCallLogCount} audit-only /{" "}
+                      {run.totalToolCallLogCount} total
+                    </dd>
+                  </div>
+
+                  <div>
                     <dt>Review Queue</dt>
                     <dd>
                       {run.openReviewQueueItemCount} open /{" "}
@@ -1248,17 +1399,14 @@ function App() {
                     </div>
                   )}
 
-                  <h5>Tool Calls</h5>
+                  <h5>MCP / Tool Invocation Audit Logs</h5>
 
                   {selectedWorkflowRunDetail.toolCallLogs.length === 0 ? (
-                    <p>No tool calls recorded yet.</p>
+                    <p>No MCP or workflow simulation tool logs recorded yet.</p>
                   ) : (
                     <div className="workflow-tool-log-list">
                       {selectedWorkflowRunDetail.toolCallLogs.map((log) => (
-                        <article className="workflow-tool-log-card" key={log.id}>
-                          <strong>{log.toolName}</strong>
-                          <span>{log.status}</span>
-                        </article>
+                        <ToolCallLogCard key={log.id} toolCallLog={log} />
                       ))}
                     </div>
                   )}

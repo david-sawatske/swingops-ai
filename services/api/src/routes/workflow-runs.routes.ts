@@ -261,12 +261,33 @@ function serializeWorkflowRunListItem(run: {
     completedAt: Date | null;
     createdAt: Date;
   }[];
+  toolCallLogs: {
+    id: string;
+    workflowRunId: string | null;
+    workflowStepId: string | null;
+    toolName: string;
+    status: string;
+    inputJson: unknown;
+    outputJson: unknown;
+    errorMessage: string | null;
+    startedAt: Date;
+    completedAt: Date | null;
+    createdAt: Date;
+  }[];
   reviewQueueItems: {
     status: string;
   }[];
 }) {
   const openReviewQueueItemCount = run.reviewQueueItems.filter(
     (item) => item.status === "OPEN" || item.status === "IN_REVIEW"
+  ).length;
+  const auditOnlyToolCallLogCount = run.toolCallLogs.filter(
+    (log) =>
+      typeof log.outputJson === "object" &&
+      log.outputJson !== null &&
+      !Array.isArray(log.outputJson) &&
+      "previewOnly" in log.outputJson &&
+      log.outputJson.previewOnly === true
   ).length;
 
   return {
@@ -276,6 +297,11 @@ function serializeWorkflowRunListItem(run: {
     latestModelCallLog: run.modelCallLogs[0]
       ? serializeModelCallLog(run.modelCallLogs[0])
       : null,
+    latestToolCallLog: run.toolCallLogs[0]
+      ? serializeToolCallLog(run.toolCallLogs[0])
+      : null,
+    totalToolCallLogCount: run.toolCallLogs.length,
+    auditOnlyToolCallLogCount,
     totalReviewQueueItemCount: run.reviewQueueItems.length,
     openReviewQueueItemCount
   };
@@ -295,6 +321,11 @@ export async function workflowRunRoutes(app: FastifyInstance): Promise<void> {
             createdAt: "desc"
           },
           take: 1
+        },
+        toolCallLogs: {
+          orderBy: {
+            createdAt: "desc"
+          }
         },
         reviewQueueItems: {
           select: {

@@ -146,6 +146,9 @@ export type GlobalWorkflowRunSummary = WorkflowRunSummary & {
   intakeBatch: ReviewQueueIntakeBatchSummary | null;
   intakeItem: ReviewQueueIntakeItemSummary | null;
   latestModelCallLog: ModelCallLog | null;
+  latestToolCallLog: ToolCallLog | null;
+  totalToolCallLogCount: number;
+  auditOnlyToolCallLogCount: number;
   totalReviewQueueItemCount: number;
   openReviewQueueItemCount: number;
 };

@@ -193,6 +193,91 @@ describe("workflow run routes", () => {
       await app.close();
     });
 
+    it("includes latest tool call log and audit-only counts for each workflow run", async () => {
+      const app = buildApp();
+
+      const workflowRun = await prisma.workflowRun.create({
+        data: {
+          workflowName: "workflow-runs-dashboard-tool-log-summary"
+        }
+      });
+
+      await prisma.toolCallLog.create({
+        data: {
+          workflowRunId: workflowRun.id,
+          toolName: "simulate.parseInput",
+          status: "SUCCEEDED",
+          inputJson: {
+            sku: "OLDER-1"
+          },
+          outputJson: {
+            simulated: true,
+            parsedItemCount: 1
+          },
+          startedAt: new Date("2026-01-01T00:00:00.000Z"),
+          completedAt: new Date("2026-01-01T00:00:01.000Z"),
+          createdAt: new Date("2026-01-01T00:00:01.000Z")
+        }
+      });
+
+      await prisma.toolCallLog.create({
+        data: {
+          workflowRunId: workflowRun.id,
+          toolName: "inventory.reserveTradeInSlot",
+          status: "STARTED",
+          inputJson: {
+            sku: "AUDIT-ONLY-1"
+          },
+          outputJson: {
+            previewOnly: true,
+            executionAttempted: false,
+            policyDecision: "REQUIRES_HUMAN_APPROVAL",
+            policyReasonCodes: ["MUTATION_TOOL", "HUMAN_APPROVAL_REQUIRED"],
+            invocationStatus: "BLOCKED",
+            requestedBy: "operator@example.com"
+          },
+          startedAt: new Date("2026-01-02T00:00:00.000Z"),
+          createdAt: new Date("2026-01-02T00:00:00.000Z")
+        }
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/workflow-runs"
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+      const listedRun = body.workflowRuns.find(
+        (run: { id: string }) => run.id === workflowRun.id
+      );
+
+      expect(listedRun.latestToolCallLog).toMatchObject({
+        workflowRunId: workflowRun.id,
+        toolName: "inventory.reserveTradeInSlot",
+        status: "STARTED",
+        outputJson: {
+          previewOnly: true,
+          executionAttempted: false,
+          policyDecision: "REQUIRES_HUMAN_APPROVAL",
+          policyReasonCodes: ["MUTATION_TOOL", "HUMAN_APPROVAL_REQUIRED"],
+          invocationStatus: "BLOCKED",
+          requestedBy: "operator@example.com"
+        }
+      });
+      expect(listedRun.totalToolCallLogCount).toBe(2);
+      expect(listedRun.auditOnlyToolCallLogCount).toBe(1);
+
+      await prisma.workflowRun.delete({
+        where: {
+          id: workflowRun.id
+        }
+      });
+
+      await app.close();
+    });
+
     it("includes review queue counts for each workflow run", async () => {
       const app = buildApp();
 
@@ -295,6 +380,81 @@ describe("workflow run routes", () => {
           qualityTier: "LOW"
         }
       });
+
+      await prisma.workflowRun.delete({
+        where: {
+          id: workflowRun.id
+        }
+      });
+
+      await app.close();
+    });
+
+    it("returns persisted MCP tool invocation preview logs as audit-only tool call logs", async () => {
+      const app = buildApp();
+
+      const workflowRun = await prisma.workflowRun.create({
+        data: {
+          workflowName: "test-workflow-run-tool-preview-logs"
+        }
+      });
+
+      const toolCallLog = await prisma.toolCallLog.create({
+        data: {
+          workflowRunId: workflowRun.id,
+          toolName: "inventory.reserveTradeInSlot",
+          status: "STARTED",
+          inputJson: {
+            clubId: "club-123",
+            reservationType: "TRADE_IN_SLOT"
+          },
+          outputJson: {
+            previewOnly: true,
+            executionAttempted: false,
+            actualToolOutput: null,
+            policyDecision: "REQUIRES_HUMAN_APPROVAL",
+            policyReasonCodes: ["MUTATION_TOOL", "HUMAN_APPROVAL_REQUIRED"],
+            invocationStatus: "BLOCKED",
+            requestedBy: "operator@example.com",
+            persistedPurpose:
+              "Audit-only planned invocation preview. No tool execution was attempted."
+          },
+          startedAt: new Date("2026-02-01T00:00:00.000Z"),
+          createdAt: new Date("2026-02-01T00:00:00.000Z")
+        }
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/workflow-runs/${workflowRun.id}`
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.toolCallLogs).toHaveLength(1);
+      expect(body.toolCallLogs[0]).toMatchObject({
+        id: toolCallLog.id,
+        workflowRunId: workflowRun.id,
+        workflowStepId: null,
+        toolName: "inventory.reserveTradeInSlot",
+        status: "STARTED",
+        inputJson: {
+          clubId: "club-123",
+          reservationType: "TRADE_IN_SLOT"
+        },
+        outputJson: {
+          previewOnly: true,
+          executionAttempted: false,
+          actualToolOutput: null,
+          policyDecision: "REQUIRES_HUMAN_APPROVAL",
+          policyReasonCodes: ["MUTATION_TOOL", "HUMAN_APPROVAL_REQUIRED"],
+          invocationStatus: "BLOCKED",
+          requestedBy: "operator@example.com"
+        }
+      });
+      expect(body.toolCallLogs[0].completedAt).toBeNull();
 
       await prisma.workflowRun.delete({
         where: {

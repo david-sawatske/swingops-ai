@@ -1010,3 +1010,78 @@ h1 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.workflow-tool-log-card--audit-only {
+  align-items: stretch;
+  background: #fffaf0;
+  border-color: #ead7a3;
+}
+
+.workflow-tool-log-card--executed {
+  align-items: stretch;
+}
+
+.workflow-tool-log-card__body {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+}
+
+.workflow-tool-log-card__header {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.workflow-tool-log-card__header strong {
+  display: block;
+  color: #2e402b;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+.workflow-tool-log-card__header p,
+.workflow-tool-log-card__audit-note {
+  margin: 0;
+  color: #647062;
+  line-height: 1.5;
+}
+
+.workflow-tool-log-card__audit-note {
+  border-top: 1px solid #ead7a3;
+  padding-top: 10px;
+  font-weight: 700;
+}
+
+.workflow-tool-log-card__metadata {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.workflow-tool-log-card__metadata dt {
+  color: #647062;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.workflow-tool-log-card__metadata dd {
+  margin: 4px 0 0;
+  color: #2e402b;
+  font-size: 0.85rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .workflow-tool-log-card__header {
+    flex-direction: column;
+  }
+
+  .workflow-tool-log-card__metadata {
+    grid-template-columns: 1fr;
+  }
+}
