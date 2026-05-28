@@ -63,7 +63,7 @@ describe("intake batch routes", () => {
   });
 
   describe("POST /intake-batches/:id/start-workflow", () => {
-    it("creates a queued workflow run with planned workflow steps", async () => {
+    it("creates a queued workflow run with planned workflow steps and a mock model call log", async () => {
       const app = buildApp();
 
       const createResponse = await app.inject({
@@ -102,7 +102,9 @@ describe("intake batch routes", () => {
       expect(workflowBody.workflowRun.status).toBe("QUEUED");
 
       expect(workflowBody.steps).toHaveLength(5);
-      expect(workflowBody.steps.map((step: { stepType: string }) => step.stepType)).toEqual([
+      expect(
+        workflowBody.steps.map((step: { stepType: string }) => step.stepType)
+      ).toEqual([
         "PARSE_INPUT",
         "NORMALIZE_DATA",
         "EXTRACT_GOLF_CLUB_FIELDS",
@@ -111,6 +113,34 @@ describe("intake batch routes", () => {
       ]);
       expect(workflowBody.steps[0].status).toBe("PENDING");
       expect(workflowBody.steps[0].orderIndex).toBe(1);
+
+      expect(workflowBody.modelCallLog.workflowRunId).toBe(
+        workflowBody.workflowRun.id
+      );
+      expect(workflowBody.modelCallLog.workflowStepId).toBeNull();
+      expect(workflowBody.modelCallLog.provider).toBe("MOCK");
+      expect(workflowBody.modelCallLog.model).toBe(
+        "mock-golf-workflow-model"
+      );
+      expect(workflowBody.modelCallLog.status).toBe("SUCCEEDED");
+      expect(workflowBody.modelCallLog.latencyMs).toBe(0);
+      expect(workflowBody.modelCallLog.estimatedCostUsd).toBe(0);
+      expect(workflowBody.modelCallLog.requestJson).toMatchObject({
+        workflowRunId: workflowBody.workflowRun.id,
+        taskType: "INTAKE_PARSING",
+        routingGoal: "LOW_COST",
+        mock: true
+      });
+      expect(workflowBody.modelCallLog.responseJson).toMatchObject({
+        mock: true,
+        routingDecision: {
+          provider: "MOCK",
+          model: "mock-golf-workflow-model",
+          estimatedCostTier: "FREE",
+          expectedLatencyTier: "LOW",
+          qualityTier: "LOW"
+        }
+      });
 
       await app.close();
     });

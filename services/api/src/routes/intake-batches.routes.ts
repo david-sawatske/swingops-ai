@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import { prisma } from "../lib/prisma.js";
+import { createMockModelCallLogForWorkflowRun } from "../workflows/workflow-model-logging.js";
 
 const createIntakeBatchBodySchema = z.object({
   name: z.string().min(1),
@@ -157,6 +158,46 @@ function serializeWorkflowStep(step: {
   };
 }
 
+function serializeModelCallLog(log: {
+  id: string;
+  workflowRunId: string | null;
+  workflowStepId: string | null;
+  provider: string;
+  model: string;
+  status: string;
+  promptTokens: number | null;
+  completionTokens: number | null;
+  totalTokens: number | null;
+  latencyMs: number | null;
+  estimatedCostUsd: number | null;
+  requestJson: unknown;
+  responseJson: unknown;
+  errorMessage: string | null;
+  startedAt: Date;
+  completedAt: Date | null;
+  createdAt: Date;
+}) {
+  return {
+    id: log.id,
+    workflowRunId: log.workflowRunId,
+    workflowStepId: log.workflowStepId,
+    provider: log.provider,
+    model: log.model,
+    status: log.status,
+    promptTokens: log.promptTokens,
+    completionTokens: log.completionTokens,
+    totalTokens: log.totalTokens,
+    latencyMs: log.latencyMs,
+    estimatedCostUsd: log.estimatedCostUsd,
+    requestJson: log.requestJson,
+    responseJson: log.responseJson,
+    errorMessage: log.errorMessage,
+    startedAt: log.startedAt.toISOString(),
+    completedAt: log.completedAt?.toISOString() ?? null,
+    createdAt: log.createdAt.toISOString()
+  };
+}
+
 export async function intakeBatchRoutes(app: FastifyInstance): Promise<void> {
   app.get("/intake-batches", async () => {
     const intakeBatches = await prisma.intakeBatch.findMany({
@@ -269,9 +310,16 @@ export async function intakeBatchRoutes(app: FastifyInstance): Promise<void> {
       }
     });
 
+    const modelCallLog = await createMockModelCallLogForWorkflowRun({
+      workflowRunId: workflowRun.id,
+      taskType: "INTAKE_PARSING",
+      goal: "LOW_COST"
+    });
+
     return reply.status(201).send({
       workflowRun: serializeWorkflowRun(workflowRun),
-      steps: workflowRun.steps.map(serializeWorkflowStep)
+      steps: workflowRun.steps.map(serializeWorkflowStep),
+      modelCallLog: serializeModelCallLog(modelCallLog)
     });
   });
 
