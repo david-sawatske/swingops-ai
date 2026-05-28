@@ -36,6 +36,83 @@ async function createWorkflowRunWithReviewItems(
   });
 }
 
+async function createWorkflowRunWithIntakeReviewItem() {
+  const intakeBatch = await prisma.intakeBatch.create({
+    data: {
+      name: "Review Queue Dashboard Batch",
+      description: "Batch with review context",
+      sourceType: "FREEFORM_NOTES",
+      status: "PROCESSING",
+      itemCount: 1,
+      items: {
+        create: {
+          rawText: "Callaway Rogue ST Max driver, stiff shaft, condition unclear",
+          sourceRowNumber: 1
+        }
+      }
+    },
+    include: {
+      items: true
+    }
+  });
+
+  const intakeItem = intakeBatch.items[0]!;
+
+  const workflowRun = await prisma.workflowRun.create({
+    data: {
+      intakeBatchId: intakeBatch.id,
+      intakeItemId: intakeItem.id,
+      workflowName: "test-global-review-dashboard-workflow",
+      status: "NEEDS_REVIEW",
+      startedAt: new Date(),
+      reviewQueueItems: {
+        create: {
+          intakeItemId: intakeItem.id,
+          reason: "MISSING_REQUIRED_FIELDS",
+          status: "OPEN",
+          originalText:
+            "Callaway Rogue ST Max driver, stiff shaft, condition unclear",
+          proposedGolfClubJson: {
+            brand: "Callaway",
+            model: "Rogue ST Max",
+            category: "DRIVER",
+            missingFields: ["condition"]
+          }
+        }
+      }
+    },
+    include: {
+      reviewQueueItems: true
+    }
+  });
+
+  const resolvedReviewQueueItem = await prisma.reviewQueueItem.create({
+    data: {
+      intakeItemId: intakeItem.id,
+      reason: "LOW_CONFIDENCE",
+      status: "RESOLVED",
+      originalText: "Resolved historical review item for filter coverage",
+      proposedGolfClubJson: {
+        brand: "Ping",
+        model: "G425"
+      },
+      reviewerNotes: "Already reviewed.",
+      resolvedAt: new Date()
+    }
+  });
+
+  return {
+    ...intakeBatch,
+    items: [
+      {
+        ...intakeItem,
+        workflowRuns: [workflowRun],
+        reviewQueueItems: [resolvedReviewQueueItem]
+      }
+    ]
+  };
+}
+
 async function createReviewQueueItem() {
   const workflowRun = await createWorkflowRunWithReviewItems();
 
@@ -50,7 +127,119 @@ async function deleteWorkflowRun(workflowRunId: string) {
   });
 }
 
+async function deleteIntakeBatch(intakeBatchId: string) {
+  await prisma.intakeBatch.delete({
+    where: {
+      id: intakeBatchId
+    }
+  });
+}
+
 describe("review queue item routes", () => {
+  describe("GET /review-queue-items", () => {
+    it("returns review queue items with workflow and intake context", async () => {
+      const app = buildApp();
+      const intakeBatch = await createWorkflowRunWithIntakeReviewItem();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/review-queue-items"
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+      const openReviewItem =
+        intakeBatch.items[0]!.workflowRuns[0]!.reviewQueueItems[0]!;
+
+      expect(body.reviewQueueItems.length).toBeGreaterThanOrEqual(2);
+
+      const listedItem = body.reviewQueueItems.find(
+        (item: { id: string }) => item.id === openReviewItem.id
+      );
+
+      expect(listedItem).toMatchObject({
+        id: openReviewItem.id,
+        intakeItemId: intakeBatch.items[0]!.id,
+        workflowRunId: intakeBatch.items[0]!.workflowRuns[0]!.id,
+        reason: "MISSING_REQUIRED_FIELDS",
+        status: "OPEN",
+        originalText:
+          "Callaway Rogue ST Max driver, stiff shaft, condition unclear",
+        workflowRun: {
+          id: intakeBatch.items[0]!.workflowRuns[0]!.id,
+          workflowName: "test-global-review-dashboard-workflow",
+          status: "NEEDS_REVIEW"
+        },
+        intakeItem: {
+          id: intakeBatch.items[0]!.id,
+          rawText: "Callaway Rogue ST Max driver, stiff shaft, condition unclear"
+        },
+        intakeBatch: {
+          id: intakeBatch.id,
+          name: "Review Queue Dashboard Batch"
+        }
+      });
+
+      await deleteIntakeBatch(intakeBatch.id);
+      await app.close();
+    });
+
+    it("filters review queue items by status", async () => {
+      const app = buildApp();
+      const intakeBatch = await createWorkflowRunWithIntakeReviewItem();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/review-queue-items?status=OPEN"
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.reviewQueueItems.length).toBeGreaterThanOrEqual(1);
+      expect(
+        body.reviewQueueItems.every(
+          (item: { status: string }) => item.status === "OPEN"
+        )
+      ).toBe(true);
+
+      await deleteIntakeBatch(intakeBatch.id);
+      await app.close();
+    });
+
+    it("returns an empty list when no review queue items match the status filter", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/review-queue-items?status=IN_REVIEW"
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({
+        reviewQueueItems: []
+      });
+
+      await app.close();
+    });
+
+    it("returns 400 for an invalid status query", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/review-queue-items?status=NOT_A_STATUS"
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().error).toBe("Invalid review queue item list query");
+
+      await app.close();
+    });
+  });
+
   describe("POST /review-queue-items/:id/resolve", () => {
     it("resolves an open review queue item and completes its workflow run", async () => {
       const app = buildApp();

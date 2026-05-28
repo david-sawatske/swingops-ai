@@ -579,3 +579,138 @@ h1 {
   padding: 0.25rem 0.6rem;
   white-space: nowrap;
 }
+
+.review-queue-list {
+  display: grid;
+  gap: 12px;
+}
+
+.review-queue-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #d9dfd4;
+  border-radius: 14px;
+  background: #f8faf6;
+}
+
+.review-queue-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.review-queue-card__header h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.review-queue-card__header p,
+.review-queue-card__meta {
+  margin: 0;
+  color: #647062;
+  line-height: 1.5;
+}
+
+.review-queue-card__status {
+  align-self: flex-start;
+  border-radius: 999px;
+  background: #edf7ed;
+  color: #2f6b31;
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.3rem 0.7rem;
+}
+
+.review-queue-card__context {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.review-queue-card__context dt {
+  color: #647062;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.review-queue-card__context dd {
+  margin: 4px 0 0;
+  color: #2e402b;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.review-queue-card__json {
+  display: grid;
+  gap: 8px;
+}
+
+.review-queue-card__json strong {
+  color: #2e402b;
+  font-size: 0.85rem;
+}
+
+.review-queue-card__json pre {
+  max-height: 220px;
+  overflow: auto;
+  margin: 0;
+  border: 1px solid #d9dfd4;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #172017;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  padding: 12px;
+  white-space: pre-wrap;
+}
+
+.review-queue-card__review-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.review-queue-card__review-actions label {
+  display: grid;
+  gap: 6px;
+  color: #2e402b;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.review-queue-card__review-actions textarea {
+  width: 100%;
+  border: 1px solid #cbd4c5;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #172017;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.review-queue-card__review-actions .workflow-run-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.workflow-tool-log-card .review-queue-card__review-actions {
+  margin-top: 12px;
+}
+
+.workflow-tool-log-card .review-queue-card__review-actions textarea {
+  min-width: 260px;
+}
+
+@media (max-width: 720px) {
+  .review-queue-card__header {
+    flex-direction: column;
+  }
+
+  .review-queue-card__context {
+    grid-template-columns: 1fr;
+  }
+}

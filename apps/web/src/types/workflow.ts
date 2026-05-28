@@ -36,6 +36,12 @@ export type ModelCallStatus =
   | "RETRIED"
   | "SKIPPED";
 
+export type ReviewQueueItemStatus =
+  | "OPEN"
+  | "IN_REVIEW"
+  | "RESOLVED"
+  | "DISMISSED";
+
 export type WorkflowRunSummary = {
   id: string;
   intakeBatchId: string | null;
@@ -106,13 +112,40 @@ export type ReviewQueueItem = {
   golfClubId: string | null;
   workflowRunId: string | null;
   reason: string;
-  status: string;
+  status: ReviewQueueItemStatus;
   originalText: string | null;
   proposedGolfClubJson: unknown;
   reviewerNotes: string | null;
   resolvedAt: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type ReviewQueueIntakeItemSummary = {
+  id: string;
+  intakeBatchId: string;
+  rawText: string;
+  sourceRowNumber: number | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ReviewQueueIntakeBatchSummary = {
+  id: string;
+  name: string;
+  description: string | null;
+  sourceType: string;
+  status: string;
+  itemCount: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type GlobalReviewQueueItem = ReviewQueueItem & {
+  workflowRun: WorkflowRunSummary | null;
+  intakeItem: ReviewQueueIntakeItemSummary | null;
+  intakeBatch: ReviewQueueIntakeBatchSummary | null;
 };
 
 export type WorkflowRunDetail = {
@@ -142,10 +175,15 @@ export type ExecuteWorkflowRunResponse = {
   reviewQueueItems: ReviewQueueItem[];
 };
 
+export type ListReviewQueueItemsResponse = {
+  reviewQueueItems: GlobalReviewQueueItem[];
+};
+
 export type ReviewQueueItemActionRequest = {
   reviewerNotes?: string;
 };
 
 export type ReviewQueueItemActionResponse = {
   reviewQueueItem: ReviewQueueItem;
+  workflowRun: WorkflowRunSummary | null;
 };

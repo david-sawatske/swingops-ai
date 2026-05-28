@@ -8,6 +8,7 @@ import {
   dismissReviewQueueItem,
   executeWorkflowRun,
   getWorkflowRun,
+  listReviewQueueItems,
   resolveReviewQueueItem,
   startWorkflowForIntakeBatch,
 } from "./api/workflows";
@@ -19,7 +20,9 @@ import type {
   IntakeBatchSummary,
 } from "./types/intake";
 import type {
+  GlobalReviewQueueItem,
   ModelCallLog,
+  ReviewQueueItem,
   WorkflowExecutionScenario,
   WorkflowRunDetail,
 } from "./types/workflow";
@@ -66,6 +69,24 @@ function getRoutingGoal(modelCallLog: ModelCallLog | null): string {
   const routingGoal = modelCallLog.requestJson.routingGoal;
 
   return typeof routingGoal === "string" ? routingGoal : "—";
+}
+
+function formatJson(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "No proposed golf club data captured.";
+  }
+
+  return JSON.stringify(value, null, 2);
+}
+
+function getReviewActionFallbackNote(action: "resolve" | "dismiss") {
+  return action === "resolve"
+    ? "Resolved during human review."
+    : "Dismissed during human review.";
+}
+
+function getReviewQueueItemBatchId(item: GlobalReviewQueueItem): string | null {
+  return item.intakeBatch?.id ?? item.workflowRun?.intakeBatchId ?? null;
 }
 
 function ModelRouteCard({
@@ -129,6 +150,15 @@ function App() {
     null,
   );
 
+  const [globalReviewQueueItems, setGlobalReviewQueueItems] = useState<
+    GlobalReviewQueueItem[]
+  >([]);
+  const [isLoadingGlobalReviewQueue, setIsLoadingGlobalReviewQueue] =
+    useState(true);
+  const [globalReviewQueueError, setGlobalReviewQueueError] = useState<
+    string | null
+  >(null);
+
   const [selectedBatchDetail, setSelectedBatchDetail] =
     useState<IntakeBatchDetail | null>(null);
   const [isLoadingBatchDetail, setIsLoadingBatchDetail] = useState(false);
@@ -145,6 +175,9 @@ function App() {
   const [activeReviewQueueItemId, setActiveReviewQueueItemId] = useState<
     string | null
   >(null);
+  const [reviewQueueNotesById, setReviewQueueNotesById] = useState<
+    Record<string, string>
+  >({});
   const [reviewQueueActionError, setReviewQueueActionError] = useState<
     string | null
   >(null);
@@ -179,6 +212,10 @@ function App() {
     null,
   );
 
+  const openReviewQueueItemCount = globalReviewQueueItems.filter(
+    (item) => item.status === "OPEN" || item.status === "IN_REVIEW",
+  ).length;
+
   async function loadIntakeBatches() {
     try {
       setIsLoadingIntakeBatches(true);
@@ -198,9 +235,57 @@ function App() {
     }
   }
 
+  async function loadGlobalReviewQueueItems() {
+    try {
+      setIsLoadingGlobalReviewQueue(true);
+      setGlobalReviewQueueError(null);
+
+      const response = await listReviewQueueItems();
+
+      setGlobalReviewQueueItems(response.reviewQueueItems);
+    } catch (error) {
+      setGlobalReviewQueueError(
+        error instanceof Error
+          ? error.message
+          : "Unable to load review queue items.",
+      );
+    } finally {
+      setIsLoadingGlobalReviewQueue(false);
+    }
+  }
+
   useEffect(() => {
     void loadIntakeBatches();
+    void loadGlobalReviewQueueItems();
   }, []);
+
+  function handleReviewQueueNotesChange(
+    reviewQueueItemId: string,
+    reviewerNotes: string,
+  ) {
+    setReviewQueueNotesById((current) => ({
+      ...current,
+      [reviewQueueItemId]: reviewerNotes,
+    }));
+  }
+
+  async function refreshSelectedBatchDetail() {
+    if (!selectedBatchDetail) {
+      return;
+    }
+
+    const refreshedBatchDetail = await getIntakeBatch(
+      selectedBatchDetail.intakeBatch.id,
+    );
+
+    setSelectedBatchDetail(refreshedBatchDetail);
+  }
+
+  async function refreshSelectedWorkflowRunDetail(workflowRunId: string) {
+    const refreshedWorkflowRunDetail = await getWorkflowRun(workflowRunId);
+
+    setSelectedWorkflowRunDetail(refreshedWorkflowRunDetail);
+  }
 
   async function handleSelectBatch(intakeBatchId: string) {
     try {
@@ -264,16 +349,13 @@ function App() {
 
       setSelectedWorkflowRunDetail(detail);
       setExecuteWorkflowRunSuccess(
-        `Executed ${scenario === "NEEDS_REVIEW" ? "review-needed" : "happy-path"} workflow simulation: ${result.workflowRun.workflowName}`,
+        `Executed ${
+          scenario === "NEEDS_REVIEW" ? "review-needed" : "happy-path"
+        } workflow simulation: ${result.workflowRun.workflowName}`,
       );
 
-      if (selectedBatchDetail) {
-        const refreshedBatchDetail = await getIntakeBatch(
-          selectedBatchDetail.intakeBatch.id,
-        );
-
-        setSelectedBatchDetail(refreshedBatchDetail);
-      }
+      await loadGlobalReviewQueueItems();
+      await refreshSelectedBatchDetail();
     } catch (error) {
       setExecuteWorkflowRunError(
         error instanceof Error
@@ -285,45 +367,57 @@ function App() {
     }
   }
 
-  async function handleReviewQueueItemAction(
-    reviewQueueItemId: string,
-    action: "resolve" | "dismiss",
-  ) {
-    if (!selectedWorkflowRunDetail) {
-      return;
-    }
-
-    const workflowRunId = selectedWorkflowRunDetail.workflowRun.id;
+  async function handleReviewQueueItemAction(input: {
+    reviewQueueItemId: string;
+    action: "resolve" | "dismiss";
+    workflowRunId?: string | null;
+    intakeBatchId?: string | null;
+  }) {
+    const reviewerNotes =
+      reviewQueueNotesById[input.reviewQueueItemId]?.trim() ||
+      getReviewActionFallbackNote(input.action);
 
     try {
-      setActiveReviewQueueItemId(reviewQueueItemId);
+      setActiveReviewQueueItemId(input.reviewQueueItemId);
       setReviewQueueActionError(null);
       setReviewQueueActionSuccess(null);
       setWorkflowRunDetailError(null);
 
-      if (action === "resolve") {
-        await resolveReviewQueueItem(reviewQueueItemId, {
-          reviewerNotes: "Resolved during human review.",
+      if (input.action === "resolve") {
+        await resolveReviewQueueItem(input.reviewQueueItemId, {
+          reviewerNotes,
         });
       } else {
-        await dismissReviewQueueItem(reviewQueueItemId, {
-          reviewerNotes: "Dismissed during human review.",
+        await dismissReviewQueueItem(input.reviewQueueItemId, {
+          reviewerNotes,
         });
       }
 
-      const refreshedWorkflowRunDetail = await getWorkflowRun(workflowRunId);
-      setSelectedWorkflowRunDetail(refreshedWorkflowRunDetail);
+      await loadGlobalReviewQueueItems();
 
-      if (selectedBatchDetail) {
-        const refreshedBatchDetail = await getIntakeBatch(
-          selectedBatchDetail.intakeBatch.id,
-        );
-
-        setSelectedBatchDetail(refreshedBatchDetail);
+      if (
+        input.workflowRunId &&
+        selectedWorkflowRunDetail?.workflowRun.id === input.workflowRunId
+      ) {
+        await refreshSelectedWorkflowRunDetail(input.workflowRunId);
       }
 
+      if (
+        selectedBatchDetail &&
+        (!input.intakeBatchId ||
+          selectedBatchDetail.intakeBatch.id === input.intakeBatchId)
+      ) {
+        await refreshSelectedBatchDetail();
+      }
+
+      setReviewQueueNotesById((current) => {
+        const next = { ...current };
+        delete next[input.reviewQueueItemId];
+
+        return next;
+      });
       setReviewQueueActionSuccess(
-        action === "resolve"
+        input.action === "resolve"
           ? "Review queue item resolved."
           : "Review queue item dismissed.",
       );
@@ -369,6 +463,7 @@ function App() {
 
       await loadIntakeBatches();
       await handleSelectBatch(createdBatch.id);
+      await loadGlobalReviewQueueItems();
     } catch (error) {
       setCreateBatchError(
         error instanceof Error
@@ -407,6 +502,7 @@ function App() {
       const refreshedDetail = await getIntakeBatch(intakeBatchId);
 
       setSelectedBatchDetail(refreshedDetail);
+      await loadGlobalReviewQueueItems();
     } catch (error) {
       setStartWorkflowError(
         error instanceof Error ? error.message : "Unable to start workflow.",
@@ -414,6 +510,66 @@ function App() {
     } finally {
       setIsStartingWorkflow(false);
     }
+  }
+
+  function renderReviewQueueActionControls(input: {
+    item: ReviewQueueItem;
+    workflowRunId?: string | null;
+    intakeBatchId?: string | null;
+  }) {
+    if (input.item.status !== "OPEN") {
+      return null;
+    }
+
+    return (
+      <div className="review-queue-card__review-actions">
+        <label>
+          Reviewer Notes
+          <textarea
+            onChange={(event) =>
+              handleReviewQueueNotesChange(input.item.id, event.target.value)
+            }
+            placeholder="Add reviewer notes before resolving or dismissing."
+            rows={3}
+            value={reviewQueueNotesById[input.item.id] ?? ""}
+          />
+        </label>
+
+        <div className="workflow-run-card__actions">
+          <button
+            disabled={activeReviewQueueItemId === input.item.id}
+            onClick={() =>
+              void handleReviewQueueItemAction({
+                reviewQueueItemId: input.item.id,
+                action: "resolve",
+                workflowRunId: input.workflowRunId ?? input.item.workflowRunId,
+                intakeBatchId: input.intakeBatchId ?? null,
+              })
+            }
+            type="button"
+          >
+            {activeReviewQueueItemId === input.item.id
+              ? "Updating…"
+              : "Resolve"}
+          </button>
+
+          <button
+            disabled={activeReviewQueueItemId === input.item.id}
+            onClick={() =>
+              void handleReviewQueueItemAction({
+                reviewQueueItemId: input.item.id,
+                action: "dismiss",
+                workflowRunId: input.workflowRunId ?? input.item.workflowRunId,
+                intakeBatchId: input.intakeBatchId ?? null,
+              })
+            }
+            type="button"
+          >
+            Dismiss
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -497,6 +653,113 @@ function App() {
             {isCreatingBatch ? "Creating…" : "Create Intake Batch"}
           </button>
         </form>
+      </DashboardSection>
+
+      <DashboardSection
+        title="Global Review Queue"
+        description="All human-in-the-loop review work across workflow runs."
+      >
+        {!isLoadingGlobalReviewQueue && !globalReviewQueueError ? (
+          <p className="section-summary">
+            {openReviewQueueItemCount} open review{" "}
+            {openReviewQueueItemCount === 1 ? "item" : "items"} /{" "}
+            {globalReviewQueueItems.length} total
+          </p>
+        ) : null}
+
+        {reviewQueueActionSuccess ? (
+          <p className="form-message form-message--success">
+            {reviewQueueActionSuccess}
+          </p>
+        ) : null}
+
+        {reviewQueueActionError ? (
+          <p className="form-message form-message--error">
+            {reviewQueueActionError}
+          </p>
+        ) : null}
+
+        {isLoadingGlobalReviewQueue ? <p>Loading review queue…</p> : null}
+
+        {globalReviewQueueError ? (
+          <EmptyState
+            title="Unable to load review queue"
+            message={globalReviewQueueError}
+          />
+        ) : null}
+
+        {!isLoadingGlobalReviewQueue &&
+        !globalReviewQueueError &&
+        globalReviewQueueItems.length === 0 ? (
+          <EmptyState
+            title="No review work queued"
+            message="Run a needs-review workflow simulation to create human review items."
+          />
+        ) : null}
+
+        {!isLoadingGlobalReviewQueue &&
+        !globalReviewQueueError &&
+        globalReviewQueueItems.length > 0 ? (
+          <div className="review-queue-list">
+            {globalReviewQueueItems.map((item) => (
+              <article className="review-queue-card" key={item.id}>
+                <div className="review-queue-card__header">
+                  <div>
+                    <span className="model-route-card__eyebrow">
+                      {item.status}
+                    </span>
+                    <h3>{item.reason}</h3>
+                    <p>{item.originalText ?? "No original text captured."}</p>
+                  </div>
+
+                  <span className="review-queue-card__status">
+                    {item.status}
+                  </span>
+                </div>
+
+                <dl className="review-queue-card__context">
+                  <div>
+                    <dt>Batch</dt>
+                    <dd>{item.intakeBatch?.name ?? "—"}</dd>
+                  </div>
+
+                  <div>
+                    <dt>Workflow</dt>
+                    <dd>{item.workflowRun?.workflowName ?? "—"}</dd>
+                  </div>
+
+                  <div>
+                    <dt>Run Status</dt>
+                    <dd>{item.workflowRun?.status ?? "—"}</dd>
+                  </div>
+                </dl>
+
+                <div className="review-queue-card__json">
+                  <strong>Proposed Golf Club</strong>
+                  <pre>{formatJson(item.proposedGolfClubJson)}</pre>
+                </div>
+
+                {item.reviewerNotes ? (
+                  <p className="review-queue-card__meta">
+                    Reviewer notes: {item.reviewerNotes}
+                  </p>
+                ) : null}
+
+                {item.resolvedAt ? (
+                  <p className="review-queue-card__meta">
+                    Resolved at: {item.resolvedAt}
+                  </p>
+                ) : null}
+
+                {renderReviewQueueActionControls({
+                  item,
+                  workflowRunId: item.workflowRunId,
+                  intakeBatchId: getReviewQueueItemBatchId(item),
+                })}
+              </article>
+            ))}
+          </div>
+        ) : null}
       </DashboardSection>
 
       <DashboardSection
@@ -658,7 +921,9 @@ function App() {
                       {selectedWorkflowRunDetail.steps.map((step) => (
                         <article className="workflow-step-card" key={step.id}>
                           <div>
-                            <strong>{step.orderIndex}. {step.stepName}</strong>
+                            <strong>
+                              {step.orderIndex}. {step.stepName}
+                            </strong>
                             <p>{step.stepType}</p>
                           </div>
                           <span>{step.status}</span>
@@ -668,18 +933,6 @@ function App() {
                   )}
 
                   <h5>Review Queue</h5>
-
-                  {reviewQueueActionSuccess ? (
-                    <p className="form-message form-message--success">
-                      {reviewQueueActionSuccess}
-                    </p>
-                  ) : null}
-
-                  {reviewQueueActionError ? (
-                    <p className="form-message form-message--error">
-                      {reviewQueueActionError}
-                    </p>
-                  ) : null}
 
                   {selectedWorkflowRunDetail.reviewQueueItems.length === 0 ? (
                     <p>No review queue items created yet.</p>
@@ -693,44 +946,21 @@ function App() {
                             {item.reviewerNotes ? (
                               <p>Reviewer notes: {item.reviewerNotes}</p>
                             ) : null}
-                            {item.resolvedAt ? <p>Resolved at: {item.resolvedAt}</p> : null}
-                          </div>
-
-                          <div className="workflow-run-card__actions">
-                            <span>{item.status}</span>
-
-                            {item.status === "OPEN" ? (
-                              <>
-                                <button
-                                  disabled={activeReviewQueueItemId === item.id}
-                                  onClick={() =>
-                                    void handleReviewQueueItemAction(
-                                      item.id,
-                                      "resolve",
-                                    )
-                                  }
-                                  type="button"
-                                >
-                                  {activeReviewQueueItemId === item.id
-                                    ? "Updating…"
-                                    : "Resolve"}
-                                </button>
-
-                                <button
-                                  disabled={activeReviewQueueItemId === item.id}
-                                  onClick={() =>
-                                    void handleReviewQueueItemAction(
-                                      item.id,
-                                      "dismiss",
-                                    )
-                                  }
-                                  type="button"
-                                >
-                                  Dismiss
-                                </button>
-                              </>
+                            {item.resolvedAt ? (
+                              <p>Resolved at: {item.resolvedAt}</p>
                             ) : null}
+
+                            {renderReviewQueueActionControls({
+                              item,
+                              workflowRunId:
+                                selectedWorkflowRunDetail.workflowRun.id,
+                              intakeBatchId:
+                                selectedWorkflowRunDetail.workflowRun
+                                  .intakeBatchId,
+                            })}
                           </div>
+
+                          <span>{item.status}</span>
                         </article>
                       ))}
                     </div>
