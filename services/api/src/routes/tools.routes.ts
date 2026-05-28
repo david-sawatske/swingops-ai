@@ -12,6 +12,7 @@ import {
   persistToolInvocationPreviewLog,
   ToolInvocationPreviewLogRequiresWorkflowContextError
 } from "../tools/tool-invocation-preview-logging.js";
+import { executeReadOnlyToolInvocation } from "../tools/read-only-tool-invocation.js";
 
 const agentToolCategorySchema = z.enum([
   "INTAKE",
@@ -70,6 +71,18 @@ const toolInvocationPreviewBodySchema = z
   })
   .strict();
 
+const readOnlyToolInvocationBodySchema = z
+  .object({
+    toolName: z.string().min(1),
+    inputJson: z.unknown().optional(),
+    requestedBy: z.string().min(1).default("agent.readonly"),
+    workflowRunId: z.string().min(1).optional(),
+    workflowStepId: z.string().min(1).optional(),
+    executionMode: toolExecutionModeSchema.default("AGENT_AUTONOMOUS"),
+    humanApprovalGranted: z.boolean().default(false)
+  })
+  .strict();
+
 function toRegistryFilter(
   query: z.infer<typeof listAgentToolsQuerySchema>
 ): AgentToolRegistryFilter {
@@ -88,6 +101,24 @@ function toRegistryFilter(
 
 function toPreviewInvocationInput(
   data: z.infer<typeof toolInvocationPreviewBodySchema>
+) {
+  return {
+    toolName: data.toolName,
+    requestedBy: data.requestedBy,
+    executionMode: data.executionMode,
+    humanApprovalGranted: data.humanApprovalGranted,
+    ...(data.inputJson === undefined ? {} : { inputJson: data.inputJson }),
+    ...(data.workflowRunId === undefined
+      ? {}
+      : { workflowRunId: data.workflowRunId }),
+    ...(data.workflowStepId === undefined
+      ? {}
+      : { workflowStepId: data.workflowStepId })
+  };
+}
+
+function toReadOnlyInvocationInput(
+  data: z.infer<typeof readOnlyToolInvocationBodySchema>
 ) {
   return {
     toolName: data.toolName,
