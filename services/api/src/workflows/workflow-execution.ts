@@ -1,5 +1,6 @@
 import type {
   Prisma,
+  ReviewQueueItem,
   ToolCallLog,
   WorkflowRun,
   WorkflowStep,
@@ -8,14 +9,18 @@ import type {
 
 import { prisma } from "../lib/prisma.js";
 
+export type WorkflowExecutionSimulationScenario = "HAPPY_PATH" | "NEEDS_REVIEW";
+
 export type ExecuteWorkflowRunSimulationInput = {
   workflowRunId: string;
+  scenario?: WorkflowExecutionSimulationScenario;
 };
 
 export type ExecuteWorkflowRunSimulationResult = {
   workflowRun: WorkflowRun;
   steps: WorkflowStep[];
   toolCallLogs: ToolCallLog[];
+  reviewQueueItems: ReviewQueueItem[];
 };
 
 type WorkflowStepInputJson = {
@@ -23,6 +28,7 @@ type WorkflowStepInputJson = {
   intakeBatchName?: string;
   sourceType?: string;
   itemCount?: number;
+  originalText?: string;
 };
 
 function getStepInputJson(inputJson: unknown): WorkflowStepInputJson {
@@ -41,6 +47,16 @@ function getItemCount(inputJson: unknown): number {
   }
 
   return 0;
+}
+
+function getOriginalText(inputJson: unknown): string | null {
+  const parsedInput = getStepInputJson(inputJson);
+
+  if (typeof parsedInput.originalText === "string") {
+    return parsedInput.originalText;
+  }
+
+  return null;
 }
 
 function getToolNameForStepType(stepType: WorkflowStepType): string {
@@ -62,8 +78,23 @@ function getToolNameForStepType(stepType: WorkflowStepType): string {
   }
 }
 
+function buildProposedReviewGolfClubJson(): Prisma.InputJsonObject {
+  return {
+    brand: "TaylorMade",
+    model: "Unknown Driver",
+    category: "DRIVER",
+    loft: "10.5",
+    shaftFlex: null,
+    dexterity: "RIGHT_HANDED",
+    condition: null,
+    confidenceScore: 0.58,
+    missingFields: ["shaftFlex", "condition"]
+  };
+}
+
 function buildSimulatedStepOutput(
-  step: WorkflowStep
+  step: WorkflowStep,
+  scenario: WorkflowExecutionSimulationScenario
 ): Prisma.InputJsonObject {
   const itemCount = getItemCount(step.inputJson);
 
@@ -85,6 +116,15 @@ function buildSimulatedStepOutput(
       };
 
     case "EXTRACT_GOLF_CLUB_FIELDS":
+      if (scenario === "NEEDS_REVIEW") {
+        return {
+          simulated: true,
+          stepType: step.stepType,
+          extractedFields: buildProposedReviewGolfClubJson(),
+          confidenceScore: 0.58
+        };
+      }
+
       return {
         simulated: true,
         stepType: step.stepType,
@@ -101,6 +141,18 @@ function buildSimulatedStepOutput(
       };
 
     case "VALIDATE_STRUCTURED_OUTPUT":
+      if (scenario === "NEEDS_REVIEW") {
+        return {
+          simulated: true,
+          stepType: step.stepType,
+          validationStatus: "NEEDS_REVIEW",
+          needsReview: true,
+          reviewReason: "LOW_CONFIDENCE",
+          confidenceScore: 0.58,
+          missingFields: ["shaftFlex", "condition"]
+        };
+      }
+
       return {
         simulated: true,
         stepType: step.stepType,
@@ -110,6 +162,15 @@ function buildSimulatedStepOutput(
       };
 
     case "CREATE_REVIEW_ITEM":
+      if (scenario === "NEEDS_REVIEW") {
+        return {
+          simulated: true,
+          stepType: step.stepType,
+          reviewItemCreated: true,
+          reviewReason: "LOW_CONFIDENCE"
+        };
+      }
+
       return {
         simulated: true,
         stepType: step.stepType,
@@ -121,7 +182,7 @@ function buildSimulatedStepOutput(
       return {
         simulated: true,
         stepType: step.stepType,
-        persisted: true,
+        persisted: scenario === "HAPPY_PATH",
         mode: "mock"
       };
 
@@ -144,9 +205,26 @@ function toOptionalInputJsonValue(
   return value as Prisma.InputJsonValue;
 }
 
+async function createReviewQueueItemForWorkflowRun(input: {
+  workflowRunId: string;
+  originalText: string | null;
+}): Promise<ReviewQueueItem> {
+  return prisma.reviewQueueItem.create({
+    data: {
+      workflowRunId: input.workflowRunId,
+      reason: "LOW_CONFIDENCE",
+      status: "OPEN",
+      originalText: input.originalText,
+      proposedGolfClubJson: buildProposedReviewGolfClubJson()
+    }
+  });
+}
+
 export async function executeWorkflowRunSimulation(
   input: ExecuteWorkflowRunSimulationInput
 ): Promise<ExecuteWorkflowRunSimulationResult> {
+  const scenario = input.scenario ?? "HAPPY_PATH";
+
   const existingWorkflowRun = await prisma.workflowRun.findUnique({
     where: {
       id: input.workflowRunId
@@ -178,9 +256,15 @@ export async function executeWorkflowRunSimulation(
     }
   });
 
+  let originalTextForReview: string | null = null;
+
   for (const step of existingWorkflowRun.steps) {
     const stepStartedAt = new Date();
-    const outputJson = buildSimulatedStepOutput(step);
+    const outputJson = buildSimulatedStepOutput(step, scenario);
+
+    if (scenario === "NEEDS_REVIEW" && originalTextForReview === null) {
+      originalTextForReview = getOriginalText(step.inputJson);
+    }
 
     const completedStep = await prisma.workflowStep.update({
       where: {
@@ -210,12 +294,19 @@ export async function executeWorkflowRunSimulation(
     });
   }
 
+  if (scenario === "NEEDS_REVIEW") {
+    await createReviewQueueItemForWorkflowRun({
+      workflowRunId: existingWorkflowRun.id,
+      originalText: originalTextForReview
+    });
+  }
+
   const completedWorkflowRun = await prisma.workflowRun.update({
     where: {
       id: existingWorkflowRun.id
     },
     data: {
-      status: "COMPLETED",
+      status: scenario === "NEEDS_REVIEW" ? "NEEDS_REVIEW" : "COMPLETED",
       completedAt: new Date(),
       errorMessage: null
     },
@@ -229,6 +320,11 @@ export async function executeWorkflowRunSimulation(
         orderBy: {
           createdAt: "asc"
         }
+      },
+      reviewQueueItems: {
+        orderBy: {
+          createdAt: "asc"
+        }
       }
     }
   });
@@ -236,6 +332,7 @@ export async function executeWorkflowRunSimulation(
   return {
     workflowRun: completedWorkflowRun,
     steps: completedWorkflowRun.steps,
-    toolCallLogs: completedWorkflowRun.toolCallLogs
+    toolCallLogs: completedWorkflowRun.toolCallLogs,
+    reviewQueueItems: completedWorkflowRun.reviewQueueItems
   };
 }

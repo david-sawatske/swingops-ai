@@ -1,5 +1,6 @@
 import { apiGet, apiPost } from "./client";
 import type {
+  ExecuteWorkflowRunRequest,
   ExecuteWorkflowRunResponse,
   StartWorkflowResponse,
   WorkflowRunDetail,
@@ -16,10 +17,11 @@ export async function startWorkflowForIntakeBatch(
 
 export async function executeWorkflowRun(
   workflowRunId: string,
+  request: ExecuteWorkflowRunRequest = {},
 ): Promise<ExecuteWorkflowRunResponse> {
-  return apiPost<ExecuteWorkflowRunResponse, Record<string, never>>(
+  return apiPost<ExecuteWorkflowRunResponse, ExecuteWorkflowRunRequest>(
     `/workflow-runs/${workflowRunId}/execute`,
-    {},
+    request,
   );
 }
 

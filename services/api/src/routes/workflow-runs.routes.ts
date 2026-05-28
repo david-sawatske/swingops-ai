@@ -8,6 +8,10 @@ const workflowRunParamsSchema = z.object({
   id: z.string().min(1)
 });
 
+const executeWorkflowRunBodySchema = z.object({
+  scenario: z.enum(["HAPPY_PATH", "NEEDS_REVIEW"]).optional()
+});
+
 function serializeWorkflowRun(run: {
   id: string;
   intakeBatchId: string | null;
@@ -224,6 +228,7 @@ export async function workflowRunRoutes(app: FastifyInstance): Promise<void> {
 
   app.post("/workflow-runs/:id/execute", async (request, reply) => {
     const parsedParams = workflowRunParamsSchema.safeParse(request.params);
+    const parsedBody = executeWorkflowRunBodySchema.safeParse(request.body ?? {});
 
     if (!parsedParams.success) {
       return reply.status(400).send({
@@ -232,15 +237,26 @@ export async function workflowRunRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
+    if (!parsedBody.success) {
+      return reply.status(400).send({
+        error: "Invalid workflow execution request",
+        details: parsedBody.error.flatten()
+      });
+    }
+
     try {
       const result = await executeWorkflowRunSimulation({
-        workflowRunId: parsedParams.data.id
+        workflowRunId: parsedParams.data.id,
+        ...(parsedBody.data.scenario === undefined
+          ? {}
+          : { scenario: parsedBody.data.scenario })
       });
 
       return {
         workflowRun: serializeWorkflowRun(result.workflowRun),
         steps: result.steps.map(serializeWorkflowStep),
-        toolCallLogs: result.toolCallLogs.map(serializeToolCallLog)
+        toolCallLogs: result.toolCallLogs.map(serializeToolCallLog),
+        reviewQueueItems: result.reviewQueueItems.map(serializeReviewQueueItem)
       };
     } catch (error) {
       if (error instanceof Error && error.message === "Workflow run not found") {

@@ -129,8 +129,15 @@ export type StartWorkflowResponse = {
   modelCallLog: ModelCallLog;
 };
 
+export type WorkflowExecutionScenario = "HAPPY_PATH" | "NEEDS_REVIEW";
+
+export type ExecuteWorkflowRunRequest = {
+  scenario?: WorkflowExecutionScenario;
+};
+
 export type ExecuteWorkflowRunResponse = {
   workflowRun: WorkflowRunSummary;
   steps: WorkflowStep[];
   toolCallLogs: ToolCallLog[];
+  reviewQueueItems: ReviewQueueItem[];
 };

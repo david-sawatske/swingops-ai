@@ -150,6 +150,121 @@ describe("workflow run routes", () => {
       expect(
         body.toolCallLogs.map((log: { toolName: string }) => log.toolName)
       ).toEqual(["simulate.parseInput", "simulate.normalizeData"]);
+      expect(body.reviewQueueItems).toEqual([]);
+
+      await prisma.workflowRun.delete({
+        where: {
+          id: workflowRun.id
+        }
+      });
+
+      await app.close();
+    });
+
+    it("executes a review-needed simulation and returns review queue items", async () => {
+      const app = buildApp();
+
+      const workflowRun = await prisma.workflowRun.create({
+        data: {
+          workflowName: "test-workflow-run-review-route",
+          status: "QUEUED",
+          steps: {
+            create: [
+              {
+                stepName: "Parse intake input",
+                stepType: "PARSE_INPUT",
+                orderIndex: 1,
+                status: "PENDING",
+                inputJson: {
+                  intakeBatchId: "route-review-batch",
+                  intakeBatchName: "Route Review Simulation Batch",
+                  sourceType: "FREEFORM_NOTES",
+                  itemCount: 1,
+                  originalText:
+                    "TM driver maybe 10.5, shaft unknown, condition unclear"
+                }
+              },
+              {
+                stepName: "Validate structured output",
+                stepType: "VALIDATE_STRUCTURED_OUTPUT",
+                orderIndex: 2,
+                status: "PENDING",
+                inputJson: {
+                  intakeBatchId: "route-review-batch",
+                  intakeBatchName: "Route Review Simulation Batch",
+                  sourceType: "FREEFORM_NOTES",
+                  itemCount: 1,
+                  originalText:
+                    "TM driver maybe 10.5, shaft unknown, condition unclear"
+                }
+              },
+              {
+                stepName: "Create review item when needed",
+                stepType: "CREATE_REVIEW_ITEM",
+                orderIndex: 3,
+                status: "PENDING",
+                inputJson: {
+                  intakeBatchId: "route-review-batch",
+                  intakeBatchName: "Route Review Simulation Batch",
+                  sourceType: "FREEFORM_NOTES",
+                  itemCount: 1,
+                  originalText:
+                    "TM driver maybe 10.5, shaft unknown, condition unclear"
+                }
+              }
+            ]
+          }
+        }
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: `/workflow-runs/${workflowRun.id}/execute`,
+        payload: {
+          scenario: "NEEDS_REVIEW"
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.workflowRun.id).toBe(workflowRun.id);
+      expect(body.workflowRun.status).toBe("NEEDS_REVIEW");
+
+      expect(body.steps).toHaveLength(3);
+      expect(body.steps.map((step: { status: string }) => step.status)).toEqual([
+        "COMPLETED",
+        "COMPLETED",
+        "COMPLETED"
+      ]);
+      expect(body.steps[1].outputJson).toMatchObject({
+        simulated: true,
+        stepType: "VALIDATE_STRUCTURED_OUTPUT",
+        validationStatus: "NEEDS_REVIEW",
+        needsReview: true,
+        reviewReason: "LOW_CONFIDENCE"
+      });
+      expect(body.steps[2].outputJson).toMatchObject({
+        simulated: true,
+        stepType: "CREATE_REVIEW_ITEM",
+        reviewItemCreated: true,
+        reviewReason: "LOW_CONFIDENCE"
+      });
+
+      expect(body.reviewQueueItems).toHaveLength(1);
+      expect(body.reviewQueueItems[0]).toMatchObject({
+        workflowRunId: workflowRun.id,
+        reason: "LOW_CONFIDENCE",
+        status: "OPEN",
+        originalText: "TM driver maybe 10.5, shaft unknown, condition unclear"
+      });
+      expect(body.reviewQueueItems[0].proposedGolfClubJson).toMatchObject({
+        brand: "TaylorMade",
+        model: "Unknown Driver",
+        confidenceScore: 0.58,
+        missingFields: ["shaftFlex", "condition"]
+      });
 
       await prisma.workflowRun.delete({
         where: {

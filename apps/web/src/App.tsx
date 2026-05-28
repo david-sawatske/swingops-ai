@@ -16,7 +16,11 @@ import type {
   IntakeBatchSourceType,
   IntakeBatchSummary,
 } from "./types/intake";
-import type { ModelCallLog, WorkflowRunDetail } from "./types/workflow";
+import type {
+  ModelCallLog,
+  WorkflowExecutionScenario,
+  WorkflowRunDetail,
+} from "./types/workflow";
 import { buildCreateIntakeBatchRequest } from "./utils/intakeForm";
 import {
   formatIntakeBatchSourceType,
@@ -230,19 +234,22 @@ function App() {
     }
   }
 
-  async function handleExecuteWorkflowRun(workflowRunId: string) {
+  async function handleExecuteWorkflowRun(
+    workflowRunId: string,
+    scenario: WorkflowExecutionScenario = "HAPPY_PATH",
+  ) {
     try {
       setIsExecutingWorkflowRun(true);
       setExecuteWorkflowRunError(null);
       setExecuteWorkflowRunSuccess(null);
       setWorkflowRunDetailError(null);
 
-      const result = await executeWorkflowRun(workflowRunId);
+      const result = await executeWorkflowRun(workflowRunId, { scenario });
       const detail = await getWorkflowRun(workflowRunId);
 
       setSelectedWorkflowRunDetail(detail);
       setExecuteWorkflowRunSuccess(
-        `Executed workflow simulation: ${result.workflowRun.workflowName}`,
+        `Executed ${scenario === "NEEDS_REVIEW" ? "review-needed" : "happy-path"} workflow simulation: ${result.workflowRun.workflowName}`,
       );
 
       if (selectedBatchDetail) {
@@ -510,10 +517,22 @@ function App() {
 
                       <button
                         disabled={isExecutingWorkflowRun}
-                        onClick={() => void handleExecuteWorkflowRun(run.id)}
+                        onClick={() =>
+                          void handleExecuteWorkflowRun(run.id, "HAPPY_PATH")
+                        }
                         type="button"
                       >
-                        Run Simulation
+                        Run Happy Path
+                      </button>
+
+                      <button
+                        disabled={isExecutingWorkflowRun}
+                        onClick={() =>
+                          void handleExecuteWorkflowRun(run.id, "NEEDS_REVIEW")
+                        }
+                        type="button"
+                      >
+                        Run Needs Review
                       </button>
 
                       <button
@@ -575,6 +594,24 @@ function App() {
                             <p>{step.stepType}</p>
                           </div>
                           <span>{step.status}</span>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+
+                  <h5>Review Queue</h5>
+
+                  {selectedWorkflowRunDetail.reviewQueueItems.length === 0 ? (
+                    <p>No review queue items created yet.</p>
+                  ) : (
+                    <div className="workflow-tool-log-list">
+                      {selectedWorkflowRunDetail.reviewQueueItems.map((item) => (
+                        <article className="workflow-tool-log-card" key={item.id}>
+                          <div>
+                            <strong>{item.reason}</strong>
+                            <p>{item.originalText ?? "No original text captured."}</p>
+                          </div>
+                          <span>{item.status}</span>
                         </article>
                       ))}
                     </div>
