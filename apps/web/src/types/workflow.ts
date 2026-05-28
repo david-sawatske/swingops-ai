@@ -86,6 +86,43 @@ export type ModelCallLog = {
   createdAt: string;
 };
 
+export type ToolCallLog = {
+  id: string;
+  workflowRunId: string | null;
+  workflowStepId: string | null;
+  toolName: string;
+  status: string;
+  inputJson: unknown;
+  outputJson: unknown;
+  errorMessage: string | null;
+  startedAt: string;
+  completedAt: string | null;
+  createdAt: string;
+};
+
+export type ReviewQueueItem = {
+  id: string;
+  intakeItemId: string | null;
+  golfClubId: string | null;
+  workflowRunId: string | null;
+  reason: string;
+  status: string;
+  originalText: string;
+  proposedGolfClubJson: unknown;
+  reviewerNotes: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type WorkflowRunDetail = {
+  workflowRun: WorkflowRunSummary;
+  steps: WorkflowStep[];
+  toolCallLogs: ToolCallLog[];
+  modelCallLogs: ModelCallLog[];
+  reviewQueueItems: ReviewQueueItem[];
+};
+
 export type StartWorkflowResponse = {
   workflowRun: WorkflowRunSummary;
   steps: WorkflowStep[];

@@ -1,5 +1,8 @@
-import { apiPost } from "./client";
-import type { StartWorkflowResponse } from "../types/workflow";
+import { apiGet, apiPost } from "./client";
+import type {
+  StartWorkflowResponse,
+  WorkflowRunDetail,
+} from "../types/workflow";
 
 export async function startWorkflowForIntakeBatch(
   intakeBatchId: string,
@@ -8,4 +11,10 @@ export async function startWorkflowForIntakeBatch(
     `/intake-batches/${intakeBatchId}/start-workflow`,
     {},
   );
+}
+
+export async function getWorkflowRun(
+  workflowRunId: string,
+): Promise<WorkflowRunDetail> {
+  return apiGet<WorkflowRunDetail>(`/workflow-runs/${workflowRunId}`);
 }
