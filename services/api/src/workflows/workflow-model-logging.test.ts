@@ -39,6 +39,8 @@ describe("workflow model logging", () => {
       workflowRunId: workflowRun.id,
       taskType: "INTAKE_PARSING",
       routingGoal: "HIGH_QUALITY",
+      requireJson: true,
+      allowDisabledProvidersForSimulation: true,
       mock: true
     });
 
@@ -49,9 +51,28 @@ describe("workflow model logging", () => {
         model: "claude-3-5-sonnet",
         estimatedCostTier: "HIGH",
         expectedLatencyTier: "MEDIUM",
-        qualityTier: "HIGH"
+        qualityTier: "HIGH",
+        selectedModelMetadata: {
+          provider: "ANTHROPIC",
+          model: "claude-3-5-sonnet",
+          supportsJson: true,
+          providerEnabled: false,
+          modelEnabled: true,
+          enabledForExecution: false
+        },
+        fallbackReason: null
       }
     });
+
+    const responseJson = modelCallLog.responseJson as {
+      routingDecision?: {
+        candidatesConsidered?: unknown[];
+        rejectedCandidates?: unknown[];
+      };
+    };
+
+    expect(responseJson.routingDecision?.candidatesConsidered).toHaveLength(5);
+    expect(responseJson.routingDecision?.rejectedCandidates).toEqual([]);
   });
 
   it("records fallback routing metadata for unsupported local-only tasks", async () => {
@@ -74,7 +95,17 @@ describe("workflow model logging", () => {
       routingDecision: {
         provider: "MOCK",
         reason:
-          "Fallback mock model because no local model supports VALIDATION."
+          "Fallback mock model because no eligible local model supports VALIDATION.",
+        fallbackReason:
+          "Fallback mock model because no eligible local model supports VALIDATION.",
+        rejectedCandidates: expect.arrayContaining([
+          expect.objectContaining({
+            provider: "OLLAMA",
+            rejectedReasons: expect.arrayContaining([
+              "Does not support task type VALIDATION."
+            ])
+          })
+        ])
       }
     });
   });

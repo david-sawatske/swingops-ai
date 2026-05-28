@@ -1,7 +1,8 @@
-import type { ModelCallLog } from "@prisma/client";
+import type { ModelCallLog, Prisma } from "@prisma/client";
 
 import {
   routeModel,
+  type ModelRouteDecision,
   type ModelRouteRequest,
   type ModelRoutingGoal
 } from "../ai/model-router.js";
@@ -13,12 +14,31 @@ export type CreateMockModelCallLogInput = {
   goal: ModelRoutingGoal;
 };
 
+function toRoutingDecisionLogJson(
+  decision: ModelRouteDecision
+): Prisma.InputJsonObject {
+  return {
+    provider: decision.provider,
+    model: decision.model,
+    reason: decision.reason,
+    estimatedCostTier: decision.estimatedCostTier,
+    expectedLatencyTier: decision.expectedLatencyTier,
+    qualityTier: decision.qualityTier,
+    selectedModelMetadata: decision.selectedModelMetadata,
+    candidatesConsidered: decision.candidatesConsidered,
+    rejectedCandidates: decision.rejectedCandidates,
+    fallbackReason: decision.fallbackReason
+  };
+}
+
 export async function createMockModelCallLogForWorkflowRun(
   input: CreateMockModelCallLogInput
 ): Promise<ModelCallLog> {
   const decision = routeModel({
-    goal: input.goal,
-    taskType: input.taskType
+    preferredGoal: input.goal,
+    taskType: input.taskType,
+    requireJson: true,
+    allowDisabledProvidersForSimulation: true
   });
 
   return prisma.modelCallLog.create({
@@ -34,18 +54,13 @@ export async function createMockModelCallLogForWorkflowRun(
         workflowRunId: input.workflowRunId,
         taskType: input.taskType,
         routingGoal: input.goal,
+        requireJson: true,
+        allowDisabledProvidersForSimulation: true,
         mock: true
       },
       responseJson: {
         mock: true,
-        routingDecision: {
-          provider: decision.provider,
-          model: decision.model,
-          reason: decision.reason,
-          estimatedCostTier: decision.estimatedCostTier,
-          expectedLatencyTier: decision.expectedLatencyTier,
-          qualityTier: decision.qualityTier
-        }
+        routingDecision: toRoutingDecisionLogJson(decision)
       }
     }
   });
