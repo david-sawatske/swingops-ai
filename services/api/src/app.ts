@@ -2,6 +2,7 @@ import cors from "@fastify/cors";
 import Fastify from "fastify";
 
 import { env } from "./config/env.js";
+import { aiRoutes } from "./routes/ai.routes.js";
 import { healthRoutes } from "./routes/health.routes.js";
 import { intakeBatchRoutes } from "./routes/intake-batches.routes.js";
 import { reviewQueueItemRoutes } from "./routes/review-queue-items.routes.js";
@@ -19,6 +20,7 @@ export function buildApp() {
   });
 
   app.register(healthRoutes);
+  app.register(aiRoutes);
   app.register(intakeBatchRoutes);
   app.register(reviewQueueItemRoutes);
   app.register(workflowRunRoutes);
