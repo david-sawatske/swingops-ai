@@ -9,6 +9,18 @@ export type IntakeBatchStatus =
   | "COMPLETED"
   | "FAILED";
 
+export type IntakeItemStatus =
+  | "PENDING"
+  | "PROCESSING"
+  | "COMPLETED"
+  | "FAILED";
+
+export type WorkflowRunStatus =
+  | "PENDING"
+  | "RUNNING"
+  | "COMPLETED"
+  | "FAILED";
+
 export type IntakeBatchSummary = {
   id: string;
   name: string;
@@ -18,6 +30,30 @@ export type IntakeBatchSummary = {
   itemCount: number;
   createdAt: string;
   updatedAt: string;
+};
+
+export type IntakeItem = {
+  id: string;
+  intakeBatchId: string;
+  rawText: string;
+  sourceRowNumber: number | null;
+  status: IntakeItemStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type WorkflowRunSummary = {
+  id: string;
+  intakeBatchId: string;
+  status: WorkflowRunStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type IntakeBatchDetail = {
+  intakeBatch: IntakeBatchSummary;
+  items: IntakeItem[];
+  workflowRuns: WorkflowRunSummary[];
 };
 
 export type IntakeBatchItemInput = {
@@ -38,3 +74,5 @@ export type CreateIntakeBatchResponse = {
 export type ListIntakeBatchesResponse = {
   intakeBatches: IntakeBatchSummary[];
 };
+
+export type GetIntakeBatchResponse = IntakeBatchDetail;
