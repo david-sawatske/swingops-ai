@@ -7,6 +7,7 @@ import {
   type AgentToolRegistryFilter
 } from "../tools/tool-registry.js";
 import { previewToolExecutionPolicy } from "../tools/tool-execution-policy.js";
+import { previewToolInvocation } from "../tools/tool-invocation-preview.js";
 
 const agentToolCategorySchema = z.enum([
   "INTAKE",
@@ -53,6 +54,18 @@ const toolExecutionPolicyPreviewBodySchema = z
   })
   .strict();
 
+const toolInvocationPreviewBodySchema = z
+  .object({
+    toolName: z.string().min(1),
+    inputJson: z.unknown().optional(),
+    requestedBy: z.string().min(1).default("agent.preview"),
+    workflowRunId: z.string().min(1).optional(),
+    workflowStepId: z.string().min(1).optional(),
+    executionMode: toolExecutionModeSchema.default("PREVIEW_ONLY"),
+    humanApprovalGranted: z.boolean().default(false)
+  })
+  .strict();
+
 function toRegistryFilter(
   query: z.infer<typeof listAgentToolsQuerySchema>
 ): AgentToolRegistryFilter {
@@ -70,6 +83,35 @@ function toRegistryFilter(
 }
 
 export async function toolRoutes(app: FastifyInstance): Promise<void> {
+  app.post("/mcp/tools/invocations/preview", async (request, reply) => {
+    const parsedBody = toolInvocationPreviewBodySchema.safeParse(
+      request.body ?? {}
+    );
+
+    if (!parsedBody.success) {
+      return reply.status(400).send({
+        error: "Invalid tool invocation preview request",
+        details: parsedBody.error.flatten()
+      });
+    }
+
+    return previewToolInvocation({
+      toolName: parsedBody.data.toolName,
+      requestedBy: parsedBody.data.requestedBy,
+      executionMode: parsedBody.data.executionMode,
+      humanApprovalGranted: parsedBody.data.humanApprovalGranted,
+      ...(parsedBody.data.inputJson === undefined
+        ? {}
+        : { inputJson: parsedBody.data.inputJson }),
+      ...(parsedBody.data.workflowRunId === undefined
+        ? {}
+        : { workflowRunId: parsedBody.data.workflowRunId }),
+      ...(parsedBody.data.workflowStepId === undefined
+        ? {}
+        : { workflowStepId: parsedBody.data.workflowStepId })
+    });
+  });
+
   app.post("/mcp/tools/execution-policy/preview", async (request, reply) => {
     const parsedBody = toolExecutionPolicyPreviewBodySchema.safeParse(
       request.body ?? {}

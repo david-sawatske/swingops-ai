@@ -3,6 +3,146 @@ import { describe, expect, it } from "vitest";
 import { buildApp } from "../app.js";
 
 describe("tool routes", () => {
+  describe("POST /mcp/tools/invocations/preview", () => {
+    it("previews an auditable planned invocation for allowed read-only tools", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/mcp/tools/invocations/preview",
+        payload: {
+          toolName: "swingops.workflowRuns.get",
+          inputJson: {
+            id: "workflow-run-1"
+          },
+          requestedBy: "agent.route-test",
+          workflowRunId: "workflow-run-1",
+          executionMode: "AGENT_AUTONOMOUS"
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.invocation).toMatchObject({
+        toolName: "swingops.workflowRuns.get",
+        status: "READY_TO_EXECUTE",
+        requestedBy: "agent.route-test",
+        workflowRunId: "workflow-run-1",
+        workflowStepId: null,
+        inputJson: {
+          id: "workflow-run-1"
+        },
+        executionAttempted: false,
+        persisted: false,
+        policyDecision: "ALLOW",
+        policyReasonCodes: ["TOOL_ALLOWED"]
+      });
+      expect(body.invocation.invocationId).toEqual(expect.any(String));
+      expect(body.invocation.createdAt).toEqual(expect.any(String));
+      expect(body.policyEvaluation.executionEnabled).toBe(true);
+      expect(body.previewMetadata).toEqual({
+        status: "DRY_RUN_ONLY",
+        executionAttempted: false,
+        persisted: false,
+        message:
+          "Tool invocation preview only. No tool execution was attempted and no ToolCallLog row was persisted."
+      });
+
+      await app.close();
+    });
+
+    it("previews a blocked invocation for preview-only mode", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/mcp/tools/invocations/preview",
+        payload: {
+          toolName: "swingops.workflowRuns.get"
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.invocation).toMatchObject({
+        toolName: "swingops.workflowRuns.get",
+        status: "BLOCKED",
+        requestedBy: "agent.preview",
+        executionAttempted: false,
+        persisted: false,
+        policyDecision: "BLOCK",
+        policyReasonCodes: ["PREVIEW_ONLY_MODE"]
+      });
+      expect(body.policyEvaluation.executionEnabled).toBe(false);
+
+      await app.close();
+    });
+
+    it("previews a blocked invocation for disabled mutation tools", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/mcp/tools/invocations/preview",
+        payload: {
+          toolName: "swingops.reviewQueueItems.resolve",
+          inputJson: {
+            id: "review-item-1",
+            reviewerNotes: "Looks correct."
+          },
+          executionMode: "HUMAN_APPROVED",
+          humanApprovalGranted: true
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.invocation).toMatchObject({
+        toolName: "swingops.reviewQueueItems.resolve",
+        status: "BLOCKED",
+        policyDecision: "BLOCK",
+        policyReasonCodes: ["TOOL_DISABLED"],
+        executionAttempted: false,
+        persisted: false
+      });
+      expect(body.policyEvaluation.tool).toMatchObject({
+        name: "swingops.reviewQueueItems.resolve",
+        enabled: false,
+        riskLevel: "HIGH",
+        mutatesData: true,
+        requiresHumanApproval: true
+      });
+
+      await app.close();
+    });
+
+    it("returns 400 for invalid invocation preview payloads", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/mcp/tools/invocations/preview",
+        payload: {
+          toolName: "",
+          executionMode: "NOT_A_MODE"
+        }
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().error).toBe(
+        "Invalid tool invocation preview request"
+      );
+
+      await app.close();
+    });
+  });
+
   describe("POST /mcp/tools/execution-policy/preview", () => {
     it("previews blocked execution for preview-only mode without executing tools", async () => {
       const app = buildApp();
