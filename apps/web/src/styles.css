@@ -418,3 +418,65 @@ h1 {
     flex-direction: column;
   }
 }
+
+.model-route-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #cbd4c5;
+  border-radius: 14px;
+  background: #f8faf6;
+}
+
+.model-route-card__eyebrow {
+  display: block;
+  margin-bottom: 6px;
+  color: #647062;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.model-route-card h4 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.model-route-card p {
+  margin: 0;
+  color: #647062;
+  line-height: 1.5;
+}
+
+.model-route-card dl {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.model-route-card dt {
+  color: #647062;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.model-route-card dd {
+  margin: 4px 0 0;
+  color: #2e402b;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.model-route-card__reason {
+  padding-top: 12px;
+  border-top: 1px solid #d9dfd4;
+}
+
+@media (max-width: 720px) {
+  .model-route-card dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

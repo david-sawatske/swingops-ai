@@ -12,11 +12,51 @@ import type {
   IntakeBatchSourceType,
   IntakeBatchSummary,
 } from "./types/intake";
+import type { ModelCallLog } from "./types/workflow";
 import { buildCreateIntakeBatchRequest } from "./utils/intakeForm";
 import {
   formatIntakeBatchSourceType,
   formatIntakeBatchStatus,
 } from "./utils/intakeLabels";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getStringField(
+  record: Record<string, unknown> | null,
+  fieldName: string,
+): string {
+  if (!record) {
+    return "—";
+  }
+
+  const value = record[fieldName];
+
+  return typeof value === "string" ? value : "—";
+}
+
+function getRoutingDecision(
+  modelCallLog: ModelCallLog | null,
+): Record<string, unknown> | null {
+  if (!modelCallLog || !isRecord(modelCallLog.responseJson)) {
+    return null;
+  }
+
+  const routingDecision = modelCallLog.responseJson.routingDecision;
+
+  return isRecord(routingDecision) ? routingDecision : null;
+}
+
+function getRoutingGoal(modelCallLog: ModelCallLog | null): string {
+  if (!modelCallLog || !isRecord(modelCallLog.requestJson)) {
+    return "—";
+  }
+
+  const routingGoal = modelCallLog.requestJson.routingGoal;
+
+  return typeof routingGoal === "string" ? routingGoal : "—";
+}
 
 function App() {
   const [intakeBatches, setIntakeBatches] = useState<IntakeBatchSummary[]>([]);
@@ -37,6 +77,8 @@ function App() {
   const [startWorkflowSuccess, setStartWorkflowSuccess] = useState<
     string | null
   >(null);
+  const [latestModelCallLog, setLatestModelCallLog] =
+    useState<ModelCallLog | null>(null);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -48,6 +90,9 @@ function App() {
   const [createBatchSuccess, setCreateBatchSuccess] = useState<string | null>(
     null,
   );
+
+  const latestRoutingDecision = getRoutingDecision(latestModelCallLog);
+  const latestRoutingGoal = getRoutingGoal(latestModelCallLog);
 
   async function loadIntakeBatches() {
     try {
@@ -78,6 +123,7 @@ function App() {
       setBatchDetailError(null);
       setStartWorkflowError(null);
       setStartWorkflowSuccess(null);
+      setLatestModelCallLog(null);
 
       const detail = await getIntakeBatch(intakeBatchId);
 
@@ -146,9 +192,11 @@ function App() {
       setIsStartingWorkflow(true);
       setStartWorkflowError(null);
       setStartWorkflowSuccess(null);
+      setLatestModelCallLog(null);
 
       const response = await startWorkflowForIntakeBatch(intakeBatchId);
 
+      setLatestModelCallLog(response.modelCallLog);
       setStartWorkflowSuccess(
         `Started workflow run: ${response.workflowRun.workflowName}`,
       );
@@ -222,7 +270,9 @@ function App() {
             <textarea
               name="rawText"
               onChange={(event) => setRawText(event.target.value)}
-              placeholder={"TM Stealth 2 driver, 10.5, stiff, RH\nPing G425 irons 5-PW, regular flex, LH"}
+              placeholder={
+                "TM Stealth 2 driver, 10.5, stiff, RH\nPing G425 irons 5-PW, regular flex, LH"
+              }
               rows={5}
               value={rawText}
             />
@@ -296,6 +346,61 @@ function App() {
               <p className="form-message form-message--success">
                 {startWorkflowSuccess}
               </p>
+            ) : null}
+
+            {latestModelCallLog ? (
+              <article className="model-route-card">
+                <div>
+                  <span className="model-route-card__eyebrow">
+                    Model Route Logged
+                  </span>
+                  <h4>
+                    {latestModelCallLog.provider} / {latestModelCallLog.model}
+                  </h4>
+                  <p>
+                    Mock model call recorded for workflow run{" "}
+                    {latestModelCallLog.workflowRunId}
+                  </p>
+                </div>
+
+                <dl>
+                  <div>
+                    <dt>Status</dt>
+                    <dd>{latestModelCallLog.status}</dd>
+                  </div>
+
+                  <div>
+                    <dt>Goal</dt>
+                    <dd>{latestRoutingGoal}</dd>
+                  </div>
+
+                  <div>
+                    <dt>Cost</dt>
+                    <dd>
+                      {getStringField(latestRoutingDecision, "estimatedCostTier")}
+                    </dd>
+                  </div>
+
+                  <div>
+                    <dt>Latency</dt>
+                    <dd>
+                      {getStringField(
+                        latestRoutingDecision,
+                        "expectedLatencyTier",
+                      )}
+                    </dd>
+                  </div>
+
+                  <div>
+                    <dt>Quality</dt>
+                    <dd>{getStringField(latestRoutingDecision, "qualityTier")}</dd>
+                  </div>
+                </dl>
+
+                <p className="model-route-card__reason">
+                  {getStringField(latestRoutingDecision, "reason")}
+                </p>
+              </article>
             ) : null}
 
             <div className="raw-item-list">

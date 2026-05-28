@@ -22,6 +22,20 @@ export type WorkflowStepType =
   | "CREATE_REVIEW_ITEM"
   | "PERSIST_GOLF_CLUB";
 
+export type ModelProviderName =
+  | "MOCK"
+  | "OPENAI"
+  | "ANTHROPIC"
+  | "AZURE_OPENAI"
+  | "OLLAMA";
+
+export type ModelCallStatus =
+  | "STARTED"
+  | "SUCCEEDED"
+  | "FAILED"
+  | "RETRIED"
+  | "SKIPPED";
+
 export type WorkflowRunSummary = {
   id: string;
   intakeBatchId: string | null;
@@ -52,7 +66,28 @@ export type WorkflowStep = {
   updatedAt: string;
 };
 
+export type ModelCallLog = {
+  id: string;
+  workflowRunId: string | null;
+  workflowStepId: string | null;
+  provider: ModelProviderName;
+  model: string;
+  status: ModelCallStatus;
+  promptTokens: number | null;
+  completionTokens: number | null;
+  totalTokens: number | null;
+  latencyMs: number | null;
+  estimatedCostUsd: number | null;
+  requestJson: unknown;
+  responseJson: unknown;
+  errorMessage: string | null;
+  startedAt: string;
+  completedAt: string | null;
+  createdAt: string;
+};
+
 export type StartWorkflowResponse = {
   workflowRun: WorkflowRunSummary;
   steps: WorkflowStep[];
+  modelCallLog: ModelCallLog;
 };
