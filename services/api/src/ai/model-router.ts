@@ -1,9 +1,17 @@
-export type ModelProvider =
-  | "MOCK"
-  | "OPENAI"
-  | "ANTHROPIC"
-  | "AZURE_OPENAI"
-  | "OLLAMA";
+import {
+  listModelConfigs,
+  type ModelProviderRegistryFilter
+} from "./model-provider-registry.js";
+import type {
+  ModelCostTier,
+  ModelLatencyTier,
+  ModelProviderModelConfig,
+  ModelProviderName,
+  ModelQualityTier,
+  ModelTaskType
+} from "./model-provider.types.js";
+
+export type ModelProvider = ModelProviderName;
 
 export type ModelRoutingGoal =
   | "LOW_COST"
@@ -13,25 +21,19 @@ export type ModelRoutingGoal =
 
 export type ModelRouteRequest = {
   goal: ModelRoutingGoal;
-  taskType:
-    | "INTAKE_PARSING"
-    | "FIELD_NORMALIZATION"
-    | "VALIDATION"
-    | "REVIEW_SUMMARY";
+  taskType: ModelTaskType;
 };
 
 export type ModelRouteDecision = {
   provider: ModelProvider;
   model: string;
   reason: string;
-  estimatedCostTier: "FREE" | "LOW" | "MEDIUM" | "HIGH";
-  expectedLatencyTier: "LOW" | "MEDIUM" | "HIGH";
-  qualityTier: "LOW" | "MEDIUM" | "HIGH";
+  estimatedCostTier: ModelCostTier;
+  expectedLatencyTier: ModelLatencyTier;
+  qualityTier: ModelQualityTier;
 };
 
-type ModelOption = ModelRouteDecision & {
-  supportedTaskTypes: ModelRouteRequest["taskType"][];
-};
+type ModelOption = ModelProviderModelConfig;
 
 const mockFallbackDecision: ModelRouteDecision = {
   provider: "MOCK",
@@ -39,95 +41,18 @@ const mockFallbackDecision: ModelRouteDecision = {
   reason: "Fallback mock model for local workflow development.",
   estimatedCostTier: "FREE",
   expectedLatencyTier: "LOW",
-  qualityTier: "LOW",
+  qualityTier: "LOW"
 };
 
-const modelOptions: ModelOption[] = [
-  {
-    provider: "MOCK",
-    model: "mock-golf-workflow-model",
-    reason:
-      "Default mock model for local workflow development without external AI calls.",
-    estimatedCostTier: "FREE",
-    expectedLatencyTier: "LOW",
-    qualityTier: "LOW",
-    supportedTaskTypes: [
-      "INTAKE_PARSING",
-      "FIELD_NORMALIZATION",
-      "VALIDATION",
-      "REVIEW_SUMMARY",
-    ],
-  },
-  {
-    provider: "OPENAI",
-    model: "gpt-4.1-mini",
-    reason:
-      "Low-cost hosted model option for structured extraction and validation tasks.",
-    estimatedCostTier: "LOW",
-    expectedLatencyTier: "MEDIUM",
-    qualityTier: "MEDIUM",
-    supportedTaskTypes: [
-      "INTAKE_PARSING",
-      "FIELD_NORMALIZATION",
-      "VALIDATION",
-      "REVIEW_SUMMARY",
-    ],
-  },
-  {
-    provider: "ANTHROPIC",
-    model: "claude-3-5-sonnet",
-    reason:
-      "Higher-quality hosted model option for ambiguous messy trade-in interpretation.",
-    estimatedCostTier: "HIGH",
-    expectedLatencyTier: "MEDIUM",
-    qualityTier: "HIGH",
-    supportedTaskTypes: [
-      "INTAKE_PARSING",
-      "FIELD_NORMALIZATION",
-      "VALIDATION",
-      "REVIEW_SUMMARY",
-    ],
-  },
-  {
-    provider: "AZURE_OPENAI",
-    model: "azure-gpt-4.1-mini",
-    reason:
-      "Enterprise-hosted model option for organizations standardized on Azure OpenAI.",
-    estimatedCostTier: "MEDIUM",
-    expectedLatencyTier: "MEDIUM",
-    qualityTier: "MEDIUM",
-    supportedTaskTypes: [
-      "INTAKE_PARSING",
-      "FIELD_NORMALIZATION",
-      "VALIDATION",
-      "REVIEW_SUMMARY",
-    ],
-  },
-  {
-    provider: "OLLAMA",
-    model: "llama3.1",
-    reason:
-      "Local/self-hosted model option for privacy-sensitive or offline workflow execution.",
-    estimatedCostTier: "FREE",
-    expectedLatencyTier: "HIGH",
-    qualityTier: "MEDIUM",
-    supportedTaskTypes: [
-      "INTAKE_PARSING",
-      "FIELD_NORMALIZATION",
-      "REVIEW_SUMMARY",
-    ],
-  },
-];
-
 export function routeModel(request: ModelRouteRequest): ModelRouteDecision {
-  const candidates = modelOptions.filter((option) =>
-    option.supportedTaskTypes.includes(request.taskType),
-  );
+  const candidates = listModelOptions({
+    taskType: request.taskType
+  });
 
   if (candidates.length === 0) {
     return {
       ...mockFallbackDecision,
-      reason: `Fallback mock model because no configured model supports ${request.taskType}.`,
+      reason: `Fallback mock model because no configured model supports ${request.taskType}.`
     };
   }
 
@@ -135,7 +60,7 @@ export function routeModel(request: ModelRouteRequest): ModelRouteDecision {
     return selectFirstByPreference(
       candidates,
       ["FREE", "LOW", "MEDIUM", "HIGH"],
-      "estimatedCostTier",
+      "costTier"
     );
   }
 
@@ -143,7 +68,7 @@ export function routeModel(request: ModelRouteRequest): ModelRouteDecision {
     return selectFirstByPreference(
       candidates,
       ["LOW", "MEDIUM", "HIGH"],
-      "expectedLatencyTier",
+      "latencyTier"
     );
   }
 
@@ -151,43 +76,46 @@ export function routeModel(request: ModelRouteRequest): ModelRouteDecision {
     return selectFirstByPreference(
       candidates,
       ["HIGH", "MEDIUM", "LOW"],
-      "qualityTier",
+      "qualityTier"
     );
   }
 
   if (request.goal === "LOCAL_ONLY") {
     const localModel = candidates.find(
-      (candidate) => candidate.provider === "OLLAMA",
+      (candidate) => candidate.provider === "OLLAMA"
     );
 
     if (localModel) {
-      return localModel;
+      return toRouteDecision(localModel);
     }
 
     return {
       ...mockFallbackDecision,
-      reason: `Fallback mock model because no local model supports ${request.taskType}.`,
+      reason: `Fallback mock model because no local model supports ${request.taskType}.`
     };
   }
 
   return firstCandidateOrFallback(candidates);
 }
 
+function listModelOptions(
+  filter: Pick<ModelProviderRegistryFilter, "taskType">
+): ModelOption[] {
+  return listModelConfigs(filter);
+}
+
 function selectFirstByPreference<TValue extends string>(
   candidates: ModelOption[],
   preferenceOrder: TValue[],
-  field: keyof Pick<
-    ModelOption,
-    "estimatedCostTier" | "expectedLatencyTier" | "qualityTier"
-  >,
+  field: keyof Pick<ModelOption, "costTier" | "latencyTier" | "qualityTier">
 ): ModelRouteDecision {
   for (const preferredValue of preferenceOrder) {
     const match = candidates.find(
-      (candidate) => candidate[field] === preferredValue,
+      (candidate) => candidate[field] === preferredValue
     );
 
     if (match) {
-      return match;
+      return toRouteDecision(match);
     }
   }
 
@@ -195,7 +123,24 @@ function selectFirstByPreference<TValue extends string>(
 }
 
 function firstCandidateOrFallback(
-  candidates: ModelOption[],
+  candidates: ModelOption[]
 ): ModelRouteDecision {
-  return candidates[0] ?? mockFallbackDecision;
+  const firstCandidate = candidates[0];
+
+  if (!firstCandidate) {
+    return mockFallbackDecision;
+  }
+
+  return toRouteDecision(firstCandidate);
+}
+
+function toRouteDecision(modelOption: ModelOption): ModelRouteDecision {
+  return {
+    provider: modelOption.provider,
+    model: modelOption.model,
+    reason: modelOption.reason,
+    estimatedCostTier: modelOption.costTier,
+    expectedLatencyTier: modelOption.latencyTier,
+    qualityTier: modelOption.qualityTier
+  };
 }
