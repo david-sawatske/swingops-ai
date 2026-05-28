@@ -5,8 +5,10 @@ import {
   listIntakeBatches,
 } from "./api/intakeBatches";
 import {
+  dismissReviewQueueItem,
   executeWorkflowRun,
   getWorkflowRun,
+  resolveReviewQueueItem,
   startWorkflowForIntakeBatch,
 } from "./api/workflows";
 import { DashboardSection } from "./components/DashboardSection";
@@ -140,6 +142,15 @@ function App() {
     string | null
   >(null);
   const [isExecutingWorkflowRun, setIsExecutingWorkflowRun] = useState(false);
+  const [activeReviewQueueItemId, setActiveReviewQueueItemId] = useState<
+    string | null
+  >(null);
+  const [reviewQueueActionError, setReviewQueueActionError] = useState<
+    string | null
+  >(null);
+  const [reviewQueueActionSuccess, setReviewQueueActionSuccess] = useState<
+    string | null
+  >(null);
   const [executeWorkflowRunError, setExecuteWorkflowRunError] = useState<
     string | null
   >(null);
@@ -219,6 +230,8 @@ function App() {
     try {
       setIsLoadingWorkflowRunDetail(true);
       setWorkflowRunDetailError(null);
+      setReviewQueueActionError(null);
+      setReviewQueueActionSuccess(null);
 
       const detail = await getWorkflowRun(workflowRunId);
 
@@ -243,6 +256,8 @@ function App() {
       setExecuteWorkflowRunError(null);
       setExecuteWorkflowRunSuccess(null);
       setWorkflowRunDetailError(null);
+      setReviewQueueActionError(null);
+      setReviewQueueActionSuccess(null);
 
       const result = await executeWorkflowRun(workflowRunId, { scenario });
       const detail = await getWorkflowRun(workflowRunId);
@@ -267,6 +282,59 @@ function App() {
       );
     } finally {
       setIsExecutingWorkflowRun(false);
+    }
+  }
+
+  async function handleReviewQueueItemAction(
+    reviewQueueItemId: string,
+    action: "resolve" | "dismiss",
+  ) {
+    if (!selectedWorkflowRunDetail) {
+      return;
+    }
+
+    const workflowRunId = selectedWorkflowRunDetail.workflowRun.id;
+
+    try {
+      setActiveReviewQueueItemId(reviewQueueItemId);
+      setReviewQueueActionError(null);
+      setReviewQueueActionSuccess(null);
+      setWorkflowRunDetailError(null);
+
+      if (action === "resolve") {
+        await resolveReviewQueueItem(reviewQueueItemId, {
+          reviewerNotes: "Resolved during human review.",
+        });
+      } else {
+        await dismissReviewQueueItem(reviewQueueItemId, {
+          reviewerNotes: "Dismissed during human review.",
+        });
+      }
+
+      const refreshedWorkflowRunDetail = await getWorkflowRun(workflowRunId);
+      setSelectedWorkflowRunDetail(refreshedWorkflowRunDetail);
+
+      if (selectedBatchDetail) {
+        const refreshedBatchDetail = await getIntakeBatch(
+          selectedBatchDetail.intakeBatch.id,
+        );
+
+        setSelectedBatchDetail(refreshedBatchDetail);
+      }
+
+      setReviewQueueActionSuccess(
+        action === "resolve"
+          ? "Review queue item resolved."
+          : "Review queue item dismissed.",
+      );
+    } catch (error) {
+      setReviewQueueActionError(
+        error instanceof Error
+          ? error.message
+          : "Unable to update review queue item.",
+      );
+    } finally {
+      setActiveReviewQueueItemId(null);
     }
   }
 
@@ -601,6 +669,18 @@ function App() {
 
                   <h5>Review Queue</h5>
 
+                  {reviewQueueActionSuccess ? (
+                    <p className="form-message form-message--success">
+                      {reviewQueueActionSuccess}
+                    </p>
+                  ) : null}
+
+                  {reviewQueueActionError ? (
+                    <p className="form-message form-message--error">
+                      {reviewQueueActionError}
+                    </p>
+                  ) : null}
+
                   {selectedWorkflowRunDetail.reviewQueueItems.length === 0 ? (
                     <p>No review queue items created yet.</p>
                   ) : (
@@ -610,8 +690,47 @@ function App() {
                           <div>
                             <strong>{item.reason}</strong>
                             <p>{item.originalText ?? "No original text captured."}</p>
+                            {item.reviewerNotes ? (
+                              <p>Reviewer notes: {item.reviewerNotes}</p>
+                            ) : null}
+                            {item.resolvedAt ? <p>Resolved at: {item.resolvedAt}</p> : null}
                           </div>
-                          <span>{item.status}</span>
+
+                          <div className="workflow-run-card__actions">
+                            <span>{item.status}</span>
+
+                            {item.status === "OPEN" ? (
+                              <>
+                                <button
+                                  disabled={activeReviewQueueItemId === item.id}
+                                  onClick={() =>
+                                    void handleReviewQueueItemAction(
+                                      item.id,
+                                      "resolve",
+                                    )
+                                  }
+                                  type="button"
+                                >
+                                  {activeReviewQueueItemId === item.id
+                                    ? "Updating…"
+                                    : "Resolve"}
+                                </button>
+
+                                <button
+                                  disabled={activeReviewQueueItemId === item.id}
+                                  onClick={() =>
+                                    void handleReviewQueueItemAction(
+                                      item.id,
+                                      "dismiss",
+                                    )
+                                  }
+                                  type="button"
+                                >
+                                  Dismiss
+                                </button>
+                              </>
+                            ) : null}
+                          </div>
                         </article>
                       ))}
                     </div>

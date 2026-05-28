@@ -141,3 +141,11 @@ export type ExecuteWorkflowRunResponse = {
   toolCallLogs: ToolCallLog[];
   reviewQueueItems: ReviewQueueItem[];
 };
+
+export type ReviewQueueItemActionRequest = {
+  reviewerNotes?: string;
+};
+
+export type ReviewQueueItemActionResponse = {
+  reviewQueueItem: ReviewQueueItem;
+};

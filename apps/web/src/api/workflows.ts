@@ -2,6 +2,8 @@ import { apiGet, apiPost } from "./client";
 import type {
   ExecuteWorkflowRunRequest,
   ExecuteWorkflowRunResponse,
+  ReviewQueueItemActionRequest,
+  ReviewQueueItemActionResponse,
   StartWorkflowResponse,
   WorkflowRunDetail,
 } from "../types/workflow";
@@ -29,4 +31,24 @@ export async function getWorkflowRun(
   workflowRunId: string,
 ): Promise<WorkflowRunDetail> {
   return apiGet<WorkflowRunDetail>(`/workflow-runs/${workflowRunId}`);
+}
+
+export async function resolveReviewQueueItem(
+  reviewQueueItemId: string,
+  request: ReviewQueueItemActionRequest = {},
+): Promise<ReviewQueueItemActionResponse> {
+  return apiPost<ReviewQueueItemActionResponse, ReviewQueueItemActionRequest>(
+    `/review-queue-items/${reviewQueueItemId}/resolve`,
+    request,
+  );
+}
+
+export async function dismissReviewQueueItem(
+  reviewQueueItemId: string,
+  request: ReviewQueueItemActionRequest = {},
+): Promise<ReviewQueueItemActionResponse> {
+  return apiPost<ReviewQueueItemActionResponse, ReviewQueueItemActionRequest>(
+    `/review-queue-items/${reviewQueueItemId}/dismiss`,
+    request,
+  );
 }
