@@ -41,6 +41,67 @@ function serializeReviewQueueItem(item: {
   };
 }
 
+function serializeWorkflowRun(run: {
+  id: string;
+  intakeBatchId: string | null;
+  intakeItemId: string | null;
+  workflowName: string;
+  status: string;
+  startedAt: Date | null;
+  completedAt: Date | null;
+  errorMessage: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}) {
+  return {
+    id: run.id,
+    intakeBatchId: run.intakeBatchId,
+    intakeItemId: run.intakeItemId,
+    workflowName: run.workflowName,
+    status: run.status,
+    startedAt: run.startedAt?.toISOString() ?? null,
+    completedAt: run.completedAt?.toISOString() ?? null,
+    errorMessage: run.errorMessage,
+    createdAt: run.createdAt.toISOString(),
+    updatedAt: run.updatedAt.toISOString()
+  };
+}
+
+async function maybeCompleteWorkflowRunAfterReview(input: {
+  workflowRunId: string | null;
+}) {
+  if (!input.workflowRunId) {
+    return null;
+  }
+
+  const remainingOpenReviewCount = await prisma.reviewQueueItem.count({
+    where: {
+      workflowRunId: input.workflowRunId,
+      status: {
+        in: ["OPEN", "IN_REVIEW"]
+      }
+    }
+  });
+
+  if (remainingOpenReviewCount > 0) {
+    return prisma.workflowRun.findUnique({
+      where: {
+        id: input.workflowRunId
+      }
+    });
+  }
+
+  return prisma.workflowRun.update({
+    where: {
+      id: input.workflowRunId
+    },
+    data: {
+      status: "COMPLETED",
+      completedAt: new Date()
+    }
+  });
+}
+
 async function updateReviewQueueItemStatus(input: {
   reviewQueueItemId: string;
   status: "RESOLVED" | "DISMISSED";
@@ -56,7 +117,7 @@ async function updateReviewQueueItemStatus(input: {
     return null;
   }
 
-  return prisma.reviewQueueItem.update({
+  const reviewQueueItem = await prisma.reviewQueueItem.update({
     where: {
       id: input.reviewQueueItemId
     },
@@ -68,6 +129,15 @@ async function updateReviewQueueItemStatus(input: {
       resolvedAt: new Date()
     }
   });
+
+  const workflowRun = await maybeCompleteWorkflowRunAfterReview({
+    workflowRunId: reviewQueueItem.workflowRunId
+  });
+
+  return {
+    reviewQueueItem,
+    workflowRun
+  };
 }
 
 export async function reviewQueueItemRoutes(
@@ -91,7 +161,7 @@ export async function reviewQueueItemRoutes(
       });
     }
 
-    const reviewQueueItem = await updateReviewQueueItemStatus({
+    const result = await updateReviewQueueItemStatus({
       reviewQueueItemId: parsedParams.data.id,
       status: "RESOLVED",
       ...(parsedBody.data.reviewerNotes === undefined
@@ -99,14 +169,17 @@ export async function reviewQueueItemRoutes(
         : { reviewerNotes: parsedBody.data.reviewerNotes })
     });
 
-    if (!reviewQueueItem) {
+    if (!result) {
       return reply.status(404).send({
         error: "Review queue item not found"
       });
     }
 
     return {
-      reviewQueueItem: serializeReviewQueueItem(reviewQueueItem)
+      reviewQueueItem: serializeReviewQueueItem(result.reviewQueueItem),
+      workflowRun: result.workflowRun
+        ? serializeWorkflowRun(result.workflowRun)
+        : null
     };
   });
 
@@ -128,7 +201,7 @@ export async function reviewQueueItemRoutes(
       });
     }
 
-    const reviewQueueItem = await updateReviewQueueItemStatus({
+    const result = await updateReviewQueueItemStatus({
       reviewQueueItemId: parsedParams.data.id,
       status: "DISMISSED",
       ...(parsedBody.data.reviewerNotes === undefined
@@ -136,14 +209,17 @@ export async function reviewQueueItemRoutes(
         : { reviewerNotes: parsedBody.data.reviewerNotes })
     });
 
-    if (!reviewQueueItem) {
+    if (!result) {
       return reply.status(404).send({
         error: "Review queue item not found"
       });
     }
 
     return {
-      reviewQueueItem: serializeReviewQueueItem(reviewQueueItem)
+      reviewQueueItem: serializeReviewQueueItem(result.reviewQueueItem),
+      workflowRun: result.workflowRun
+        ? serializeWorkflowRun(result.workflowRun)
+        : null
     };
   });
 }

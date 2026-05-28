@@ -3,24 +3,56 @@ import { describe, expect, it } from "vitest";
 import { buildApp } from "../app.js";
 import { prisma } from "../lib/prisma.js";
 
-async function createReviewQueueItem() {
-  return prisma.reviewQueueItem.create({
+async function createWorkflowRunWithReviewItems(
+  reviewItemStatuses: Array<"OPEN" | "IN_REVIEW" | "RESOLVED" | "DISMISSED"> = [
+    "OPEN"
+  ]
+) {
+  return prisma.workflowRun.create({
     data: {
-      reason: "LOW_CONFIDENCE",
-      status: "OPEN",
-      originalText: "TM driver maybe 10.5, shaft unknown",
-      proposedGolfClubJson: {
-        brand: "TaylorMade",
-        model: "Unknown Driver",
-        confidenceScore: 0.58
+      workflowName: "test-review-completion-workflow",
+      status: "NEEDS_REVIEW",
+      startedAt: new Date(),
+      reviewQueueItems: {
+        create: reviewItemStatuses.map((status, index) => ({
+          reason: "LOW_CONFIDENCE",
+          status,
+          originalText: `TM driver maybe 10.5, shaft unknown ${index + 1}`,
+          proposedGolfClubJson: {
+            brand: "TaylorMade",
+            model: "Unknown Driver",
+            confidenceScore: 0.58
+          }
+        }))
       }
+    },
+    include: {
+      reviewQueueItems: {
+        orderBy: {
+          createdAt: "asc"
+        }
+      }
+    }
+  });
+}
+
+async function createReviewQueueItem() {
+  const workflowRun = await createWorkflowRunWithReviewItems();
+
+  return workflowRun.reviewQueueItems[0]!;
+}
+
+async function deleteWorkflowRun(workflowRunId: string) {
+  await prisma.workflowRun.delete({
+    where: {
+      id: workflowRunId
     }
   });
 }
 
 describe("review queue item routes", () => {
   describe("POST /review-queue-items/:id/resolve", () => {
-    it("resolves an open review queue item", async () => {
+    it("resolves an open review queue item and completes its workflow run", async () => {
       const app = buildApp();
       const reviewQueueItem = await createReviewQueueItem();
 
@@ -38,12 +70,18 @@ describe("review queue item routes", () => {
 
       expect(body.reviewQueueItem).toMatchObject({
         id: reviewQueueItem.id,
+        workflowRunId: reviewQueueItem.workflowRunId,
         reason: "LOW_CONFIDENCE",
         status: "RESOLVED",
-        originalText: "TM driver maybe 10.5, shaft unknown",
+        originalText: "TM driver maybe 10.5, shaft unknown 1",
         reviewerNotes: "Confirmed TaylorMade driver details."
       });
       expect(body.reviewQueueItem.resolvedAt).not.toBeNull();
+      expect(body.workflowRun).toMatchObject({
+        id: reviewQueueItem.workflowRunId,
+        status: "COMPLETED"
+      });
+      expect(body.workflowRun.completedAt).not.toBeNull();
 
       const persistedItem = await prisma.reviewQueueItem.findUniqueOrThrow({
         where: {
@@ -57,11 +95,57 @@ describe("review queue item routes", () => {
       );
       expect(persistedItem.resolvedAt).not.toBeNull();
 
-      await prisma.reviewQueueItem.delete({
+      const persistedWorkflowRun = await prisma.workflowRun.findUniqueOrThrow({
         where: {
-          id: reviewQueueItem.id
+          id: reviewQueueItem.workflowRunId!
         }
       });
+
+      expect(persistedWorkflowRun.status).toBe("COMPLETED");
+      expect(persistedWorkflowRun.completedAt).not.toBeNull();
+
+      await deleteWorkflowRun(reviewQueueItem.workflowRunId!);
+
+      await app.close();
+    });
+
+    it("keeps the workflow run in review when other review items remain open", async () => {
+      const app = buildApp();
+      const workflowRun = await createWorkflowRunWithReviewItems([
+        "OPEN",
+        "OPEN"
+      ]);
+      const reviewQueueItem = workflowRun.reviewQueueItems[0]!;
+
+      const response = await app.inject({
+        method: "POST",
+        url: `/review-queue-items/${reviewQueueItem.id}/resolve`,
+        payload: {
+          reviewerNotes: "Resolved one item, another remains."
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.reviewQueueItem.status).toBe("RESOLVED");
+      expect(body.workflowRun).toMatchObject({
+        id: workflowRun.id,
+        status: "NEEDS_REVIEW"
+      });
+      expect(body.workflowRun.completedAt).toBeNull();
+
+      const persistedWorkflowRun = await prisma.workflowRun.findUniqueOrThrow({
+        where: {
+          id: workflowRun.id
+        }
+      });
+
+      expect(persistedWorkflowRun.status).toBe("NEEDS_REVIEW");
+      expect(persistedWorkflowRun.completedAt).toBeNull();
+
+      await deleteWorkflowRun(workflowRun.id);
 
       await app.close();
     });
@@ -100,18 +184,14 @@ describe("review queue item routes", () => {
         "Invalid review queue item resolution request"
       );
 
-      await prisma.reviewQueueItem.delete({
-        where: {
-          id: reviewQueueItem.id
-        }
-      });
+      await deleteWorkflowRun(reviewQueueItem.workflowRunId!);
 
       await app.close();
     });
   });
 
   describe("POST /review-queue-items/:id/dismiss", () => {
-    it("dismisses an open review queue item", async () => {
+    it("dismisses an open review queue item and completes its workflow run", async () => {
       const app = buildApp();
       const reviewQueueItem = await createReviewQueueItem();
 
@@ -129,12 +209,18 @@ describe("review queue item routes", () => {
 
       expect(body.reviewQueueItem).toMatchObject({
         id: reviewQueueItem.id,
+        workflowRunId: reviewQueueItem.workflowRunId,
         reason: "LOW_CONFIDENCE",
         status: "DISMISSED",
-        originalText: "TM driver maybe 10.5, shaft unknown",
+        originalText: "TM driver maybe 10.5, shaft unknown 1",
         reviewerNotes: "Duplicate or unusable intake item."
       });
       expect(body.reviewQueueItem.resolvedAt).not.toBeNull();
+      expect(body.workflowRun).toMatchObject({
+        id: reviewQueueItem.workflowRunId,
+        status: "COMPLETED"
+      });
+      expect(body.workflowRun.completedAt).not.toBeNull();
 
       const persistedItem = await prisma.reviewQueueItem.findUniqueOrThrow({
         where: {
@@ -148,11 +234,16 @@ describe("review queue item routes", () => {
       );
       expect(persistedItem.resolvedAt).not.toBeNull();
 
-      await prisma.reviewQueueItem.delete({
+      const persistedWorkflowRun = await prisma.workflowRun.findUniqueOrThrow({
         where: {
-          id: reviewQueueItem.id
+          id: reviewQueueItem.workflowRunId!
         }
       });
+
+      expect(persistedWorkflowRun.status).toBe("COMPLETED");
+      expect(persistedWorkflowRun.completedAt).not.toBeNull();
+
+      await deleteWorkflowRun(reviewQueueItem.workflowRunId!);
 
       await app.close();
     });
@@ -191,11 +282,7 @@ describe("review queue item routes", () => {
         "Invalid review queue item dismissal request"
       );
 
-      await prisma.reviewQueueItem.delete({
-        where: {
-          id: reviewQueueItem.id
-        }
-      });
+      await deleteWorkflowRun(reviewQueueItem.workflowRunId!);
 
       await app.close();
     });
