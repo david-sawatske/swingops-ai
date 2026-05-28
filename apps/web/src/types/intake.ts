@@ -1,24 +1,25 @@
+import type { WorkflowRunSummary } from "./workflow";
+
 export type IntakeBatchSourceType =
   | "FREEFORM_NOTES"
-  | "CSV_UPLOAD"
-  | "EMAIL";
+  | "BAD_CSV"
+  | "EMAIL"
+  | "PDF_TEXT"
+  | "MANUAL_ENTRY";
 
 export type IntakeBatchStatus =
   | "DRAFT"
+  | "QUEUED"
   | "PROCESSING"
   | "COMPLETED"
-  | "FAILED";
+  | "FAILED"
+  | "NEEDS_REVIEW";
 
 export type IntakeItemStatus =
   | "PENDING"
   | "PROCESSING"
-  | "COMPLETED"
-  | "FAILED";
-
-export type WorkflowRunStatus =
-  | "PENDING"
-  | "RUNNING"
-  | "COMPLETED"
+  | "STRUCTURED"
+  | "NEEDS_REVIEW"
   | "FAILED";
 
 export type IntakeBatchSummary = {
@@ -38,14 +39,6 @@ export type IntakeItem = {
   rawText: string;
   sourceRowNumber: number | null;
   status: IntakeItemStatus;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type WorkflowRunSummary = {
-  id: string;
-  intakeBatchId: string;
-  status: WorkflowRunStatus;
   createdAt: string;
   updatedAt: string;
 };

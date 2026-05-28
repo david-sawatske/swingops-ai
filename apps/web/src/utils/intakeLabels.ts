@@ -5,15 +5,19 @@ import type {
 
 const sourceTypeLabels: Record<IntakeBatchSourceType, string> = {
   FREEFORM_NOTES: "Freeform Notes",
-  CSV_UPLOAD: "CSV Upload",
+  BAD_CSV: "Bad CSV",
   EMAIL: "Email",
+  PDF_TEXT: "PDF Text",
+  MANUAL_ENTRY: "Manual Entry",
 };
 
 const statusLabels: Record<IntakeBatchStatus, string> = {
   DRAFT: "Draft",
+  QUEUED: "Queued",
   PROCESSING: "Processing",
   COMPLETED: "Completed",
   FAILED: "Failed",
+  NEEDS_REVIEW: "Needs Review",
 };
 
 export function formatIntakeBatchSourceType(
