@@ -1,8 +1,15 @@
-import { useEffect, useState } from "react";
-import { listIntakeBatches } from "./api/intakeBatches";
+import { FormEvent, useEffect, useState } from "react";
+import {
+  createIntakeBatch,
+  listIntakeBatches,
+} from "./api/intakeBatches";
 import { DashboardSection } from "./components/DashboardSection";
 import { EmptyState } from "./components/EmptyState";
-import type { IntakeBatchSummary } from "./types/intake";
+import type {
+  CreateIntakeBatchRequest,
+  IntakeBatchSourceType,
+  IntakeBatchSummary,
+} from "./types/intake";
 import {
   formatIntakeBatchSourceType,
   formatIntakeBatchStatus,
@@ -15,40 +22,86 @@ function App() {
     null,
   );
 
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [sourceType, setSourceType] =
+    useState<IntakeBatchSourceType>("FREEFORM_NOTES");
+  const [rawText, setRawText] = useState("");
+  const [isCreatingBatch, setIsCreatingBatch] = useState(false);
+  const [createBatchError, setCreateBatchError] = useState<string | null>(null);
+  const [createBatchSuccess, setCreateBatchSuccess] = useState<string | null>(
+    null,
+  );
+
+  async function loadIntakeBatches() {
+    try {
+      setIsLoadingIntakeBatches(true);
+      setIntakeBatchesError(null);
+
+      const batches = await listIntakeBatches();
+
+      setIntakeBatches(batches);
+    } catch (error) {
+      setIntakeBatchesError(
+        error instanceof Error
+          ? error.message
+          : "Unable to load intake batches.",
+      );
+    } finally {
+      setIsLoadingIntakeBatches(false);
+    }
+  }
+
   useEffect(() => {
-    let isMounted = true;
+    void loadIntakeBatches();
+  }, []);
 
-    async function loadIntakeBatches() {
-      try {
-        setIsLoadingIntakeBatches(true);
-        setIntakeBatchesError(null);
+  async function handleCreateBatch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
 
-        const batches = await listIntakeBatches();
+    const trimmedName = name.trim();
+    const rawItems = rawText
+      .split("\n")
+      .map((item) => item.trim())
+      .filter(Boolean);
 
-        if (isMounted) {
-          setIntakeBatches(batches);
-        }
-      } catch (error) {
-        if (isMounted) {
-          setIntakeBatchesError(
-            error instanceof Error
-              ? error.message
-              : "Unable to load intake batches.",
-          );
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoadingIntakeBatches(false);
-        }
-      }
+    if (!trimmedName || rawItems.length === 0) {
+      setCreateBatchError("Name and at least one raw text line are required.");
+      setCreateBatchSuccess(null);
+      return;
     }
 
-    void loadIntakeBatches();
-
-    return () => {
-      isMounted = false;
+    const request: CreateIntakeBatchRequest = {
+      name: trimmedName,
+      description: description.trim() || undefined,
+      sourceType,
+      items: rawItems.map((item) => ({ rawText: item })),
     };
-  }, []);
+
+    try {
+      setIsCreatingBatch(true);
+      setCreateBatchError(null);
+      setCreateBatchSuccess(null);
+
+      const createdBatch = await createIntakeBatch(request);
+
+      setName("");
+      setDescription("");
+      setSourceType("FREEFORM_NOTES");
+      setRawText("");
+      setCreateBatchSuccess(`Created intake batch: ${createdBatch.name}`);
+
+      await loadIntakeBatches();
+    } catch (error) {
+      setCreateBatchError(
+        error instanceof Error
+          ? error.message
+          : "Unable to create intake batch.",
+      );
+    } finally {
+      setIsCreatingBatch(false);
+    }
+  }
 
   return (
     <main className="app-shell">
@@ -57,6 +110,77 @@ function App() {
 
         <p className="subtitle">Agentic Golf Retail Workflow Platform</p>
       </section>
+
+      <DashboardSection
+        title="Create Intake Batch"
+        description="Add messy golf trade-in data for later workflow processing."
+      >
+        <form className="intake-form" onSubmit={handleCreateBatch}>
+          <label>
+            Batch Name
+            <input
+              name="name"
+              onChange={(event) => setName(event.target.value)}
+              placeholder="May trade-in notes"
+              type="text"
+              value={name}
+            />
+          </label>
+
+          <label>
+            Description
+            <input
+              name="description"
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="Optional context for this batch"
+              type="text"
+              value={description}
+            />
+          </label>
+
+          <label>
+            Source Type
+            <select
+              name="sourceType"
+              onChange={(event) =>
+                setSourceType(event.target.value as IntakeBatchSourceType)
+              }
+              value={sourceType}
+            >
+              <option value="FREEFORM_NOTES">Freeform Notes</option>
+              <option value="CSV_UPLOAD">CSV Upload</option>
+              <option value="EMAIL">Email</option>
+            </select>
+          </label>
+
+          <label>
+            Raw Trade-In Text
+            <textarea
+              name="rawText"
+              onChange={(event) => setRawText(event.target.value)}
+              placeholder={"TM Stealth 2 driver, 10.5, stiff, RH\nPing G425 irons 5-PW, regular flex, LH"}
+              rows={5}
+              value={rawText}
+            />
+          </label>
+
+          {createBatchError ? (
+            <p className="form-message form-message--error">
+              {createBatchError}
+            </p>
+          ) : null}
+
+          {createBatchSuccess ? (
+            <p className="form-message form-message--success">
+              {createBatchSuccess}
+            </p>
+          ) : null}
+
+          <button disabled={isCreatingBatch} type="submit">
+            {isCreatingBatch ? "Creating…" : "Create Intake Batch"}
+          </button>
+        </form>
+      </DashboardSection>
 
       <DashboardSection
         title="Intake Batches"

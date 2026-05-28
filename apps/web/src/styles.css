@@ -171,3 +171,125 @@ h1 {
   font-size: 0.95rem;
   font-weight: 700;
 }
+
+.intake-form {
+  display: grid;
+  gap: 14px;
+}
+
+.intake-form label {
+  display: grid;
+  gap: 6px;
+  color: #2e402b;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.intake-form input,
+.intake-form select,
+.intake-form textarea {
+  width: 100%;
+  border: 1px solid #cbd4c5;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #172017;
+  padding: 10px 12px;
+}
+
+.intake-form textarea {
+  resize: vertical;
+}
+
+.intake-form button {
+  justify-self: start;
+  border: 0;
+  border-radius: 999px;
+  background: #2e402b;
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 10px 16px;
+}
+
+.intake-form button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.form-message {
+  margin: 0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-weight: 700;
+}
+
+.form-message--error {
+  background: #fff0ed;
+  color: #9f2f1b;
+}
+
+.form-message--success {
+  background: #edf7ed;
+  color: #2f6b31;
+}
+
+.intake-form {
+  display: grid;
+  gap: 14px;
+}
+
+.intake-form label {
+  display: grid;
+  gap: 6px;
+  color: #2e402b;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.intake-form input,
+.intake-form select,
+.intake-form textarea {
+  width: 100%;
+  border: 1px solid #cbd4c5;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #172017;
+  padding: 10px 12px;
+}
+
+.intake-form textarea {
+  resize: vertical;
+}
+
+.intake-form button {
+  justify-self: start;
+  border: 0;
+  border-radius: 999px;
+  background: #2e402b;
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 10px 16px;
+}
+
+.intake-form button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.form-message {
+  margin: 0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-weight: 700;
+}
+
+.form-message--error {
+  background: #fff0ed;
+  color: #9f2f1b;
+}
+
+.form-message--success {
+  background: #edf7ed;
+  color: #2f6b31;
+}
