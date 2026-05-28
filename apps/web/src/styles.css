@@ -715,6 +715,54 @@ h1 {
   }
 }
 
+.global-workflow-run-toolbar {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.workflow-run-status-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.workflow-run-status-filter__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #d9dfd4;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #2e402b;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 7px 10px;
+}
+
+.workflow-run-status-filter__button strong {
+  display: inline-grid;
+  min-width: 22px;
+  place-items: center;
+  border-radius: 999px;
+  background: #edf2e8;
+  color: #2e402b;
+  font-size: 0.72rem;
+  padding: 2px 6px;
+}
+
+.workflow-run-status-filter__button--active {
+  border-color: #2e402b;
+  background: #2e402b;
+  color: #ffffff;
+}
+
+.workflow-run-status-filter__button--active strong {
+  background: #ffffff;
+  color: #2e402b;
+}
+
 .global-workflow-run-list {
   display: grid;
   gap: 12px;
@@ -727,6 +775,11 @@ h1 {
   border: 1px solid #d9dfd4;
   border-radius: 14px;
   background: #f8faf6;
+}
+
+.global-workflow-run-card--selected {
+  border-color: #2e402b;
+  box-shadow: 0 0 0 2px rgba(46, 64, 43, 0.08);
 }
 
 .global-workflow-run-card__header {

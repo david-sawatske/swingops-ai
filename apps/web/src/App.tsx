@@ -27,12 +27,25 @@ import type {
   ReviewQueueItem,
   WorkflowExecutionScenario,
   WorkflowRunDetail,
+  WorkflowRunStatus,
 } from "./types/workflow";
 import { buildCreateIntakeBatchRequest } from "./utils/intakeForm";
 import {
   formatIntakeBatchSourceType,
   formatIntakeBatchStatus,
 } from "./utils/intakeLabels";
+
+type WorkflowRunStatusFilter = "ALL" | WorkflowRunStatus;
+
+const WORKFLOW_RUN_STATUS_FILTERS: WorkflowRunStatusFilter[] = [
+  "ALL",
+  "QUEUED",
+  "RUNNING",
+  "COMPLETED",
+  "NEEDS_REVIEW",
+  "FAILED",
+  "CANCELLED",
+];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -159,6 +172,8 @@ function App() {
   const [globalWorkflowRunsError, setGlobalWorkflowRunsError] = useState<
     string | null
   >(null);
+  const [workflowRunStatusFilter, setWorkflowRunStatusFilter] =
+    useState<WorkflowRunStatusFilter>("ALL");
 
   const [globalReviewQueueItems, setGlobalReviewQueueItems] = useState<
     GlobalReviewQueueItem[]
@@ -227,12 +242,22 @@ function App() {
   ).length;
 
   const workflowRunStatusCounts = globalWorkflowRuns.reduce<
-    Record<string, number>
+    Record<WorkflowRunStatus, number>
   >((counts, run) => {
     counts[run.status] = (counts[run.status] ?? 0) + 1;
 
     return counts;
-  }, {});
+  }, {} as Record<WorkflowRunStatus, number>);
+
+  const filteredGlobalWorkflowRuns =
+    workflowRunStatusFilter === "ALL"
+      ? globalWorkflowRuns
+      : globalWorkflowRuns.filter(
+          (run) => run.status === workflowRunStatusFilter,
+        );
+
+  const selectedWorkflowRunId =
+    selectedWorkflowRunDetail?.workflowRun.id ?? null;
 
   async function loadIntakeBatches() {
     try {
@@ -695,6 +720,147 @@ function App() {
             {isCreatingBatch ? "Creating…" : "Create Intake Batch"}
           </button>
         </form>
+      </DashboardSection>
+
+      <DashboardSection
+        title="Global Workflow Runs"
+        description="Operations view for every workflow run across intake batches."
+      >
+        {!isLoadingGlobalWorkflowRuns && !globalWorkflowRunsError ? (
+          <div className="global-workflow-run-toolbar">
+            <p className="section-summary">
+              {filteredGlobalWorkflowRuns.length} shown /{" "}
+              {globalWorkflowRuns.length} total workflow{" "}
+              {globalWorkflowRuns.length === 1 ? "run" : "runs"}
+            </p>
+
+            <div
+              aria-label="Filter workflow runs by status"
+              className="workflow-run-status-filter"
+            >
+              {WORKFLOW_RUN_STATUS_FILTERS.map((statusFilter) => {
+                const count =
+                  statusFilter === "ALL"
+                    ? globalWorkflowRuns.length
+                    : workflowRunStatusCounts[statusFilter] ?? 0;
+
+                return (
+                  <button
+                    className={
+                      workflowRunStatusFilter === statusFilter
+                        ? "workflow-run-status-filter__button workflow-run-status-filter__button--active"
+                        : "workflow-run-status-filter__button"
+                    }
+                    key={statusFilter}
+                    onClick={() => setWorkflowRunStatusFilter(statusFilter)}
+                    type="button"
+                  >
+                    <span>{statusFilter}</span>
+                    <strong>{count}</strong>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        {isLoadingGlobalWorkflowRuns ? <p>Loading workflow runs…</p> : null}
+
+        {globalWorkflowRunsError ? (
+          <EmptyState
+            title="Unable to load workflow runs"
+            message={globalWorkflowRunsError}
+          />
+        ) : null}
+
+        {!isLoadingGlobalWorkflowRuns &&
+        !globalWorkflowRunsError &&
+        globalWorkflowRuns.length === 0 ? (
+          <EmptyState
+            title="No workflow runs found"
+            message="Create an intake batch and start a workflow to populate the operations dashboard."
+          />
+        ) : null}
+
+        {!isLoadingGlobalWorkflowRuns &&
+        !globalWorkflowRunsError &&
+        globalWorkflowRuns.length > 0 &&
+        filteredGlobalWorkflowRuns.length === 0 ? (
+          <EmptyState
+            title="No runs match this filter"
+            message="Choose a different workflow status to inspect runs across the platform."
+          />
+        ) : null}
+
+        {!isLoadingGlobalWorkflowRuns &&
+        !globalWorkflowRunsError &&
+        filteredGlobalWorkflowRuns.length > 0 ? (
+          <div className="global-workflow-run-list">
+            {filteredGlobalWorkflowRuns.map((run) => (
+              <article
+                className={
+                  selectedWorkflowRunId === run.id
+                    ? "global-workflow-run-card global-workflow-run-card--selected"
+                    : "global-workflow-run-card"
+                }
+                key={run.id}
+              >
+                <div className="global-workflow-run-card__header">
+                  <div>
+                    <span className="model-route-card__eyebrow">
+                      {run.status}
+                    </span>
+                    <h3>{run.workflowName}</h3>
+                    <p>{run.id}</p>
+                  </div>
+
+                  <button
+                    disabled={isLoadingWorkflowRunDetail}
+                    onClick={() => void handleSelectWorkflowRun(run.id)}
+                    type="button"
+                  >
+                    {selectedWorkflowRunId === run.id ? "Viewing Logs" : "View Logs"}
+                  </button>
+                </div>
+
+                <dl className="global-workflow-run-card__context">
+                  <div>
+                    <dt>Batch</dt>
+                    <dd>{run.intakeBatch?.name ?? "—"}</dd>
+                  </div>
+
+                  <div>
+                    <dt>Item</dt>
+                    <dd>{run.intakeItem?.rawText ?? "—"}</dd>
+                  </div>
+
+                  <div>
+                    <dt>Latest Model</dt>
+                    <dd>
+                      {run.latestModelCallLog
+                        ? `${run.latestModelCallLog.provider} / ${run.latestModelCallLog.model}`
+                        : "—"}
+                    </dd>
+                  </div>
+
+                  <div>
+                    <dt>Review Queue</dt>
+                    <dd>
+                      {run.openReviewQueueItemCount} open /{" "}
+                      {run.totalReviewQueueItemCount} total
+                    </dd>
+                  </div>
+                </dl>
+
+                {run.errorMessage ? (
+                  <p className="global-workflow-run-card__meta">
+                    Error: {run.errorMessage}
+                  </p>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        ) : null}
       </DashboardSection>
 
       <DashboardSection
