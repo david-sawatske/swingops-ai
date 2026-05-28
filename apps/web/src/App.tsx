@@ -50,6 +50,53 @@ import {
 
 type WorkflowRunStatusFilter = "ALL" | WorkflowRunStatus;
 
+type AppView =
+  | "OVERVIEW"
+  | "INTAKE"
+  | "WORKFLOW_RUNS"
+  | "REVIEW_QUEUE"
+  | "MODEL_ROUTING"
+  | "MCP_CONNECTORS";
+
+type AppNavItem = {
+  view: AppView;
+  label: string;
+  eyebrow: string;
+};
+
+const APP_NAV_ITEMS: AppNavItem[] = [
+  {
+    view: "OVERVIEW",
+    label: "Overview",
+    eyebrow: "Product story",
+  },
+  {
+    view: "INTAKE",
+    label: "Intake",
+    eyebrow: "Messy notes",
+  },
+  {
+    view: "WORKFLOW_RUNS",
+    label: "Workflow Runs",
+    eyebrow: "Orchestration",
+  },
+  {
+    view: "REVIEW_QUEUE",
+    label: "Review Queue",
+    eyebrow: "Human-in-loop",
+  },
+  {
+    view: "MODEL_ROUTING",
+    label: "Model Routing",
+    eyebrow: "Cost / latency / quality",
+  },
+  {
+    view: "MCP_CONNECTORS",
+    label: "MCP Connectors",
+    eyebrow: "Tool safety",
+  },
+];
+
 const MODEL_TASK_TYPES: ModelTaskType[] = [
   "INTAKE_PARSING",
   "FIELD_NORMALIZATION",
@@ -265,6 +312,37 @@ function formatConnectorJson(value: unknown): string {
   }
 
   return JSON.stringify(value, null, 2);
+}
+
+function formatShortId(value: string | null | undefined): string {
+  if (!value) {
+    return "-";
+  }
+
+  return value.length <= 14 ? value : `${value.slice(0, 8)}...${value.slice(-4)}`;
+}
+
+function getGlobalReviewQueueDisplayText(item: GlobalReviewQueueItem): string {
+  return (
+    item.originalText ??
+    item.intakeItem?.rawText ??
+    "No original text captured."
+  );
+}
+
+function getWorkflowReviewQueueDisplayText(
+  item: ReviewQueueItem,
+  rawItems: { rawText: string }[] | undefined,
+): string {
+  if (item.originalText) {
+    return item.originalText;
+  }
+
+  if (rawItems?.length === 1) {
+    return rawItems[0].rawText;
+  }
+
+  return "Review source context: see raw intake items above. This simulated review item does not store item-level original text yet.";
 }
 
 function getReadOnlyMcpToolInput(
@@ -488,7 +566,9 @@ function ReadOnlyMcpConnectorResultCard({
 
         <div>
           <dt>Persisted ToolCallLog</dt>
-          <dd>{result.invocation.toolCallLogId}</dd>
+          <dd title={result.invocation.toolCallLogId}>
+            {formatShortId(result.invocation.toolCallLogId)}
+          </dd>
         </div>
 
         <div>
@@ -529,6 +609,7 @@ function ReadOnlyMcpConnectorResultCard({
 }
 
 function App() {
+  const [activeView, setActiveView] = useState<AppView>("OVERVIEW");
   const [intakeBatches, setIntakeBatches] = useState<IntakeBatchSummary[]>([]);
   const [isLoadingIntakeBatches, setIsLoadingIntakeBatches] = useState(true);
   const [intakeBatchesError, setIntakeBatchesError] = useState<string | null>(
@@ -638,6 +719,13 @@ function App() {
   const openReviewQueueItemCount = globalReviewQueueItems.filter(
     (item) => item.status === "OPEN" || item.status === "IN_REVIEW",
   ).length;
+  const needsReviewWorkflowRunCount = globalWorkflowRuns.filter(
+    (run) => run.status === "NEEDS_REVIEW",
+  ).length;
+  const totalToolCallLogCount = globalWorkflowRuns.reduce(
+    (count, run) => count + run.totalToolCallLogCount,
+    0,
+  );
 
   const workflowRunStatusCounts = globalWorkflowRuns.reduce<
     Record<WorkflowRunStatus, number>
@@ -1139,8 +1227,121 @@ function App() {
         <h1>SwingOps AI</h1>
 
         <p className="subtitle">Agentic Golf Retail Workflow Platform</p>
+
+        <p className="hero__description">
+          SwingOps AI turns messy golf trade-in notes into structured workflow
+          runs using model routing, tool execution, human review, and MCP-style
+          connector safety.
+        </p>
       </section>
 
+      <nav aria-label="SwingOps demo sections" className="app-nav">
+        {APP_NAV_ITEMS.map((item) => (
+          <button
+            className={
+              activeView === item.view
+                ? "app-nav__button app-nav__button--active"
+                : "app-nav__button"
+            }
+            key={item.view}
+            onClick={() => setActiveView(item.view)}
+            type="button"
+          >
+            <span>{item.eyebrow}</span>
+            <strong>{item.label}</strong>
+          </button>
+        ))}
+      </nav>
+
+      {activeView === "OVERVIEW" ? (
+        <section className="overview-page" aria-labelledby="overview-heading">
+          <div className="overview-hero-card">
+            <span className="model-route-card__eyebrow">Portfolio Demo</span>
+            <h2 id="overview-heading">From messy trade-in notes to governed AI workflow execution</h2>
+            <p>
+              This demo shows how an agentic operations system can ingest
+              inconsistent golf retail notes, start auditable workflow runs,
+              route model work across providers, create human review tasks, and
+              expose internal tools through a guarded MCP-style connector layer.
+            </p>
+          </div>
+
+          <div className="overview-metric-grid">
+            <article>
+              <span>{intakeBatches.length}</span>
+              <strong>Intake Batches</strong>
+              <p>Messy golf trade-in inputs ready for workflow processing.</p>
+            </article>
+
+            <article>
+              <span>{globalWorkflowRuns.length}</span>
+              <strong>Workflow Runs</strong>
+              <p>Queued, completed, failed, and review-needed orchestration runs.</p>
+            </article>
+
+            <article>
+              <span>{openReviewQueueItemCount}</span>
+              <strong>Open Review Items</strong>
+              <p>Human-in-the-loop checkpoints for uncertain structured output.</p>
+            </article>
+
+            <article>
+              <span>{totalToolCallLogCount}</span>
+              <strong>Tool Audit Logs</strong>
+              <p>Persisted records for planned or executed connector/tool calls.</p>
+            </article>
+          </div>
+
+          <div className="overview-story-grid">
+            <article>
+              <span>01</span>
+              <h3>Messy Intake</h3>
+              <p>Import raw golf trade-in notes, CSV-like rows, email text, or manual entries.</p>
+            </article>
+
+            <article>
+              <span>02</span>
+              <h3>Workflow Orchestration</h3>
+              <p>Start workflow runs, simulate execution paths, and inspect step-level outcomes.</p>
+            </article>
+
+            <article>
+              <span>03</span>
+              <h3>Model Routing</h3>
+              <p>Route model work based on cost, latency, quality, JSON support, and provider availability.</p>
+            </article>
+
+            <article>
+              <span>04</span>
+              <h3>Human Review</h3>
+              <p>Send uncertain outputs to a review queue before operational data is trusted.</p>
+            </article>
+
+            <article>
+              <span>05</span>
+              <h3>MCP-style Tool Safety</h3>
+              <p>Expose internal data through read-only tools with policy checks before execution.</p>
+            </article>
+
+            <article>
+              <span>06</span>
+              <h3>Audit Trail</h3>
+              <p>Persist model route logs and tool invocation logs for explainability and review.</p>
+            </article>
+          </div>
+
+          <div className="overview-callout">
+            <strong>{needsReviewWorkflowRunCount} workflow run{needsReviewWorkflowRunCount === 1 ? "" : "s"} currently need review.</strong>
+            <p>
+              Use the Intake, Workflow Runs, Review Queue, Model Routing, and MCP
+              Connectors tabs to walk through the system like a product demo
+              instead of a developer test harness.
+            </p>
+          </div>
+        </section>
+      ) : null}
+
+      {activeView === "INTAKE" ? (
       <DashboardSection
         title="Create Intake Batch"
         description="Add messy golf trade-in data for later workflow processing."
@@ -1215,7 +1416,9 @@ function App() {
           </button>
         </form>
       </DashboardSection>
+      ) : null}
 
+      {activeView === "WORKFLOW_RUNS" ? (
       <DashboardSection
         title="Global Workflow Runs"
         description="Operations view for every workflow run across intake batches."
@@ -1305,7 +1508,7 @@ function App() {
                       {run.status}
                     </span>
                     <h3>{run.workflowName}</h3>
-                    <p>{run.id}</p>
+                    <p title={run.id}>{formatShortId(run.id)}</p>
                   </div>
 
                   <button
@@ -1364,7 +1567,9 @@ function App() {
           </div>
         ) : null}
       </DashboardSection>
+      ) : null}
 
+      {activeView === "REVIEW_QUEUE" ? (
       <DashboardSection
         title="Global Review Queue"
         description="All human-in-the-loop review work across workflow runs."
@@ -1419,7 +1624,7 @@ function App() {
                       {item.status}
                     </span>
                     <h3>{item.reason}</h3>
-                    <p>{item.originalText ?? "No original text captured."}</p>
+                    <p>{getGlobalReviewQueueDisplayText(item)}</p>
                   </div>
 
                   <span className="review-queue-card__status">
@@ -1471,11 +1676,263 @@ function App() {
           </div>
         ) : null}
       </DashboardSection>
+      ) : null}
 
+      {activeView === "MODEL_ROUTING" ? (
+      <DashboardSection
+        title="Model Routing Preview"
+        description="Preview provider selection across mock, OpenAI, Anthropic, Azure OpenAI, and local/open-source style providers based on task needs."
+      >
+        <div className="section-intro-card">
+          <span className="model-route-card__eyebrow">Resume Story</span>
+          <h3>Provider routing separated from workflow logic</h3>
+          <p>
+            The workflow asks for a task outcome. The routing layer decides which
+            provider/model should handle it based on task type, JSON requirements,
+            provider availability, cost, latency, and quality goals.
+          </p>
+        </div>
+
+        <form className="model-routing-preview-form" onSubmit={handlePreviewModelRouting}>
+          <label>
+            Task Type
+            <select
+              onChange={(event) =>
+                setModelRoutingTaskType(event.target.value as ModelTaskType)
+              }
+              value={modelRoutingTaskType}
+            >
+              {MODEL_TASK_TYPES.map((taskType) => (
+                <option key={taskType} value={taskType}>
+                  {formatEnumLabel(taskType)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Preferred Goal
+            <select
+              onChange={(event) =>
+                setModelRoutingGoal(event.target.value as ModelRoutingGoal)
+              }
+              value={modelRoutingGoal}
+            >
+              {MODEL_ROUTING_GOALS.map((goal) => (
+                <option key={goal} value={goal}>
+                  {formatEnumLabel(goal)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="model-routing-preview-form__checkbox">
+            <input
+              checked={modelRoutingRequireJson}
+              onChange={(event) => setModelRoutingRequireJson(event.target.checked)}
+              type="checkbox"
+            />
+            Require structured JSON output
+          </label>
+
+          <label className="model-routing-preview-form__checkbox">
+            <input
+              checked={modelRoutingAllowDisabledProviders}
+              onChange={(event) =>
+                setModelRoutingAllowDisabledProviders(event.target.checked)
+              }
+              type="checkbox"
+            />
+            Include disabled providers for portfolio simulation
+          </label>
+
+          <button disabled={isPreviewingModelRouting} type="submit">
+            {isPreviewingModelRouting ? "Previewing…" : "Preview Model Route"}
+          </button>
+        </form>
+
+        {modelRoutingPreviewError ? (
+          <p className="form-message form-message--error">
+            {modelRoutingPreviewError}
+          </p>
+        ) : null}
+
+        {modelRoutingPreview ? (
+          <div className="model-routing-preview-result">
+            <article className="model-routing-selected-card">
+              <div>
+                <span className="model-route-card__eyebrow">Selected Route</span>
+                <h3>
+                  {modelRoutingPreview.routingDecision.provider} /{" "}
+                  {modelRoutingPreview.routingDecision.model}
+                </h3>
+                <p>{modelRoutingPreview.routingDecision.reason}</p>
+              </div>
+
+              <dl>
+                <div>
+                  <dt>Task</dt>
+                  <dd>{formatEnumLabel(modelRoutingPreview.routingRequest.taskType)}</dd>
+                </div>
+
+                <div>
+                  <dt>Goal</dt>
+                  <dd>{formatEnumLabel(modelRoutingPreview.routingRequest.preferredGoal)}</dd>
+                </div>
+
+                <div>
+                  <dt>JSON</dt>
+                  <dd>{String(modelRoutingPreview.routingRequest.requireJson)}</dd>
+                </div>
+
+                <div>
+                  <dt>Cost</dt>
+                  <dd>{modelRoutingPreview.routingDecision.estimatedCostTier}</dd>
+                </div>
+
+                <div>
+                  <dt>Latency</dt>
+                  <dd>{modelRoutingPreview.routingDecision.expectedLatencyTier}</dd>
+                </div>
+
+                <div>
+                  <dt>Quality</dt>
+                  <dd>{modelRoutingPreview.routingDecision.qualityTier}</dd>
+                </div>
+              </dl>
+
+              {modelRoutingPreview.routingDecision.fallbackReason ? (
+                <p className="model-routing-selected-card__fallback">
+                  Fallback: {modelRoutingPreview.routingDecision.fallbackReason}
+                </p>
+              ) : null}
+            </article>
+
+            <div className="model-routing-preview-grid">
+              <div>
+                <h4>Candidates Considered</h4>
+
+                <div className="model-routing-candidate-list">
+                  {modelRoutingPreview.routingDecision.candidatesConsidered.map(
+                    (candidate: ModelRouteCandidateSummary) => (
+                      <article
+                        className="model-routing-candidate-card"
+                        key={`${candidate.provider}-${candidate.model}`}
+                      >
+                        <div>
+                          <strong>
+                            {candidate.provider} / {candidate.model}
+                          </strong>
+                          <p>
+                            Supports {candidate.supportedTaskTypes.length} task
+                            type{candidate.supportedTaskTypes.length === 1 ? "" : "s"}.
+                          </p>
+                        </div>
+
+                        <dl>
+                          <div>
+                            <dt>Cost</dt>
+                            <dd>{candidate.costTier}</dd>
+                          </div>
+
+                          <div>
+                            <dt>Latency</dt>
+                            <dd>{candidate.latencyTier}</dd>
+                          </div>
+
+                          <div>
+                            <dt>Quality</dt>
+                            <dd>{candidate.qualityTier}</dd>
+                          </div>
+
+                          <div>
+                            <dt>Executable</dt>
+                            <dd>{String(candidate.enabledForExecution)}</dd>
+                          </div>
+                        </dl>
+                      </article>
+                    ),
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <h4>Rejected Candidates</h4>
+
+                {modelRoutingPreview.routingDecision.rejectedCandidates.length === 0 ? (
+                  <EmptyState
+                    title="No rejected candidates"
+                    message="Every considered provider/model matched this routing request."
+                  />
+                ) : (
+                  <div className="model-routing-candidate-list">
+                    {modelRoutingPreview.routingDecision.rejectedCandidates.map(
+                      (candidate: ModelRouteRejectedCandidate) => (
+                        <article
+                          className="model-routing-candidate-card model-routing-candidate-card--rejected"
+                          key={`${candidate.provider}-${candidate.model}`}
+                        >
+                          <div>
+                            <strong>
+                              {candidate.provider} / {candidate.model}
+                            </strong>
+                            <p>{candidate.rejectedReasons.join(", ")}</p>
+                          </div>
+
+                          <dl>
+                            <div>
+                              <dt>Cost</dt>
+                              <dd>{candidate.costTier}</dd>
+                            </div>
+
+                            <div>
+                              <dt>Latency</dt>
+                              <dd>{candidate.latencyTier}</dd>
+                            </div>
+
+                            <div>
+                              <dt>Quality</dt>
+                              <dd>{candidate.qualityTier}</dd>
+                            </div>
+
+                            <div>
+                              <dt>JSON</dt>
+                              <dd>{String(candidate.supportsJson)}</dd>
+                            </div>
+                          </dl>
+                        </article>
+                      ),
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <EmptyState
+            title="No model route preview yet"
+            message="Choose a task and goal to preview how SwingOps selects a model provider."
+          />
+        )}
+      </DashboardSection>
+      ) : null}
+
+      {activeView === "MCP_CONNECTORS" ? (
       <DashboardSection
         title="Read-Only MCP Connector Demo"
         description="Execute safe internal connector tools, show policy checks, block mutation tools, and persist ToolCallLog audit records."
       >
+        <div className="section-intro-card">
+          <span className="model-route-card__eyebrow">Internal MCP-style Surface</span>
+          <h3>Read-only connector execution with policy checks</h3>
+          <p>
+            This is currently an internal MCP-style connector invocation surface,
+            not an external MCP server. The demo intentionally allows safe
+            read-only tools, blocks mutation tools, and persists ToolCallLog
+            audit records for every attempted invocation.
+          </p>
+        </div>
+
         <form
           className="read-only-mcp-demo-form"
           onSubmit={handleExecuteReadOnlyMcpTool}
@@ -1574,7 +2031,9 @@ function App() {
           />
         )}
       </DashboardSection>
+      ) : null}
 
+      {activeView === "INTAKE" ? (
       <DashboardSection
         title="Selected Intake Batch"
         description="Raw trade-in items that will become workflow input for future AI processing."
@@ -1653,7 +2112,7 @@ function App() {
                   <article className="workflow-run-card" key={run.id}>
                     <div>
                       <h5>{run.workflowName}</h5>
-                      <p>{run.id}</p>
+                      <p title={run.id}>{formatShortId(run.id)}</p>
                     </div>
 
                     <div className="workflow-run-card__actions">
@@ -1721,7 +2180,9 @@ function App() {
                     Workflow Run Detail
                   </span>
                   <h4>{selectedWorkflowRunDetail.workflowRun.workflowName}</h4>
-                  <p>{selectedWorkflowRunDetail.workflowRun.id}</p>
+                  <p title={selectedWorkflowRunDetail.workflowRun.id}>
+                    {formatShortId(selectedWorkflowRunDetail.workflowRun.id)}
+                  </p>
                 </div>
 
                 <div className="workflow-execution-summary">
@@ -1755,7 +2216,7 @@ function App() {
                         <article className="workflow-tool-log-card" key={item.id}>
                           <div>
                             <strong>{item.reason}</strong>
-                            <p>{item.originalText ?? "No original text captured."}</p>
+                            <p>{getWorkflowReviewQueueDisplayText(item, selectedBatchDetail?.items)}</p>
                             {item.reviewerNotes ? (
                               <p>Reviewer notes: {item.reviewerNotes}</p>
                             ) : null}
@@ -1779,17 +2240,22 @@ function App() {
                     </div>
                   )}
 
-                  <h5>MCP / Tool Invocation Audit Logs</h5>
+                  <details className="workflow-audit-log-details">
+                    <summary>
+                      MCP / Tool Invocation Audit Logs
+                      <span>{selectedWorkflowRunDetail.toolCallLogs.length} recorded</span>
+                    </summary>
 
-                  {selectedWorkflowRunDetail.toolCallLogs.length === 0 ? (
-                    <p>No MCP or workflow simulation tool logs recorded yet.</p>
-                  ) : (
-                    <div className="workflow-tool-log-list">
-                      {selectedWorkflowRunDetail.toolCallLogs.map((log) => (
-                        <ToolCallLogCard key={log.id} toolCallLog={log} />
-                      ))}
-                    </div>
-                  )}
+                    {selectedWorkflowRunDetail.toolCallLogs.length === 0 ? (
+                      <p>No MCP or workflow simulation tool logs recorded yet.</p>
+                    ) : (
+                      <div className="workflow-tool-log-list">
+                        {selectedWorkflowRunDetail.toolCallLogs.map((log) => (
+                          <ToolCallLogCard key={log.id} toolCallLog={log} />
+                        ))}
+                      </div>
+                    )}
+                  </details>
                 </div>
 
                 {selectedWorkflowRunDetail.modelCallLogs.length === 0 ? (
@@ -1813,7 +2279,9 @@ function App() {
           </div>
         ) : null}
       </DashboardSection>
+      ) : null}
 
+      {activeView === "INTAKE" ? (
       <DashboardSection
         title="Intake Batches"
         description="Messy golf trade-in notes, CSV rows, and email text imported for workflow processing."
@@ -1884,6 +2352,7 @@ function App() {
           </div>
         ) : null}
       </DashboardSection>
+      ) : null}
     </main>
   );
 }
