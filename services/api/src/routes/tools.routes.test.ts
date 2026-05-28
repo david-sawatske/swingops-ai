@@ -1,6 +1,18 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+
+import { prisma } from "../lib/prisma.js";
 
 import { buildApp } from "../app.js";
+
+const testWorkflowName = "test-tool-route-preview-log";
+
+afterEach(async () => {
+  await prisma.workflowRun.deleteMany({
+    where: {
+      workflowName: testWorkflowName
+    }
+  });
+});
 
 describe("tool routes", () => {
   describe("POST /mcp/tools/invocations/preview", () => {
@@ -137,6 +149,167 @@ describe("tool routes", () => {
       expect(response.statusCode).toBe(400);
       expect(response.json().error).toBe(
         "Invalid tool invocation preview request"
+      );
+
+      await app.close();
+    });
+  });
+
+  describe("POST /mcp/tools/invocations/preview-log", () => {
+    it("persists a planned invocation preview for an allowed read-only tool tied to a workflow run", async () => {
+      const app = buildApp();
+      const workflowRun = await prisma.workflowRun.create({
+        data: {
+          workflowName: testWorkflowName
+        }
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/mcp/tools/invocations/preview-log",
+        payload: {
+          toolName: "swingops.workflowRuns.get",
+          inputJson: {
+            id: workflowRun.id
+          },
+          requestedBy: "agent.route-test",
+          workflowRunId: workflowRun.id,
+          executionMode: "AGENT_AUTONOMOUS"
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.invocation).toMatchObject({
+        toolName: "swingops.workflowRuns.get",
+        status: "READY_TO_EXECUTE",
+        requestedBy: "agent.route-test",
+        workflowRunId: workflowRun.id,
+        executionAttempted: false,
+        persisted: true,
+        policyDecision: "ALLOW",
+        policyReasonCodes: ["TOOL_ALLOWED"],
+        toolCallLogId: expect.any(String)
+      });
+      expect(body.previewMetadata).toMatchObject({
+        status: "DRY_RUN_ONLY",
+        executionAttempted: false,
+        persisted: true,
+        toolCallLogId: body.invocation.toolCallLogId,
+        message:
+          "Tool invocation preview log persisted for audit only. No tool execution was attempted."
+      });
+      expect(body.toolCallLog).toMatchObject({
+        id: body.invocation.toolCallLogId,
+        workflowRunId: workflowRun.id,
+        workflowStepId: null,
+        toolName: "swingops.workflowRuns.get",
+        status: "STARTED",
+        completedAt: null,
+        errorMessage: null
+      });
+      expect(body.toolCallLog.outputJson).toMatchObject({
+        previewOnly: true,
+        executionAttempted: false,
+        actualToolOutput: null,
+        policyDecision: "ALLOW",
+        policyReasonCodes: ["TOOL_ALLOWED"],
+        invocationStatus: "READY_TO_EXECUTE",
+        requestedBy: "agent.route-test",
+        executionMode: "AGENT_AUTONOMOUS",
+        executionEnabled: true,
+        humanApprovalGranted: false
+      });
+
+      await app.close();
+    });
+
+    it("persists a blocked planned invocation for preview-only mode without executing tools", async () => {
+      const app = buildApp();
+      const workflowRun = await prisma.workflowRun.create({
+        data: {
+          workflowName: testWorkflowName
+        }
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/mcp/tools/invocations/preview-log",
+        payload: {
+          toolName: "swingops.workflowRuns.get",
+          workflowRunId: workflowRun.id
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.invocation).toMatchObject({
+        toolName: "swingops.workflowRuns.get",
+        status: "BLOCKED",
+        executionAttempted: false,
+        persisted: true,
+        policyDecision: "BLOCK",
+        policyReasonCodes: ["PREVIEW_ONLY_MODE"]
+      });
+      expect(body.toolCallLog).toMatchObject({
+        workflowRunId: workflowRun.id,
+        toolName: "swingops.workflowRuns.get",
+        status: "STARTED",
+        completedAt: null
+      });
+      expect(body.toolCallLog.outputJson).toMatchObject({
+        previewOnly: true,
+        executionAttempted: false,
+        actualToolOutput: null,
+        policyDecision: "BLOCK",
+        policyReasonCodes: ["PREVIEW_ONLY_MODE"],
+        invocationStatus: "BLOCKED",
+        executionMode: "PREVIEW_ONLY",
+        executionEnabled: false
+      });
+
+      await app.close();
+    });
+
+    it("rejects preview-log persistence when no workflow context is supplied", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/mcp/tools/invocations/preview-log",
+        payload: {
+          toolName: "swingops.workflowRuns.get"
+        }
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toEqual({
+        error:
+          "A workflowRunId or workflowStepId is required to persist a tool invocation preview log."
+      });
+
+      await app.close();
+    });
+
+    it("returns 400 for invalid invocation preview-log payloads", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/mcp/tools/invocations/preview-log",
+        payload: {
+          toolName: "",
+          executionMode: "NOT_A_MODE"
+        }
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().error).toBe(
+        "Invalid tool invocation preview log request"
       );
 
       await app.close();

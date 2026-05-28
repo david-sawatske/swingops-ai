@@ -8,6 +8,10 @@ import {
 } from "../tools/tool-registry.js";
 import { previewToolExecutionPolicy } from "../tools/tool-execution-policy.js";
 import { previewToolInvocation } from "../tools/tool-invocation-preview.js";
+import {
+  persistToolInvocationPreviewLog,
+  ToolInvocationPreviewLogRequiresWorkflowContextError
+} from "../tools/tool-invocation-preview-logging.js";
 
 const agentToolCategorySchema = z.enum([
   "INTAKE",
@@ -82,6 +86,24 @@ function toRegistryFilter(
   };
 }
 
+function toPreviewInvocationInput(
+  data: z.infer<typeof toolInvocationPreviewBodySchema>
+) {
+  return {
+    toolName: data.toolName,
+    requestedBy: data.requestedBy,
+    executionMode: data.executionMode,
+    humanApprovalGranted: data.humanApprovalGranted,
+    ...(data.inputJson === undefined ? {} : { inputJson: data.inputJson }),
+    ...(data.workflowRunId === undefined
+      ? {}
+      : { workflowRunId: data.workflowRunId }),
+    ...(data.workflowStepId === undefined
+      ? {}
+      : { workflowStepId: data.workflowStepId })
+  };
+}
+
 export async function toolRoutes(app: FastifyInstance): Promise<void> {
   app.post("/mcp/tools/invocations/preview", async (request, reply) => {
     const parsedBody = toolInvocationPreviewBodySchema.safeParse(
@@ -95,21 +117,36 @@ export async function toolRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
-    return previewToolInvocation({
-      toolName: parsedBody.data.toolName,
-      requestedBy: parsedBody.data.requestedBy,
-      executionMode: parsedBody.data.executionMode,
-      humanApprovalGranted: parsedBody.data.humanApprovalGranted,
-      ...(parsedBody.data.inputJson === undefined
-        ? {}
-        : { inputJson: parsedBody.data.inputJson }),
-      ...(parsedBody.data.workflowRunId === undefined
-        ? {}
-        : { workflowRunId: parsedBody.data.workflowRunId }),
-      ...(parsedBody.data.workflowStepId === undefined
-        ? {}
-        : { workflowStepId: parsedBody.data.workflowStepId })
-    });
+    return previewToolInvocation(toPreviewInvocationInput(parsedBody.data));
+  });
+
+  app.post("/mcp/tools/invocations/preview-log", async (request, reply) => {
+    const parsedBody = toolInvocationPreviewBodySchema.safeParse(
+      request.body ?? {}
+    );
+
+    if (!parsedBody.success) {
+      return reply.status(400).send({
+        error: "Invalid tool invocation preview log request",
+        details: parsedBody.error.flatten()
+      });
+    }
+
+    try {
+      return await persistToolInvocationPreviewLog(
+        toPreviewInvocationInput(parsedBody.data)
+      );
+    } catch (error) {
+      if (
+        error instanceof ToolInvocationPreviewLogRequiresWorkflowContextError
+      ) {
+        return reply.status(400).send({
+          error: error.message
+        });
+      }
+
+      throw error;
+    }
   });
 
   app.post("/mcp/tools/execution-policy/preview", async (request, reply) => {
