@@ -4,6 +4,7 @@ import {
   getIntakeBatch,
   listIntakeBatches,
 } from "./api/intakeBatches";
+import { startWorkflowForIntakeBatch } from "./api/workflows";
 import { DashboardSection } from "./components/DashboardSection";
 import { EmptyState } from "./components/EmptyState";
 import type {
@@ -28,6 +29,14 @@ function App() {
     useState<IntakeBatchDetail | null>(null);
   const [isLoadingBatchDetail, setIsLoadingBatchDetail] = useState(false);
   const [batchDetailError, setBatchDetailError] = useState<string | null>(null);
+
+  const [isStartingWorkflow, setIsStartingWorkflow] = useState(false);
+  const [startWorkflowError, setStartWorkflowError] = useState<string | null>(
+    null,
+  );
+  const [startWorkflowSuccess, setStartWorkflowSuccess] = useState<
+    string | null
+  >(null);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -67,6 +76,8 @@ function App() {
     try {
       setIsLoadingBatchDetail(true);
       setBatchDetailError(null);
+      setStartWorkflowError(null);
+      setStartWorkflowSuccess(null);
 
       const detail = await getIntakeBatch(intakeBatchId);
 
@@ -124,6 +135,36 @@ function App() {
     }
   }
 
+  async function handleStartWorkflow() {
+    if (!selectedBatchDetail) {
+      return;
+    }
+
+    const intakeBatchId = selectedBatchDetail.intakeBatch.id;
+
+    try {
+      setIsStartingWorkflow(true);
+      setStartWorkflowError(null);
+      setStartWorkflowSuccess(null);
+
+      const response = await startWorkflowForIntakeBatch(intakeBatchId);
+
+      setStartWorkflowSuccess(
+        `Started workflow run: ${response.workflowRun.workflowName}`,
+      );
+
+      const refreshedDetail = await getIntakeBatch(intakeBatchId);
+
+      setSelectedBatchDetail(refreshedDetail);
+    } catch (error) {
+      setStartWorkflowError(
+        error instanceof Error ? error.message : "Unable to start workflow.",
+      );
+    } finally {
+      setIsStartingWorkflow(false);
+    }
+  }
+
   return (
     <main className="app-shell">
       <section className="hero">
@@ -169,8 +210,10 @@ function App() {
               value={sourceType}
             >
               <option value="FREEFORM_NOTES">Freeform Notes</option>
-              <option value="CSV_UPLOAD">CSV Upload</option>
+              <option value="BAD_CSV">Bad CSV</option>
               <option value="EMAIL">Email</option>
+              <option value="PDF_TEXT">PDF Text</option>
+              <option value="MANUAL_ENTRY">Manual Entry</option>
             </select>
           </label>
 
@@ -225,13 +268,35 @@ function App() {
 
         {!isLoadingBatchDetail && !batchDetailError && selectedBatchDetail ? (
           <div className="batch-detail">
-            <div className="batch-detail__header">
-              <h3>{selectedBatchDetail.intakeBatch.name}</h3>
-              <p>
-                {selectedBatchDetail.intakeBatch.description ??
-                  "No description provided."}
-              </p>
+            <div className="batch-detail__header batch-detail__header--with-action">
+              <div>
+                <h3>{selectedBatchDetail.intakeBatch.name}</h3>
+                <p>
+                  {selectedBatchDetail.intakeBatch.description ??
+                    "No description provided."}
+                </p>
+              </div>
+
+              <button
+                disabled={isStartingWorkflow}
+                onClick={() => void handleStartWorkflow()}
+                type="button"
+              >
+                {isStartingWorkflow ? "Starting…" : "Start Workflow"}
+              </button>
             </div>
+
+            {startWorkflowError ? (
+              <p className="form-message form-message--error">
+                {startWorkflowError}
+              </p>
+            ) : null}
+
+            {startWorkflowSuccess ? (
+              <p className="form-message form-message--success">
+                {startWorkflowSuccess}
+              </p>
+            ) : null}
 
             <div className="raw-item-list">
               {selectedBatchDetail.items.map((item, index) => (
@@ -245,9 +310,24 @@ function App() {
             {selectedBatchDetail.workflowRuns.length === 0 ? (
               <EmptyState
                 title="No workflow runs yet"
-                message="Workflow execution will be connected in a later slice."
+                message="Click Start Workflow to create a queued workflow run with planned steps."
               />
-            ) : null}
+            ) : (
+              <div className="workflow-run-list">
+                <h4>Workflow Runs</h4>
+
+                {selectedBatchDetail.workflowRuns.map((run) => (
+                  <article className="workflow-run-card" key={run.id}>
+                    <div>
+                      <h5>{run.workflowName}</h5>
+                      <p>{run.id}</p>
+                    </div>
+
+                    <strong>{run.status}</strong>
+                  </article>
+                ))}
+              </div>
+            )}
           </div>
         ) : null}
       </DashboardSection>
