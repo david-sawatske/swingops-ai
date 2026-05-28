@@ -5,6 +5,7 @@ import {
   listIntakeBatches,
 } from "./api/intakeBatches";
 import {
+  executeWorkflowRun,
   getWorkflowRun,
   startWorkflowForIntakeBatch,
 } from "./api/workflows";
@@ -134,6 +135,13 @@ function App() {
   const [workflowRunDetailError, setWorkflowRunDetailError] = useState<
     string | null
   >(null);
+  const [isExecutingWorkflowRun, setIsExecutingWorkflowRun] = useState(false);
+  const [executeWorkflowRunError, setExecuteWorkflowRunError] = useState<
+    string | null
+  >(null);
+  const [executeWorkflowRunSuccess, setExecuteWorkflowRunSuccess] = useState<
+    string | null
+  >(null);
 
   const [isStartingWorkflow, setIsStartingWorkflow] = useState(false);
   const [startWorkflowError, setStartWorkflowError] = useState<string | null>(
@@ -222,6 +230,39 @@ function App() {
     }
   }
 
+  async function handleExecuteWorkflowRun(workflowRunId: string) {
+    try {
+      setIsExecutingWorkflowRun(true);
+      setExecuteWorkflowRunError(null);
+      setExecuteWorkflowRunSuccess(null);
+      setWorkflowRunDetailError(null);
+
+      const result = await executeWorkflowRun(workflowRunId);
+      const detail = await getWorkflowRun(workflowRunId);
+
+      setSelectedWorkflowRunDetail(detail);
+      setExecuteWorkflowRunSuccess(
+        `Executed workflow simulation: ${result.workflowRun.workflowName}`,
+      );
+
+      if (selectedBatchDetail) {
+        const refreshedBatchDetail = await getIntakeBatch(
+          selectedBatchDetail.intakeBatch.id,
+        );
+
+        setSelectedBatchDetail(refreshedBatchDetail);
+      }
+    } catch (error) {
+      setExecuteWorkflowRunError(
+        error instanceof Error
+          ? error.message
+          : "Unable to execute workflow simulation.",
+      );
+    } finally {
+      setIsExecutingWorkflowRun(false);
+    }
+  }
+
   async function handleCreateBatch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -278,6 +319,8 @@ function App() {
       setLatestModelCallLog(null);
       setSelectedWorkflowRunDetail(null);
       setWorkflowRunDetailError(null);
+      setExecuteWorkflowRunError(null);
+      setExecuteWorkflowRunSuccess(null);
 
       const response = await startWorkflowForIntakeBatch(intakeBatchId);
 
@@ -466,6 +509,14 @@ function App() {
                       <strong>{run.status}</strong>
 
                       <button
+                        disabled={isExecutingWorkflowRun}
+                        onClick={() => void handleExecuteWorkflowRun(run.id)}
+                        type="button"
+                      >
+                        Run Simulation
+                      </button>
+
+                      <button
                         disabled={isLoadingWorkflowRunDetail}
                         onClick={() => void handleSelectWorkflowRun(run.id)}
                         type="button"
@@ -477,6 +528,20 @@ function App() {
                 ))}
               </div>
             )}
+
+            {isExecutingWorkflowRun ? <p>Running workflow simulation…</p> : null}
+
+            {executeWorkflowRunSuccess ? (
+              <p className="form-message form-message--success">
+                {executeWorkflowRunSuccess}
+              </p>
+            ) : null}
+
+            {executeWorkflowRunError ? (
+              <p className="form-message form-message--error">
+                {executeWorkflowRunError}
+              </p>
+            ) : null}
 
             {isLoadingWorkflowRunDetail ? <p>Loading workflow run logs…</p> : null}
 
@@ -494,6 +559,41 @@ function App() {
                   </span>
                   <h4>{selectedWorkflowRunDetail.workflowRun.workflowName}</h4>
                   <p>{selectedWorkflowRunDetail.workflowRun.id}</p>
+                </div>
+
+                <div className="workflow-execution-summary">
+                  <h5>Workflow Steps</h5>
+
+                  {selectedWorkflowRunDetail.steps.length === 0 ? (
+                    <p>No workflow steps recorded yet.</p>
+                  ) : (
+                    <div className="workflow-step-list">
+                      {selectedWorkflowRunDetail.steps.map((step) => (
+                        <article className="workflow-step-card" key={step.id}>
+                          <div>
+                            <strong>{step.orderIndex}. {step.stepName}</strong>
+                            <p>{step.stepType}</p>
+                          </div>
+                          <span>{step.status}</span>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+
+                  <h5>Tool Calls</h5>
+
+                  {selectedWorkflowRunDetail.toolCallLogs.length === 0 ? (
+                    <p>No tool calls recorded yet.</p>
+                  ) : (
+                    <div className="workflow-tool-log-list">
+                      {selectedWorkflowRunDetail.toolCallLogs.map((log) => (
+                        <article className="workflow-tool-log-card" key={log.id}>
+                          <strong>{log.toolName}</strong>
+                          <span>{log.status}</span>
+                        </article>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {selectedWorkflowRunDetail.modelCallLogs.length === 0 ? (

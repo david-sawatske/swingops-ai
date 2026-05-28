@@ -107,7 +107,7 @@ export type ReviewQueueItem = {
   workflowRunId: string | null;
   reason: string;
   status: string;
-  originalText: string;
+  originalText: string | null;
   proposedGolfClubJson: unknown;
   reviewerNotes: string | null;
   resolvedAt: string | null;
@@ -127,4 +127,10 @@ export type StartWorkflowResponse = {
   workflowRun: WorkflowRunSummary;
   steps: WorkflowStep[];
   modelCallLog: ModelCallLog;
+};
+
+export type ExecuteWorkflowRunResponse = {
+  workflowRun: WorkflowRunSummary;
+  steps: WorkflowStep[];
+  toolCallLogs: ToolCallLog[];
 };

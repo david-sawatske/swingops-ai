@@ -81,4 +81,100 @@ describe("workflow run routes", () => {
       await app.close();
     });
   });
+
+  describe("POST /workflow-runs/:id/execute", () => {
+    it("executes a queued workflow run simulation and returns completed steps", async () => {
+      const app = buildApp();
+
+      const workflowRun = await prisma.workflowRun.create({
+        data: {
+          workflowName: "test-workflow-run-execute-route",
+          status: "QUEUED",
+          steps: {
+            create: [
+              {
+                stepName: "Parse intake input",
+                stepType: "PARSE_INPUT",
+                orderIndex: 1,
+                status: "PENDING",
+                inputJson: {
+                  intakeBatchId: "route-test-batch",
+                  intakeBatchName: "Route Execution Test Batch",
+                  sourceType: "FREEFORM_NOTES",
+                  itemCount: 1
+                }
+              },
+              {
+                stepName: "Normalize trade-in data",
+                stepType: "NORMALIZE_DATA",
+                orderIndex: 2,
+                status: "PENDING",
+                inputJson: {
+                  intakeBatchId: "route-test-batch",
+                  intakeBatchName: "Route Execution Test Batch",
+                  sourceType: "FREEFORM_NOTES",
+                  itemCount: 1
+                }
+              }
+            ]
+          }
+        }
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: `/workflow-runs/${workflowRun.id}/execute`
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.workflowRun.id).toBe(workflowRun.id);
+      expect(body.workflowRun.status).toBe("COMPLETED");
+      expect(body.workflowRun.startedAt).not.toBeNull();
+      expect(body.workflowRun.completedAt).not.toBeNull();
+
+      expect(body.steps).toHaveLength(2);
+      expect(body.steps.map((step: { status: string }) => step.status)).toEqual([
+        "COMPLETED",
+        "COMPLETED"
+      ]);
+      expect(body.steps[0].outputJson).toMatchObject({
+        simulated: true,
+        stepType: "PARSE_INPUT",
+        parsedItemCount: 1
+      });
+
+      expect(body.toolCallLogs).toHaveLength(2);
+      expect(
+        body.toolCallLogs.map((log: { toolName: string }) => log.toolName)
+      ).toEqual(["simulate.parseInput", "simulate.normalizeData"]);
+
+      await prisma.workflowRun.delete({
+        where: {
+          id: workflowRun.id
+        }
+      });
+
+      await app.close();
+    });
+
+    it("returns 404 when executing a missing workflow run", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/workflow-runs/not-real/execute"
+      });
+
+      expect(response.statusCode).toBe(404);
+
+      const body = response.json();
+
+      expect(body.error).toBe("Workflow run not found");
+
+      await app.close();
+    });
+  });
 });
