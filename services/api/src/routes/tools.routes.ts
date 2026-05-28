@@ -6,6 +6,7 @@ import {
   listAgentTools,
   type AgentToolRegistryFilter
 } from "../tools/tool-registry.js";
+import { previewToolExecutionPolicy } from "../tools/tool-execution-policy.js";
 
 const agentToolCategorySchema = z.enum([
   "INTAKE",
@@ -38,6 +39,20 @@ const agentToolParamsSchema = z.object({
   name: z.string().min(1)
 });
 
+const toolExecutionModeSchema = z.enum([
+  "PREVIEW_ONLY",
+  "AGENT_AUTONOMOUS",
+  "HUMAN_APPROVED"
+]);
+
+const toolExecutionPolicyPreviewBodySchema = z
+  .object({
+    toolName: z.string().min(1),
+    executionMode: toolExecutionModeSchema.default("PREVIEW_ONLY"),
+    humanApprovalGranted: z.boolean().default(false)
+  })
+  .strict();
+
 function toRegistryFilter(
   query: z.infer<typeof listAgentToolsQuerySchema>
 ): AgentToolRegistryFilter {
@@ -55,6 +70,25 @@ function toRegistryFilter(
 }
 
 export async function toolRoutes(app: FastifyInstance): Promise<void> {
+  app.post("/mcp/tools/execution-policy/preview", async (request, reply) => {
+    const parsedBody = toolExecutionPolicyPreviewBodySchema.safeParse(
+      request.body ?? {}
+    );
+
+    if (!parsedBody.success) {
+      return reply.status(400).send({
+        error: "Invalid tool execution policy preview request",
+        details: parsedBody.error.flatten()
+      });
+    }
+
+    return previewToolExecutionPolicy({
+      toolName: parsedBody.data.toolName,
+      executionMode: parsedBody.data.executionMode,
+      humanApprovalGranted: parsedBody.data.humanApprovalGranted
+    });
+  });
+
   app.get("/mcp/tools", async (request, reply) => {
     const parsedQuery = listAgentToolsQuerySchema.safeParse(request.query ?? {});
 

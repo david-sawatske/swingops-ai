@@ -3,6 +3,129 @@ import { describe, expect, it } from "vitest";
 import { buildApp } from "../app.js";
 
 describe("tool routes", () => {
+  describe("POST /mcp/tools/execution-policy/preview", () => {
+    it("previews blocked execution for preview-only mode without executing tools", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/mcp/tools/execution-policy/preview",
+        payload: {
+          toolName: "swingops.workflowRuns.get"
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body).toMatchObject({
+        requestedToolName: "swingops.workflowRuns.get",
+        evaluation: {
+          toolName: "swingops.workflowRuns.get",
+          decision: "BLOCK",
+          reasonCodes: ["PREVIEW_ONLY_MODE"],
+          executionMode: "PREVIEW_ONLY",
+          executionEnabled: false
+        },
+        policyMetadata: {
+          status: "PREVIEW_ONLY",
+          executionAttempted: false,
+          message:
+            "Policy preview only. No tool execution was attempted by this endpoint."
+        }
+      });
+
+      await app.close();
+    });
+
+    it("previews allowed execution for enabled low-risk read-only tools", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/mcp/tools/execution-policy/preview",
+        payload: {
+          toolName: "swingops.workflowRuns.get",
+          executionMode: "AGENT_AUTONOMOUS"
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.evaluation).toMatchObject({
+        decision: "ALLOW",
+        reasonCodes: ["TOOL_ALLOWED"],
+        executionEnabled: true,
+        tool: {
+          name: "swingops.workflowRuns.get",
+          riskLevel: "LOW",
+          mutatesData: false,
+          requiresHumanApproval: false
+        }
+      });
+      expect(body.policyMetadata.executionAttempted).toBe(false);
+
+      await app.close();
+    });
+
+    it("previews blocked execution for disabled approval-required mutation tools", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/mcp/tools/execution-policy/preview",
+        payload: {
+          toolName: "swingops.reviewQueueItems.resolve",
+          executionMode: "HUMAN_APPROVED",
+          humanApprovalGranted: true
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.evaluation).toMatchObject({
+        decision: "BLOCK",
+        reasonCodes: ["TOOL_DISABLED"],
+        executionEnabled: false,
+        humanApprovalGranted: true,
+        tool: {
+          name: "swingops.reviewQueueItems.resolve",
+          riskLevel: "HIGH",
+          mutatesData: true,
+          requiresHumanApproval: true,
+          enabled: false
+        }
+      });
+
+      await app.close();
+    });
+
+    it("returns 400 for invalid policy preview payloads", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/mcp/tools/execution-policy/preview",
+        payload: {
+          toolName: "",
+          executionMode: "NOT_A_MODE"
+        }
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().error).toBe(
+        "Invalid tool execution policy preview request"
+      );
+
+      await app.close();
+    });
+  });
+
   describe("GET /mcp/tools", () => {
     it("returns the MCP-style internal tool registry preview", async () => {
       const app = buildApp();
