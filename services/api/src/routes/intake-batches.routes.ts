@@ -272,6 +272,14 @@ export async function intakeBatchRoutes(app: FastifyInstance): Promise<void> {
     const intakeBatch = await prisma.intakeBatch.findUnique({
       where: {
         id: parsedParams.data.id
+      },
+      include: {
+        items: {
+          orderBy: {
+            sourceRowNumber: "asc"
+          },
+          take: 1
+        }
       }
     });
 
@@ -281,9 +289,12 @@ export async function intakeBatchRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
+    const firstIntakeItem = intakeBatch.items[0] ?? null;
+
     const workflowRun = await prisma.workflowRun.create({
       data: {
         intakeBatchId: intakeBatch.id,
+        ...(firstIntakeItem ? { intakeItemId: firstIntakeItem.id } : {}),
         workflowName: "trade-in-intake-v1",
         status: "QUEUED",
         steps: {
@@ -294,6 +305,12 @@ export async function intakeBatchRoutes(app: FastifyInstance): Promise<void> {
             status: "PENDING",
             inputJson: {
               intakeBatchId: intakeBatch.id,
+              ...(firstIntakeItem
+                ? {
+                    intakeItemId: firstIntakeItem.id,
+                    originalText: firstIntakeItem.rawText
+                  }
+                : {}),
               intakeBatchName: intakeBatch.name,
               sourceType: intakeBatch.sourceType,
               itemCount: intakeBatch.itemCount

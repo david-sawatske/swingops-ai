@@ -86,6 +86,9 @@ describe("intake batch routes", () => {
 
       const createdBody = createResponse.json();
       const batchId = createdBody.intakeBatch.id;
+      const intakeItemId = createdBody.items[0].id;
+      const rawText =
+        "TaylorMade Stealth 2 driver, 10.5, stiff shaft, RH";
 
       const workflowResponse = await app.inject({
         method: "POST",
@@ -97,7 +100,7 @@ describe("intake batch routes", () => {
       const workflowBody = workflowResponse.json();
 
       expect(workflowBody.workflowRun.intakeBatchId).toBe(batchId);
-      expect(workflowBody.workflowRun.intakeItemId).toBeNull();
+      expect(workflowBody.workflowRun.intakeItemId).toBe(intakeItemId);
       expect(workflowBody.workflowRun.workflowName).toBe("trade-in-intake-v1");
       expect(workflowBody.workflowRun.status).toBe("QUEUED");
 
@@ -113,6 +116,12 @@ describe("intake batch routes", () => {
       ]);
       expect(workflowBody.steps[0].status).toBe("PENDING");
       expect(workflowBody.steps[0].orderIndex).toBe(1);
+      expect(workflowBody.steps[0].inputJson).toMatchObject({
+        intakeBatchId: batchId,
+        intakeItemId,
+        itemCount: 1,
+        originalText: rawText
+      });
 
       expect(workflowBody.modelCallLog.workflowRunId).toBe(
         workflowBody.workflowRun.id

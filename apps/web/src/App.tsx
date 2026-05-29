@@ -399,6 +399,22 @@ function formatConnectorJson(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
 
+function getNeedsReviewWorkflowRunSummary(count: number): string {
+  if (count === 0) {
+    return "No workflow runs currently need review.";
+  }
+
+  if (count === 1) {
+    return "1 workflow run currently needs review.";
+  }
+
+  return `${count} workflow runs currently need review.`;
+}
+
+function getWorkflowRunSourcePreview(run: GlobalWorkflowRunSummary): string {
+  return run.intakeItem?.rawText ?? "No item-level source preview captured yet.";
+}
+
 function formatShortId(value: string | null | undefined): string {
   if (!value) {
     return "-";
@@ -1433,7 +1449,7 @@ function App() {
           </div>
 
           <div className="overview-callout">
-            <strong>{needsReviewWorkflowRunCount} workflow run{needsReviewWorkflowRunCount === 1 ? "" : "s"} currently need review.</strong>
+            <strong>{getNeedsReviewWorkflowRunSummary(needsReviewWorkflowRunCount)}</strong>
             <p>
               Use the Intake, Workflow Runs, Review Queue, Model Routing, and MCP
               Connectors tabs to walk through the system like a product demo
@@ -1618,7 +1634,7 @@ function App() {
                     onClick={() => void handleSelectWorkflowRun(run.id)}
                     type="button"
                   >
-                    {selectedWorkflowRunId === run.id ? "Viewing Logs" : "View Logs"}
+                    {selectedWorkflowRunId === run.id ? "Logs Shown Below" : "View Logs"}
                   </button>
                 </div>
 
@@ -1630,7 +1646,7 @@ function App() {
 
                   <div>
                     <dt>Item</dt>
-                    <dd>{run.intakeItem?.rawText ?? "—"}</dd>
+                    <dd>{getWorkflowRunSourcePreview(run)}</dd>
                   </div>
 
                   <div>
@@ -1666,6 +1682,94 @@ function App() {
                 ) : null}
               </article>
             ))}
+          </div>
+        ) : null}
+
+        {selectedWorkflowRunDetail ? (
+          <div className="workflow-run-detail-panel global-workflow-run-detail-panel">
+            <div>
+              <span className="model-route-card__eyebrow">
+                Selected Workflow Run Detail
+              </span>
+              <h4>{selectedWorkflowRunDetail.workflowRun.workflowName}</h4>
+              <p title={selectedWorkflowRunDetail.workflowRun.id}>
+                {formatShortId(selectedWorkflowRunDetail.workflowRun.id)}
+              </p>
+            </div>
+
+            <div className="workflow-execution-summary">
+              <h5>Workflow Steps</h5>
+              {selectedWorkflowRunDetail.steps.length === 0 ? (
+                <p>No workflow steps recorded yet.</p>
+              ) : (
+                <div className="workflow-step-list">
+                  {selectedWorkflowRunDetail.steps.map((step) => (
+                    <article className="workflow-step-card" key={step.id}>
+                      <div>
+                        <strong>
+                          {step.orderIndex}. {step.stepName}
+                        </strong>
+                        <p>{step.stepType}</p>
+                      </div>
+                      <span>{step.status}</span>
+                    </article>
+                  ))}
+                </div>
+              )}
+
+              <h5>Grounding / Connector Calls</h5>
+              {selectedWorkflowRunDetail.toolCallLogs.filter(isGroundingToolCallLog).length === 0 ? (
+                <p>No grounding connector calls recorded yet.</p>
+              ) : (
+                <div className="workflow-tool-log-list">
+                  {selectedWorkflowRunDetail.toolCallLogs
+                    .filter(isGroundingToolCallLog)
+                    .map((log) => (
+                      <ToolCallLogCard key={log.id} toolCallLog={log} />
+                    ))}
+                </div>
+              )}
+
+              <h5>Review Queue</h5>
+              {selectedWorkflowRunDetail.reviewQueueItems.length === 0 ? (
+                <p>No review queue items created yet.</p>
+              ) : (
+                <div className="workflow-tool-log-list">
+                  {selectedWorkflowRunDetail.reviewQueueItems.map((item) => (
+                    <article className="workflow-tool-log-card" key={item.id}>
+                      <div>
+                        <strong>{item.reason}</strong>
+                        <p><strong>Source:</strong> {getWorkflowReviewQueueDisplayText(item, selectedBatchDetail?.items)}</p>
+                        <p><strong>Grounding:</strong> {getGroundingSummaryFromReviewItem(item) ?? "—"}</p>
+                        <p><strong>Possible matches:</strong> {getGroundingMatchNamesFromReviewItem(item)}</p>
+                        {item.reviewerNotes ? (
+                          <p><strong>Reviewer notes:</strong> {item.reviewerNotes}</p>
+                        ) : null}
+                      </div>
+                      <span>{item.status}</span>
+                    </article>
+                  ))}
+                </div>
+              )}
+
+              <details className="workflow-audit-log-details">
+                <summary>
+                  MCP / Tool Invocation Audit Logs
+                  <span>{selectedWorkflowRunDetail.toolCallLogs.length} recorded</span>
+                </summary>
+                {selectedWorkflowRunDetail.toolCallLogs.length === 0 ? (
+                  <p>No MCP or workflow simulation tool logs recorded yet.</p>
+                ) : (
+                  <div className="workflow-tool-log-list">
+                    {selectedWorkflowRunDetail.toolCallLogs
+                      .filter((log) => !isGroundingToolCallLog(log))
+                      .map((log) => (
+                        <ToolCallLogCard key={log.id} toolCallLog={log} />
+                      ))}
+                  </div>
+                )}
+              </details>
+            </div>
           </div>
         ) : null}
       </DashboardSection>
