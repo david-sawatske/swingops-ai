@@ -1778,3 +1778,26 @@ h1 {
     grid-template-columns: 1fr;
   }
 }
+
+.model-routing-factor-list,
+.model-routing-reason-code-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.85rem;
+}
+
+.model-routing-factor-list span,
+.model-routing-reason-code-list span {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted-text);
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0.28rem 0.55rem;
+}
+
+.model-routing-candidate-card--selected {
+  border-color: rgba(37, 99, 235, 0.55);
+  box-shadow: 0 14px 40px rgba(37, 99, 235, 0.13);
+}

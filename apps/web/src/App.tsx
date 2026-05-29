@@ -2320,15 +2320,14 @@ function App() {
       {activeView === "MODEL_ROUTING" ? (
       <DashboardSection
         title="Model Routing Preview"
-        description="Preview provider selection across mock, OpenAI, Anthropic, Azure OpenAI, and local/open-source style providers based on task needs."
+        description="Preview health, latency, cost, quality, and fallback-aware provider selection across mock, OpenAI, Anthropic, Azure OpenAI, and local/open-source style providers."
       >
         <div className="section-intro-card">
           <span className="model-route-card__eyebrow">Resume Story</span>
           <h3>Provider routing separated from workflow logic</h3>
           <p>
             The workflow asks for a task outcome. The routing layer decides which
-            provider/model should handle it based on task type, JSON requirements,
-            provider availability, cost, latency, and quality goals.
+            provider/model should handle it based on health, estimated latency, estimated cost, quality tier, task type, JSON requirements, and fallback behavior.
           </p>
         </div>
 

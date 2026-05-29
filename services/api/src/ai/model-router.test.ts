@@ -4,25 +4,38 @@ import { routeModel } from "./model-router.js";
 import type { ModelProviderModelConfig } from "./model-provider.types.js";
 
 describe("model router", () => {
-  it("routes high-quality simulation previews to Anthropic when disabled providers are allowed", () => {
+  it("routes high-quality simulation previews to healthy OpenAI when Anthropic is degraded", () => {
     const decision = routeModel({
       preferredGoal: "HIGH_QUALITY",
       taskType: "INTAKE_PARSING",
       allowDisabledProvidersForSimulation: true
     });
 
-    expect(decision.provider).toBe("ANTHROPIC");
-    expect(decision.model).toBe("claude-3-5-sonnet");
-    expect(decision.qualityTier).toBe("HIGH");
+    expect(decision.provider).toBe("OPENAI");
+    expect(decision.model).toBe("gpt-4.1-mini");
+    expect(decision.selectedProvider).toBe("OPENAI");
+    expect(decision.healthStatus).toBe("HEALTHY");
+    expect(decision.estimatedLatencyMs).toBe(650);
+    expect(decision.estimatedCostUsd).toBeGreaterThan(0);
+    expect(decision.routingFactors).toEqual(
+      expect.arrayContaining([
+        "OPENAI health is HEALTHY.",
+        "Preferred routing goal is HIGH_QUALITY."
+      ])
+    );
     expect(decision.selectedModelMetadata).toMatchObject({
-      provider: "ANTHROPIC",
-      model: "claude-3-5-sonnet",
+      provider: "OPENAI",
+      model: "gpt-4.1-mini",
       providerEnabled: false,
       modelEnabled: true,
-      enabledForExecution: false
+      enabledForExecution: false,
+      selected: true,
+      healthStatus: "HEALTHY"
     });
+    expect(decision.fallbackProvider).toBe("AZURE_OPENAI");
+    expect(decision.fallbackModel).toBe("azure-gpt-4.1-mini");
     expect(decision.fallbackReason).toBeNull();
-    expect(decision.candidatesConsidered.map((candidate) => candidate.provider)).toEqual([
+    expect(decision.providerCandidates.map((candidate) => candidate.provider)).toEqual([
       "MOCK",
       "OPENAI",
       "ANTHROPIC",
@@ -39,6 +52,7 @@ describe("model router", () => {
 
     expect(decision.provider).toBe("MOCK");
     expect(decision.estimatedCostTier).toBe("FREE");
+    expect(decision.estimatedCostUsd).toBe(0);
     expect(decision.selectedModelMetadata.enabledForExecution).toBe(true);
     expect(decision.rejectedCandidates).toEqual(
       expect.arrayContaining([
@@ -47,6 +61,63 @@ describe("model router", () => {
           rejectedReasons: expect.arrayContaining([
             "Provider/model is disabled for execution. Enable simulation preview to consider it."
           ])
+        })
+      ])
+    );
+  });
+
+  it("skips unavailable providers", () => {
+    const decision = routeModel(
+      {
+        preferredGoal: "HIGH_QUALITY",
+        taskType: "INTAKE_PARSING",
+        allowDisabledProvidersForSimulation: true
+      },
+      {
+        providerHealthByName: {
+          OPENAI: {
+            provider: "OPENAI",
+            status: "UNAVAILABLE",
+            estimatedLatencyMs: 9999,
+            reason: "OpenAI is unavailable in this routing test."
+          },
+          ANTHROPIC: {
+            provider: "ANTHROPIC",
+            status: "HEALTHY",
+            estimatedLatencyMs: 900,
+            reason: "Anthropic is healthy in this routing test."
+          }
+        }
+      }
+    );
+
+    expect(decision.provider).toBe("ANTHROPIC");
+    expect(decision.rejectedCandidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          provider: "OPENAI",
+          rejectedReasons: expect.arrayContaining([
+            "Provider health is UNAVAILABLE."
+          ])
+        })
+      ])
+    );
+  });
+
+  it("prioritizes healthy providers over degraded providers", () => {
+    const decision = routeModel({
+      preferredGoal: "HIGH_QUALITY",
+      taskType: "VALIDATION",
+      allowDisabledProvidersForSimulation: true
+    });
+
+    expect(decision.provider).toBe("OPENAI");
+    expect(decision.providerCandidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          provider: "ANTHROPIC",
+          healthStatus: "DEGRADED",
+          reasonCodes: expect.arrayContaining(["PROVIDER_DEGRADED"])
         })
       ])
     );
@@ -64,7 +135,8 @@ describe("model router", () => {
     expect(decision.selectedModelMetadata).toMatchObject({
       provider: "OLLAMA",
       providerEnabled: false,
-      enabledForExecution: false
+      enabledForExecution: false,
+      healthStatus: "HEALTHY"
     });
     expect(decision.rejectedCandidates).toEqual(
       expect.arrayContaining([
@@ -117,9 +189,9 @@ describe("model router", () => {
 
     expect(executionDecision.provider).toBe("MOCK");
     expect(executionDecision.rejectedCandidates.map((candidate) => candidate.provider)).toContain(
-      "ANTHROPIC"
+      "OPENAI"
     );
-    expect(simulationDecision.provider).toBe("ANTHROPIC");
+    expect(simulationDecision.provider).toBe("OPENAI");
   });
 
   it("filters out non-JSON-capable models when JSON output is required", () => {

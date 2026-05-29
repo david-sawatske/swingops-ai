@@ -28,8 +28,8 @@ describe("workflow model logging", () => {
     });
 
     expect(modelCallLog.workflowRunId).toBe(workflowRun.id);
-    expect(modelCallLog.provider).toBe("ANTHROPIC");
-    expect(modelCallLog.model).toBe("claude-3-5-sonnet");
+    expect(modelCallLog.provider).toBe("OPENAI");
+    expect(modelCallLog.model).toBe("gpt-4.1-mini");
     expect(modelCallLog.status).toBe("SUCCEEDED");
     expect(modelCallLog.latencyMs).toBe(0);
     expect(modelCallLog.estimatedCostUsd).toBe(0);
@@ -47,14 +47,14 @@ describe("workflow model logging", () => {
     expect(modelCallLog.responseJson).toMatchObject({
       mock: true,
       routingDecision: {
-        provider: "ANTHROPIC",
-        model: "claude-3-5-sonnet",
-        estimatedCostTier: "HIGH",
+        provider: "OPENAI",
+        model: "gpt-4.1-mini",
+        estimatedCostTier: "LOW",
         expectedLatencyTier: "MEDIUM",
-        qualityTier: "HIGH",
+        qualityTier: "MEDIUM",
         selectedModelMetadata: {
-          provider: "ANTHROPIC",
-          model: "claude-3-5-sonnet",
+          provider: "OPENAI",
+          model: "gpt-4.1-mini",
           supportsJson: true,
           providerEnabled: false,
           modelEnabled: true,

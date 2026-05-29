@@ -23,6 +23,11 @@ export type ModelLatencyTier = "LOW" | "MEDIUM" | "HIGH";
 
 export type ModelQualityTier = "LOW" | "MEDIUM" | "HIGH";
 
+export type ModelProviderHealthStatus =
+  | "HEALTHY"
+  | "DEGRADED"
+  | "UNAVAILABLE";
+
 export type ModelRouteCandidateSummary = {
   provider: ModelProviderName;
   model: string;
@@ -34,6 +39,16 @@ export type ModelRouteCandidateSummary = {
   providerEnabled: boolean;
   modelEnabled: boolean;
   enabledForExecution: boolean;
+  healthStatus: ModelProviderHealthStatus;
+  healthReason: string;
+  estimatedLatencyMs: number;
+  inputCostPer1MTokensUsd: number;
+  outputCostPer1MTokensUsd: number;
+  estimatedInputTokens: number;
+  estimatedOutputTokens: number;
+  estimatedCostUsd: number;
+  selected: boolean;
+  reasonCodes: string[];
 };
 
 export type ModelRouteRejectedCandidate = ModelRouteCandidateSummary & {
@@ -43,13 +58,25 @@ export type ModelRouteRejectedCandidate = ModelRouteCandidateSummary & {
 export type ModelRouteDecision = {
   provider: ModelProviderName;
   model: string;
+  selectedProvider: ModelProviderName;
+  selectedModel: string;
   reason: string;
+  selectedReason: string;
   estimatedCostTier: ModelCostTier;
   expectedLatencyTier: ModelLatencyTier;
   qualityTier: ModelQualityTier;
+  healthStatus: ModelProviderHealthStatus;
+  estimatedLatencyMs: number;
+  estimatedInputTokens: number;
+  estimatedOutputTokens: number;
+  estimatedCostUsd: number;
+  routingFactors: string[];
   selectedModelMetadata: ModelRouteCandidateSummary;
   candidatesConsidered: ModelRouteCandidateSummary[];
+  providerCandidates: ModelRouteCandidateSummary[];
   rejectedCandidates: ModelRouteRejectedCandidate[];
+  fallbackProvider: ModelProviderName | null;
+  fallbackModel: string | null;
   fallbackReason: string | null;
 };
 

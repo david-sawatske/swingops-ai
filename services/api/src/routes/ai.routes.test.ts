@@ -30,22 +30,38 @@ describe("AI routes", () => {
       });
 
       expect(body.routingDecision).toMatchObject({
-        provider: "ANTHROPIC",
-        model: "claude-3-5-sonnet",
-        estimatedCostTier: "HIGH",
+        provider: "OPENAI",
+        model: "gpt-4.1-mini",
+        selectedProvider: "OPENAI",
+        selectedModel: "gpt-4.1-mini",
+        estimatedCostTier: "LOW",
         expectedLatencyTier: "MEDIUM",
-        qualityTier: "HIGH",
+        qualityTier: "MEDIUM",
+        healthStatus: "HEALTHY",
         selectedModelMetadata: {
-          provider: "ANTHROPIC",
-          model: "claude-3-5-sonnet",
+          provider: "OPENAI",
+          model: "gpt-4.1-mini",
           providerEnabled: false,
           modelEnabled: true,
-          enabledForExecution: false
+          enabledForExecution: false,
+          selected: true,
+          healthStatus: "HEALTHY"
         },
+        fallbackProvider: "AZURE_OPENAI",
+        fallbackModel: "azure-gpt-4.1-mini",
         fallbackReason: null
       });
 
       expect(body.routingDecision.candidatesConsidered).toHaveLength(5);
+      expect(body.routingDecision.providerCandidates).toHaveLength(5);
+      expect(body.routingDecision.routingFactors).toEqual(
+        expect.arrayContaining([
+          "OPENAI health is HEALTHY.",
+          "Preferred routing goal is HIGH_QUALITY."
+        ])
+      );
+      expect(body.routingDecision.estimatedLatencyMs).toBe(650);
+      expect(body.routingDecision.estimatedCostUsd).toBeGreaterThan(0);
       expect(body.routingDecision.candidatesConsidered.map(
         (candidate: { provider: string }) => candidate.provider
       )).toEqual([
