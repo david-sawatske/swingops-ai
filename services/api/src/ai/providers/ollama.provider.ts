@@ -1,4 +1,14 @@
 import type { ModelProviderAdapter } from "../model-provider.types.js";
+import {
+  assertConfiguredString,
+  assertRealModelCallsEnabled,
+  assertSuccessfulResponse,
+  buildProviderPrompt,
+  getFetch,
+  getModelProviderRuntimeConfig,
+  normalizeTextModelOutput,
+  readObject
+} from "../model-provider-runtime-config.js";
 
 export const ollamaProvider: ModelProviderAdapter = {
   provider: "OLLAMA",
@@ -23,7 +33,51 @@ export const ollamaProvider: ModelProviderAdapter = {
       enabled: true
     }
   ],
-  async execute() {
-    throw new Error("Ollama provider adapter is registered but not implemented.");
+  async execute(input) {
+    const config = input.runtimeConfig ?? getModelProviderRuntimeConfig();
+
+    assertRealModelCallsEnabled({
+      provider: "OLLAMA",
+      config,
+      missingConfigHint: "Required env: OLLAMA_BASE_URL."
+    });
+
+    const baseUrl = assertConfiguredString({
+      provider: "OLLAMA",
+      value: config.ollamaBaseUrl,
+      envName: "OLLAMA_BASE_URL"
+    }).replace(/\/$/, "");
+    const model = config.ollamaModel ?? input.model;
+
+    const response = await getFetch(input.fetchFn)(`${baseUrl}/api/generate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model,
+        prompt: buildProviderPrompt({
+          ...input,
+          model
+        }),
+        stream: false,
+        format: "json"
+      })
+    });
+
+    await assertSuccessfulResponse({
+      provider: "OLLAMA",
+      response
+    });
+
+    const body = readObject(await response.json(), "OLLAMA");
+    const text = typeof body.response === "string" ? body.response : "";
+
+    return normalizeTextModelOutput({
+      provider: "OLLAMA",
+      model,
+      taskType: input.taskType,
+      text
+    });
   }
 };

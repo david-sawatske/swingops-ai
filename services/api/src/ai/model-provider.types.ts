@@ -1,3 +1,8 @@
+import type {
+  ModelProviderFetch,
+  ModelProviderRuntimeConfig
+} from "./model-provider-runtime-config.js";
+
 export type ModelProviderName =
   | "MOCK"
   | "OPENAI"
@@ -44,6 +49,8 @@ export type ModelProviderExecuteInput = {
   model: string;
   taskType: ModelTaskType;
   inputJson: Record<string, unknown>;
+  runtimeConfig?: ModelProviderRuntimeConfig;
+  fetchFn?: ModelProviderFetch;
 };
 
 export type ModelProviderExecuteResult = {
