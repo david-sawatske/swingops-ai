@@ -202,3 +202,51 @@ export type ReviewQueueItemActionResponse = {
   reviewQueueItem: ReviewQueueItem;
   workflowRun: WorkflowRunSummary | null;
 };
+
+
+export type WorkflowToolCallingPlanStatus =
+  | "PLANNED"
+  | "EXECUTED"
+  | "PARTIALLY_EXECUTED"
+  | "FAILED"
+  | "BLOCKED";
+
+export type WorkflowToolCallingPlannedCall = {
+  planCallId: string;
+  orderIndex: number;
+  toolName: string;
+  reason: string;
+  inputJson: Record<string, unknown>;
+  expectedRiskLevel: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" | "UNKNOWN";
+  expectedMutatesData: boolean;
+  expectedRequiresHumanApproval: boolean;
+};
+
+export type WorkflowToolCallingPlanCallResult = WorkflowToolCallingPlannedCall & {
+  status: "SUCCEEDED" | "FAILED" | "BLOCKED";
+  policyDecision: "ALLOW" | "REQUIRE_HUMAN_APPROVAL" | "BLOCK";
+  policyReasonCodes: string[];
+  policyReason: string;
+  executionAttempted: boolean;
+  toolCallLogId: string;
+  connectorResultPreview: unknown | null;
+  failurePreview: string | null;
+};
+
+export type ExecuteWorkflowToolCallingPlanResponse = {
+  plan: {
+    planId: string;
+    workflowRunId: string;
+    status: WorkflowToolCallingPlanStatus;
+    plannedCalls: WorkflowToolCallingPlannedCall[];
+  };
+  results: WorkflowToolCallingPlanCallResult[];
+  toolCallLogs: ToolCallLog[];
+  executionMetadata: {
+    planner: string;
+    requestedBy: string;
+    readOnlyConnectorSurface: boolean;
+    mutationToolsEnabled: boolean;
+    policyCheckedBeforeEachExecution: boolean;
+  };
+};

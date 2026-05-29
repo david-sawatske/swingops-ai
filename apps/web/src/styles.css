@@ -1621,3 +1621,160 @@ h1 {
     grid-template-columns: 1fr;
   }
 }
+
+.workflow-tool-calling-plan {
+  border: 1px solid #d7dde8;
+  border-radius: 18px;
+  padding: 1rem;
+  background: #f8fafc;
+}
+
+.workflow-tool-calling-plan__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.workflow-tool-calling-plan__header h5 {
+  margin: 0 0 0.25rem;
+}
+
+.workflow-tool-calling-plan__header p,
+.workflow-tool-calling-plan__empty {
+  margin: 0;
+  color: #5f6b7a;
+}
+
+.workflow-tool-calling-plan__header button {
+  border: 0;
+  border-radius: 999px;
+  background: #172033;
+  color: #ffffff;
+  font-weight: 700;
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.workflow-tool-calling-plan__header button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.workflow-tool-calling-plan__result {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.workflow-tool-calling-plan__metadata,
+.workflow-tool-calling-plan-card__metadata {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.workflow-tool-calling-plan__metadata div,
+.workflow-tool-calling-plan-card__metadata div {
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 0.75rem;
+}
+
+.workflow-tool-calling-plan__metadata dt,
+.workflow-tool-calling-plan-card__metadata dt {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.workflow-tool-calling-plan__metadata dd,
+.workflow-tool-calling-plan-card__metadata dd {
+  margin: 0.25rem 0 0;
+  color: #172033;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.workflow-tool-calling-plan__steps {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.workflow-tool-calling-plan-card {
+  border-radius: 16px;
+  border: 1px solid #d7dde8;
+  background: #ffffff;
+  padding: 1rem;
+}
+
+.workflow-tool-calling-plan-card--success {
+  border-color: #b7dfc4;
+}
+
+.workflow-tool-calling-plan-card--blocked {
+  border-color: #f4c7c7;
+}
+
+.workflow-tool-calling-plan-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.workflow-tool-calling-plan-card__header p,
+.workflow-tool-calling-plan-card__reason {
+  color: #5f6b7a;
+  margin: 0.35rem 0 0;
+}
+
+.workflow-tool-calling-plan-card__header span {
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #172033;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.3rem 0.6rem;
+  height: fit-content;
+}
+
+.workflow-tool-calling-plan-card__metadata {
+  margin-top: 0.85rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.workflow-tool-calling-plan-card__preview {
+  margin-top: 0.85rem;
+}
+
+.workflow-tool-calling-plan-card__preview summary {
+  cursor: pointer;
+  color: #334155;
+  font-weight: 800;
+}
+
+.workflow-tool-calling-plan-card__preview pre {
+  background: #0f172a;
+  border-radius: 14px;
+  color: #e2e8f0;
+  font-size: 0.78rem;
+  overflow-x: auto;
+  padding: 1rem;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 820px) {
+  .workflow-tool-calling-plan__header,
+  .workflow-tool-calling-plan-card__header {
+    flex-direction: column;
+  }
+
+  .workflow-tool-calling-plan__metadata,
+  .workflow-tool-calling-plan-card__metadata {
+    grid-template-columns: 1fr;
+  }
+}

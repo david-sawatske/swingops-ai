@@ -2,6 +2,7 @@ import { apiGet, apiPost } from "./client";
 import type {
   ExecuteWorkflowRunRequest,
   ExecuteWorkflowRunResponse,
+  ExecuteWorkflowToolCallingPlanResponse,
   ListReviewQueueItemsResponse,
   ListWorkflowRunsResponse,
   ReviewQueueItemActionRequest,
@@ -26,6 +27,15 @@ export async function executeWorkflowRun(
   return apiPost<ExecuteWorkflowRunResponse, ExecuteWorkflowRunRequest>(
     `/workflow-runs/${workflowRunId}/execute`,
     request,
+  );
+}
+
+export async function executeWorkflowToolCallingPlan(
+  workflowRunId: string,
+): Promise<ExecuteWorkflowToolCallingPlanResponse> {
+  return apiPost<ExecuteWorkflowToolCallingPlanResponse, Record<string, never>>(
+    `/workflow-runs/${workflowRunId}/tool-calling-plan/execute`,
+    {},
   );
 }
 

@@ -698,4 +698,159 @@ describe("workflow run routes", () => {
       await app.close();
     });
   });
+  describe("POST /workflow-runs/:id/tool-calling-plan/execute", () => {
+    it("returns 404 when the workflow run does not exist", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/workflow-runs/not-real/tool-calling-plan/execute"
+      });
+
+      expect(response.statusCode).toBe(404);
+      expect(response.json()).toMatchObject({
+        error: "Workflow run not found"
+      });
+
+      await app.close();
+    });
+
+    it("creates a structured tool-calling plan, executes safe tools, and persists audit logs", async () => {
+      const app = buildApp();
+
+      const workflowRun = await prisma.workflowRun.create({
+        data: {
+          workflowName: "test-workflow-tool-calling-plan",
+          status: "NEEDS_REVIEW",
+          reviewQueueItems: {
+            create: [
+              {
+                reason: "LOW_CONFIDENCE",
+                status: "OPEN",
+                originalText: "Titleist TSR maybe TS2 fairway wood",
+                proposedGolfClubJson: {
+                  brand: "Titleist",
+                  confidenceScore: 0.58
+                }
+              }
+            ]
+          }
+        }
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: `/workflow-runs/${workflowRun.id}/tool-calling-plan/execute`
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.plan).toMatchObject({
+        workflowRunId: workflowRun.id,
+        status: "PARTIALLY_EXECUTED"
+      });
+      expect(body.plan.planId).toContain(workflowRun.id);
+      expect(body.plan.plannedCalls).toHaveLength(4);
+      expect(body.plan.plannedCalls.map((call: { toolName: string }) => call.toolName)).toEqual([
+        "swingops.workflowRuns.get",
+        "swingops.reviewQueueItems.list",
+        "swingops.clubReference.search",
+        "swingops.reviewQueueItems.resolve"
+      ]);
+
+      expect(body.results).toHaveLength(4);
+
+      const workflowGetResult = body.results.find(
+        (result: { toolName: string }) => result.toolName === "swingops.workflowRuns.get"
+      );
+      expect(workflowGetResult).toMatchObject({
+        status: "SUCCEEDED",
+        policyDecision: "ALLOW",
+        policyReasonCodes: ["TOOL_ALLOWED"],
+        executionAttempted: true,
+        toolCallLogId: expect.any(String)
+      });
+      expect(workflowGetResult.connectorResultPreview.workflowRun.id).toBe(workflowRun.id);
+
+      const clubReferenceResult = body.results.find(
+        (result: { toolName: string }) => result.toolName === "swingops.clubReference.search"
+      );
+      expect(clubReferenceResult).toMatchObject({
+        status: "SUCCEEDED",
+        policyDecision: "ALLOW",
+        executionAttempted: true,
+        toolCallLogId: expect.any(String)
+      });
+      expect(clubReferenceResult.connectorResultPreview.clubReferenceSearch.query).toBe(
+        "Titleist TSR maybe TS2 fairway wood"
+      );
+
+      const blockedMutationResult = body.results.find(
+        (result: { toolName: string }) => result.toolName === "swingops.reviewQueueItems.resolve"
+      );
+      expect(blockedMutationResult).toMatchObject({
+        status: "BLOCKED",
+        policyDecision: "BLOCK",
+        policyReasonCodes: ["TOOL_DISABLED"],
+        executionAttempted: false,
+        toolCallLogId: expect.any(String),
+        failurePreview: "Tool is disabled and cannot be executed."
+      });
+
+      expect(body.toolCallLogs).toHaveLength(4);
+      expect(
+        body.toolCallLogs.map((log: { id: string }) => log.id)
+      ).toEqual(body.results.map((result: { toolCallLogId: string }) => result.toolCallLogId));
+      expect(body.executionMetadata).toMatchObject({
+        planner: "deterministic.swingops.workflow-tool-calling-plan.v1",
+        readOnlyConnectorSurface: true,
+        mutationToolsEnabled: false,
+        policyCheckedBeforeEachExecution: true
+      });
+
+      const persistedLogs = await prisma.toolCallLog.findMany({
+        where: {
+          workflowRunId: workflowRun.id,
+          toolName: {
+            in: [
+              "swingops.workflowRuns.get",
+              "swingops.reviewQueueItems.list",
+              "swingops.clubReference.search",
+              "swingops.reviewQueueItems.resolve"
+            ]
+          }
+        },
+        orderBy: {
+          createdAt: "asc"
+        }
+      });
+
+      expect(persistedLogs).toHaveLength(4);
+      expect(persistedLogs.map((log) => log.status)).toEqual([
+        "SUCCEEDED",
+        "SUCCEEDED",
+        "SUCCEEDED",
+        "FAILED"
+      ]);
+      expect(persistedLogs[3]).toBeDefined();
+      expect(persistedLogs[3]!.outputJson).toMatchObject({
+        connectorInvocation: true,
+        executionAttempted: false,
+        policyDecision: "BLOCK",
+        policyReasonCodes: ["TOOL_DISABLED"],
+        failureReason: "Tool is disabled and cannot be executed."
+      });
+
+      await prisma.workflowRun.delete({
+        where: {
+          id: workflowRun.id
+        }
+      });
+
+      await app.close();
+    });
+  });
+
 });

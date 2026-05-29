@@ -3,6 +3,10 @@ import { z } from "zod";
 
 import { prisma } from "../lib/prisma.js";
 import { executeWorkflowRunSimulation } from "../workflows/workflow-execution.js";
+import {
+  executeWorkflowToolCallingPlan,
+  WorkflowToolCallingPlanWorkflowRunNotFoundError
+} from "../workflows/workflow-tool-calling-plan.js";
 
 const workflowRunParamsSchema = z.object({
   id: z.string().min(1)
@@ -395,6 +399,38 @@ export async function workflowRunRoutes(app: FastifyInstance): Promise<void> {
     };
   });
 
+
+  app.post("/workflow-runs/:id/tool-calling-plan/execute", async (request, reply) => {
+    const parsedParams = workflowRunParamsSchema.safeParse(request.params);
+
+    if (!parsedParams.success) {
+      return reply.status(400).send({
+        error: "Invalid workflow run id",
+        details: parsedParams.error.flatten()
+      });
+    }
+
+    try {
+      const result = await executeWorkflowToolCallingPlan({
+        workflowRunId: parsedParams.data.id
+      });
+
+      return {
+        plan: result.plan,
+        results: result.results,
+        toolCallLogs: result.toolCallLogs.map(serializeToolCallLog),
+        executionMetadata: result.executionMetadata
+      };
+    } catch (error) {
+      if (error instanceof WorkflowToolCallingPlanWorkflowRunNotFoundError) {
+        return reply.status(404).send({
+          error: "Workflow run not found"
+        });
+      }
+
+      throw error;
+    }
+  });
   app.post("/workflow-runs/:id/execute", async (request, reply) => {
     const parsedParams = workflowRunParamsSchema.safeParse(request.params);
     const parsedBody = executeWorkflowRunBodySchema.safeParse(request.body ?? {});

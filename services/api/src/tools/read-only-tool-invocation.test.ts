@@ -6,21 +6,40 @@ import { executeReadOnlyToolInvocation } from "./read-only-tool-invocation.js";
 const testWorkflowName = "test-read-only-tool-invocation";
 
 afterEach(async () => {
-  await prisma.workflowRun.deleteMany({
+  const workflowRuns = await prisma.workflowRun.findMany({
     where: {
       workflowName: testWorkflowName
+    },
+    select: {
+      id: true
     }
   });
+  const workflowRunIds = workflowRuns.map((workflowRun) => workflowRun.id);
 
   await prisma.toolCallLog.deleteMany({
     where: {
-      toolName: {
-        in: [
-          "swingops.workflowRuns.get",
-          "swingops.workflowRuns.list",
-          "swingops.reviewQueueItems.resolve",
-          "swingops.notRegistered"
-        ]
+      OR: [
+        {
+          workflowRunId: {
+            in: workflowRunIds
+          }
+        },
+        {
+          toolName: {
+            in: [
+              "swingops.reviewQueueItems.resolve",
+              "swingops.notRegistered"
+            ]
+          }
+        }
+      ]
+    }
+  });
+
+  await prisma.workflowRun.deleteMany({
+    where: {
+      id: {
+        in: workflowRunIds
       }
     }
   });
