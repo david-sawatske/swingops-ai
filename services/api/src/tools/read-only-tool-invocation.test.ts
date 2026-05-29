@@ -130,6 +130,53 @@ describe("read-only tool invocation", () => {
     });
   });
 
+  it("executes club reference search and persists a succeeded ToolCallLog", async () => {
+    const result = await executeReadOnlyToolInvocation({
+      toolName: "swingops.clubReference.search",
+      inputJson: {
+        query: "Titleist TSR maybe TS2 fairway wood"
+      },
+      requestedBy: "agent.readonly-test"
+    });
+
+    expect(result.invocation).toMatchObject({
+      toolName: "swingops.clubReference.search",
+      status: "SUCCEEDED",
+      requestedBy: "agent.readonly-test",
+      executionAttempted: true
+    });
+    expect(result.policyEvaluation).toMatchObject({
+      decision: "ALLOW",
+      reasonCodes: ["TOOL_ALLOWED"],
+      tool: {
+        name: "swingops.clubReference.search",
+        enabled: true,
+        riskLevel: "LOW",
+        mutatesData: false,
+        requiresHumanApproval: false
+      }
+    });
+    expect(result.connectorResult?.data).toMatchObject({
+      clubReferenceSearch: {
+        query: "Titleist TSR maybe TS2 fairway wood",
+        matches: expect.arrayContaining([
+          expect.objectContaining({
+            brand: "Titleist",
+            model: "TSR3"
+          }),
+          expect.objectContaining({
+            brand: "Titleist",
+            model: "TS2"
+          })
+        ])
+      }
+    });
+    expect(result.toolCallLog).toMatchObject({
+      toolName: "swingops.clubReference.search",
+      status: "SUCCEEDED"
+    });
+  });
+
   it("executes list tools with structured connector results", async () => {
     await prisma.workflowRun.create({
       data: {

@@ -148,7 +148,7 @@ describe("workflow execution simulation", () => {
               sourceType: "FREEFORM_NOTES",
               itemCount: 1,
               originalText:
-                "TM driver maybe 10.5, shaft unknown, condition unclear"
+                "Titleist TSR3 fairway wood, 15 degree, stiff shaft, right handed. Missing headcover. Customer wrote TSR maybe TS2 so model confidence may be low."
             }
           }))
         }
@@ -193,13 +193,31 @@ describe("workflow execution simulation", () => {
     expect(result.reviewQueueItems[0]!.reason).toBe("LOW_CONFIDENCE");
     expect(result.reviewQueueItems[0]!.status).toBe("OPEN");
     expect(result.reviewQueueItems[0]!.originalText).toBe(
-      "TM driver maybe 10.5, shaft unknown, condition unclear"
+      "Titleist TSR3 fairway wood, 15 degree, stiff shaft, right handed. Missing headcover. Customer wrote TSR maybe TS2 so model confidence may be low."
     );
     expect(result.reviewQueueItems[0]!.proposedGolfClubJson).toMatchObject({
-      brand: "TaylorMade",
-      model: "Unknown Driver",
+      brand: "Titleist",
+      model: "Ambiguous TSR/TS-series fairway wood",
       confidenceScore: 0.58,
-      missingFields: ["shaftFlex", "condition"]
+      missingFields: ["condition", "exactModel"],
+      grounding: {
+        toolName: "swingops.clubReference.search",
+        summary: expect.stringContaining("Titleist TSR3"),
+        matches: expect.arrayContaining([
+          expect.objectContaining({
+            brand: "Titleist",
+            model: "TSR3"
+          }),
+          expect.objectContaining({
+            brand: "Titleist",
+            model: "TS2"
+          })
+        ])
+      }
     });
+
+    expect(result.toolCallLogs.map((log) => log.toolName)).toContain(
+      "swingops.clubReference.search"
+    );
   });
 });

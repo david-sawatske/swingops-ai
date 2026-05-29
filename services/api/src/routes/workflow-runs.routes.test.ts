@@ -661,10 +661,15 @@ describe("workflow run routes", () => {
         originalText: "TM driver maybe 10.5, shaft unknown, condition unclear"
       });
       expect(body.reviewQueueItems[0].proposedGolfClubJson).toMatchObject({
-        brand: "TaylorMade",
-        model: "Unknown Driver",
+        brand: "Titleist",
+        model: "Ambiguous TSR/TS-series fairway wood",
         confidenceScore: 0.58,
-        missingFields: ["shaftFlex", "condition"]
+        missingFields: ["condition", "exactModel"],
+        grounding: {
+          toolName: "swingops.clubReference.search",
+          summary: expect.any(String),
+          matches: expect.any(Array)
+        }
       });
 
       await prisma.workflowRun.delete({

@@ -2,6 +2,7 @@ import type { Prisma, ToolCallLog } from "@prisma/client";
 import { z } from "zod";
 
 import { prisma } from "../lib/prisma.js";
+import { searchClubReference } from "./club-reference.js";
 import {
   evaluateToolExecutionPolicy,
   type ToolExecutionMode,
@@ -77,6 +78,12 @@ const workflowRunsListInputSchema = z
 const reviewQueueItemsListInputSchema = z
   .object({
     status: z.enum(["OPEN", "IN_REVIEW", "RESOLVED", "DISMISSED"]).optional()
+  })
+  .strict();
+
+const clubReferenceSearchInputSchema = z
+  .object({
+    query: z.string().min(1)
   })
   .strict();
 
@@ -603,6 +610,14 @@ async function executeConnectorTool(input: {
   inputJson: unknown | undefined;
 }): Promise<ConnectorResult> {
   const inputObject = getInputObject(input.inputJson);
+
+  if (input.toolName === "swingops.clubReference.search") {
+    const parsedInput = clubReferenceSearchInputSchema.parse(inputObject);
+
+    return connectorResult({
+      clubReferenceSearch: searchClubReference(parsedInput.query)
+    });
+  }
 
   if (input.toolName === "swingops.intakeBatches.list") {
     const intakeBatches = await prisma.intakeBatch.findMany({

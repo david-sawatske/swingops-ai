@@ -9,6 +9,7 @@ describe("agent tool registry", () => {
     expect(tools.map((tool) => tool.name)).toEqual([
       "swingops.intakeBatches.list",
       "swingops.intakeBatches.get",
+      "swingops.clubReference.search",
       "swingops.workflowRuns.list",
       "swingops.workflowRuns.get",
       "swingops.reviewQueueItems.list",
@@ -22,6 +23,7 @@ describe("agent tool registry", () => {
     ).toEqual([
       "swingops.intakeBatches.list",
       "swingops.intakeBatches.get",
+      "swingops.clubReference.search",
       "swingops.workflowRuns.list",
       "swingops.workflowRuns.get",
       "swingops.reviewQueueItems.list",

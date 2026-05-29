@@ -122,6 +122,7 @@ const WORKFLOW_RUN_STATUS_FILTERS: WorkflowRunStatusFilter[] = [
 ];
 
 type ReadOnlyMcpToolName =
+  | "swingops.clubReference.search"
   | "swingops.workflowRuns.list"
   | "swingops.workflowRuns.get"
   | "swingops.reviewQueueItems.list"
@@ -141,6 +142,18 @@ type ReadOnlyMcpToolDemoOption = {
 };
 
 const READ_ONLY_MCP_TOOL_OPTIONS: ReadOnlyMcpToolDemoOption[] = [
+  {
+    name: "swingops.clubReference.search",
+    label: "Search club reference",
+    description:
+      "Reads a local golf club reference dataset to ground ambiguous trade-in notes before human review.",
+    category: "WORKFLOW",
+    riskLevel: "LOW",
+    enabled: true,
+    mutatesData: false,
+    requiresHumanApproval: false,
+    blockedDemo: false,
+  },
   {
     name: "swingops.workflowRuns.list",
     label: "List workflow runs",
@@ -288,6 +301,78 @@ function getToolCallOutputJson(
   return isRecord(toolCallLog.outputJson) ? toolCallLog.outputJson : null;
 }
 
+function getConnectorResultData(
+  toolCallLog: ToolCallLog,
+): Record<string, unknown> | null {
+  const outputJson = getToolCallOutputJson(toolCallLog);
+  const connectorResult = isRecord(outputJson?.connectorResult)
+    ? outputJson.connectorResult
+    : null;
+  const data = isRecord(connectorResult?.data) ? connectorResult.data : null;
+
+  return data;
+}
+
+function isGroundingToolCallLog(toolCallLog: ToolCallLog): boolean {
+  return toolCallLog.toolName === "swingops.clubReference.search";
+}
+
+function getClubReferenceSearchData(value: unknown): Record<string, unknown> | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const clubReferenceSearch = value.clubReferenceSearch;
+
+  return isRecord(clubReferenceSearch) ? clubReferenceSearch : null;
+}
+
+function getGroundingSummaryFromToolCall(toolCallLog: ToolCallLog): string {
+  const data = getConnectorResultData(toolCallLog);
+  const clubReferenceSearch = getClubReferenceSearchData(data);
+  const summary = clubReferenceSearch?.summary;
+
+  return typeof summary === "string" ? summary : "No grounding summary returned.";
+}
+
+function getGroundingSummaryFromReviewItem(item: ReviewQueueItem): string | null {
+  if (!isRecord(item.proposedGolfClubJson)) {
+    return null;
+  }
+
+  const grounding = item.proposedGolfClubJson.grounding;
+
+  if (!isRecord(grounding)) {
+    return null;
+  }
+
+  return typeof grounding.summary === "string" ? grounding.summary : null;
+}
+
+function getGroundingMatchNamesFromReviewItem(item: ReviewQueueItem): string {
+  if (!isRecord(item.proposedGolfClubJson)) {
+    return "—";
+  }
+
+  const grounding = item.proposedGolfClubJson.grounding;
+
+  if (!isRecord(grounding) || !Array.isArray(grounding.matches)) {
+    return "—";
+  }
+
+  const names = grounding.matches
+    .filter(isRecord)
+    .map((match) => {
+      const brand = typeof match.brand === "string" ? match.brand : null;
+      const model = typeof match.model === "string" ? match.model : null;
+
+      return brand && model ? `${brand} ${model}` : null;
+    })
+    .filter((name): name is string => Boolean(name));
+
+  return names.length > 0 ? names.join(", ") : "—";
+}
+
 function isAuditOnlyToolCallLog(toolCallLog: ToolCallLog): boolean {
   const outputJson = getToolCallOutputJson(toolCallLog);
 
@@ -349,6 +434,13 @@ function getReadOnlyMcpToolInput(
   toolName: ReadOnlyMcpToolName,
   workflowRunId: string,
 ): unknown {
+  if (toolName === "swingops.clubReference.search") {
+    return {
+      query:
+        "Titleist TSR3 fairway wood, 15 degree, stiff shaft. Customer wrote TSR maybe TS2.",
+    };
+  }
+
   if (toolName === "swingops.workflowRuns.get") {
     return {
       id: workflowRunId,
@@ -431,6 +523,10 @@ function ModelRouteCard({
 function ToolCallLogCard({ toolCallLog }: { toolCallLog: ToolCallLog }) {
   const outputJson = getToolCallOutputJson(toolCallLog);
   const isAuditOnly = isAuditOnlyToolCallLog(toolCallLog);
+  const isGroundingCall = isGroundingToolCallLog(toolCallLog);
+  const groundingSummary = isGroundingCall
+    ? getGroundingSummaryFromToolCall(toolCallLog)
+    : null;
 
   return (
     <article
@@ -454,6 +550,12 @@ function ToolCallLogCard({ toolCallLog }: { toolCallLog: ToolCallLog }) {
 
           <span>{toolCallLog.status}</span>
         </div>
+
+        {groundingSummary ? (
+          <p className="workflow-tool-log-card__audit-note">
+            {groundingSummary}
+          </p>
+        ) : null}
 
         {isAuditOnly ? (
           <>
@@ -1624,7 +1726,7 @@ function App() {
                       {item.status}
                     </span>
                     <h3>{item.reason}</h3>
-                    <p>{getGlobalReviewQueueDisplayText(item)}</p>
+                    <p><strong>Source:</strong> {getGlobalReviewQueueDisplayText(item)}</p>
                   </div>
 
                   <span className="review-queue-card__status">
@@ -1633,6 +1735,21 @@ function App() {
                 </div>
 
                 <dl className="review-queue-card__context">
+                  <div>
+                    <dt>Reason</dt>
+                    <dd>{item.reason}</dd>
+                  </div>
+
+                  <div>
+                    <dt>Grounding</dt>
+                    <dd>{getGroundingSummaryFromReviewItem(item) ?? "—"}</dd>
+                  </div>
+
+                  <div>
+                    <dt>Possible Matches</dt>
+                    <dd>{getGroundingMatchNamesFromReviewItem(item)}</dd>
+                  </div>
+
                   <div>
                     <dt>Batch</dt>
                     <dd>{item.intakeBatch?.name ?? "—"}</dd>
@@ -1649,10 +1766,15 @@ function App() {
                   </div>
                 </dl>
 
-                <div className="review-queue-card__json">
-                  <strong>Proposed Golf Club</strong>
-                  <pre>{formatJson(item.proposedGolfClubJson)}</pre>
-                </div>
+                <details className="workflow-audit-log-details">
+                  <summary>
+                    Proposed Golf Club JSON
+                    <span>collapsed</span>
+                  </summary>
+                  <div className="review-queue-card__json">
+                    <pre>{formatJson(item.proposedGolfClubJson)}</pre>
+                  </div>
+                </details>
 
                 {item.reviewerNotes ? (
                   <p className="review-queue-card__meta">
@@ -2206,6 +2328,20 @@ function App() {
                     </div>
                   )}
 
+                  <h5>Grounding / Connector Calls</h5>
+
+                  {selectedWorkflowRunDetail.toolCallLogs.filter(isGroundingToolCallLog).length === 0 ? (
+                    <p>No grounding connector calls recorded yet.</p>
+                  ) : (
+                    <div className="workflow-tool-log-list">
+                      {selectedWorkflowRunDetail.toolCallLogs
+                        .filter(isGroundingToolCallLog)
+                        .map((log) => (
+                          <ToolCallLogCard key={log.id} toolCallLog={log} />
+                        ))}
+                    </div>
+                  )}
+
                   <h5>Review Queue</h5>
 
                   {selectedWorkflowRunDetail.reviewQueueItems.length === 0 ? (
@@ -2216,7 +2352,9 @@ function App() {
                         <article className="workflow-tool-log-card" key={item.id}>
                           <div>
                             <strong>{item.reason}</strong>
-                            <p>{getWorkflowReviewQueueDisplayText(item, selectedBatchDetail?.items)}</p>
+                            <p><strong>Source:</strong> {getWorkflowReviewQueueDisplayText(item, selectedBatchDetail?.items)}</p>
+                            <p><strong>Grounding:</strong> {getGroundingSummaryFromReviewItem(item) ?? "—"}</p>
+                            <p><strong>Possible matches:</strong> {getGroundingMatchNamesFromReviewItem(item)}</p>
                             {item.reviewerNotes ? (
                               <p>Reviewer notes: {item.reviewerNotes}</p>
                             ) : null}
@@ -2250,9 +2388,11 @@ function App() {
                       <p>No MCP or workflow simulation tool logs recorded yet.</p>
                     ) : (
                       <div className="workflow-tool-log-list">
-                        {selectedWorkflowRunDetail.toolCallLogs.map((log) => (
-                          <ToolCallLogCard key={log.id} toolCallLog={log} />
-                        ))}
+                        {selectedWorkflowRunDetail.toolCallLogs
+                          .filter((log) => !isGroundingToolCallLog(log))
+                          .map((log) => (
+                            <ToolCallLogCard key={log.id} toolCallLog={log} />
+                          ))}
                       </div>
                     )}
                   </details>

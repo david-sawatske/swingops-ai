@@ -8,6 +8,7 @@ import type {
 } from "@prisma/client";
 
 import { prisma } from "../lib/prisma.js";
+import { executeReadOnlyToolInvocation } from "../tools/read-only-tool-invocation.js";
 
 export type WorkflowExecutionSimulationScenario = "HAPPY_PATH" | "NEEDS_REVIEW";
 
@@ -25,6 +26,7 @@ export type ExecuteWorkflowRunSimulationResult = {
 
 type WorkflowStepInputJson = {
   intakeBatchId?: string;
+  intakeItemId?: string;
   intakeBatchName?: string;
   sourceType?: string;
   itemCount?: number;
@@ -59,6 +61,31 @@ function getOriginalText(inputJson: unknown): string | null {
   return null;
 }
 
+function getIntakeItemId(inputJson: unknown): string | null {
+  const parsedInput = getStepInputJson(inputJson);
+
+  if (typeof parsedInput.intakeItemId === "string") {
+    return parsedInput.intakeItemId;
+  }
+
+  return null;
+}
+
+function shouldGroundWithClubReference(originalText: string | null): boolean {
+  if (!originalText) {
+    return false;
+  }
+
+  const normalizedText = originalText.toLowerCase();
+
+  return (
+    normalizedText.includes("maybe") ||
+    normalizedText.includes("possibly") ||
+    normalizedText.includes("tsr") ||
+    normalizedText.includes("ts2")
+  );
+}
+
 function getToolNameForStepType(stepType: WorkflowStepType): string {
   switch (stepType) {
     case "PARSE_INPUT":
@@ -78,17 +105,27 @@ function getToolNameForStepType(stepType: WorkflowStepType): string {
   }
 }
 
-function buildProposedReviewGolfClubJson(): Prisma.InputJsonObject {
+function buildProposedReviewGolfClubJson(input: {
+  groundingSummary?: string | null;
+  groundingMatches?: unknown;
+} = {}): Prisma.InputJsonObject {
   return {
-    brand: "TaylorMade",
-    model: "Unknown Driver",
-    category: "DRIVER",
-    loft: "10.5",
-    shaftFlex: null,
+    brand: "Titleist",
+    model: "Ambiguous TSR/TS-series fairway wood",
+    category: "FAIRWAY_WOOD",
+    loft: "15",
+    shaftFlex: "STIFF",
     dexterity: "RIGHT_HANDED",
     condition: null,
     confidenceScore: 0.58,
-    missingFields: ["shaftFlex", "condition"]
+    missingFields: ["condition", "exactModel"],
+    grounding: {
+      toolName: "swingops.clubReference.search",
+      summary:
+        input.groundingSummary ??
+        "Club reference grounding was not available for this simulated review item.",
+      matches: input.groundingMatches ?? []
+    }
   };
 }
 
@@ -207,15 +244,26 @@ function toOptionalInputJsonValue(
 
 async function createReviewQueueItemForWorkflowRun(input: {
   workflowRunId: string;
+  intakeItemId: string | null;
   originalText: string | null;
+  groundingSummary?: string | null;
+  groundingMatches?: unknown;
 }): Promise<ReviewQueueItem> {
   return prisma.reviewQueueItem.create({
     data: {
       workflowRunId: input.workflowRunId,
+      ...(input.intakeItemId === null ? {} : { intakeItemId: input.intakeItemId }),
       reason: "LOW_CONFIDENCE",
       status: "OPEN",
       originalText: input.originalText,
-      proposedGolfClubJson: buildProposedReviewGolfClubJson()
+      proposedGolfClubJson: buildProposedReviewGolfClubJson({
+        ...(input.groundingSummary === undefined
+          ? {}
+          : { groundingSummary: input.groundingSummary }),
+        ...(input.groundingMatches === undefined
+          ? {}
+          : { groundingMatches: input.groundingMatches })
+      })
     }
   });
 }
@@ -257,6 +305,9 @@ export async function executeWorkflowRunSimulation(
   });
 
   let originalTextForReview: string | null = null;
+  let intakeItemIdForReview: string | null = existingWorkflowRun.intakeItemId;
+  let groundingSummaryForReview: string | null = null;
+  let groundingMatchesForReview: unknown = [];
 
   for (const step of existingWorkflowRun.steps) {
     const stepStartedAt = new Date();
@@ -264,6 +315,10 @@ export async function executeWorkflowRunSimulation(
 
     if (scenario === "NEEDS_REVIEW" && originalTextForReview === null) {
       originalTextForReview = getOriginalText(step.inputJson);
+    }
+
+    if (scenario === "NEEDS_REVIEW" && intakeItemIdForReview === null) {
+      intakeItemIdForReview = getIntakeItemId(step.inputJson);
     }
 
     const completedStep = await prisma.workflowStep.update({
@@ -278,6 +333,52 @@ export async function executeWorkflowRunSimulation(
         completedAt: new Date()
       }
     });
+
+    if (
+      scenario === "NEEDS_REVIEW" &&
+      step.stepType === "VALIDATE_STRUCTURED_OUTPUT"
+    ) {
+      const groundingQuery =
+        originalTextForReview ?? "ambiguous low-confidence golf trade-in item";
+      const groundingResult = await executeReadOnlyToolInvocation({
+        toolName: "swingops.clubReference.search",
+        inputJson: {
+          query: groundingQuery
+        },
+        requestedBy: "workflow.simulation",
+        workflowRunId: existingWorkflowRun.id,
+        workflowStepId: completedStep.id,
+        executionMode: "AGENT_AUTONOMOUS"
+      });
+
+      const groundingData = groundingResult.connectorResult?.data;
+
+      if (
+        groundingData &&
+        typeof groundingData === "object" &&
+        !Array.isArray(groundingData) &&
+        "clubReferenceSearch" in groundingData
+      ) {
+        const clubReferenceSearch = groundingData.clubReferenceSearch;
+
+        if (
+          clubReferenceSearch &&
+          typeof clubReferenceSearch === "object" &&
+          !Array.isArray(clubReferenceSearch)
+        ) {
+          if (
+            "summary" in clubReferenceSearch &&
+            typeof clubReferenceSearch.summary === "string"
+          ) {
+            groundingSummaryForReview = clubReferenceSearch.summary;
+          }
+
+          if ("matches" in clubReferenceSearch) {
+            groundingMatchesForReview = clubReferenceSearch.matches;
+          }
+        }
+      }
+    }
 
     const toolInputJson = toOptionalInputJsonValue(completedStep.inputJson);
 
@@ -297,7 +398,10 @@ export async function executeWorkflowRunSimulation(
   if (scenario === "NEEDS_REVIEW") {
     await createReviewQueueItemForWorkflowRun({
       workflowRunId: existingWorkflowRun.id,
-      originalText: originalTextForReview
+      intakeItemId: intakeItemIdForReview,
+      originalText: originalTextForReview,
+      groundingSummary: groundingSummaryForReview,
+      groundingMatches: groundingMatchesForReview
     });
   }
 

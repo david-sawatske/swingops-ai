@@ -599,6 +599,7 @@ describe("tool routes", () => {
       expect(body.tools.map((tool: { name: string }) => tool.name)).toEqual([
         "swingops.intakeBatches.list",
         "swingops.intakeBatches.get",
+        "swingops.clubReference.search",
         "swingops.workflowRuns.list",
         "swingops.workflowRuns.get",
         "swingops.reviewQueueItems.list",

@@ -63,6 +63,30 @@ const registeredAgentTools: AgentToolDefinition[] = [
     }
   },
   {
+    name: "swingops.clubReference.search",
+    description:
+      "Search a local read-only golf club reference dataset to ground ambiguous trade-in notes before human review.",
+    category: "WORKFLOW",
+    inputShape: {
+      type: "object",
+      fields: [
+        {
+          name: "query",
+          type: "string",
+          required: true,
+          description: "Ambiguous club text to search, such as TSR maybe TS2."
+        }
+      ]
+    },
+    riskLevel: "LOW",
+    requiresHumanApproval: false,
+    mutatesData: false,
+    enabled: true,
+    implementationStatus: "REGISTERED",
+    statusReason:
+      "Safe read-only lookup against a local demo club reference dataset. It does not mutate operational data.",
+  },
+  {
     name: "swingops.workflowRuns.list",
     description:
       "List workflow runs with intake context, latest model routing log, and review queue counts.",
