@@ -13,6 +13,10 @@ import {
   ToolInvocationPreviewLogRequiresWorkflowContextError
 } from "../tools/tool-invocation-preview-logging.js";
 import { executeReadOnlyToolInvocation } from "../tools/read-only-tool-invocation.js";
+import {
+  listConnectorCatalog,
+  listConnectorInvocationHistory
+} from "../tools/connector-catalog.js";
 
 const agentToolCategorySchema = z.enum([
   "INTAKE",
@@ -83,6 +87,12 @@ const readOnlyToolInvocationBodySchema = z
   })
   .strict();
 
+const invocationHistoryQuerySchema = z
+  .object({
+    limit: z.coerce.number().int().min(1).max(100).default(25)
+  })
+  .strict();
+
 function toRegistryFilter(
   query: z.infer<typeof listAgentToolsQuerySchema>
 ): AgentToolRegistryFilter {
@@ -136,6 +146,24 @@ function toReadOnlyInvocationInput(
 }
 
 export async function toolRoutes(app: FastifyInstance): Promise<void> {
+  app.get("/mcp/connectors/catalog", async () => {
+    return listConnectorCatalog();
+  });
+
+  app.get("/mcp/tools/invocations/history", async (request, reply) => {
+    const parsedQuery = invocationHistoryQuerySchema.safeParse(request.query ?? {});
+
+    if (!parsedQuery.success) {
+      return reply.status(400).send({
+        error: "Invalid tool invocation history query",
+        details: parsedQuery.error.flatten()
+      });
+    }
+
+    return listConnectorInvocationHistory(parsedQuery.data.limit);
+  });
+
+
   app.post("/mcp/tools/invocations/preview", async (request, reply) => {
     const parsedBody = toolInvocationPreviewBodySchema.safeParse(
       request.body ?? {}

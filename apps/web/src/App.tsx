@@ -1,6 +1,10 @@
 import { FormEvent, useEffect, useState } from "react";
 import { previewModelRouting } from "./api/modelRouting";
-import { executeReadOnlyToolInvocation } from "./api/mcp";
+import {
+  executeReadOnlyToolInvocation,
+  listConnectorCatalog,
+  listConnectorInvocationHistory,
+} from "./api/mcp";
 import {
   createIntakeBatch,
   getIntakeBatch,
@@ -18,6 +22,8 @@ import {
 import { DashboardSection } from "./components/DashboardSection";
 import { EmptyState } from "./components/EmptyState";
 import type {
+  ConnectorCatalogItem,
+  ConnectorInvocationHistoryItem,
   ExecuteReadOnlyToolInvocationResponse,
 } from "./types/mcp";
 import type {
@@ -640,6 +646,159 @@ function ToolCallLogCard({ toolCallLog }: { toolCallLog: ToolCallLog }) {
   );
 }
 
+function ConnectorCatalogCard({ connector }: { connector: ConnectorCatalogItem }) {
+  return (
+    <article className="mcp-connector-catalog-card">
+      <div className="mcp-connector-catalog-card__header">
+        <div>
+          <span className="model-route-card__eyebrow">
+            {connector.policyDecision === "ALLOW" ? "Allowed read-only tool" : "Blocked or disabled tool"}
+          </span>
+          <h3>{connector.displayName}</h3>
+          <p>{connector.description}</p>
+        </div>
+
+        <span className={connector.policyDecision === "ALLOW" ? "mcp-policy-pill mcp-policy-pill--allow" : "mcp-policy-pill mcp-policy-pill--block"}>
+          {connector.policyDecision}
+        </span>
+      </div>
+
+      <dl className="mcp-connector-catalog-card__metadata">
+        <div>
+          <dt>Tool ID</dt>
+          <dd title={connector.name}>{connector.name}</dd>
+        </div>
+
+        <div>
+          <dt>Risk</dt>
+          <dd>{connector.riskLevel}</dd>
+        </div>
+
+        <div>
+          <dt>Mutates Data</dt>
+          <dd>{String(connector.mutatesData)}</dd>
+        </div>
+
+        <div>
+          <dt>Approval</dt>
+          <dd>{String(connector.requiresHumanApproval)}</dd>
+        </div>
+
+        <div>
+          <dt>Enabled</dt>
+          <dd>{formatEnabledLabel(connector.enabled)}</dd>
+        </div>
+
+        <div>
+          <dt>Allowed Mode</dt>
+          <dd>{formatEnumLabel(connector.allowedExecutionMode)}</dd>
+        </div>
+
+        <div>
+          <dt>Last Invoked</dt>
+          <dd>{formatToolCallTimestamp(connector.lastInvokedAt)}</dd>
+        </div>
+
+        <div>
+          <dt>Counts</dt>
+          <dd>
+            {connector.invocationCounts.succeeded} ok /{" "}
+            {connector.invocationCounts.failed} failed /{" "}
+            {connector.invocationCounts.blocked} blocked
+          </dd>
+        </div>
+      </dl>
+
+      <p className="mcp-connector-catalog-card__reason">
+        {connector.policyReason}
+      </p>
+    </article>
+  );
+}
+
+function ConnectorInvocationHistoryCard({
+  invocation,
+}: {
+  invocation: ConnectorInvocationHistoryItem;
+}) {
+  return (
+    <article className="mcp-invocation-history-card">
+      <div className="mcp-invocation-history-card__header">
+        <div>
+          <span className="model-route-card__eyebrow">
+            {invocation.executionAttempted ? "Execution attempted" : "Blocked before execution"}
+          </span>
+          <h3>{invocation.displayName}</h3>
+          <p>{invocation.toolName}</p>
+        </div>
+
+        <span className={invocation.policyDecision === "ALLOW" ? "mcp-policy-pill mcp-policy-pill--allow" : "mcp-policy-pill mcp-policy-pill--block"}>
+          {invocation.policyDecision}
+        </span>
+      </div>
+
+      <dl className="mcp-invocation-history-card__metadata">
+        <div>
+          <dt>Status</dt>
+          <dd>{invocation.status}</dd>
+        </div>
+
+        <div>
+          <dt>Execution Attempted</dt>
+          <dd>{String(invocation.executionAttempted)}</dd>
+        </div>
+
+        <div>
+          <dt>Risk</dt>
+          <dd>{invocation.riskLevel ?? "—"}</dd>
+        </div>
+
+        <div>
+          <dt>Requested By</dt>
+          <dd>{invocation.requestedBy ?? "—"}</dd>
+        </div>
+
+        <div>
+          <dt>Workflow Run</dt>
+          <dd title={invocation.workflowRunId ?? undefined}>
+            {invocation.workflowRunId ? formatShortId(invocation.workflowRunId) : "—"}
+          </dd>
+        </div>
+
+        <div>
+          <dt>Workflow Step</dt>
+          <dd title={invocation.workflowStepId ?? undefined}>
+            {invocation.workflowStepId ? formatShortId(invocation.workflowStepId) : "—"}
+          </dd>
+        </div>
+
+        <div>
+          <dt>Started</dt>
+          <dd>{formatToolCallTimestamp(invocation.startedAt)}</dd>
+        </div>
+
+        <div>
+          <dt>Completed</dt>
+          <dd>{formatToolCallTimestamp(invocation.completedAt)}</dd>
+        </div>
+      </dl>
+
+      <p className="mcp-invocation-history-card__reason">
+        {invocation.failureReason ??
+          invocation.resultPreview ??
+          invocation.policyReason ??
+          "ToolCallLog persisted."}
+      </p>
+
+      {invocation.policyReasonCodes.length > 0 ? (
+        <p className="mcp-invocation-history-card__codes">
+          {invocation.policyReasonCodes.join(", ")}
+        </p>
+      ) : null}
+    </article>
+  );
+}
+
 function ReadOnlyMcpConnectorResultCard({
   result,
 }: {
@@ -822,6 +981,25 @@ function App() {
   const [readOnlyMcpInvocationError, setReadOnlyMcpInvocationError] = useState<
     string | null
   >(null);
+  const [mcpConnectorCatalog, setMcpConnectorCatalog] = useState<
+    ConnectorCatalogItem[]
+  >([]);
+  const [isLoadingMcpConnectorCatalog, setIsLoadingMcpConnectorCatalog] =
+    useState(true);
+  const [mcpConnectorCatalogError, setMcpConnectorCatalogError] = useState<
+    string | null
+  >(null);
+  const [mcpInvocationHistory, setMcpInvocationHistory] = useState<
+    ConnectorInvocationHistoryItem[]
+  >([]);
+  const [isLoadingMcpInvocationHistory, setIsLoadingMcpInvocationHistory] =
+    useState(true);
+  const [mcpInvocationHistoryError, setMcpInvocationHistoryError] = useState<
+    string | null
+  >(null);
+  const [mcpAuditStory, setMcpAuditStory] = useState(
+    "agent/tool request → policy decision → execution or block → persisted ToolCallLog audit record",
+  );
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -931,10 +1109,51 @@ function App() {
     }
   }
 
+  async function loadMcpConnectorCatalog() {
+    try {
+      setIsLoadingMcpConnectorCatalog(true);
+      setMcpConnectorCatalogError(null);
+
+      const response = await listConnectorCatalog();
+
+      setMcpConnectorCatalog(response.connectors);
+    } catch (error) {
+      setMcpConnectorCatalogError(
+        error instanceof Error
+          ? error.message
+          : "Unable to load connector catalog.",
+      );
+    } finally {
+      setIsLoadingMcpConnectorCatalog(false);
+    }
+  }
+
+  async function loadMcpInvocationHistory() {
+    try {
+      setIsLoadingMcpInvocationHistory(true);
+      setMcpInvocationHistoryError(null);
+
+      const response = await listConnectorInvocationHistory(25);
+
+      setMcpInvocationHistory(response.invocations);
+      setMcpAuditStory(response.historyMetadata.auditStory);
+    } catch (error) {
+      setMcpInvocationHistoryError(
+        error instanceof Error
+          ? error.message
+          : "Unable to load connector invocation history.",
+      );
+    } finally {
+      setIsLoadingMcpInvocationHistory(false);
+    }
+  }
+
   useEffect(() => {
     void loadIntakeBatches();
     void loadGlobalWorkflowRuns();
     void loadGlobalReviewQueueItems();
+    void loadMcpConnectorCatalog();
+    void loadMcpInvocationHistory();
   }, []);
 
   function handleReviewQueueNotesChange(
@@ -1074,6 +1293,8 @@ function App() {
 
       await loadGlobalWorkflowRuns();
       await loadGlobalReviewQueueItems();
+      await loadMcpConnectorCatalog();
+      await loadMcpInvocationHistory();
 
       if (
         input.workflowRunId &&
@@ -2145,117 +2366,234 @@ function App() {
 
       {activeView === "MCP_CONNECTORS" ? (
       <DashboardSection
-        title="Read-Only MCP Connector Demo"
-        description="Execute safe internal connector tools, show policy checks, block mutation tools, and persist ToolCallLog audit records."
+        title="MCP Connector Catalog and Run History"
+        description="Catalog internal connector tools, try policy-governed read-only execution, and review persisted ToolCallLog audit history."
       >
         <div className="section-intro-card">
           <span className="model-route-card__eyebrow">Internal MCP-style Surface</span>
-          <h3>Read-only connector execution with policy checks</h3>
+          <h3>Policy-governed tool invocation with audit history</h3>
           <p>
             This is currently an internal MCP-style connector invocation surface,
-            not an external MCP server. The demo intentionally allows safe
-            read-only tools, blocks mutation tools, and persists ToolCallLog
-            audit records for every attempted invocation.
+            not an external MCP server. The page shows which tools are exposed,
+            why policy allows or blocks them, whether execution was attempted,
+            and the persisted ToolCallLog trail for portfolio review.
           </p>
         </div>
 
-        <form
-          className="read-only-mcp-demo-form"
-          onSubmit={handleExecuteReadOnlyMcpTool}
-        >
-          <label>
-            Tool
-            <select
-              onChange={(event) =>
-                setSelectedReadOnlyMcpToolName(
-                  event.target.value as ReadOnlyMcpToolName,
-                )
-              }
-              value={selectedReadOnlyMcpToolName}
-            >
-              {readOnlyMcpToolOptions.map((tool) => (
-                <option key={tool.name} value={tool.name}>
-                  {tool.label}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="mcp-page-grid">
+          <section className="mcp-page-section">
+            <div className="mcp-page-section__header">
+              <div>
+                <span className="model-route-card__eyebrow">Connector Catalog</span>
+                <h3>Available internal connector tools</h3>
+                <p>
+                  Each card shows risk, mutation behavior, approval requirements,
+                  allowed mode, last invocation, and audit counts.
+                </p>
+              </div>
 
-          {selectedReadOnlyMcpToolName === "swingops.workflowRuns.get" ? (
-            <label>
-              Workflow Run
-              <select
-                onChange={(event) =>
-                  setSelectedReadOnlyMcpWorkflowRunId(event.target.value)
-                }
-                value={selectedMcpWorkflowRunId}
+              <button
+                onClick={() => void loadMcpConnectorCatalog()}
+                type="button"
               >
-                {globalWorkflowRuns.map((run) => (
-                  <option key={run.id} value={run.id}>
-                    {run.workflowName} / {run.status}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-
-          <article className="read-only-mcp-tool-card">
-            <div>
-              <span className="model-route-card__eyebrow">
-                {selectedReadOnlyMcpTool.blockedDemo
-                  ? "Blocked mutation demo"
-                  : "Safe read-only tool"}
-              </span>
-              <h3>{selectedReadOnlyMcpTool.name}</h3>
-              <p>{selectedReadOnlyMcpTool.description}</p>
+                Refresh Catalog
+              </button>
             </div>
 
-            <dl>
+            {isLoadingMcpConnectorCatalog ? <p>Loading connector catalog…</p> : null}
+
+            {mcpConnectorCatalogError ? (
+              <EmptyState
+                title="Unable to load connector catalog"
+                message={mcpConnectorCatalogError}
+              />
+            ) : null}
+
+            {!isLoadingMcpConnectorCatalog &&
+            !mcpConnectorCatalogError &&
+            mcpConnectorCatalog.length === 0 ? (
+              <EmptyState
+                title="No connectors registered"
+                message="No internal connector tools were returned by the API."
+              />
+            ) : null}
+
+            {!isLoadingMcpConnectorCatalog &&
+            !mcpConnectorCatalogError &&
+            mcpConnectorCatalog.length > 0 ? (
+              <div className="mcp-connector-catalog-grid">
+                {mcpConnectorCatalog.map((connector) => (
+                  <ConnectorCatalogCard
+                    connector={connector}
+                    key={connector.name}
+                  />
+                ))}
+              </div>
+            ) : null}
+          </section>
+
+          <section className="mcp-page-section">
+            <div className="mcp-page-section__header">
               <div>
-                <dt>Risk</dt>
-                <dd>{selectedReadOnlyMcpTool.riskLevel}</dd>
+                <span className="model-route-card__eyebrow">Try a Connector</span>
+                <h3>Run a safe read-only connector or blocked mutation demo</h3>
+                <p>
+                  The request is evaluated by policy first. Allowed read-only
+                  calls execute. Disabled or mutating calls are blocked and still
+                  persisted as ToolCallLog audit records.
+                </p>
+              </div>
+            </div>
+
+            <form
+              className="read-only-mcp-demo-form"
+              onSubmit={handleExecuteReadOnlyMcpTool}
+            >
+              <label>
+                Tool
+                <select
+                  onChange={(event) =>
+                    setSelectedReadOnlyMcpToolName(
+                      event.target.value as ReadOnlyMcpToolName,
+                    )
+                  }
+                  value={selectedReadOnlyMcpToolName}
+                >
+                  {readOnlyMcpToolOptions.map((tool) => (
+                    <option key={tool.name} value={tool.name}>
+                      {tool.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {selectedReadOnlyMcpToolName === "swingops.workflowRuns.get" ? (
+                <label>
+                  Workflow Run
+                  <select
+                    onChange={(event) =>
+                      setSelectedReadOnlyMcpWorkflowRunId(event.target.value)
+                    }
+                    value={selectedMcpWorkflowRunId}
+                  >
+                    {globalWorkflowRuns.map((run) => (
+                      <option key={run.id} value={run.id}>
+                        {run.workflowName} / {run.status}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+
+              <article className="read-only-mcp-tool-card">
+                <div>
+                  <span className="model-route-card__eyebrow">
+                    {selectedReadOnlyMcpTool.blockedDemo
+                      ? "Blocked mutation demo"
+                      : "Safe read-only tool"}
+                  </span>
+                  <h3>{selectedReadOnlyMcpTool.name}</h3>
+                  <p>{selectedReadOnlyMcpTool.description}</p>
+                </div>
+
+                <dl>
+                  <div>
+                    <dt>Risk</dt>
+                    <dd>{selectedReadOnlyMcpTool.riskLevel}</dd>
+                  </div>
+
+                  <div>
+                    <dt>Mutates Data</dt>
+                    <dd>{String(selectedReadOnlyMcpTool.mutatesData)}</dd>
+                  </div>
+
+                  <div>
+                    <dt>Requires Approval</dt>
+                    <dd>{String(selectedReadOnlyMcpTool.requiresHumanApproval)}</dd>
+                  </div>
+
+                  <div>
+                    <dt>Enabled</dt>
+                    <dd>{formatEnabledLabel(selectedReadOnlyMcpTool.enabled)}</dd>
+                  </div>
+                </dl>
+              </article>
+
+              {readOnlyMcpInvocationError ? (
+                <p className="form-message form-message--error">
+                  {readOnlyMcpInvocationError}
+                </p>
+              ) : null}
+
+              <button disabled={isExecutingReadOnlyMcpTool} type="submit">
+                {isExecutingReadOnlyMcpTool
+                  ? "Executing connector…"
+                  : selectedReadOnlyMcpTool.blockedDemo
+                    ? "Run Blocked Demo"
+                    : "Execute Read-Only Tool"}
+              </button>
+            </form>
+
+            {readOnlyMcpInvocationResult ? (
+              <ReadOnlyMcpConnectorResultCard result={readOnlyMcpInvocationResult} />
+            ) : (
+              <EmptyState
+                title="No connector invocation yet"
+                message="Choose a safe read-only connector or the blocked mutation demo to see policy enforcement and persisted audit logs."
+              />
+            )}
+          </section>
+
+          <section className="mcp-page-section">
+            <div className="mcp-page-section__header">
+              <div>
+                <span className="model-route-card__eyebrow">Invocation History</span>
+                <h3>Recent ToolCallLog audit records</h3>
+                <p>{mcpAuditStory}</p>
               </div>
 
-              <div>
-                <dt>Mutates Data</dt>
-                <dd>{String(selectedReadOnlyMcpTool.mutatesData)}</dd>
+              <button
+                onClick={() => void loadMcpInvocationHistory()}
+                type="button"
+              >
+                Refresh History
+              </button>
+            </div>
+
+            {isLoadingMcpInvocationHistory ? (
+              <p>Loading invocation history…</p>
+            ) : null}
+
+            {mcpInvocationHistoryError ? (
+              <EmptyState
+                title="Unable to load invocation history"
+                message={mcpInvocationHistoryError}
+              />
+            ) : null}
+
+            {!isLoadingMcpInvocationHistory &&
+            !mcpInvocationHistoryError &&
+            mcpInvocationHistory.length === 0 ? (
+              <EmptyState
+                title="No connector history yet"
+                message="Run the safe read-only connector and the blocked mutation demo to populate the audit history."
+              />
+            ) : null}
+
+            {!isLoadingMcpInvocationHistory &&
+            !mcpInvocationHistoryError &&
+            mcpInvocationHistory.length > 0 ? (
+              <div className="mcp-invocation-history-list">
+                {mcpInvocationHistory.map((invocation) => (
+                  <ConnectorInvocationHistoryCard
+                    invocation={invocation}
+                    key={invocation.id}
+                  />
+                ))}
               </div>
-
-              <div>
-                <dt>Requires Approval</dt>
-                <dd>{String(selectedReadOnlyMcpTool.requiresHumanApproval)}</dd>
-              </div>
-
-              <div>
-                <dt>Enabled</dt>
-                <dd>{formatEnabledLabel(selectedReadOnlyMcpTool.enabled)}</dd>
-              </div>
-            </dl>
-          </article>
-
-          {readOnlyMcpInvocationError ? (
-            <p className="form-message form-message--error">
-              {readOnlyMcpInvocationError}
-            </p>
-          ) : null}
-
-          <button disabled={isExecutingReadOnlyMcpTool} type="submit">
-            {isExecutingReadOnlyMcpTool
-              ? "Executing connector…"
-              : selectedReadOnlyMcpTool.blockedDemo
-                ? "Run Blocked Demo"
-                : "Execute Read-Only Tool"}
-          </button>
-        </form>
-
-        {readOnlyMcpInvocationResult ? (
-          <ReadOnlyMcpConnectorResultCard result={readOnlyMcpInvocationResult} />
-        ) : (
-          <EmptyState
-            title="No connector invocation yet"
-            message="Choose a safe read-only connector or the blocked mutation demo to see policy enforcement and persisted audit logs."
-          />
-        )}
+            ) : null}
+          </section>
+        </div>
       </DashboardSection>
       ) : null}
 

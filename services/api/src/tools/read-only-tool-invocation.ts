@@ -455,6 +455,7 @@ function blockedOutputJson(input: {
   requestedBy: string;
   policyEvaluation: ToolExecutionPolicyEvaluation;
   reason: string;
+  readOnlyReasonCode?: string;
 }) {
   return {
     connectorInvocation: true,
@@ -462,7 +463,13 @@ function blockedOutputJson(input: {
     connectorResult: null,
     requestedBy: input.requestedBy,
     policyDecision: input.policyEvaluation.decision,
-    policyReasonCodes: input.policyEvaluation.reasonCodes,
+    policyReasonCodes:
+      input.readOnlyReasonCode &&
+      !input.policyEvaluation.reasonCodes.includes(
+        input.readOnlyReasonCode as never
+      )
+        ? [...input.policyEvaluation.reasonCodes, input.readOnlyReasonCode]
+        : input.policyEvaluation.reasonCodes,
     policyReason: input.policyEvaluation.reason,
     executionMode: input.policyEvaluation.executionMode,
     executionEnabled: input.policyEvaluation.executionEnabled,
@@ -581,25 +588,45 @@ function getInputObject(inputJson: unknown | undefined) {
   return inputObjectSchema.parse(inputJson ?? {});
 }
 
-function ensureExecutableReadOnlyTool(tool: AgentToolDefinition | null): string | null {
+function ensureExecutableReadOnlyTool(
+  tool: AgentToolDefinition | null
+): { reason: string; reasonCode: string } | null {
   if (!tool) {
-    return "Tool is not registered and cannot be executed.";
+    return {
+      reason: "Tool is not registered and cannot be executed.",
+      reasonCode: "TOOL_NOT_FOUND"
+    };
   }
 
   if (!tool.enabled) {
-    return "Tool is disabled and cannot be executed.";
+    return {
+      reason: "Tool is disabled and cannot be executed.",
+      reasonCode: "TOOL_DISABLED"
+    };
   }
 
   if (tool.mutatesData) {
-    return "Mutation tools are not enabled on the read-only connector invocation surface.";
+    return {
+      reason:
+        "Mutation tools are not enabled on the read-only connector invocation surface.",
+      reasonCode: "MUTATION_BLOCKED_IN_READ_ONLY_MODE"
+    };
   }
 
   if (tool.requiresHumanApproval) {
-    return "Approval-required tools are not enabled on the read-only connector invocation surface.";
+    return {
+      reason:
+        "Approval-required tools are not enabled on the read-only connector invocation surface.",
+      reasonCode: "HUMAN_APPROVAL_REQUIRED"
+    };
   }
 
   if (tool.riskLevel !== "LOW") {
-    return "Only low-risk tools are enabled on the read-only connector invocation surface.";
+    return {
+      reason:
+        "Only low-risk tools are enabled on the read-only connector invocation surface.",
+      reasonCode: "HUMAN_APPROVAL_REQUIRED"
+    };
   }
 
   return null;
@@ -824,23 +851,27 @@ export async function executeReadOnlyToolInvocation(
     inputJson
   });
 
-  const readOnlyBlockReason =
+  const readOnlyBlock =
     policyEvaluation.decision === "ALLOW"
       ? ensureExecutableReadOnlyTool(policyEvaluation.tool)
-      : policyEvaluation.reason;
+      : {
+          reason: policyEvaluation.reason,
+          reasonCode: policyEvaluation.reasonCodes[0] ?? "TOOL_EXECUTION_FAILED"
+        };
 
-  if (readOnlyBlockReason) {
+  if (readOnlyBlock) {
     const outputJson = blockedOutputJson({
       requestedBy,
       policyEvaluation,
-      reason: readOnlyBlockReason
+      reason: readOnlyBlock.reason,
+      readOnlyReasonCode: readOnlyBlock.reasonCode
     });
 
     const completedLog = await completeToolCallLog({
       toolCallLogId: startedLog.id,
       status: "FAILED",
       outputJson,
-      errorMessage: readOnlyBlockReason
+      errorMessage: readOnlyBlock.reason
     });
 
     const completedAt = completedLog.completedAt ?? new Date();

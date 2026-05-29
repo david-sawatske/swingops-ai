@@ -576,6 +576,173 @@ describe("tool routes", () => {
     });
   });
 
+
+  describe("GET /mcp/connectors/catalog", () => {
+    it("returns catalog tools with policy and invocation summary metadata", async () => {
+      const app = buildApp();
+
+      await prisma.toolCallLog.create({
+        data: {
+          toolName: "swingops.intakeBatches.list",
+          status: "SUCCEEDED",
+          outputJson: {
+            connectorInvocation: true,
+            executionAttempted: true,
+            requestedBy: "agent.catalog-test",
+            policyDecision: "ALLOW",
+            policyReasonCodes: ["TOOL_ALLOWED"]
+          },
+          completedAt: new Date()
+        }
+      });
+
+      await prisma.toolCallLog.create({
+        data: {
+          toolName: "swingops.reviewQueueItems.resolve",
+          status: "FAILED",
+          outputJson: {
+            connectorInvocation: true,
+            executionAttempted: false,
+            requestedBy: "agent.catalog-test",
+            policyDecision: "BLOCK",
+            policyReasonCodes: ["TOOL_DISABLED"]
+          },
+          errorMessage: "Tool is disabled and cannot be executed.",
+          completedAt: new Date()
+        }
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/mcp/connectors/catalog"
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.catalogMetadata).toMatchObject({
+        surface: "INTERNAL_MCP_STYLE_CONNECTOR_SURFACE",
+        externalMcpTransportEnabled: false,
+        readOnlyExecutionEnabled: true,
+        mutationExecutionEnabled: false,
+        auditLogPersistence: "TOOL_CALL_LOG"
+      });
+
+      expect(body.connectors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: "swingops.intakeBatches.list",
+            displayName: "Intake Batches List",
+            policyDecision: "ALLOW",
+            policyReasonCodes: ["TOOL_ALLOWED"],
+            allowedExecutionMode: "AGENT_AUTONOMOUS",
+            invocationCounts: expect.objectContaining({
+              total: expect.any(Number),
+              succeeded: expect.any(Number)
+            })
+          }),
+          expect.objectContaining({
+            name: "swingops.reviewQueueItems.resolve",
+            displayName: "Review Queue Items Resolve",
+            policyDecision: "BLOCK",
+            policyReasonCodes: ["TOOL_DISABLED"],
+            allowedExecutionMode: "DISABLED",
+            mutatesData: true,
+            requiresHumanApproval: true,
+            enabled: false,
+            invocationCounts: expect.objectContaining({
+              blocked: expect.any(Number)
+            })
+          })
+        ])
+      );
+
+      await app.close();
+    });
+  });
+
+  describe("GET /mcp/tools/invocations/history", () => {
+    it("returns recent ToolCallLog records as connector invocation history", async () => {
+      const app = buildApp();
+
+      const log = await prisma.toolCallLog.create({
+        data: {
+          toolName: "swingops.clubReference.search",
+          status: "SUCCEEDED",
+          inputJson: {
+            query: "TSR maybe TS2"
+          },
+          outputJson: {
+            connectorInvocation: true,
+            executionAttempted: true,
+            requestedBy: "agent.history-test",
+            policyDecision: "ALLOW",
+            policyReasonCodes: ["TOOL_ALLOWED"],
+            policyReason:
+              "Tool is enabled and policy allows execution in the requested mode.",
+            connectorResult: {
+              data: {
+                clubReferenceSearch: {
+                  matches: []
+                }
+              }
+            }
+          },
+          completedAt: new Date()
+        }
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/mcp/tools/invocations/history?limit=10"
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.historyMetadata).toEqual({
+        source: "TOOL_CALL_LOG",
+        limit: 10,
+        auditStory:
+          "agent/tool request → policy decision → execution or block → persisted ToolCallLog audit record"
+      });
+
+      expect(body.invocations).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: log.id,
+            toolName: "swingops.clubReference.search",
+            displayName: "Club Reference Search",
+            policyDecision: "ALLOW",
+            policyReasonCodes: ["TOOL_ALLOWED"],
+            executionAttempted: true,
+            status: "SUCCEEDED",
+            riskLevel: "LOW",
+            requestedBy: "agent.history-test"
+          })
+        ])
+      );
+
+      await app.close();
+    });
+
+    it("returns 400 for invalid invocation history query params", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/mcp/tools/invocations/history?limit=1000"
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().error).toBe("Invalid tool invocation history query");
+
+      await app.close();
+    });
+  });
+
   describe("GET /mcp/tools", () => {
     it("returns the MCP-style internal tool registry preview", async () => {
       const app = buildApp();

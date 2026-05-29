@@ -1469,3 +1469,155 @@ h1 {
 .global-workflow-run-detail-panel {
   margin-top: 16px;
 }
+
+.mcp-page-grid {
+  display: grid;
+  gap: 22px;
+}
+
+.mcp-page-section {
+  display: grid;
+  gap: 16px;
+}
+
+.mcp-page-section__header {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.mcp-page-section__header h3 {
+  margin: 4px 0;
+  color: #2e402b;
+}
+
+.mcp-page-section__header p {
+  margin: 0;
+  color: #647062;
+  line-height: 1.5;
+}
+
+.mcp-page-section__header button {
+  border: 1px solid #cbd4c5;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #2e402b;
+  cursor: pointer;
+  font-weight: 900;
+  padding: 9px 13px;
+  white-space: nowrap;
+}
+
+.mcp-connector-catalog-grid,
+.mcp-invocation-history-list {
+  display: grid;
+  gap: 14px;
+}
+
+.mcp-connector-catalog-card,
+.mcp-invocation-history-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #d9dfd4;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.mcp-connector-catalog-card__header,
+.mcp-invocation-history-card__header {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.mcp-connector-catalog-card h3,
+.mcp-invocation-history-card h3 {
+  margin: 0;
+  color: #2e402b;
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+
+.mcp-connector-catalog-card p,
+.mcp-invocation-history-card p {
+  margin: 4px 0 0;
+  color: #647062;
+  line-height: 1.5;
+}
+
+.mcp-policy-pill {
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 900;
+  padding: 6px 10px;
+}
+
+.mcp-policy-pill--allow {
+  background: #2e402b;
+  color: #ffffff;
+}
+
+.mcp-policy-pill--block {
+  background: #f7ded7;
+  color: #7a2f1b;
+}
+
+.mcp-connector-catalog-card__metadata,
+.mcp-invocation-history-card__metadata {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.mcp-connector-catalog-card__metadata dt,
+.mcp-invocation-history-card__metadata dt {
+  color: #647062;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.mcp-connector-catalog-card__metadata dd,
+.mcp-invocation-history-card__metadata dd {
+  margin: 4px 0 0;
+  color: #2e402b;
+  font-size: 0.85rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.mcp-connector-catalog-card__reason,
+.mcp-invocation-history-card__reason {
+  border-top: 1px solid #d9dfd4;
+  padding-top: 12px;
+  font-weight: 800;
+}
+
+.mcp-invocation-history-card__codes {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.78rem;
+}
+
+@media (max-width: 820px) {
+  .mcp-page-section__header,
+  .mcp-connector-catalog-card__header,
+  .mcp-invocation-history-card__header {
+    flex-direction: column;
+  }
+
+  .mcp-connector-catalog-card__metadata,
+  .mcp-invocation-history-card__metadata {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .mcp-connector-catalog-card__metadata,
+  .mcp-invocation-history-card__metadata {
+    grid-template-columns: 1fr;
+  }
+}
