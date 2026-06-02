@@ -55,7 +55,7 @@ import {
   formatIntakeBatchSourceType,
   formatIntakeBatchStatus,
 } from "./utils/intakeLabels";
-import { APP_NAV_ITEMS, type AppView } from "./constants/appNav";
+import { type AppView } from "./constants/appNav";
 import { MODEL_ROUTING_GOALS, MODEL_TASK_TYPES } from "./constants/modelRouting";
 import {
   WORKFLOW_RUN_STATUS_FILTERS,
@@ -105,6 +105,7 @@ import { ToolCallLogCard } from "./components/workflows/ToolCallLogCard";
 import { ConnectorCatalogCard } from "./components/mcp/ConnectorCatalogCard";
 import { ConnectorInvocationHistoryCard } from "./components/mcp/ConnectorInvocationHistoryCard";
 import { ReadOnlyMcpConnectorResultCard } from "./components/mcp/ReadOnlyMcpConnectorResultCard";
+import { AppHeroNav } from "./components/layout/AppHeroNav";
 
 function App() {
   const [activeView, setActiveView] = useState<AppView>("OVERVIEW");
@@ -822,35 +823,7 @@ function App() {
 
   return (
     <main className="app-shell">
-      <section className="hero">
-        <h1>SwingOps AI</h1>
-
-        <p className="subtitle">Agentic Golf Retail Workflow Platform</p>
-
-        <p className="hero__description">
-          SwingOps AI turns messy golf trade-in notes into structured workflow
-          runs using model routing, tool execution, human review, and MCP-style
-          connector safety.
-        </p>
-      </section>
-
-      <nav aria-label="SwingOps demo sections" className="app-nav">
-        {APP_NAV_ITEMS.map((item) => (
-          <button
-            className={
-              activeView === item.view
-                ? "app-nav__button app-nav__button--active"
-                : "app-nav__button"
-            }
-            key={item.view}
-            onClick={() => setActiveView(item.view)}
-            type="button"
-          >
-            <span>{item.eyebrow}</span>
-            <strong>{item.label}</strong>
-          </button>
-        ))}
-      </nav>
+      <AppHeroNav activeView={activeView} onViewChange={setActiveView} />
 
       {activeView === "OVERVIEW" ? (
         <section className="overview-page" aria-labelledby="overview-heading">
