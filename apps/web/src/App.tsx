@@ -94,55 +94,17 @@ import {
   getReviewQueueItemBatchId,
   getWorkflowReviewQueueDisplayText,
 } from "./utils/reviewQueueDisplay";
+import {
+  getNeedsReviewWorkflowRunSummary,
+  getWorkflowRunSourcePreview,
+} from "./utils/workflowDisplay";
+import { getReadOnlyMcpToolInput } from "./utils/readOnlyMcpToolInput";
 import { ModelRouteCard } from "./components/model-routing/ModelRouteCard";
 import { WorkflowToolCallingPlanPanel } from "./components/workflows/WorkflowToolCallingPlanPanel";
 import { ToolCallLogCard } from "./components/workflows/ToolCallLogCard";
 import { ConnectorCatalogCard } from "./components/mcp/ConnectorCatalogCard";
 import { ConnectorInvocationHistoryCard } from "./components/mcp/ConnectorInvocationHistoryCard";
 import { ReadOnlyMcpConnectorResultCard } from "./components/mcp/ReadOnlyMcpConnectorResultCard";
-
-function getNeedsReviewWorkflowRunSummary(count: number): string {
-  if (count === 0) {
-    return "No workflow runs currently need review.";
-  }
-
-  if (count === 1) {
-    return "1 workflow run currently needs review.";
-  }
-
-  return `${count} workflow runs currently need review.`;
-}
-
-function getWorkflowRunSourcePreview(run: GlobalWorkflowRunSummary): string {
-  return run.intakeItem?.rawText ?? "No item-level source preview captured yet.";
-}
-
-function getReadOnlyMcpToolInput(
-  toolName: ReadOnlyMcpToolName,
-  workflowRunId: string,
-): unknown {
-  if (toolName === "swingops.clubReference.search") {
-    return {
-      query:
-        "Titleist TSR3 fairway wood, 15 degree, stiff shaft. Customer wrote TSR maybe TS2.",
-    };
-  }
-
-  if (toolName === "swingops.workflowRuns.get") {
-    return {
-      id: workflowRunId,
-    };
-  }
-
-  if (toolName === "swingops.reviewQueueItems.resolve") {
-    return {
-      id: "blocked-demo-review-item",
-      reviewerNotes: "Blocked demo only. Mutations are disabled on this surface.",
-    };
-  }
-
-  return {};
-}
 
 function App() {
   const [activeView, setActiveView] = useState<AppView>("OVERVIEW");
