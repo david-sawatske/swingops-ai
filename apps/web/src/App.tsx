@@ -28,8 +28,6 @@ import type {
   ExecuteReadOnlyToolInvocationResponse,
 } from "./types/mcp";
 import type {
-  ModelRouteCandidateSummary,
-  ModelRouteRejectedCandidate,
   ModelRoutingGoal,
   ModelTaskType,
   PreviewModelRoutingResponse,
@@ -56,7 +54,6 @@ import {
   formatIntakeBatchStatus,
 } from "./utils/intakeLabels";
 import { type AppView } from "./constants/appNav";
-import { MODEL_ROUTING_GOALS, MODEL_TASK_TYPES } from "./constants/modelRouting";
 import {
   WORKFLOW_RUN_STATUS_FILTERS,
   type WorkflowRunStatusFilter,
@@ -104,6 +101,7 @@ import { ConnectorInvocationHistoryCard } from "./components/mcp/ConnectorInvoca
 import { ReadOnlyMcpConnectorResultCard } from "./components/mcp/ReadOnlyMcpConnectorResultCard";
 import { AppHeroNav } from "./components/layout/AppHeroNav";
 import { OverviewPage } from "./components/overview/OverviewPage";
+import { ModelRoutingPage } from "./components/model-routing/ModelRoutingPage";
 
 function App() {
   const [activeView, setActiveView] = useState<AppView>("OVERVIEW");
@@ -1295,241 +1293,20 @@ function App() {
       ) : null}
 
       {activeView === "MODEL_ROUTING" ? (
-      <DashboardSection
-        title="Model Routing Preview"
-        description="Preview health, latency, cost, quality, and fallback-aware provider selection across mock, OpenAI, Anthropic, Azure OpenAI, and local/open-source style providers."
-      >
-        <div className="section-intro-card">
-          <span className="model-route-card__eyebrow">Resume Story</span>
-          <h3>Provider routing separated from workflow logic</h3>
-          <p>
-            The workflow asks for a task outcome. The routing layer decides which
-            provider/model should handle it based on health, estimated latency, estimated cost, quality tier, task type, JSON requirements, and fallback behavior.
-          </p>
-        </div>
-
-        <form className="model-routing-preview-form" onSubmit={handlePreviewModelRouting}>
-          <label>
-            Task Type
-            <select
-              onChange={(event) =>
-                setModelRoutingTaskType(event.target.value as ModelTaskType)
-              }
-              value={modelRoutingTaskType}
-            >
-              {MODEL_TASK_TYPES.map((taskType) => (
-                <option key={taskType} value={taskType}>
-                  {formatEnumLabel(taskType)}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            Preferred Goal
-            <select
-              onChange={(event) =>
-                setModelRoutingGoal(event.target.value as ModelRoutingGoal)
-              }
-              value={modelRoutingGoal}
-            >
-              {MODEL_ROUTING_GOALS.map((goal) => (
-                <option key={goal} value={goal}>
-                  {formatEnumLabel(goal)}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="model-routing-preview-form__checkbox">
-            <input
-              checked={modelRoutingRequireJson}
-              onChange={(event) => setModelRoutingRequireJson(event.target.checked)}
-              type="checkbox"
-            />
-            Require structured JSON output
-          </label>
-
-          <label className="model-routing-preview-form__checkbox">
-            <input
-              checked={modelRoutingAllowDisabledProviders}
-              onChange={(event) =>
-                setModelRoutingAllowDisabledProviders(event.target.checked)
-              }
-              type="checkbox"
-            />
-            Include disabled providers for portfolio simulation
-          </label>
-
-          <button disabled={isPreviewingModelRouting} type="submit">
-            {isPreviewingModelRouting ? "Previewing…" : "Preview Model Route"}
-          </button>
-        </form>
-
-        {modelRoutingPreviewError ? (
-          <p className="form-message form-message--error">
-            {modelRoutingPreviewError}
-          </p>
-        ) : null}
-
-        {modelRoutingPreview ? (
-          <div className="model-routing-preview-result">
-            <article className="model-routing-selected-card">
-              <div>
-                <span className="model-route-card__eyebrow">Selected Route</span>
-                <h3>
-                  {modelRoutingPreview.routingDecision.provider} /{" "}
-                  {modelRoutingPreview.routingDecision.model}
-                </h3>
-                <p>{modelRoutingPreview.routingDecision.reason}</p>
-              </div>
-
-              <dl>
-                <div>
-                  <dt>Task</dt>
-                  <dd>{formatEnumLabel(modelRoutingPreview.routingRequest.taskType)}</dd>
-                </div>
-
-                <div>
-                  <dt>Goal</dt>
-                  <dd>{formatEnumLabel(modelRoutingPreview.routingRequest.preferredGoal)}</dd>
-                </div>
-
-                <div>
-                  <dt>JSON</dt>
-                  <dd>{String(modelRoutingPreview.routingRequest.requireJson)}</dd>
-                </div>
-
-                <div>
-                  <dt>Cost</dt>
-                  <dd>{modelRoutingPreview.routingDecision.estimatedCostTier}</dd>
-                </div>
-
-                <div>
-                  <dt>Latency</dt>
-                  <dd>{modelRoutingPreview.routingDecision.expectedLatencyTier}</dd>
-                </div>
-
-                <div>
-                  <dt>Quality</dt>
-                  <dd>{modelRoutingPreview.routingDecision.qualityTier}</dd>
-                </div>
-              </dl>
-
-              {modelRoutingPreview.routingDecision.fallbackReason ? (
-                <p className="model-routing-selected-card__fallback">
-                  Fallback: {modelRoutingPreview.routingDecision.fallbackReason}
-                </p>
-              ) : null}
-            </article>
-
-            <div className="model-routing-preview-grid">
-              <div>
-                <h4>Candidates Considered</h4>
-
-                <div className="model-routing-candidate-list">
-                  {modelRoutingPreview.routingDecision.candidatesConsidered.map(
-                    (candidate: ModelRouteCandidateSummary) => (
-                      <article
-                        className="model-routing-candidate-card"
-                        key={`${candidate.provider}-${candidate.model}`}
-                      >
-                        <div>
-                          <strong>
-                            {candidate.provider} / {candidate.model}
-                          </strong>
-                          <p>
-                            Supports {candidate.supportedTaskTypes.length} task
-                            type{candidate.supportedTaskTypes.length === 1 ? "" : "s"}.
-                          </p>
-                        </div>
-
-                        <dl>
-                          <div>
-                            <dt>Cost</dt>
-                            <dd>{candidate.costTier}</dd>
-                          </div>
-
-                          <div>
-                            <dt>Latency</dt>
-                            <dd>{candidate.latencyTier}</dd>
-                          </div>
-
-                          <div>
-                            <dt>Quality</dt>
-                            <dd>{candidate.qualityTier}</dd>
-                          </div>
-
-                          <div>
-                            <dt>Executable</dt>
-                            <dd>{String(candidate.enabledForExecution)}</dd>
-                          </div>
-                        </dl>
-                      </article>
-                    ),
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <h4>Rejected Candidates</h4>
-
-                {modelRoutingPreview.routingDecision.rejectedCandidates.length === 0 ? (
-                  <EmptyState
-                    title="No rejected candidates"
-                    message="Every considered provider/model matched this routing request."
-                  />
-                ) : (
-                  <div className="model-routing-candidate-list">
-                    {modelRoutingPreview.routingDecision.rejectedCandidates.map(
-                      (candidate: ModelRouteRejectedCandidate) => (
-                        <article
-                          className="model-routing-candidate-card model-routing-candidate-card--rejected"
-                          key={`${candidate.provider}-${candidate.model}`}
-                        >
-                          <div>
-                            <strong>
-                              {candidate.provider} / {candidate.model}
-                            </strong>
-                            <p>{candidate.rejectedReasons.join(", ")}</p>
-                          </div>
-
-                          <dl>
-                            <div>
-                              <dt>Cost</dt>
-                              <dd>{candidate.costTier}</dd>
-                            </div>
-
-                            <div>
-                              <dt>Latency</dt>
-                              <dd>{candidate.latencyTier}</dd>
-                            </div>
-
-                            <div>
-                              <dt>Quality</dt>
-                              <dd>{candidate.qualityTier}</dd>
-                            </div>
-
-                            <div>
-                              <dt>JSON</dt>
-                              <dd>{String(candidate.supportsJson)}</dd>
-                            </div>
-                          </dl>
-                        </article>
-                      ),
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <EmptyState
-            title="No model route preview yet"
-            message="Choose a task and goal to preview how SwingOps selects a model provider."
-          />
-        )}
-      </DashboardSection>
+        <ModelRoutingPage
+          taskType={modelRoutingTaskType}
+          goal={modelRoutingGoal}
+          requireJson={modelRoutingRequireJson}
+          allowDisabledProviders={modelRoutingAllowDisabledProviders}
+          preview={modelRoutingPreview}
+          isPreviewing={isPreviewingModelRouting}
+          error={modelRoutingPreviewError}
+          onTaskTypeChange={setModelRoutingTaskType}
+          onGoalChange={setModelRoutingGoal}
+          onRequireJsonChange={setModelRoutingRequireJson}
+          onAllowDisabledProvidersChange={setModelRoutingAllowDisabledProviders}
+          onSubmit={handlePreviewModelRouting}
+        />
       ) : null}
 
       {activeView === "MCP_CONNECTORS" ? (
