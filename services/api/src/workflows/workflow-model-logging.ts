@@ -50,6 +50,20 @@ export async function createMockModelCallLogForWorkflowRun(
       latencyMs: 0,
       estimatedCostUsd: 0,
       completedAt: new Date(),
+      attemptLogs: {
+        create: [
+          {
+            provider: decision.provider,
+            model: decision.model,
+            attemptOrder: 1,
+            status: "SUCCESS",
+            reason: decision.reason,
+            latencyMs: 0,
+            estimatedCostUsd: 0,
+            completedAt: new Date()
+          }
+        ]
+      },
       requestJson: {
         workflowRunId: input.workflowRunId,
         taskType: input.taskType,

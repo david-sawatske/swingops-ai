@@ -104,6 +104,16 @@ enum ModelCallStatus {
   SKIPPED
 }
 
+enum ModelCallAttemptStatus {
+  SUCCESS
+  FAILED
+  SKIPPED
+  TIMEOUT
+  UNHEALTHY
+  DISABLED
+  RATE_LIMITED
+}
+
 enum ModelProviderName {
   MOCK
   OPENAI
@@ -148,11 +158,11 @@ model IntakeBatch {
 }
 
 model IntakeItem {
-  id            String           @id @default(cuid())
-  intakeBatchId String           @map("intake_batch_id")
-  rawText       String           @map("raw_text")
-  sourceRowNumber Int?           @map("source_row_number")
-  status        IntakeItemStatus @default(PENDING)
+  id              String           @id @default(cuid())
+  intakeBatchId   String           @map("intake_batch_id")
+  rawText         String           @map("raw_text")
+  sourceRowNumber Int?             @map("source_row_number")
+  status          IntakeItemStatus @default(PENDING)
 
   intakeBatch      IntakeBatch       @relation(fields: [intakeBatchId], references: [id], onDelete: Cascade)
   golfClubs        GolfClub[]
@@ -168,14 +178,14 @@ model IntakeItem {
 }
 
 model GolfClub {
-  id           String @id @default(cuid())
+  id           String  @id @default(cuid())
   intakeItemId String? @map("intake_item_id")
 
   brand    String
   model    String
   category GolfClubCategory
 
-  loft        String?
+  loft       String?
   shaftBrand String?    @map("shaft_brand")
   shaftFlex  ShaftFlex? @map("shaft_flex")
   dexterity  Dexterity?
@@ -203,15 +213,15 @@ model GolfClub {
 }
 
 model WorkflowRun {
-  id            String             @id @default(cuid())
-  intakeBatchId String?            @map("intake_batch_id")
-  intakeItemId  String?            @map("intake_item_id")
-  workflowName  String             @map("workflow_name")
-  status        WorkflowRunStatus  @default(QUEUED)
+  id            String            @id @default(cuid())
+  intakeBatchId String?           @map("intake_batch_id")
+  intakeItemId  String?           @map("intake_item_id")
+  workflowName  String            @map("workflow_name")
+  status        WorkflowRunStatus @default(QUEUED)
 
-  startedAt   DateTime? @map("started_at")
-  completedAt DateTime? @map("completed_at")
-  errorMessage String?  @map("error_message")
+  startedAt    DateTime? @map("started_at")
+  completedAt  DateTime? @map("completed_at")
+  errorMessage String?   @map("error_message")
 
   intakeBatch      IntakeBatch?      @relation(fields: [intakeBatchId], references: [id], onDelete: SetNull)
   intakeItem       IntakeItem?       @relation(fields: [intakeItemId], references: [id], onDelete: SetNull)
@@ -231,8 +241,8 @@ model WorkflowRun {
 }
 
 model WorkflowStep {
-  id            String             @id @default(cuid())
-  workflowRunId String             @map("workflow_run_id")
+  id            String @id @default(cuid())
+  workflowRunId String @map("workflow_run_id")
 
   stepName   String             @map("step_name")
   stepType   WorkflowStepType   @map("step_type")
@@ -262,9 +272,9 @@ model WorkflowStep {
 }
 
 model ToolCallLog {
-  id             String          @id @default(cuid())
-  workflowRunId  String?         @map("workflow_run_id")
-  workflowStepId String?         @map("workflow_step_id")
+  id             String  @id @default(cuid())
+  workflowRunId  String? @map("workflow_run_id")
+  workflowStepId String? @map("workflow_step_id")
 
   toolName String         @map("tool_name")
   status   ToolCallStatus @default(STARTED)
@@ -290,13 +300,13 @@ model ToolCallLog {
 }
 
 model ModelCallLog {
-  id             String          @id @default(cuid())
-  workflowRunId  String?         @map("workflow_run_id")
-  workflowStepId String?         @map("workflow_step_id")
+  id             String  @id @default(cuid())
+  workflowRunId  String? @map("workflow_run_id")
+  workflowStepId String? @map("workflow_step_id")
 
   provider ModelProviderName
   model    String
-  status   ModelCallStatus @default(STARTED)
+  status   ModelCallStatus   @default(STARTED)
 
   promptTokens     Int?   @map("prompt_tokens")
   completionTokens Int?   @map("completion_tokens")
@@ -312,8 +322,9 @@ model ModelCallLog {
   startedAt   DateTime  @default(now()) @map("started_at")
   completedAt DateTime? @map("completed_at")
 
-  workflowRun  WorkflowRun?  @relation(fields: [workflowRunId], references: [id], onDelete: SetNull)
-  workflowStep WorkflowStep? @relation(fields: [workflowStepId], references: [id], onDelete: SetNull)
+  workflowRun  WorkflowRun?          @relation(fields: [workflowRunId], references: [id], onDelete: SetNull)
+  workflowStep WorkflowStep?         @relation(fields: [workflowStepId], references: [id], onDelete: SetNull)
+  attemptLogs  ModelCallAttemptLog[]
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -325,11 +336,38 @@ model ModelCallLog {
   @@map("model_call_logs")
 }
 
+model ModelCallAttemptLog {
+  id             String @id @default(cuid())
+  modelCallLogId String @map("model_call_log_id")
+
+  provider     ModelProviderName
+  model        String
+  attemptOrder Int                    @map("attempt_order")
+  status       ModelCallAttemptStatus
+
+  reason           String?
+  errorMessage     String? @map("error_message")
+  latencyMs        Int?    @map("latency_ms")
+  estimatedCostUsd Float?  @map("estimated_cost_usd")
+
+  modelCallLog ModelCallLog @relation(fields: [modelCallLogId], references: [id], onDelete: Cascade)
+
+  startedAt   DateTime  @default(now()) @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([modelCallLogId])
+  @@index([provider])
+  @@index([status])
+  @@index([attemptOrder])
+  @@map("model_call_attempt_logs")
+}
+
 model ReviewQueueItem {
-  id            String             @id @default(cuid())
-  intakeItemId  String?            @map("intake_item_id")
-  golfClubId    String?            @map("golf_club_id")
-  workflowRunId String?            @map("workflow_run_id")
+  id            String  @id @default(cuid())
+  intakeItemId  String? @map("intake_item_id")
+  golfClubId    String? @map("golf_club_id")
+  workflowRunId String? @map("workflow_run_id")
 
   reason ReviewReason
   status ReviewQueueStatus @default(OPEN)

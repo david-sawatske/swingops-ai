@@ -73,6 +73,28 @@ describe("workflow model logging", () => {
 
     expect(responseJson.routingDecision?.candidatesConsidered).toHaveLength(5);
     expect(responseJson.routingDecision?.rejectedCandidates).toEqual([]);
+
+    const attemptLogs = await prisma.modelCallAttemptLog.findMany({
+      where: {
+        modelCallLogId: modelCallLog.id
+      },
+      orderBy: {
+        attemptOrder: "asc"
+      }
+    });
+
+    expect(attemptLogs).toHaveLength(1);
+    expect(attemptLogs[0]).toMatchObject({
+      modelCallLogId: modelCallLog.id,
+      provider: "OPENAI",
+      model: "gpt-4.1-mini",
+      attemptOrder: 1,
+      status: "SUCCESS",
+      latencyMs: 0,
+      estimatedCostUsd: 0
+    });
+    expect(attemptLogs[0]?.reason).toContain("Selected OPENAI");
+    expect(attemptLogs[0]?.completedAt).toBeInstanceOf(Date);
   });
 
   it("records fallback routing metadata for unsupported local-only tasks", async () => {
@@ -107,6 +129,27 @@ describe("workflow model logging", () => {
           })
         ])
       }
+    });
+
+
+    const attemptLogs = await prisma.modelCallAttemptLog.findMany({
+      where: {
+        modelCallLogId: modelCallLog.id
+      },
+      orderBy: {
+        attemptOrder: "asc"
+      }
+    });
+
+    expect(attemptLogs).toHaveLength(1);
+    expect(attemptLogs[0]).toMatchObject({
+      modelCallLogId: modelCallLog.id,
+      provider: "MOCK",
+      model: "mock-golf-workflow-model",
+      attemptOrder: 1,
+      status: "SUCCESS",
+      latencyMs: 0,
+      estimatedCostUsd: 0
     });
   });
 });

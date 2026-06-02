@@ -381,6 +381,19 @@ describe("workflow run routes", () => {
         }
       });
 
+      expect(body.modelCallLogs[0].attemptLogs).toHaveLength(1);
+      expect(body.modelCallLogs[0].attemptLogs[0]).toMatchObject({
+        provider: "MOCK",
+        model: "mock-golf-workflow-model",
+        attemptOrder: 1,
+        status: "SUCCESS",
+        latencyMs: 0,
+        estimatedCostUsd: 0
+      });
+      expect(body.modelCallLogs[0].attemptLogs[0].modelCallLogId).toBe(
+        body.modelCallLogs[0].id
+      );
+
       await prisma.workflowRun.delete({
         where: {
           id: workflowRun.id

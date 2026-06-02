@@ -146,6 +146,38 @@ function serializeToolCallLog(log: {
   };
 }
 
+function serializeModelCallAttemptLog(attempt: {
+  id: string;
+  modelCallLogId: string;
+  provider: string;
+  model: string;
+  attemptOrder: number;
+  status: string;
+  reason: string | null;
+  errorMessage: string | null;
+  latencyMs: number | null;
+  estimatedCostUsd: number | null;
+  startedAt: Date;
+  completedAt: Date | null;
+  createdAt: Date;
+}) {
+  return {
+    id: attempt.id,
+    modelCallLogId: attempt.modelCallLogId,
+    provider: attempt.provider,
+    model: attempt.model,
+    attemptOrder: attempt.attemptOrder,
+    status: attempt.status,
+    reason: attempt.reason,
+    errorMessage: attempt.errorMessage,
+    latencyMs: attempt.latencyMs,
+    estimatedCostUsd: attempt.estimatedCostUsd,
+    startedAt: attempt.startedAt.toISOString(),
+    completedAt: attempt.completedAt?.toISOString() ?? null,
+    createdAt: attempt.createdAt.toISOString()
+  };
+}
+
 function serializeModelCallLog(log: {
   id: string;
   workflowRunId: string | null;
@@ -164,6 +196,21 @@ function serializeModelCallLog(log: {
   startedAt: Date;
   completedAt: Date | null;
   createdAt: Date;
+  attemptLogs?: {
+    id: string;
+    modelCallLogId: string;
+    provider: string;
+    model: string;
+    attemptOrder: number;
+    status: string;
+    reason: string | null;
+    errorMessage: string | null;
+    latencyMs: number | null;
+    estimatedCostUsd: number | null;
+    startedAt: Date;
+    completedAt: Date | null;
+    createdAt: Date;
+  }[];
 }) {
   return {
     id: log.id,
@@ -182,7 +229,8 @@ function serializeModelCallLog(log: {
     errorMessage: log.errorMessage,
     startedAt: log.startedAt.toISOString(),
     completedAt: log.completedAt?.toISOString() ?? null,
-    createdAt: log.createdAt.toISOString()
+    createdAt: log.createdAt.toISOString(),
+    attemptLogs: log.attemptLogs?.map(serializeModelCallAttemptLog) ?? []
   };
 }
 
@@ -324,7 +372,14 @@ export async function workflowRunRoutes(app: FastifyInstance): Promise<void> {
           orderBy: {
             createdAt: "desc"
           },
-          take: 1
+          take: 1,
+          include: {
+            attemptLogs: {
+              orderBy: {
+                attemptOrder: "asc"
+              }
+            }
+          }
         },
         toolCallLogs: {
           orderBy: {
@@ -372,6 +427,13 @@ export async function workflowRunRoutes(app: FastifyInstance): Promise<void> {
         modelCallLogs: {
           orderBy: {
             createdAt: "asc"
+          },
+          include: {
+            attemptLogs: {
+              orderBy: {
+                attemptOrder: "asc"
+              }
+            }
           }
         },
         reviewQueueItems: {
