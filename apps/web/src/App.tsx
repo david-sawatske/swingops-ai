@@ -55,357 +55,45 @@ import {
   formatIntakeBatchSourceType,
   formatIntakeBatchStatus,
 } from "./utils/intakeLabels";
-
-type WorkflowRunStatusFilter = "ALL" | WorkflowRunStatus;
-
-type AppView =
-  | "OVERVIEW"
-  | "INTAKE"
-  | "WORKFLOW_RUNS"
-  | "REVIEW_QUEUE"
-  | "MODEL_ROUTING"
-  | "MCP_CONNECTORS";
-
-type AppNavItem = {
-  view: AppView;
-  label: string;
-  eyebrow: string;
-};
-
-const APP_NAV_ITEMS: AppNavItem[] = [
-  {
-    view: "OVERVIEW",
-    label: "Overview",
-    eyebrow: "Product story",
-  },
-  {
-    view: "INTAKE",
-    label: "Intake",
-    eyebrow: "Messy notes",
-  },
-  {
-    view: "WORKFLOW_RUNS",
-    label: "Workflow Runs",
-    eyebrow: "Orchestration",
-  },
-  {
-    view: "REVIEW_QUEUE",
-    label: "Review Queue",
-    eyebrow: "Human-in-loop",
-  },
-  {
-    view: "MODEL_ROUTING",
-    label: "Model Routing",
-    eyebrow: "Cost / latency / quality",
-  },
-  {
-    view: "MCP_CONNECTORS",
-    label: "MCP Connectors",
-    eyebrow: "Tool safety",
-  },
-];
-
-const MODEL_TASK_TYPES: ModelTaskType[] = [
-  "INTAKE_PARSING",
-  "FIELD_NORMALIZATION",
-  "VALIDATION",
-  "REVIEW_SUMMARY",
-];
-
-const MODEL_ROUTING_GOALS: ModelRoutingGoal[] = [
-  "LOW_COST",
-  "LOW_LATENCY",
-  "HIGH_QUALITY",
-  "LOCAL_ONLY",
-];
-
-const WORKFLOW_RUN_STATUS_FILTERS: WorkflowRunStatusFilter[] = [
-  "ALL",
-  "QUEUED",
-  "RUNNING",
-  "COMPLETED",
-  "NEEDS_REVIEW",
-  "FAILED",
-  "CANCELLED",
-];
-
-type ReadOnlyMcpToolName =
-  | "swingops.clubReference.search"
-  | "swingops.workflowRuns.list"
-  | "swingops.workflowRuns.get"
-  | "swingops.reviewQueueItems.list"
-  | "swingops.intakeBatches.list"
-  | "swingops.reviewQueueItems.resolve";
-
-type ReadOnlyMcpToolDemoOption = {
-  name: ReadOnlyMcpToolName;
-  label: string;
-  description: string;
-  category: "INTAKE" | "WORKFLOW" | "REVIEW_QUEUE";
-  riskLevel: "LOW" | "HIGH";
-  enabled: boolean;
-  mutatesData: boolean;
-  requiresHumanApproval: boolean;
-  blockedDemo: boolean;
-};
-
-const READ_ONLY_MCP_TOOL_OPTIONS: ReadOnlyMcpToolDemoOption[] = [
-  {
-    name: "swingops.clubReference.search",
-    label: "Search club reference",
-    description:
-      "Reads a local golf club reference dataset to ground ambiguous trade-in notes before human review.",
-    category: "WORKFLOW",
-    riskLevel: "LOW",
-    enabled: true,
-    mutatesData: false,
-    requiresHumanApproval: false,
-    blockedDemo: false,
-  },
-  {
-    name: "swingops.workflowRuns.list",
-    label: "List workflow runs",
-    description: "Reads workflow run summaries from internal SwingOps data.",
-    category: "WORKFLOW",
-    riskLevel: "LOW",
-    enabled: true,
-    mutatesData: false,
-    requiresHumanApproval: false,
-    blockedDemo: false,
-  },
-  {
-    name: "swingops.reviewQueueItems.list",
-    label: "List review queue items",
-    description: "Reads human-review queue items without changing their status.",
-    category: "REVIEW_QUEUE",
-    riskLevel: "LOW",
-    enabled: true,
-    mutatesData: false,
-    requiresHumanApproval: false,
-    blockedDemo: false,
-  },
-  {
-    name: "swingops.intakeBatches.list",
-    label: "List intake batches",
-    description: "Reads imported golf trade-in intake batches.",
-    category: "INTAKE",
-    riskLevel: "LOW",
-    enabled: true,
-    mutatesData: false,
-    requiresHumanApproval: false,
-    blockedDemo: false,
-  },
-  {
-    name: "swingops.workflowRuns.get",
-    label: "Get workflow run detail",
-    description:
-      "Reads one workflow run with steps, model logs, tool logs, and review items.",
-    category: "WORKFLOW",
-    riskLevel: "LOW",
-    enabled: true,
-    mutatesData: false,
-    requiresHumanApproval: false,
-    blockedDemo: false,
-  },
-  {
-    name: "swingops.reviewQueueItems.resolve",
-    label: "Blocked demo: resolve review item",
-    description:
-      "Mutation tool intentionally blocked by the read-only connector surface.",
-    category: "REVIEW_QUEUE",
-    riskLevel: "HIGH",
-    enabled: false,
-    mutatesData: true,
-    requiresHumanApproval: true,
-    blockedDemo: true,
-  },
-];
-
-function formatEnumLabel(value: string): string {
-  return value
-    .split("_")
-    .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
-    .join(" ");
-}
-
-function formatEnabledLabel(value: boolean): string {
-  return value ? "Enabled" : "Disabled";
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function getStringField(
-  record: Record<string, unknown> | null,
-  fieldName: string,
-): string {
-  if (!record) {
-    return "—";
-  }
-
-  const value = record[fieldName];
-
-  return typeof value === "string" ? value : "—";
-}
-
-function getRoutingDecision(
-  modelCallLog: ModelCallLog | null,
-): Record<string, unknown> | null {
-  if (!modelCallLog || !isRecord(modelCallLog.responseJson)) {
-    return null;
-  }
-
-  const routingDecision = modelCallLog.responseJson.routingDecision;
-
-  return isRecord(routingDecision) ? routingDecision : null;
-}
-
-function getRoutingGoal(modelCallLog: ModelCallLog | null): string {
-  if (!modelCallLog || !isRecord(modelCallLog.requestJson)) {
-    return "—";
-  }
-
-  const routingGoal = modelCallLog.requestJson.routingGoal;
-
-  return typeof routingGoal === "string" ? routingGoal : "—";
-}
-
-function getBooleanField(
-  record: Record<string, unknown> | null,
-  fieldName: string,
-): string {
-  if (!record) {
-    return "—";
-  }
-
-  const value = record[fieldName];
-
-  return typeof value === "boolean" ? String(value) : "—";
-}
-
-function getStringListField(
-  record: Record<string, unknown> | null,
-  fieldName: string,
-): string {
-  if (!record) {
-    return "—";
-  }
-
-  const value = record[fieldName];
-
-  if (!Array.isArray(value)) {
-    return "—";
-  }
-
-  const strings = value.filter((item): item is string => typeof item === "string");
-
-  return strings.length > 0 ? strings.join(", ") : "—";
-}
-
-function getToolCallOutputJson(
-  toolCallLog: ToolCallLog,
-): Record<string, unknown> | null {
-  return isRecord(toolCallLog.outputJson) ? toolCallLog.outputJson : null;
-}
-
-function getConnectorResultData(
-  toolCallLog: ToolCallLog,
-): Record<string, unknown> | null {
-  const outputJson = getToolCallOutputJson(toolCallLog);
-  const connectorResult = isRecord(outputJson?.connectorResult)
-    ? outputJson.connectorResult
-    : null;
-  const data = isRecord(connectorResult?.data) ? connectorResult.data : null;
-
-  return data;
-}
-
-function isGroundingToolCallLog(toolCallLog: ToolCallLog): boolean {
-  return toolCallLog.toolName === "swingops.clubReference.search";
-}
-
-function getClubReferenceSearchData(value: unknown): Record<string, unknown> | null {
-  if (!isRecord(value)) {
-    return null;
-  }
-
-  const clubReferenceSearch = value.clubReferenceSearch;
-
-  return isRecord(clubReferenceSearch) ? clubReferenceSearch : null;
-}
-
-function getGroundingSummaryFromToolCall(toolCallLog: ToolCallLog): string {
-  const data = getConnectorResultData(toolCallLog);
-  const clubReferenceSearch = getClubReferenceSearchData(data);
-  const summary = clubReferenceSearch?.summary;
-
-  return typeof summary === "string" ? summary : "No grounding summary returned.";
-}
-
-function getGroundingSummaryFromReviewItem(item: ReviewQueueItem): string | null {
-  if (!isRecord(item.proposedGolfClubJson)) {
-    return null;
-  }
-
-  const grounding = item.proposedGolfClubJson.grounding;
-
-  if (!isRecord(grounding)) {
-    return null;
-  }
-
-  return typeof grounding.summary === "string" ? grounding.summary : null;
-}
-
-function getGroundingMatchNamesFromReviewItem(item: ReviewQueueItem): string {
-  if (!isRecord(item.proposedGolfClubJson)) {
-    return "—";
-  }
-
-  const grounding = item.proposedGolfClubJson.grounding;
-
-  if (!isRecord(grounding) || !Array.isArray(grounding.matches)) {
-    return "—";
-  }
-
-  const names = grounding.matches
-    .filter(isRecord)
-    .map((match) => {
-      const brand = typeof match.brand === "string" ? match.brand : null;
-      const model = typeof match.model === "string" ? match.model : null;
-
-      return brand && model ? `${brand} ${model}` : null;
-    })
-    .filter((name): name is string => Boolean(name));
-
-  return names.length > 0 ? names.join(", ") : "—";
-}
-
-function isAuditOnlyToolCallLog(toolCallLog: ToolCallLog): boolean {
-  const outputJson = getToolCallOutputJson(toolCallLog);
-
-  return outputJson?.previewOnly === true;
-}
-
-function formatToolCallTimestamp(value: string | null): string {
-  return value ?? "—";
-}
-
-function formatJson(value: unknown): string {
-  if (value === null || value === undefined) {
-    return "No proposed golf club data captured.";
-  }
-
-  return JSON.stringify(value, null, 2);
-}
-
-function formatConnectorJson(value: unknown): string {
-  if (value === null || value === undefined) {
-    return "No connector result returned.";
-  }
-
-  return JSON.stringify(value, null, 2);
-}
+import { APP_NAV_ITEMS, type AppView } from "./constants/appNav";
+import { MODEL_ROUTING_GOALS, MODEL_TASK_TYPES } from "./constants/modelRouting";
+import {
+  WORKFLOW_RUN_STATUS_FILTERS,
+  type WorkflowRunStatusFilter,
+} from "./constants/workflows";
+import {
+  READ_ONLY_MCP_TOOL_OPTIONS,
+  type ReadOnlyMcpToolName,
+} from "./constants/mcpDemoTools";
+import {
+  formatConnectorJson,
+  formatEnabledLabel,
+  formatEnumLabel,
+  formatJson,
+  formatShortId,
+  formatToolCallTimestamp,
+} from "./utils/formatting";
+import {
+  getBooleanField,
+  getStringField,
+  getStringListField,
+  isRecord,
+} from "./utils/objectFields";
+import { getRoutingDecision, getRoutingGoal } from "./utils/modelRoutingDisplay";
+import {
+  getGroundingSummaryFromToolCall,
+  getToolCallOutputJson,
+  isAuditOnlyToolCallLog,
+  isGroundingToolCallLog,
+} from "./utils/toolCallDisplay";
+import {
+  getGlobalReviewQueueDisplayText,
+  getGroundingMatchNamesFromReviewItem,
+  getGroundingSummaryFromReviewItem,
+  getReviewActionFallbackNote,
+  getReviewQueueItemBatchId,
+  getWorkflowReviewQueueDisplayText,
+} from "./utils/reviewQueueDisplay";
 
 function getNeedsReviewWorkflowRunSummary(count: number): string {
   if (count === 0) {
@@ -421,37 +109,6 @@ function getNeedsReviewWorkflowRunSummary(count: number): string {
 
 function getWorkflowRunSourcePreview(run: GlobalWorkflowRunSummary): string {
   return run.intakeItem?.rawText ?? "No item-level source preview captured yet.";
-}
-
-function formatShortId(value: string | null | undefined): string {
-  if (!value) {
-    return "-";
-  }
-
-  return value.length <= 14 ? value : `${value.slice(0, 8)}...${value.slice(-4)}`;
-}
-
-function getGlobalReviewQueueDisplayText(item: GlobalReviewQueueItem): string {
-  return (
-    item.originalText ??
-    item.intakeItem?.rawText ??
-    "No original text captured."
-  );
-}
-
-function getWorkflowReviewQueueDisplayText(
-  item: ReviewQueueItem,
-  rawItems: { rawText: string }[] | undefined,
-): string {
-  if (item.originalText) {
-    return item.originalText;
-  }
-
-  if (rawItems?.length === 1) {
-    return rawItems[0].rawText;
-  }
-
-  return "Review source context: see raw intake items above. This simulated review item does not store item-level original text yet.";
 }
 
 function getReadOnlyMcpToolInput(
@@ -479,16 +136,6 @@ function getReadOnlyMcpToolInput(
   }
 
   return {};
-}
-
-function getReviewActionFallbackNote(action: "resolve" | "dismiss") {
-  return action === "resolve"
-    ? "Resolved during human review."
-    : "Dismissed during human review.";
-}
-
-function getReviewQueueItemBatchId(item: GlobalReviewQueueItem): string | null {
-  return item.intakeBatch?.id ?? item.workflowRun?.intakeBatchId ?? null;
 }
 
 function ModelRouteCard({
