@@ -99,6 +99,7 @@ import { McpConnectorsPage } from "./components/mcp/McpConnectorsPage";
 import { AppHeroNav } from "./components/layout/AppHeroNav";
 import { OverviewPage } from "./components/overview/OverviewPage";
 import { ModelRoutingPage } from "./components/model-routing/ModelRoutingPage";
+import { ReviewQueuePage } from "./components/review-queue/ReviewQueuePage";
 
 function App() {
   const [activeView, setActiveView] = useState<AppView>("OVERVIEW");
@@ -1161,132 +1162,20 @@ function App() {
       ) : null}
 
       {activeView === "REVIEW_QUEUE" ? (
-      <DashboardSection
-        title="Global Review Queue"
-        description="All human-in-the-loop review work across workflow runs."
-      >
-        {!isLoadingGlobalReviewQueue && !globalReviewQueueError ? (
-          <p className="section-summary">
-            {openReviewQueueItemCount} open review{" "}
-            {openReviewQueueItemCount === 1 ? "item" : "items"} /{" "}
-            {globalReviewQueueItems.length} total
-          </p>
-        ) : null}
-
-        {reviewQueueActionSuccess ? (
-          <p className="form-message form-message--success">
-            {reviewQueueActionSuccess}
-          </p>
-        ) : null}
-
-        {reviewQueueActionError ? (
-          <p className="form-message form-message--error">
-            {reviewQueueActionError}
-          </p>
-        ) : null}
-
-        {isLoadingGlobalReviewQueue ? <p>Loading review queue…</p> : null}
-
-        {globalReviewQueueError ? (
-          <EmptyState
-            title="Unable to load review queue"
-            message={globalReviewQueueError}
-          />
-        ) : null}
-
-        {!isLoadingGlobalReviewQueue &&
-        !globalReviewQueueError &&
-        globalReviewQueueItems.length === 0 ? (
-          <EmptyState
-            title="No review work queued"
-            message="Run a needs-review workflow simulation to create human review items."
-          />
-        ) : null}
-
-        {!isLoadingGlobalReviewQueue &&
-        !globalReviewQueueError &&
-        globalReviewQueueItems.length > 0 ? (
-          <div className="review-queue-list">
-            {globalReviewQueueItems.map((item) => (
-              <article className="review-queue-card" key={item.id}>
-                <div className="review-queue-card__header">
-                  <div>
-                    <span className="model-route-card__eyebrow">
-                      {item.status}
-                    </span>
-                    <h3>{item.reason}</h3>
-                    <p><strong>Source:</strong> {getGlobalReviewQueueDisplayText(item)}</p>
-                  </div>
-
-                  <span className="review-queue-card__status">
-                    {item.status}
-                  </span>
-                </div>
-
-                <dl className="review-queue-card__context">
-                  <div>
-                    <dt>Reason</dt>
-                    <dd>{item.reason}</dd>
-                  </div>
-
-                  <div>
-                    <dt>Grounding</dt>
-                    <dd>{getGroundingSummaryFromReviewItem(item) ?? "—"}</dd>
-                  </div>
-
-                  <div>
-                    <dt>Possible Matches</dt>
-                    <dd>{getGroundingMatchNamesFromReviewItem(item)}</dd>
-                  </div>
-
-                  <div>
-                    <dt>Batch</dt>
-                    <dd>{item.intakeBatch?.name ?? "—"}</dd>
-                  </div>
-
-                  <div>
-                    <dt>Workflow</dt>
-                    <dd>{item.workflowRun?.workflowName ?? "—"}</dd>
-                  </div>
-
-                  <div>
-                    <dt>Run Status</dt>
-                    <dd>{item.workflowRun?.status ?? "—"}</dd>
-                  </div>
-                </dl>
-
-                <details className="workflow-audit-log-details">
-                  <summary>
-                    Proposed Golf Club JSON
-                    <span>collapsed</span>
-                  </summary>
-                  <div className="review-queue-card__json">
-                    <pre>{formatJson(item.proposedGolfClubJson)}</pre>
-                  </div>
-                </details>
-
-                {item.reviewerNotes ? (
-                  <p className="review-queue-card__meta">
-                    Reviewer notes: {item.reviewerNotes}
-                  </p>
-                ) : null}
-
-                {item.resolvedAt ? (
-                  <p className="review-queue-card__meta">
-                    Resolved at: {item.resolvedAt}
-                  </p>
-                ) : null}
-
-                {renderReviewQueueActionControls({
-                  item,
-                  workflowRunId: item.workflowRunId,
-                  intakeBatchId: getReviewQueueItemBatchId(item),
-                })}
-              </article>
-            ))}
-          </div>
-        ) : null}
-      </DashboardSection>
+        <ReviewQueuePage
+          items={globalReviewQueueItems}
+          openReviewQueueItemCount={openReviewQueueItemCount}
+          isLoading={isLoadingGlobalReviewQueue}
+          error={globalReviewQueueError}
+          actionSuccess={reviewQueueActionSuccess}
+          actionError={reviewQueueActionError}
+          activeReviewQueueItemId={activeReviewQueueItemId}
+          reviewQueueNotesById={reviewQueueNotesById}
+          onNotesChange={handleReviewQueueNotesChange}
+          onReviewQueueItemAction={(input) =>
+            void handleReviewQueueItemAction(input)
+          }
+        />
       ) : null}
 
       {activeView === "MODEL_ROUTING" ? (
