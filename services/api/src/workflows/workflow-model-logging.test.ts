@@ -14,7 +14,7 @@ afterEach(async () => {
 });
 
 describe("workflow model logging", () => {
-  it("creates a succeeded mock model call log using the selected route decision", async () => {
+  it("persists provider fallback attempts and records the final successful model route", async () => {
     const workflowRun = await prisma.workflowRun.create({
       data: {
         workflowName: testWorkflowName
@@ -28,11 +28,11 @@ describe("workflow model logging", () => {
     });
 
     expect(modelCallLog.workflowRunId).toBe(workflowRun.id);
-    expect(modelCallLog.provider).toBe("OPENAI");
-    expect(modelCallLog.model).toBe("gpt-4.1-mini");
+    expect(modelCallLog.provider).toBe("MOCK");
+    expect(modelCallLog.model).toBe("mock-golf-workflow-model");
     expect(modelCallLog.status).toBe("SUCCEEDED");
-    expect(modelCallLog.latencyMs).toBe(0);
-    expect(modelCallLog.estimatedCostUsd).toBe(0);
+    expect(modelCallLog.latencyMs).toBeGreaterThanOrEqual(0);
+    expect(modelCallLog.estimatedCostUsd).toBeGreaterThanOrEqual(0);
     expect(modelCallLog.completedAt).toBeInstanceOf(Date);
 
     expect(modelCallLog.requestJson).toMatchObject({
@@ -41,14 +41,18 @@ describe("workflow model logging", () => {
       routingGoal: "HIGH_QUALITY",
       requireJson: true,
       allowDisabledProvidersForSimulation: true,
+      providerFallbackExecutor: true,
       mock: true
     });
 
     expect(modelCallLog.responseJson).toMatchObject({
       mock: true,
+      providerFallbackExecutor: true,
       routingDecision: {
         provider: "OPENAI",
         model: "gpt-4.1-mini",
+        fallbackProvider: "AZURE_OPENAI",
+        fallbackModel: "azure-gpt-4.1-mini",
         estimatedCostTier: "LOW",
         expectedLatencyTier: "MEDIUM",
         qualityTier: "MEDIUM",
@@ -61,6 +65,14 @@ describe("workflow model logging", () => {
           enabledForExecution: false
         },
         fallbackReason: null
+      },
+      providerExecution: {
+        outputJson: {
+          mock: true,
+          provider: "MOCK",
+          model: "mock-golf-workflow-model",
+          taskType: "INTAKE_PARSING"
+        }
       }
     });
 
@@ -69,10 +81,14 @@ describe("workflow model logging", () => {
         candidatesConsidered?: unknown[];
         rejectedCandidates?: unknown[];
       };
+      providerExecution?: {
+        attempts?: unknown[];
+      };
     };
 
     expect(responseJson.routingDecision?.candidatesConsidered).toHaveLength(5);
     expect(responseJson.routingDecision?.rejectedCandidates).toEqual([]);
+    expect(responseJson.providerExecution?.attempts).toHaveLength(3);
 
     const attemptLogs = await prisma.modelCallAttemptLog.findMany({
       where: {
@@ -83,18 +99,38 @@ describe("workflow model logging", () => {
       }
     });
 
-    expect(attemptLogs).toHaveLength(1);
+    expect(attemptLogs).toHaveLength(3);
     expect(attemptLogs[0]).toMatchObject({
       modelCallLogId: modelCallLog.id,
       provider: "OPENAI",
       model: "gpt-4.1-mini",
       attemptOrder: 1,
-      status: "SUCCESS",
-      latencyMs: 0,
-      estimatedCostUsd: 0
+      status: "SKIPPED"
     });
-    expect(attemptLogs[0]?.reason).toContain("Selected OPENAI");
-    expect(attemptLogs[0]?.completedAt).toBeInstanceOf(Date);
+    expect(attemptLogs[0]?.errorMessage).toContain(
+      "OPENAI real model calls are disabled"
+    );
+
+    expect(attemptLogs[1]).toMatchObject({
+      modelCallLogId: modelCallLog.id,
+      provider: "AZURE_OPENAI",
+      model: "azure-gpt-4.1-mini",
+      attemptOrder: 2,
+      status: "SKIPPED"
+    });
+    expect(attemptLogs[1]?.errorMessage).toContain(
+      "AZURE_OPENAI real model calls are disabled"
+    );
+
+    expect(attemptLogs[2]).toMatchObject({
+      modelCallLogId: modelCallLog.id,
+      provider: "MOCK",
+      model: "mock-golf-workflow-model",
+      attemptOrder: 3,
+      status: "SUCCESS",
+      errorMessage: null
+    });
+    expect(attemptLogs[2]?.completedAt).toBeInstanceOf(Date);
   });
 
   it("records fallback routing metadata for unsupported local-only tasks", async () => {
@@ -128,9 +164,16 @@ describe("workflow model logging", () => {
             ])
           })
         ])
+      },
+      providerExecution: {
+        outputJson: {
+          mock: true,
+          provider: "MOCK",
+          model: "mock-golf-workflow-model",
+          taskType: "VALIDATION"
+        }
       }
     });
-
 
     const attemptLogs = await prisma.modelCallAttemptLog.findMany({
       where: {
@@ -148,7 +191,7 @@ describe("workflow model logging", () => {
       model: "mock-golf-workflow-model",
       attemptOrder: 1,
       status: "SUCCESS",
-      latencyMs: 0,
+      latencyMs: expect.any(Number),
       estimatedCostUsd: 0
     });
   });
