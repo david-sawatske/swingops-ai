@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { prisma } from "../lib/prisma.js";
 import { executeReadOnlyToolInvocation } from "./read-only-tool-invocation.js";
+import { ingestDemoKnowledgeBase } from "../knowledge/knowledge-ingestion.js";
+const TEST_KNOWLEDGE_SOURCE_NAME = "test-read-only-tool-invocation-knowledge-source";
 
 const testWorkflowName = "test-read-only-tool-invocation";
 
@@ -41,6 +43,18 @@ afterEach(async () => {
       id: {
         in: workflowRunIds
       }
+    }
+  });
+
+  await prisma.knowledgeDocument.deleteMany({
+    where: {
+      sourceName: TEST_KNOWLEDGE_SOURCE_NAME
+    }
+  });
+
+  await prisma.knowledgeIngestionRun.deleteMany({
+    where: {
+      sourceName: TEST_KNOWLEDGE_SOURCE_NAME
     }
   });
 });
@@ -192,6 +206,58 @@ describe("read-only tool invocation", () => {
     });
     expect(result.toolCallLog).toMatchObject({
       toolName: "swingops.clubReference.search",
+      status: "SUCCEEDED"
+    });
+  });
+
+  it("executes knowledge base search and persists a succeeded ToolCallLog", async () => {
+    await ingestDemoKnowledgeBase({ sourceName: TEST_KNOWLEDGE_SOURCE_NAME });
+
+    const result = await executeReadOnlyToolInvocation({
+      toolName: "swingops.knowledgeBase.search",
+      inputJson: {
+        query: "TM stealth2 drv 10.5 stiff no hc",
+        sourceName: TEST_KNOWLEDGE_SOURCE_NAME,
+        maxResults: 3
+      },
+      requestedBy: "agent.readonly-test"
+    });
+
+    expect(result.invocation).toMatchObject({
+      toolName: "swingops.knowledgeBase.search",
+      status: "SUCCEEDED",
+      requestedBy: "agent.readonly-test",
+      executionAttempted: true
+    });
+    expect(result.policyEvaluation).toMatchObject({
+      decision: "ALLOW",
+      reasonCodes: ["TOOL_ALLOWED"],
+      tool: {
+        name: "swingops.knowledgeBase.search",
+        enabled: true,
+        riskLevel: "LOW",
+        mutatesData: false,
+        requiresHumanApproval: false
+      }
+    });
+    expect(result.connectorResult?.data).toMatchObject({
+      knowledgeBaseSearch: {
+        query: "TM stealth2 drv 10.5 stiff no hc",
+        results: expect.arrayContaining([
+          expect.objectContaining({
+            brand: "TaylorMade",
+            productLine: "Stealth 2",
+            category: "DRIVER"
+          })
+        ]),
+        queryMetadata: {
+          retrievalMode: "DETERMINISTIC_LOCAL_RAG_READY",
+          productionVectorEmbeddings: false
+        }
+      }
+    });
+    expect(result.toolCallLog).toMatchObject({
+      toolName: "swingops.knowledgeBase.search",
       status: "SUCCEEDED"
     });
   });

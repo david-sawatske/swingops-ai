@@ -2,6 +2,7 @@ import type { Prisma, ToolCallLog } from "@prisma/client";
 import { z } from "zod";
 
 import { prisma } from "../lib/prisma.js";
+import { searchKnowledgeBase } from "../knowledge/knowledge-search.js";
 import { searchClubReference } from "./club-reference.js";
 import {
   evaluateToolExecutionPolicy,
@@ -84,6 +85,25 @@ const reviewQueueItemsListInputSchema = z
 const clubReferenceSearchInputSchema = z
   .object({
     query: z.string().min(1)
+  })
+  .strict();
+
+const knowledgeChunkTypeSchema = z.enum([
+  "CLUB_REFERENCE",
+  "TRADE_IN_POLICY",
+  "CONDITION_GUIDE",
+  "BRAND_ALIAS",
+  "SHAFT_FLEX_GUIDE"
+]);
+
+const knowledgeBaseSearchInputSchema = z
+  .object({
+    query: z.string().min(1),
+  sourceName: z.string().min(1).optional(),
+    brand: z.string().min(1).optional(),
+    category: z.string().min(1).optional(),
+    chunkType: knowledgeChunkTypeSchema.optional(),
+    maxResults: z.number().int().min(1).max(10).optional()
   })
   .strict();
 
@@ -643,6 +663,26 @@ async function executeConnectorTool(input: {
 
     return connectorResult({
       clubReferenceSearch: searchClubReference(parsedInput.query)
+    });
+  }
+
+  if (input.toolName === "swingops.knowledgeBase.search") {
+    const parsedInput = knowledgeBaseSearchInputSchema.parse(inputObject);
+
+    return connectorResult({
+      knowledgeBaseSearch: await searchKnowledgeBase({
+        query: parsedInput.query,
+        ...(parsedInput.brand === undefined ? {} : { brand: parsedInput.brand }),
+        ...(parsedInput.category === undefined
+          ? {}
+          : { category: parsedInput.category }),
+        ...(parsedInput.chunkType === undefined
+          ? {}
+          : { chunkType: parsedInput.chunkType }),
+        ...(parsedInput.maxResults === undefined
+          ? {}
+          : { maxResults: parsedInput.maxResults })
+      })
     });
   }
 

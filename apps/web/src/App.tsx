@@ -6,6 +6,11 @@ import {
   listConnectorInvocationHistory,
 } from "./api/mcp";
 import {
+  ingestDemoKnowledgeBase,
+  runKnowledgeRetrievalEvals,
+  searchKnowledgeBase,
+} from "./api/knowledge";
+import {
   createIntakeBatch,
   getIntakeBatch,
   listIntakeBatches,
@@ -27,6 +32,11 @@ import type {
   ConnectorInvocationHistoryItem,
   McpCompatibleToolCallResponse,
 } from "./types/mcp";
+import type {
+  KnowledgeEvalSummary,
+  KnowledgeIngestionSummary,
+  KnowledgeSearchResponse,
+} from "./types/knowledge";
 import type {
   ModelRoutingGoal,
   ModelTaskType,
@@ -203,6 +213,26 @@ function App() {
   const [mcpAuditStory, setMcpAuditStory] = useState(
     "agent/tool request → policy decision → execution or block → persisted ToolCallLog audit record",
   );
+  const [knowledgeSearchQuery, setKnowledgeSearchQuery] = useState(
+    "TM stealth2 drv 10.5 stiff no hc sky mark",
+  );
+  const [knowledgeIngestionSummary, setKnowledgeIngestionSummary] =
+    useState<KnowledgeIngestionSummary | null>(null);
+  const [knowledgeSearchResult, setKnowledgeSearchResult] =
+    useState<KnowledgeSearchResponse | null>(null);
+  const [knowledgeEvalSummary, setKnowledgeEvalSummary] =
+    useState<KnowledgeEvalSummary | null>(null);
+  const [isIngestingKnowledgeBase, setIsIngestingKnowledgeBase] =
+    useState(false);
+  const [isSearchingKnowledgeBase, setIsSearchingKnowledgeBase] =
+    useState(false);
+  const [isRunningKnowledgeEvals, setIsRunningKnowledgeEvals] = useState(false);
+  const [knowledgeBaseError, setKnowledgeBaseError] = useState<string | null>(
+    null,
+  );
+  const [knowledgeBaseSuccess, setKnowledgeBaseSuccess] = useState<
+    string | null
+  >(null);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -348,6 +378,90 @@ function App() {
       );
     } finally {
       setIsLoadingMcpInvocationHistory(false);
+    }
+  }
+
+  async function handleIngestDemoKnowledgeBase() {
+    try {
+      setIsIngestingKnowledgeBase(true);
+      setKnowledgeBaseError(null);
+      setKnowledgeBaseSuccess(null);
+
+      const summary = await ingestDemoKnowledgeBase();
+
+      setKnowledgeIngestionSummary(summary);
+      setKnowledgeBaseSuccess(
+        "Ingested " +
+          summary.documentsCreated +
+          " knowledge documents and " +
+          summary.chunksCreated +
+          " chunks.",
+      );
+      await loadMcpConnectorCatalog();
+    } catch (error) {
+      setKnowledgeBaseError(
+        error instanceof Error
+          ? error.message
+          : "Unable to ingest demo knowledge base.",
+      );
+    } finally {
+      setIsIngestingKnowledgeBase(false);
+    }
+  }
+
+  async function handleSearchKnowledgeBase(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    try {
+      setIsSearchingKnowledgeBase(true);
+      setKnowledgeBaseError(null);
+      setKnowledgeBaseSuccess(null);
+
+      const result = await searchKnowledgeBase(knowledgeSearchQuery);
+
+      setKnowledgeSearchResult(result);
+      setKnowledgeBaseSuccess(
+        "Found " +
+          result.results.length +
+          " grounded knowledge chunks for \"" +
+          result.query +
+          "\".",
+      );
+    } catch (error) {
+      setKnowledgeBaseError(
+        error instanceof Error
+          ? error.message
+          : "Unable to search knowledge base.",
+      );
+    } finally {
+      setIsSearchingKnowledgeBase(false);
+    }
+  }
+
+  async function handleRunKnowledgeRetrievalEvals() {
+    try {
+      setIsRunningKnowledgeEvals(true);
+      setKnowledgeBaseError(null);
+      setKnowledgeBaseSuccess(null);
+
+      const summary = await runKnowledgeRetrievalEvals();
+
+      setKnowledgeEvalSummary(summary);
+      setKnowledgeBaseSuccess(
+        "Knowledge evals passed " +
+          summary.passCount +
+          "/" +
+          summary.casesEvaluated +
+          " cases.",
+      );
+    } catch (error) {
+      setKnowledgeBaseError(
+        error instanceof Error
+          ? error.message
+          : "Unable to run knowledge retrieval evals.",
+      );
+    } finally {
+      setIsRunningKnowledgeEvals(false);
     }
   }
 
@@ -1025,11 +1139,24 @@ function App() {
           invocationResult={readOnlyMcpInvocationResult}
           invocationError={readOnlyMcpInvocationError}
           isExecutingTool={isExecutingReadOnlyMcpTool}
+          knowledgeSearchQuery={knowledgeSearchQuery}
+          knowledgeIngestionSummary={knowledgeIngestionSummary}
+          knowledgeSearchResult={knowledgeSearchResult}
+          knowledgeEvalSummary={knowledgeEvalSummary}
+          isIngestingKnowledgeBase={isIngestingKnowledgeBase}
+          isSearchingKnowledgeBase={isSearchingKnowledgeBase}
+          isRunningKnowledgeEvals={isRunningKnowledgeEvals}
+          knowledgeBaseError={knowledgeBaseError}
+          knowledgeBaseSuccess={knowledgeBaseSuccess}
           onRefreshCatalog={() => void loadMcpConnectorCatalog()}
           onRefreshHistory={() => void loadMcpInvocationHistory()}
           onSelectedToolNameChange={setSelectedReadOnlyMcpToolName}
           onSelectedWorkflowRunIdChange={setSelectedReadOnlyMcpWorkflowRunId}
           onExecuteTool={handleExecuteReadOnlyMcpTool}
+          onKnowledgeSearchQueryChange={setKnowledgeSearchQuery}
+          onIngestDemoKnowledgeBase={() => void handleIngestDemoKnowledgeBase()}
+          onSearchKnowledgeBase={handleSearchKnowledgeBase}
+          onRunKnowledgeRetrievalEvals={() => void handleRunKnowledgeRetrievalEvals()}
         />
       ) : null}
 

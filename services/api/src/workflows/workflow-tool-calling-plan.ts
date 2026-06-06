@@ -83,7 +83,7 @@ function buildPlanId(workflowRunId: string): string {
   return `plan_${workflowRunId}_deterministic_v1`;
 }
 
-function buildClubReferenceQuery(workflowRun: WorkflowRunForPlanning): string {
+function buildGroundingQuery(workflowRun: WorkflowRunForPlanning): string {
   const reviewSource = workflowRun.reviewQueueItems.find(
     (item) => item.originalText
   )?.originalText;
@@ -128,11 +128,12 @@ function buildWorkflowToolCallingPlan(
     {
       planCallId: `${workflowRun.id}:3`,
       orderIndex: 3,
-      toolName: "swingops.clubReference.search",
+      toolName: "swingops.knowledgeBase.search",
       reason:
-        "Ground ambiguous golf-club text against a local read-only reference dataset before recommending a review outcome.",
+        "Retrieve RAG-ready golf trade-in knowledge chunks for aliases, condition notes, and human-review policy before recommending a workflow outcome.",
       inputJson: {
-        query: buildClubReferenceQuery(workflowRun)
+        query: buildGroundingQuery(workflowRun),
+        maxResults: 5
       },
       expectedRiskLevel: "LOW",
       expectedMutatesData: false,
@@ -141,6 +142,19 @@ function buildWorkflowToolCallingPlan(
     {
       planCallId: `${workflowRun.id}:4`,
       orderIndex: 4,
+      toolName: "swingops.clubReference.search",
+      reason:
+        "Ground ambiguous golf-club text against the older local read-only club reference dataset as a fallback comparison.",
+      inputJson: {
+        query: buildGroundingQuery(workflowRun)
+      },
+      expectedRiskLevel: "LOW",
+      expectedMutatesData: false,
+      expectedRequiresHumanApproval: false
+    },
+    {
+      planCallId: `${workflowRun.id}:5`,
+      orderIndex: 5,
       toolName: "swingops.reviewQueueItems.resolve",
       reason:
         "Demonstrate that a planned mutation is policy checked and blocked on the read-only connector surface instead of being executed.",

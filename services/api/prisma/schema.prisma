@@ -138,6 +138,27 @@ enum ReviewReason {
   MANUAL_REVIEW_REQUESTED
 }
 
+enum KnowledgeSourceType {
+  FREE_TEXT
+  CSV
+  PDF_TEXT
+  POLICY_NOTE
+}
+
+enum KnowledgeChunkType {
+  CLUB_REFERENCE
+  TRADE_IN_POLICY
+  CONDITION_GUIDE
+  BRAND_ALIAS
+  SHAFT_FLEX_GUIDE
+}
+
+enum KnowledgeIngestionRunStatus {
+  STARTED
+  SUCCEEDED
+  FAILED
+}
+
 model IntakeBatch {
   id          String            @id @default(cuid())
   name        String
@@ -391,4 +412,73 @@ model ReviewQueueItem {
   @@index([reason])
   @@index([status])
   @@map("review_queue_items")
+}
+
+model KnowledgeDocument {
+  id String @id @default(cuid())
+
+  sourceType KnowledgeSourceType @map("source_type")
+  title      String
+  sourceName String              @map("source_name")
+
+  rawText      String @map("raw_text")
+  cleanedText  String @map("cleaned_text")
+  metadataJson Json?  @map("metadata_json")
+
+  chunks KnowledgeChunk[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([sourceType])
+  @@index([sourceName])
+  @@map("knowledge_documents")
+}
+
+model KnowledgeChunk {
+  id         String @id @default(cuid())
+  documentId String @map("document_id")
+
+  chunkIndex Int                @map("chunk_index")
+  chunkText  String             @map("chunk_text")
+  chunkType  KnowledgeChunkType @map("chunk_type")
+
+  brand       String?
+  productLine String? @map("product_line")
+  category    String?
+
+  metadataJson  Json?  @map("metadata_json")
+  embeddingJson Json?  @map("embedding_json")
+  searchText    String @map("search_text")
+
+  document KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([documentId, chunkIndex])
+  @@index([documentId])
+  @@index([chunkType])
+  @@index([brand])
+  @@index([productLine])
+  @@index([category])
+  @@map("knowledge_chunks")
+}
+
+model KnowledgeIngestionRun {
+  id String @id @default(cuid())
+
+  status     KnowledgeIngestionRunStatus @default(STARTED)
+  sourceName String                      @map("source_name")
+
+  documentsCreated Int     @default(0) @map("documents_created")
+  chunksCreated    Int     @default(0) @map("chunks_created")
+  errorMessage     String? @map("error_message")
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  completedAt DateTime? @map("completed_at")
+
+  @@index([status])
+  @@index([sourceName])
+  @@map("knowledge_ingestion_runs")
 }

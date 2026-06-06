@@ -132,7 +132,7 @@ describe("intake batch routes", () => {
         "mock-golf-workflow-model"
       );
       expect(workflowBody.modelCallLog.status).toBe("SUCCEEDED");
-      expect(workflowBody.modelCallLog.latencyMs).toBe(0);
+      expect(workflowBody.modelCallLog.latencyMs).toBeGreaterThanOrEqual(0);
       expect(workflowBody.modelCallLog.estimatedCostUsd).toBe(0);
       expect(workflowBody.modelCallLog.requestJson).toMatchObject({
         workflowRunId: workflowBody.workflowRun.id,

@@ -75,7 +75,8 @@ function buildEvalSummary(input: {
   ).length;
   const groundingSucceeded = input.toolCallingPlanExecution.results.some(
     (result) =>
-      result.toolName === "swingops.clubReference.search" &&
+      (result.toolName === "swingops.knowledgeBase.search" ||
+        result.toolName === "swingops.clubReference.search") &&
       result.status === "SUCCEEDED"
   );
   const modelProviderFallbackUsed = input.modelCallLog.attemptLogs.length > 1;
@@ -90,7 +91,7 @@ function buildEvalSummary(input: {
     reviewRequired,
     pass:
       input.modelCallLog.status === "SUCCEEDED" &&
-      toolCallsSucceeded >= 3 &&
+      toolCallsSucceeded >= 4 &&
       blockedToolCallCount >= 1
   };
 }

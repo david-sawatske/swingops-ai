@@ -4,6 +4,11 @@ import type {
   ConnectorInvocationHistoryItem,
   McpCompatibleToolCallResponse,
 } from "../../types/mcp";
+import type {
+  KnowledgeEvalSummary,
+  KnowledgeIngestionSummary,
+  KnowledgeSearchResponse,
+} from "../../types/knowledge";
 import type { GlobalWorkflowRunSummary } from "../../types/workflow";
 import {
   type ReadOnlyMcpToolDemoOption,
@@ -15,6 +20,10 @@ import { EmptyState } from "../EmptyState";
 import { ConnectorCatalogCard } from "./ConnectorCatalogCard";
 import { ConnectorInvocationHistoryCard } from "./ConnectorInvocationHistoryCard";
 import { McpCompatibleToolCallResultCard } from "./McpCompatibleToolCallResultCard";
+
+function formatScore(score: number): string {
+  return score.toFixed(2);
+}
 
 export function McpConnectorsPage({
   connectorCatalog,
@@ -32,11 +41,24 @@ export function McpConnectorsPage({
   invocationResult,
   invocationError,
   isExecutingTool,
+  knowledgeSearchQuery,
+  knowledgeIngestionSummary,
+  knowledgeSearchResult,
+  knowledgeEvalSummary,
+  isIngestingKnowledgeBase,
+  isSearchingKnowledgeBase,
+  isRunningKnowledgeEvals,
+  knowledgeBaseError,
+  knowledgeBaseSuccess,
   onRefreshCatalog,
   onRefreshHistory,
   onSelectedToolNameChange,
   onSelectedWorkflowRunIdChange,
   onExecuteTool,
+  onKnowledgeSearchQueryChange,
+  onIngestDemoKnowledgeBase,
+  onSearchKnowledgeBase,
+  onRunKnowledgeRetrievalEvals,
 }: {
   connectorCatalog: ConnectorCatalogItem[];
   isLoadingConnectorCatalog: boolean;
@@ -53,12 +75,27 @@ export function McpConnectorsPage({
   invocationResult: McpCompatibleToolCallResponse | null;
   invocationError: string | null;
   isExecutingTool: boolean;
+  knowledgeSearchQuery: string;
+  knowledgeIngestionSummary: KnowledgeIngestionSummary | null;
+  knowledgeSearchResult: KnowledgeSearchResponse | null;
+  knowledgeEvalSummary: KnowledgeEvalSummary | null;
+  isIngestingKnowledgeBase: boolean;
+  isSearchingKnowledgeBase: boolean;
+  isRunningKnowledgeEvals: boolean;
+  knowledgeBaseError: string | null;
+  knowledgeBaseSuccess: string | null;
   onRefreshCatalog: () => void;
   onRefreshHistory: () => void;
   onSelectedToolNameChange: (toolName: ReadOnlyMcpToolName) => void;
   onSelectedWorkflowRunIdChange: (workflowRunId: string) => void;
   onExecuteTool: (event: FormEvent<HTMLFormElement>) => void;
+  onKnowledgeSearchQueryChange: (query: string) => void;
+  onIngestDemoKnowledgeBase: () => void;
+  onSearchKnowledgeBase: (event: FormEvent<HTMLFormElement>) => void;
+  onRunKnowledgeRetrievalEvals: () => void;
 }) {
+  const topKnowledgeResults = knowledgeSearchResult?.results.slice(0, 3) ?? [];
+
   return (
     <DashboardSection
       title="MCP-Compatible Connector Surface"
@@ -79,6 +116,155 @@ export function McpConnectorsPage({
       </div>
 
       <div className="mcp-page-grid">
+        <section className="mcp-page-section">
+          <div className="mcp-page-section__header">
+            <div>
+              <span className="model-route-card__eyebrow">
+                RAG-ready trade-in knowledge
+              </span>
+              <h3>Ingest, search, and evaluate grounding chunks</h3>
+              <p>
+                Load local golf trade-in knowledge, run deterministic retrieval,
+                and inspect citations before using the same search through the
+                MCP-compatible connector.
+              </p>
+            </div>
+
+            <button
+              disabled={isIngestingKnowledgeBase}
+              onClick={onIngestDemoKnowledgeBase}
+              type="button"
+            >
+              {isIngestingKnowledgeBase ? "Ingesting…" : "Ingest Demo KB"}
+            </button>
+          </div>
+
+          <form className="knowledge-base-search-form" onSubmit={onSearchKnowledgeBase}>
+            <label>
+              Knowledge search query
+              <input
+                onChange={(event) =>
+                  onKnowledgeSearchQueryChange(event.target.value)
+                }
+                value={knowledgeSearchQuery}
+              />
+            </label>
+
+            <div className="knowledge-base-actions">
+              <button disabled={isSearchingKnowledgeBase} type="submit">
+                {isSearchingKnowledgeBase ? "Searching…" : "Search Knowledge"}
+              </button>
+
+              <button
+                disabled={isRunningKnowledgeEvals}
+                onClick={onRunKnowledgeRetrievalEvals}
+                type="button"
+              >
+                {isRunningKnowledgeEvals ? "Running evals…" : "Run Evals"}
+              </button>
+            </div>
+          </form>
+
+          {knowledgeBaseError ? (
+            <p className="form-message form-message--error">
+              {knowledgeBaseError}
+            </p>
+          ) : null}
+
+          {knowledgeBaseSuccess ? (
+            <p className="form-message form-message--success">
+              {knowledgeBaseSuccess}
+            </p>
+          ) : null}
+
+          <div className="knowledge-base-summary-grid">
+            <article className="knowledge-base-summary-card">
+              <span className="model-route-card__eyebrow">Ingestion</span>
+              <h3>
+                {knowledgeIngestionSummary
+                  ? knowledgeIngestionSummary.status
+                  : "Not run"}
+              </h3>
+              <p>
+                {knowledgeIngestionSummary
+                  ? `${knowledgeIngestionSummary.documentsCreated} docs, ${knowledgeIngestionSummary.chunksCreated} chunks from ${knowledgeIngestionSummary.sourceName}.`
+                  : "Ingest the demo knowledge base to create persisted documents and chunks."}
+              </p>
+            </article>
+
+            <article className="knowledge-base-summary-card">
+              <span className="model-route-card__eyebrow">Retrieval evals</span>
+              <h3>
+                {knowledgeEvalSummary
+                  ? `${knowledgeEvalSummary.passCount}/${knowledgeEvalSummary.casesEvaluated} passed`
+                  : "Not run"}
+              </h3>
+              <p>
+                {knowledgeEvalSummary
+                  ? `Mode: ${knowledgeEvalSummary.evalMetadata.retrievalMode}. Production vector embeddings: ${String(
+                      knowledgeEvalSummary.evalMetadata.productionVectorEmbeddings,
+                    )}.`
+                  : "Run deterministic evals against known messy trade-in examples."}
+              </p>
+            </article>
+          </div>
+
+          {knowledgeSearchResult ? (
+            <div className="knowledge-base-results">
+              <div>
+                <span className="model-route-card__eyebrow">
+                  {knowledgeSearchResult.queryMetadata.retrievalMode}
+                </span>
+                <h3>{knowledgeSearchResult.summary}</h3>
+                <p>
+                  Production vector embeddings:{" "}
+                  {String(
+                    knowledgeSearchResult.queryMetadata.productionVectorEmbeddings,
+                  )}
+                </p>
+              </div>
+
+              {topKnowledgeResults.map((result) => (
+                <article className="knowledge-base-result-card" key={result.chunkId}>
+                  <div className="knowledge-base-result-card__header">
+                    <div>
+                      <h4>
+                        {result.brand ?? "Unknown brand"}{" "}
+                        {result.productLine ?? "Unknown product"}
+                      </h4>
+                      <p>
+                        {result.category ?? "Unknown category"} /{" "}
+                        {result.chunkType}
+                      </p>
+                    </div>
+                    <span>{formatScore(result.score)}</span>
+                  </div>
+
+                  <p>{result.chunkText}</p>
+
+                  <dl>
+                    <div>
+                      <dt>Citation</dt>
+                      <dd>
+                        {result.citation.documentTitle} #{result.citation.chunkIndex}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Matched Terms</dt>
+                      <dd>{result.matchedTerms.join(", ") || "None"}</dd>
+                    </div>
+                  </dl>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              title="No knowledge search yet"
+              message="Ingest the demo KB, then search messy golf shorthand to see grounded chunks with citations."
+            />
+          )}
+        </section>
+
         <section className="mcp-page-section">
           <div className="mcp-page-section__header">
             <div>

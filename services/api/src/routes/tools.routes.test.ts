@@ -767,6 +767,7 @@ describe("tool routes", () => {
         "swingops.intakeBatches.list",
         "swingops.intakeBatches.get",
         "swingops.clubReference.search",
+        "swingops.knowledgeBase.search",
         "swingops.workflowRuns.list",
         "swingops.workflowRuns.get",
         "swingops.reviewQueueItems.list",

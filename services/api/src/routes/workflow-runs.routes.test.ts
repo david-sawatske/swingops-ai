@@ -863,15 +863,16 @@ describe("workflow run routes", () => {
         status: "PARTIALLY_EXECUTED"
       });
       expect(body.plan.planId).toContain(workflowRun.id);
-      expect(body.plan.plannedCalls).toHaveLength(4);
+      expect(body.plan.plannedCalls).toHaveLength(5);
       expect(body.plan.plannedCalls.map((call: { toolName: string }) => call.toolName)).toEqual([
         "swingops.workflowRuns.get",
         "swingops.reviewQueueItems.list",
+          "swingops.knowledgeBase.search",
         "swingops.clubReference.search",
         "swingops.reviewQueueItems.resolve"
       ]);
 
-      expect(body.results).toHaveLength(4);
+      expect(body.results).toHaveLength(5);
 
       const workflowGetResult = body.results.find(
         (result: { toolName: string }) => result.toolName === "swingops.workflowRuns.get"
@@ -910,7 +911,7 @@ describe("workflow run routes", () => {
         failurePreview: "Tool is disabled and cannot be executed."
       });
 
-      expect(body.toolCallLogs).toHaveLength(4);
+      expect(body.toolCallLogs).toHaveLength(5);
       expect(
         body.toolCallLogs.map((log: { id: string }) => log.id)
       ).toEqual(body.results.map((result: { toolCallLogId: string }) => result.toolCallLogId));
@@ -928,6 +929,7 @@ describe("workflow run routes", () => {
             in: [
               "swingops.workflowRuns.get",
               "swingops.reviewQueueItems.list",
+              "swingops.knowledgeBase.search",
               "swingops.clubReference.search",
               "swingops.reviewQueueItems.resolve"
             ]
@@ -938,15 +940,19 @@ describe("workflow run routes", () => {
         }
       });
 
-      expect(persistedLogs).toHaveLength(4);
+      expect(persistedLogs).toHaveLength(5);
       expect(persistedLogs.map((log) => log.status)).toEqual([
+        "SUCCEEDED",
         "SUCCEEDED",
         "SUCCEEDED",
         "SUCCEEDED",
         "FAILED"
       ]);
-      expect(persistedLogs[3]).toBeDefined();
-      expect(persistedLogs[3]!.outputJson).toMatchObject({
+      const blockedPersistedLog = persistedLogs.find(
+        (log) => log.toolName === "swingops.reviewQueueItems.resolve"
+      );
+      expect(blockedPersistedLog).toBeDefined();
+      expect(blockedPersistedLog!.outputJson).toMatchObject({
         connectorInvocation: true,
         executionAttempted: false,
         policyDecision: "BLOCK",
@@ -1041,25 +1047,26 @@ describe("workflow run routes", () => {
         workflowRunId: workflowRun.id,
         status: "PARTIALLY_EXECUTED"
       });
-      expect(body.results).toHaveLength(4);
+      expect(body.results).toHaveLength(5);
       expect(
         body.results.map((result: { toolName: string }) => result.toolName)
       ).toEqual([
         "swingops.workflowRuns.get",
         "swingops.reviewQueueItems.list",
+          "swingops.knowledgeBase.search",
         "swingops.clubReference.search",
         "swingops.reviewQueueItems.resolve"
       ]);
       expect(
         body.results.map((result: { status: string }) => result.status)
-      ).toEqual(["SUCCEEDED", "SUCCEEDED", "SUCCEEDED", "BLOCKED"]);
-      expect(body.toolCallLogs).toHaveLength(4);
+      ).toEqual(["SUCCEEDED", "SUCCEEDED", "SUCCEEDED", "SUCCEEDED", "BLOCKED"]);
+      expect(body.toolCallLogs).toHaveLength(5);
 
       expect(body.evalSummary).toEqual({
-        extractionCompleteness: 0.75,
+        extractionCompleteness: 0.8,
         groundingConfidence: 0.86,
-        toolCallsAttempted: 4,
-        toolCallsSucceeded: 3,
+        toolCallsAttempted: 5,
+        toolCallsSucceeded: 4,
         modelProviderFallbackUsed: true,
         reviewRequired: true,
         pass: true
@@ -1089,6 +1096,7 @@ describe("workflow run routes", () => {
             in: [
               "swingops.workflowRuns.get",
               "swingops.reviewQueueItems.list",
+              "swingops.knowledgeBase.search",
               "swingops.clubReference.search",
               "swingops.reviewQueueItems.resolve"
             ]
@@ -1098,7 +1106,7 @@ describe("workflow run routes", () => {
 
       expect(persistedModelLogs).toHaveLength(1);
       expect(persistedModelLogs[0]!.attemptLogs).toHaveLength(3);
-      expect(persistedToolLogs).toHaveLength(4);
+      expect(persistedToolLogs).toHaveLength(5);
 
       await prisma.modelCallAttemptLog.deleteMany({
         where: {

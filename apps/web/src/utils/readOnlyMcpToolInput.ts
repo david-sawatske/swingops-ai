@@ -4,6 +4,13 @@ export function getReadOnlyMcpToolInput(
   toolName: ReadOnlyMcpToolName,
   workflowRunId: string,
 ): unknown {
+  if (toolName === "swingops.knowledgeBase.search") {
+    return {
+      query: "TM stealth2 drv 10.5 stiff no hc sky mark",
+      maxResults: 5,
+    };
+  }
+
   if (toolName === "swingops.clubReference.search") {
     return {
       query:

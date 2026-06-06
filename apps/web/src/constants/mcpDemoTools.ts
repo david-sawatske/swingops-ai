@@ -1,4 +1,5 @@
 export type ReadOnlyMcpToolName =
+  | "swingops.knowledgeBase.search"
   | "swingops.clubReference.search"
   | "swingops.workflowRuns.list"
   | "swingops.workflowRuns.get"
@@ -19,6 +20,18 @@ export type ReadOnlyMcpToolDemoOption = {
 };
 
 export const READ_ONLY_MCP_TOOL_OPTIONS: ReadOnlyMcpToolDemoOption[] = [
+  {
+    name: "swingops.knowledgeBase.search",
+    label: "Search trade-in knowledge base",
+    description:
+      "Reads RAG-ready golf trade-in chunks for aliases, condition notes, policy rules, and citations before an agent recommends workflow action.",
+    category: "WORKFLOW",
+    riskLevel: "LOW",
+    enabled: true,
+    mutatesData: false,
+    requiresHumanApproval: false,
+    blockedDemo: false,
+  },
   {
     name: "swingops.clubReference.search",
     label: "Search club reference",

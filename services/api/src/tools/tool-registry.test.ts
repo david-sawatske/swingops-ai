@@ -10,6 +10,7 @@ describe("agent tool registry", () => {
       "swingops.intakeBatches.list",
       "swingops.intakeBatches.get",
       "swingops.clubReference.search",
+      "swingops.knowledgeBase.search",
       "swingops.workflowRuns.list",
       "swingops.workflowRuns.get",
       "swingops.reviewQueueItems.list",
@@ -24,10 +25,36 @@ describe("agent tool registry", () => {
       "swingops.intakeBatches.list",
       "swingops.intakeBatches.get",
       "swingops.clubReference.search",
+      "swingops.knowledgeBase.search",
       "swingops.workflowRuns.list",
       "swingops.workflowRuns.get",
       "swingops.reviewQueueItems.list",
       "swingops.reviewQueueItems.get"
+    ]);
+  });
+
+  it("registers knowledge base search as a low-risk route-backed connector", () => {
+    const knowledgeTool = getAgentTool("swingops.knowledgeBase.search");
+
+    expect(knowledgeTool).toMatchObject({
+      name: "swingops.knowledgeBase.search",
+      category: "WORKFLOW",
+      riskLevel: "LOW",
+      requiresHumanApproval: false,
+      mutatesData: false,
+      enabled: true,
+      implementationStatus: "ROUTE_BACKED",
+      existingHttpRoute: {
+        method: "POST",
+        path: "/knowledge/search"
+      }
+    });
+    expect(knowledgeTool?.inputShape.fields.map((field) => field.name)).toEqual([
+      "query",
+      "brand",
+      "category",
+      "chunkType",
+      "maxResults"
     ]);
   });
 
