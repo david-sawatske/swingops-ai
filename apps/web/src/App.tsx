@@ -11,6 +11,7 @@ import {
   listIntakeBatches,
 } from "./api/intakeBatches";
 import {
+  createProviderFallbackDemo,
   dismissReviewQueueItem,
   executeWorkflowRun,
   executeWorkflowToolCallingPlan,
@@ -129,6 +130,12 @@ function App() {
   const [workflowToolCallingPlanError, setWorkflowToolCallingPlanError] =
     useState<string | null>(null);
   const [workflowToolCallingPlanSuccess, setWorkflowToolCallingPlanSuccess] =
+    useState<string | null>(null);
+  const [isCreatingProviderFallbackDemo, setIsCreatingProviderFallbackDemo] =
+    useState(false);
+  const [providerFallbackDemoError, setProviderFallbackDemoError] =
+    useState<string | null>(null);
+  const [providerFallbackDemoSuccess, setProviderFallbackDemoSuccess] =
     useState<string | null>(null);
 
   const [isStartingWorkflow, setIsStartingWorkflow] = useState(false);
@@ -403,6 +410,8 @@ function App() {
       setWorkflowToolCallingPlanError(null);
       setWorkflowToolCallingPlanSuccess(null);
       setWorkflowToolCallingPlanResult(null);
+      setProviderFallbackDemoError(null);
+      setProviderFallbackDemoSuccess(null);
 
       const detail = await getWorkflowRun(workflowRunId);
 
@@ -454,6 +463,32 @@ function App() {
     }
   }
 
+
+  async function handleCreateProviderFallbackDemo(workflowRunId: string) {
+    try {
+      setIsCreatingProviderFallbackDemo(true);
+      setProviderFallbackDemoError(null);
+      setProviderFallbackDemoSuccess(null);
+
+      const result = await createProviderFallbackDemo(workflowRunId);
+      const attemptCount = result.modelCallLog.attemptLogs?.length ?? 0;
+
+      setProviderFallbackDemoSuccess(
+        `Created high-quality provider fallback demo: final ${result.modelCallLog.provider} / ${result.modelCallLog.model} with ${attemptCount} provider attempts.`,
+      );
+
+      await refreshSelectedWorkflowRunDetail(workflowRunId);
+      await loadGlobalWorkflowRuns();
+    } catch (error) {
+      setProviderFallbackDemoError(
+        error instanceof Error
+          ? error.message
+          : "Unable to create provider fallback demo.",
+      );
+    } finally {
+      setIsCreatingProviderFallbackDemo(false);
+    }
+  }
 
   async function handleExecuteWorkflowToolCallingPlan(workflowRunId: string) {
     try {
@@ -849,12 +884,18 @@ function App() {
           isExecutingWorkflowToolCallingPlan={isExecutingWorkflowToolCallingPlan}
           workflowToolCallingPlanError={workflowToolCallingPlanError}
           workflowToolCallingPlanSuccess={workflowToolCallingPlanSuccess}
+          isCreatingProviderFallbackDemo={isCreatingProviderFallbackDemo}
+          providerFallbackDemoError={providerFallbackDemoError}
+          providerFallbackDemoSuccess={providerFallbackDemoSuccess}
           onStatusFilterChange={setWorkflowRunStatusFilter}
           onSelectWorkflowRun={(workflowRunId) =>
             void handleSelectWorkflowRun(workflowRunId)
           }
           onRunWorkflowToolCallingPlan={(workflowRunId) =>
             void handleExecuteWorkflowToolCallingPlan(workflowRunId)
+          }
+          onCreateProviderFallbackDemo={(workflowRunId) =>
+            void handleCreateProviderFallbackDemo(workflowRunId)
           }
         />
       ) : null}

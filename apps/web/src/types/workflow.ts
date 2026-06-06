@@ -215,6 +215,10 @@ export type ExecuteWorkflowRunResponse = {
   reviewQueueItems: ReviewQueueItem[];
 };
 
+export type CreateProviderFallbackDemoResponse = {
+  modelCallLog: ModelCallLog;
+};
+
 export type ListWorkflowRunsResponse = {
   workflowRuns: GlobalWorkflowRunSummary[];
 };

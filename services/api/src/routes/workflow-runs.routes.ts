@@ -7,6 +7,7 @@ import {
   executeWorkflowToolCallingPlan,
   WorkflowToolCallingPlanWorkflowRunNotFoundError
 } from "../workflows/workflow-tool-calling-plan.js";
+import { createMockModelCallLogForWorkflowRun } from "../workflows/workflow-model-logging.js";
 
 const workflowRunParamsSchema = z.object({
   id: z.string().min(1)
@@ -461,6 +462,54 @@ export async function workflowRunRoutes(app: FastifyInstance): Promise<void> {
     };
   });
 
+  app.post("/workflow-runs/:id/model-provider-fallback-demo", async (request, reply) => {
+    const parsedParams = workflowRunParamsSchema.safeParse(request.params);
+
+    if (!parsedParams.success) {
+      return reply.status(400).send({
+        error: "Invalid workflow run id",
+        details: parsedParams.error.flatten()
+      });
+    }
+
+    const workflowRun = await prisma.workflowRun.findUnique({
+      where: {
+        id: parsedParams.data.id
+      },
+      select: {
+        id: true
+      }
+    });
+
+    if (!workflowRun) {
+      return reply.status(404).send({
+        error: "Workflow run not found"
+      });
+    }
+
+    const modelCallLog = await createMockModelCallLogForWorkflowRun({
+      workflowRunId: workflowRun.id,
+      taskType: "INTAKE_PARSING",
+      goal: "HIGH_QUALITY"
+    });
+
+    const modelCallLogWithAttempts = await prisma.modelCallLog.findUniqueOrThrow({
+      where: {
+        id: modelCallLog.id
+      },
+      include: {
+        attemptLogs: {
+          orderBy: {
+            attemptOrder: "asc"
+          }
+        }
+      }
+    });
+
+    return {
+      modelCallLog: serializeModelCallLog(modelCallLogWithAttempts)
+    };
+  });
 
   app.post("/workflow-runs/:id/tool-calling-plan/execute", async (request, reply) => {
     const parsedParams = workflowRunParamsSchema.safeParse(request.params);

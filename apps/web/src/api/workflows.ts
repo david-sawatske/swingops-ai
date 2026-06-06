@@ -1,5 +1,6 @@
 import { apiGet, apiPost } from "./client";
 import type {
+  CreateProviderFallbackDemoResponse,
   ExecuteWorkflowRunRequest,
   ExecuteWorkflowRunResponse,
   ExecuteWorkflowToolCallingPlanResponse,
@@ -27,6 +28,15 @@ export async function executeWorkflowRun(
   return apiPost<ExecuteWorkflowRunResponse, ExecuteWorkflowRunRequest>(
     `/workflow-runs/${workflowRunId}/execute`,
     request,
+  );
+}
+
+export async function createProviderFallbackDemo(
+  workflowRunId: string,
+): Promise<CreateProviderFallbackDemoResponse> {
+  return apiPost<CreateProviderFallbackDemoResponse, Record<string, never>>(
+    `/workflow-runs/${workflowRunId}/model-provider-fallback-demo`,
+    {},
   );
 }
 

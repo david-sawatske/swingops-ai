@@ -331,6 +331,104 @@ describe("workflow run routes", () => {
     });
   });
 
+  describe("POST /workflow-runs/:id/model-provider-fallback-demo", () => {
+    it("creates a high-quality provider fallback model call log for a workflow run", async () => {
+      const app = buildApp();
+
+      const workflowRun = await prisma.workflowRun.create({
+        data: {
+          workflowName: "test-provider-fallback-demo-route"
+        }
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: `/workflow-runs/${workflowRun.id}/model-provider-fallback-demo`
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.modelCallLog.workflowRunId).toBe(workflowRun.id);
+      expect(body.modelCallLog.provider).toBe("MOCK");
+      expect(body.modelCallLog.model).toBe("mock-golf-workflow-model");
+      expect(body.modelCallLog.status).toBe("SUCCEEDED");
+      expect(body.modelCallLog.requestJson).toMatchObject({
+        workflowRunId: workflowRun.id,
+        taskType: "INTAKE_PARSING",
+        routingGoal: "HIGH_QUALITY",
+        providerFallbackExecutor: true,
+        mock: true
+      });
+      expect(body.modelCallLog.responseJson).toMatchObject({
+        mock: true,
+        providerFallbackExecutor: true,
+        routingDecision: {
+          provider: "OPENAI",
+          model: "gpt-4.1-mini",
+          fallbackProvider: "AZURE_OPENAI",
+          fallbackModel: "azure-gpt-4.1-mini"
+        }
+      });
+      expect(body.modelCallLog.attemptLogs).toHaveLength(3);
+      expect(body.modelCallLog.attemptLogs.map((attempt: { provider: string }) => attempt.provider)).toEqual([
+        "OPENAI",
+        "AZURE_OPENAI",
+        "MOCK"
+      ]);
+      expect(body.modelCallLog.attemptLogs[0]).toMatchObject({
+        provider: "OPENAI",
+        model: "gpt-4.1-mini",
+        attemptOrder: 1,
+        status: "SKIPPED"
+      });
+      expect(body.modelCallLog.attemptLogs[0].errorMessage).toContain(
+        "OPENAI real model calls are disabled"
+      );
+      expect(body.modelCallLog.attemptLogs[1]).toMatchObject({
+        provider: "AZURE_OPENAI",
+        model: "azure-gpt-4.1-mini",
+        attemptOrder: 2,
+        status: "SKIPPED"
+      });
+      expect(body.modelCallLog.attemptLogs[1].errorMessage).toContain(
+        "AZURE_OPENAI real model calls are disabled"
+      );
+      expect(body.modelCallLog.attemptLogs[2]).toMatchObject({
+        provider: "MOCK",
+        model: "mock-golf-workflow-model",
+        attemptOrder: 3,
+        status: "SUCCESS",
+        errorMessage: null
+      });
+
+      await prisma.workflowRun.delete({
+        where: {
+          id: workflowRun.id
+        }
+      });
+
+      await app.close();
+    });
+
+    it("returns 404 when creating a provider fallback demo for a missing workflow run", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/workflow-runs/missing-workflow-run/model-provider-fallback-demo"
+      });
+
+      expect(response.statusCode).toBe(404);
+      expect(response.json()).toMatchObject({
+        error: "Workflow run not found"
+      });
+
+      await app.close();
+    });
+  });
+
   describe("GET /workflow-runs/:id", () => {
     it("returns a workflow run with persisted model call logs", async () => {
       const app = buildApp();

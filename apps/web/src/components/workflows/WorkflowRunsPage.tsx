@@ -128,9 +128,13 @@ export function WorkflowRunsPage({
   isExecutingWorkflowToolCallingPlan,
   workflowToolCallingPlanError,
   workflowToolCallingPlanSuccess,
+  isCreatingProviderFallbackDemo,
+  providerFallbackDemoError,
+  providerFallbackDemoSuccess,
   onStatusFilterChange,
   onSelectWorkflowRun,
   onRunWorkflowToolCallingPlan,
+  onCreateProviderFallbackDemo,
 }: {
   workflowRuns: GlobalWorkflowRunSummary[];
   filteredWorkflowRuns: GlobalWorkflowRunSummary[];
@@ -146,9 +150,13 @@ export function WorkflowRunsPage({
   isExecutingWorkflowToolCallingPlan: boolean;
   workflowToolCallingPlanError: string | null;
   workflowToolCallingPlanSuccess: string | null;
+  isCreatingProviderFallbackDemo: boolean;
+  providerFallbackDemoError: string | null;
+  providerFallbackDemoSuccess: string | null;
   onStatusFilterChange: (statusFilter: WorkflowRunStatusFilter) => void;
   onSelectWorkflowRun: (workflowRunId: string) => void;
   onRunWorkflowToolCallingPlan: (workflowRunId: string) => void;
+  onCreateProviderFallbackDemo: (workflowRunId: string) => void;
 }) {
   return (
     <DashboardSection
@@ -236,15 +244,27 @@ export function WorkflowRunsPage({
                   <p title={run.id}>{formatShortId(run.id)}</p>
                 </div>
 
-                <button
-                  disabled={isLoadingWorkflowRunDetail}
-                  onClick={() => onSelectWorkflowRun(run.id)}
-                  type="button"
-                >
-                  {selectedWorkflowRunId === run.id
-                    ? "Logs Shown Below"
-                    : "View Logs"}
-                </button>
+                <div className="global-workflow-run-card__actions">
+                  <button
+                    disabled={isLoadingWorkflowRunDetail}
+                    onClick={() => onSelectWorkflowRun(run.id)}
+                    type="button"
+                  >
+                    {selectedWorkflowRunId === run.id
+                      ? "Logs Shown Below"
+                      : "View Logs"}
+                  </button>
+
+                  <button
+                    disabled={isCreatingProviderFallbackDemo}
+                    onClick={() => onCreateProviderFallbackDemo(run.id)}
+                    type="button"
+                  >
+                    {isCreatingProviderFallbackDemo
+                      ? "Running Fallback Demo…"
+                      : "Log High-Quality Fallback Demo"}
+                  </button>
+                </div>
               </div>
 
               <dl className="global-workflow-run-card__context">
@@ -307,6 +327,18 @@ export function WorkflowRunsPage({
           </div>
 
           <div className="workflow-execution-summary">
+            <p className="section-summary">
+              High-quality fallback demo creates a HIGH_QUALITY routing log that attempts OpenAI, Azure OpenAI, then falls back to Mock.
+            </p>
+
+            {providerFallbackDemoSuccess ? (
+              <p className="success-message">{providerFallbackDemoSuccess}</p>
+            ) : null}
+
+            {providerFallbackDemoError ? (
+              <p className="error-message">{providerFallbackDemoError}</p>
+            ) : null}
+
             <h5>Workflow Steps</h5>
 
             {selectedWorkflowRunDetail.steps.length === 0 ? (
