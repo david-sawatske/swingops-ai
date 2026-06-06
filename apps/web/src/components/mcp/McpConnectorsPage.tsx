@@ -124,9 +124,7 @@ export function McpConnectorsPage({
               </span>
               <h3>Ingest, search, and evaluate grounding chunks</h3>
               <p>
-                Load local golf trade-in knowledge, run deterministic retrieval,
-                and inspect citations before using the same search through the
-                MCP-compatible connector.
+                Load local golf trade-in knowledge, run pgvector-backed retrieval with deterministic local embeddings, and inspect citations before using the same search through the MCP-compatible connector.
               </p>
             </div>
 
@@ -204,7 +202,7 @@ export function McpConnectorsPage({
                   ? `Mode: ${knowledgeEvalSummary.evalMetadata.retrievalMode}. Production vector embeddings: ${String(
                       knowledgeEvalSummary.evalMetadata.productionVectorEmbeddings,
                     )}.`
-                  : "Run deterministic evals against known messy trade-in examples."}
+                  : "Run evals against known messy trade-in examples."}
               </p>
             </article>
           </div>

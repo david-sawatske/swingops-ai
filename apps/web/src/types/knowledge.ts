@@ -1,9 +1,17 @@
+export type KnowledgeRetrievalMode =
+  | "PGVECTOR_DETERMINISTIC_EMBEDDINGS"
+  | "DETERMINISTIC_LOCAL_RAG_READY";
+
 export type KnowledgeIngestionSummary = {
   ingestionRunId: string;
   status: "SUCCEEDED" | "FAILED";
   sourceName: string;
   documentsCreated: number;
   chunksCreated: number;
+  embeddingProvider?: string;
+  embeddingModel?: string;
+  embeddingDimension?: number;
+  productionVectorEmbeddings?: false;
   errorMessage: string | null;
 };
 
@@ -51,8 +59,11 @@ export type KnowledgeSearchResponse = {
         | null;
       sourceName?: string | null;
     };
-    retrievalMode: "DETERMINISTIC_LOCAL_RAG_READY";
+    retrievalMode: KnowledgeRetrievalMode;
     productionVectorEmbeddings: false;
+    embeddingProvider: string | null;
+    embeddingModel: string | null;
+    embeddingDimension: number | null;
   };
   citations: KnowledgeSearchResultItem["citation"][];
   summary: string;
@@ -65,6 +76,7 @@ export type KnowledgeEvalSummary = {
     name: string;
     query: string;
     pass: boolean;
+    retrievalMode?: KnowledgeRetrievalMode;
     topResultScore: number | null;
     citationPresent: boolean;
     structuredMetadataPresent: boolean;
@@ -74,14 +86,20 @@ export type KnowledgeEvalSummary = {
     name: string;
     query: string;
     pass: boolean;
+    retrievalMode?: KnowledgeRetrievalMode;
     topResultScore: number | null;
     citationPresent: boolean;
     structuredMetadataPresent: boolean;
     failures: string[];
   }[];
   evalMetadata: {
-    evaluator: "deterministic.swingops.knowledge-retrieval-eval.v1";
-    retrievalMode: "DETERMINISTIC_LOCAL_RAG_READY";
+    evaluator:
+      | "deterministic.swingops.knowledge-retrieval-eval.v1"
+      | "deterministic.swingops.knowledge-retrieval-eval.v2";
+    retrievalMode: KnowledgeRetrievalMode;
     productionVectorEmbeddings: false;
+    embeddingProvider: string | null;
+    embeddingModel: string | null;
+    embeddingDimension: number | null;
   };
 };

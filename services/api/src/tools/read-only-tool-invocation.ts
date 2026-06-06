@@ -672,6 +672,9 @@ async function executeConnectorTool(input: {
     return connectorResult({
       knowledgeBaseSearch: await searchKnowledgeBase({
         query: parsedInput.query,
+        ...(parsedInput.sourceName === undefined
+          ? {}
+          : { sourceName: parsedInput.sourceName }),
         ...(parsedInput.brand === undefined ? {} : { brand: parsedInput.brand }),
         ...(parsedInput.category === undefined
           ? {}

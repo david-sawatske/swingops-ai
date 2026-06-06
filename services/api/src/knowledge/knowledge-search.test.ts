@@ -28,7 +28,7 @@ describe("knowledge base ingestion and search", () => {
       status: "SUCCEEDED",
       sourceName: TEST_KNOWLEDGE_SOURCE_NAME,
       documentsCreated: 3,
-      chunksCreated: 11,
+      chunksCreated: 42,
       errorMessage: null
     });
 
@@ -59,7 +59,7 @@ describe("knowledge base ingestion and search", () => {
     });
 
     expect(result.queryMetadata).toMatchObject({
-      retrievalMode: "DETERMINISTIC_LOCAL_RAG_READY",
+      retrievalMode: "PGVECTOR_DETERMINISTIC_EMBEDDINGS",
       productionVectorEmbeddings: false
     });
     expect(result.results[0]).toMatchObject({
@@ -119,12 +119,12 @@ describe("knowledge base ingestion and search", () => {
     });
 
     expect(evalSummary).toMatchObject({
-      casesEvaluated: 3,
-      passCount: 3,
+      casesEvaluated: 5,
+      passCount: 5,
       failedCases: [],
       evalMetadata: {
-        evaluator: "deterministic.swingops.knowledge-retrieval-eval.v1",
-        retrievalMode: "DETERMINISTIC_LOCAL_RAG_READY",
+        evaluator: "deterministic.swingops.knowledge-retrieval-eval.v2",
+        retrievalMode: "PGVECTOR_DETERMINISTIC_EMBEDDINGS",
         productionVectorEmbeddings: false
       }
     });

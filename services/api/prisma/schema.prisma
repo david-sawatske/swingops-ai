@@ -447,9 +447,15 @@ model KnowledgeChunk {
   productLine String? @map("product_line")
   category    String?
 
-  metadataJson  Json?  @map("metadata_json")
-  embeddingJson Json?  @map("embedding_json")
-  searchText    String @map("search_text")
+  metadataJson  Json? @map("metadata_json")
+  embeddingJson Json? @map("embedding_json")
+
+  embedding          Unsupported("vector(64)")? @map("embedding")
+  embeddingProvider  String?                    @map("embedding_provider")
+  embeddingModel     String?                    @map("embedding_model")
+  embeddingDimension Int?                       @map("embedding_dimension")
+  embeddedAt         DateTime?                  @map("embedded_at")
+  searchText         String                     @map("search_text")
 
   document KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
 

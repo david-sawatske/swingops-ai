@@ -1,6 +1,9 @@
 import type { KnowledgeChunkType } from "@prisma/client";
 
-import { searchKnowledgeBase } from "./knowledge-search.js";
+import {
+  searchKnowledgeBase,
+  type KnowledgeRetrievalMode
+} from "./knowledge-search.js";
 
 type KnowledgeRetrievalEvalCase = {
   name: string;
@@ -16,6 +19,7 @@ export type KnowledgeRetrievalEvalResult = {
   name: string;
   query: string;
   pass: boolean;
+  retrievalMode: KnowledgeRetrievalMode;
   topResultScore: number | null;
   citationPresent: boolean;
   structuredMetadataPresent: boolean;
@@ -28,9 +32,12 @@ export type KnowledgeRetrievalEvalSummary = {
   failedCases: KnowledgeRetrievalEvalResult[];
   results: KnowledgeRetrievalEvalResult[];
   evalMetadata: {
-    evaluator: "deterministic.swingops.knowledge-retrieval-eval.v1";
-    retrievalMode: "DETERMINISTIC_LOCAL_RAG_READY";
+    evaluator: "deterministic.swingops.knowledge-retrieval-eval.v2";
+    retrievalMode: KnowledgeRetrievalMode;
     productionVectorEmbeddings: false;
+    embeddingProvider: string | null;
+    embeddingModel: string | null;
+    embeddingDimension: number | null;
   };
 };
 
@@ -42,6 +49,14 @@ const EVAL_CASES: KnowledgeRetrievalEvalCase[] = [
     expectedProductLine: "Stealth 2",
     expectedCategory: "DRIVER",
     expectedTerms: ["stealth2", "drv", "no hc"]
+  },
+  {
+    name: "TaylorMade Stealth 2 semantic wording",
+    query: "stealth two ten five stiff no cover crown mark",
+    expectedBrand: "TaylorMade",
+    expectedProductLine: "Stealth 2",
+    expectedCategory: "DRIVER",
+    expectedTerms: ["stealth", "two", "stiff", "no cover"]
   },
   {
     name: "Callaway Ai Smoke fairway shorthand",
@@ -57,7 +72,15 @@ const EVAL_CASES: KnowledgeRetrievalEvalCase[] = [
     expectedBrand: "PING",
     expectedProductLine: "G430 Max",
     expectedCategory: "DRIVER",
-    expectedTerms: ["g430", "max", "xstiff"]
+    expectedTerms: ["g430", "max", "9"]
+  },
+  {
+    name: "Titleist TSR2 versus TS2 ambiguity",
+    query: "titleist tsr two driver no cover crown scratch",
+    expectedBrand: "Titleist",
+    expectedProductLine: "TSR2",
+    expectedCategory: "DRIVER",
+    expectedTerms: ["titleist", "driver", "no cover", "crown scratch"]
   }
 ];
 
@@ -128,6 +151,7 @@ function evaluateCase(
     name: evalCase.name,
     query: evalCase.query,
     pass: failures.length === 0,
+    retrievalMode: searchResult.queryMetadata.retrievalMode,
     topResultScore: topResult?.score ?? null,
     citationPresent,
     structuredMetadataPresent,
@@ -139,6 +163,10 @@ export async function runKnowledgeRetrievalEvals(input: {
   sourceName?: string;
 } = {}): Promise<KnowledgeRetrievalEvalSummary> {
   const results: KnowledgeRetrievalEvalResult[] = [];
+  let retrievalMode: KnowledgeRetrievalMode = "DETERMINISTIC_LOCAL_RAG_READY";
+  let embeddingProvider: string | null = null;
+  let embeddingModel: string | null = null;
+  let embeddingDimension: number | null = null;
 
   for (const evalCase of EVAL_CASES) {
     const searchResult = await searchKnowledgeBase({
@@ -146,6 +174,11 @@ export async function runKnowledgeRetrievalEvals(input: {
       maxResults: 5,
       ...(input.sourceName === undefined ? {} : { sourceName: input.sourceName })
     });
+
+    retrievalMode = searchResult.queryMetadata.retrievalMode;
+    embeddingProvider = searchResult.queryMetadata.embeddingProvider;
+    embeddingModel = searchResult.queryMetadata.embeddingModel;
+    embeddingDimension = searchResult.queryMetadata.embeddingDimension;
 
     results.push(evaluateCase(evalCase, searchResult));
   }
@@ -158,9 +191,12 @@ export async function runKnowledgeRetrievalEvals(input: {
     failedCases,
     results,
     evalMetadata: {
-      evaluator: "deterministic.swingops.knowledge-retrieval-eval.v1",
-      retrievalMode: "DETERMINISTIC_LOCAL_RAG_READY",
-      productionVectorEmbeddings: false
+      evaluator: "deterministic.swingops.knowledge-retrieval-eval.v2",
+      retrievalMode,
+      productionVectorEmbeddings: false,
+      embeddingProvider,
+      embeddingModel,
+      embeddingDimension
     }
   };
 }

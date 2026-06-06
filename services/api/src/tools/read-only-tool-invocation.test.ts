@@ -251,7 +251,7 @@ describe("read-only tool invocation", () => {
           })
         ]),
         queryMetadata: {
-          retrievalMode: "DETERMINISTIC_LOCAL_RAG_READY",
+          retrievalMode: "PGVECTOR_DETERMINISTIC_EMBEDDINGS",
           productionVectorEmbeddings: false
         }
       }
