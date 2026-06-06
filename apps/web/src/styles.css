@@ -2068,3 +2068,12 @@ h1 {
     flex-direction: column;
   }
 }
+
+
+.knowledge-base-score-breakdown {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}

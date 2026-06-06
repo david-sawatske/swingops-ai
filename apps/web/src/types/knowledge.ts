@@ -15,6 +15,25 @@ export type KnowledgeIngestionSummary = {
   errorMessage: string | null;
 };
 
+export type KnowledgeScoreComponentBreakdown = {
+  score: number | null;
+  weight: number;
+  explanation: string | null;
+};
+
+export type KnowledgeScoreBreakdown = {
+  weightedScore: number;
+  vectorScore: number | null;
+  components: {
+    brand: KnowledgeScoreComponentBreakdown;
+    productLine: KnowledgeScoreComponentBreakdown;
+    category: KnowledgeScoreComponentBreakdown;
+    shaft: KnowledgeScoreComponentBreakdown;
+    notes: KnowledgeScoreComponentBreakdown;
+    vector: KnowledgeScoreComponentBreakdown;
+  };
+};
+
 export type KnowledgeSearchResultItem = {
   chunkId: string;
   documentId: string;
@@ -31,6 +50,7 @@ export type KnowledgeSearchResultItem = {
   productLine: string | null;
   category: string | null;
   score: number;
+  scoreBreakdown: KnowledgeScoreBreakdown;
   matchedTerms: string[];
   scoringExplanation: string[];
   metadata: unknown;

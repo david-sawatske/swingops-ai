@@ -22,6 +22,25 @@ export type KnowledgeSearchInput = {
   maxResults?: number;
 };
 
+export type KnowledgeScoreComponentBreakdown = {
+  score: number | null;
+  weight: number;
+  explanation: string | null;
+};
+
+export type KnowledgeScoreBreakdown = {
+  weightedScore: number;
+  vectorScore: number | null;
+  components: {
+    brand: KnowledgeScoreComponentBreakdown;
+    productLine: KnowledgeScoreComponentBreakdown;
+    category: KnowledgeScoreComponentBreakdown;
+    shaft: KnowledgeScoreComponentBreakdown;
+    notes: KnowledgeScoreComponentBreakdown;
+    vector: KnowledgeScoreComponentBreakdown;
+  };
+};
+
 export type KnowledgeSearchResultItem = {
   chunkId: string;
   documentId: string;
@@ -33,6 +52,7 @@ export type KnowledgeSearchResultItem = {
   productLine: string | null;
   category: string | null;
   score: number;
+  scoreBreakdown: KnowledgeScoreBreakdown;
   matchedTerms: string[];
   scoringExplanation: string[];
   metadata: unknown;
@@ -94,8 +114,84 @@ type PgvectorKnowledgeRow = {
   vector_score: number;
 };
 
+const TRADE_IN_SCORE_WEIGHTS = {
+  brand: 0.25,
+  productLine: 0.3,
+  category: 0.15,
+  shaft: 0.15,
+  notes: 0.1,
+  vector: 0.05
+} as const;
+
+const BRAND_ALIASES: Record<string, string[]> = {
+  Callaway: ["callaway", "cally"],
+  PING: ["ping"],
+  TaylorMade: ["taylormade", "tm"],
+  Titleist: ["titleist"]
+};
+
+const CATEGORY_ALIASES: Record<string, string[]> = {
+  DRIVER: ["driver", "drv", "dr"],
+  FAIRWAY_WOOD: ["fairway wood", "fairway", "fw", "wood", "3w", "3 wood", "5w", "5 wood"]
+};
+
+const SHAFT_FLEX_ALIASES: Record<string, string[]> = {
+  regular: ["regular", "reg", "r flex", "r-flex"],
+  stiff: ["stiff", "s flex", "s-flex", "stf"],
+  "x-stiff": ["x-stiff", "xstiff", "x flex", "x-flex", "extra stiff", "x"],
+  senior: ["senior", "sr", "a flex", "lite flex", "lite"],
+  ladies: ["ladies", "lady", "l flex", "women"]
+};
+
+const NOTE_ALIASES = [
+  "missing headcover",
+  "no hc",
+  "no cover",
+  "headcover missing",
+  "sky mark",
+  "crown mark",
+  "topline mark",
+  "paint mark",
+  "crown scratch",
+  "crown scratches",
+  "paint wear",
+  "cosmetic crown wear",
+  "face wear",
+  "worn face",
+  "impact wear",
+  "ball marks",
+  "dent",
+  "dented",
+  "sole dent",
+  "crown dent",
+  "grip wear",
+  "worn grip",
+  "slick grip",
+  "needs grip",
+  "missing serial number",
+  "serial missing",
+  "no serial",
+  "uncertain serial",
+  "uncertain model",
+  "model ambiguity",
+  "older newer ambiguity",
+  "unclear generation",
+  "high value",
+  "current generation",
+  "ambiguous condition",
+  "newer driver",
+  "mismatched shaft",
+  "wrong shaft",
+  "aftermarket shaft",
+  "shaft mismatch"
+];
+
 function normalize(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function compactNormalize(value: string): string {
+  return normalize(value).replace(/\s+/g, "");
 }
 
 function unique(values: string[]): string[] {
@@ -139,9 +235,346 @@ function getConditionFlags(metadata: unknown): string[] {
   return [];
 }
 
+function component(input: {
+  score: number | null;
+  weight: number;
+  explanation: string | null;
+}): KnowledgeScoreComponentBreakdown {
+  return {
+    score: input.score === null ? null : Math.min(1, Math.max(0, Number(input.score.toFixed(3)))),
+    weight: input.weight,
+    explanation: input.explanation
+  };
+}
+
+function queryHasAlias(input: {
+  normalizedQuery: string;
+  compactQuery: string;
+  alias: string;
+}): boolean {
+  const normalizedAlias = normalize(input.alias);
+  const compactAlias = compactNormalize(input.alias);
+
+  return (
+    normalizedAlias.length > 0 &&
+    (input.normalizedQuery.includes(normalizedAlias) ||
+      input.compactQuery.includes(compactAlias))
+  );
+}
+
+function firstMatchingAlias(input: {
+  normalizedQuery: string;
+  compactQuery: string;
+  aliases: string[];
+}): string | null {
+  return (
+    input.aliases.find((alias) =>
+      queryHasAlias({
+        normalizedQuery: input.normalizedQuery,
+        compactQuery: input.compactQuery,
+        alias
+      })
+    ) ?? null
+  );
+}
+
+function scoreBrandComponent(input: {
+  normalizedQuery: string;
+  compactQuery: string;
+  brand: string | null;
+}): { component: KnowledgeScoreComponentBreakdown; matchedTerms: string[] } {
+  if (!input.brand) {
+    return {
+      component: component({
+        score: 0,
+        weight: TRADE_IN_SCORE_WEIGHTS.brand,
+        explanation: "No brand metadata was available for this chunk."
+      }),
+      matchedTerms: []
+    };
+  }
+
+  if (
+    queryHasAlias({
+      normalizedQuery: input.normalizedQuery,
+      compactQuery: input.compactQuery,
+      alias: input.brand
+    })
+  ) {
+    return {
+      component: component({
+        score: 1,
+        weight: TRADE_IN_SCORE_WEIGHTS.brand,
+        explanation: `Brand matched ${input.brand}.`
+      }),
+      matchedTerms: [input.brand]
+    };
+  }
+
+  const alias = firstMatchingAlias({
+    normalizedQuery: input.normalizedQuery,
+    compactQuery: input.compactQuery,
+    aliases: BRAND_ALIASES[input.brand] ?? []
+  });
+
+  if (alias) {
+    return {
+      component: component({
+        score: 1,
+        weight: TRADE_IN_SCORE_WEIGHTS.brand,
+        explanation: `Brand matched alias ${alias} → ${input.brand}.`
+      }),
+      matchedTerms: [alias, input.brand]
+    };
+  }
+
+  return {
+    component: component({
+      score: 0,
+      weight: TRADE_IN_SCORE_WEIGHTS.brand,
+      explanation: `Brand did not match ${input.brand}.`
+    }),
+    matchedTerms: []
+  };
+}
+
+function scoreProductLineComponent(input: {
+  normalizedQuery: string;
+  compactQuery: string;
+  productLine: string | null;
+  aliases: string[];
+}): { component: KnowledgeScoreComponentBreakdown; matchedTerms: string[] } {
+  if (!input.productLine) {
+    return {
+      component: component({
+        score: 0,
+        weight: TRADE_IN_SCORE_WEIGHTS.productLine,
+        explanation: "No product-line metadata was available for this chunk."
+      }),
+      matchedTerms: []
+    };
+  }
+
+  if (
+    queryHasAlias({
+      normalizedQuery: input.normalizedQuery,
+      compactQuery: input.compactQuery,
+      alias: input.productLine
+    })
+  ) {
+    return {
+      component: component({
+        score: 1,
+        weight: TRADE_IN_SCORE_WEIGHTS.productLine,
+        explanation: `Product line matched ${input.productLine}.`
+      }),
+      matchedTerms: [input.productLine]
+    };
+  }
+
+  const productCompact = compactNormalize(input.productLine);
+  const alias = input.aliases.find(
+    (candidateAlias) =>
+      input.compactQuery.includes(productCompact) &&
+      compactNormalize(candidateAlias).includes(productCompact)
+  );
+
+  if (alias) {
+    const matchedAliasPart =
+      tokensFor(alias).find((token) => input.compactQuery.includes(compactNormalize(token))) ??
+      input.productLine;
+
+    return {
+      component: component({
+        score: 1,
+        weight: TRADE_IN_SCORE_WEIGHTS.productLine,
+        explanation: `Product line matched alias ${matchedAliasPart} → ${input.productLine}.`
+      }),
+      matchedTerms: [matchedAliasPart, input.productLine]
+    };
+  }
+
+  const productTokens = tokensFor(input.productLine);
+  const matchedProductTokens = productTokens.filter((token) =>
+    input.normalizedQuery.includes(token)
+  );
+
+  if (matchedProductTokens.length > 0) {
+    const partialScore = matchedProductTokens.length / productTokens.length;
+
+    return {
+      component: component({
+        score: partialScore,
+        weight: TRADE_IN_SCORE_WEIGHTS.productLine,
+        explanation: `Product line partially matched ${matchedProductTokens.join(", ")} → ${input.productLine}.`
+      }),
+      matchedTerms: matchedProductTokens
+    };
+  }
+
+  return {
+    component: component({
+      score: 0,
+      weight: TRADE_IN_SCORE_WEIGHTS.productLine,
+      explanation: `Product line did not match ${input.productLine}.`
+    }),
+    matchedTerms: []
+  };
+}
+
+function scoreCategoryComponent(input: {
+  normalizedQuery: string;
+  compactQuery: string;
+  category: string | null;
+}): { component: KnowledgeScoreComponentBreakdown; matchedTerms: string[] } {
+  if (!input.category) {
+    return {
+      component: component({
+        score: 0,
+        weight: TRADE_IN_SCORE_WEIGHTS.category,
+        explanation: "No category metadata was available for this chunk."
+      }),
+      matchedTerms: []
+    };
+  }
+
+  const aliases = [input.category, ...(CATEGORY_ALIASES[input.category] ?? [])];
+  const alias = firstMatchingAlias({
+    normalizedQuery: input.normalizedQuery,
+    compactQuery: input.compactQuery,
+    aliases
+  });
+
+  if (alias) {
+    const categoryLabel = input.category === "FAIRWAY_WOOD" ? "fairway wood" : input.category.toLowerCase();
+
+    return {
+      component: component({
+        score: 1,
+        weight: TRADE_IN_SCORE_WEIGHTS.category,
+        explanation: `Category matched ${alias} → ${categoryLabel}.`
+      }),
+      matchedTerms: [alias, input.category]
+    };
+  }
+
+  return {
+    component: component({
+      score: 0,
+      weight: TRADE_IN_SCORE_WEIGHTS.category,
+      explanation: `Category did not match ${input.category}.`
+    }),
+    matchedTerms: []
+  };
+}
+
+function scoreShaftComponent(input: {
+  normalizedQuery: string;
+  compactQuery: string;
+  searchable: string;
+  conditionFlags: string[];
+}): { component: KnowledgeScoreComponentBreakdown; matchedTerms: string[] } {
+  for (const [canonicalFlex, aliases] of Object.entries(SHAFT_FLEX_ALIASES)) {
+    const queryAlias = firstMatchingAlias({
+      normalizedQuery: input.normalizedQuery,
+      compactQuery: input.compactQuery,
+      aliases
+    });
+
+    if (!queryAlias) {
+      continue;
+    }
+
+    const chunkHasFlex = aliases.some((alias) =>
+      queryHasAlias({
+        normalizedQuery: input.searchable,
+        compactQuery: compactNormalize(input.searchable),
+        alias
+      })
+    );
+
+    const flagHasFlex = input.conditionFlags.some((flag) =>
+      aliases.some((alias) => compactNormalize(flag) === compactNormalize(alias))
+    );
+
+    if (chunkHasFlex || flagHasFlex) {
+      return {
+        component: component({
+          score: 1,
+          weight: TRADE_IN_SCORE_WEIGHTS.shaft,
+          explanation: `Shaft matched ${queryAlias} → ${canonicalFlex}.`
+        }),
+        matchedTerms: [queryAlias, canonicalFlex]
+      };
+    }
+  }
+
+  return {
+    component: component({
+      score: 0,
+      weight: TRADE_IN_SCORE_WEIGHTS.shaft,
+      explanation: "No shaft-flex match contributed to this score."
+    }),
+    matchedTerms: []
+  };
+}
+
+function scoreNotesComponent(input: {
+  normalizedQuery: string;
+  compactQuery: string;
+  conditionFlags: string[];
+}): { component: KnowledgeScoreComponentBreakdown; matchedTerms: string[] } {
+  const noteFlags = input.conditionFlags.filter(
+    (flag) =>
+      NOTE_ALIASES.some((alias) => compactNormalize(alias) === compactNormalize(flag)) &&
+      !Object.values(SHAFT_FLEX_ALIASES).some((aliases) =>
+        aliases.some((alias) => compactNormalize(alias) === compactNormalize(flag))
+      )
+  );
+
+  const matchedNotes = noteFlags.filter((flag) =>
+    queryHasAlias({
+      normalizedQuery: input.normalizedQuery,
+      compactQuery: input.compactQuery,
+      alias: flag
+    })
+  );
+
+  const directNoteAlias = NOTE_ALIASES.filter((alias) =>
+    queryHasAlias({
+      normalizedQuery: input.normalizedQuery,
+      compactQuery: input.compactQuery,
+      alias
+    })
+  );
+
+  const matches = unique([...matchedNotes, ...directNoteAlias]);
+
+  if (matches.length > 0) {
+    return {
+      component: component({
+        score: 1,
+        weight: TRADE_IN_SCORE_WEIGHTS.notes,
+        explanation: `Notes matched ${matches.join(", ")}.`
+      }),
+      matchedTerms: matches
+    };
+  }
+
+  return {
+    component: component({
+      score: 0,
+      weight: TRADE_IN_SCORE_WEIGHTS.notes,
+      explanation: "No condition, accessory, or review-note match contributed to this score."
+    }),
+    matchedTerms: []
+  };
+}
+
 function scoreChunk(input: {
   normalizedQuery: string;
   queryTokens: string[];
+  vectorScore: number | null;
   chunk: {
     chunkText: string;
     searchText: string;
@@ -159,82 +592,111 @@ function scoreChunk(input: {
   };
 }): {
   score: number;
+  scoreBreakdown: KnowledgeScoreBreakdown;
   matchedTerms: string[];
   scoringExplanation: string[];
 } {
+  const compactQuery = compactNormalize(input.normalizedQuery);
   const searchable = normalize(input.chunk.searchText);
-  const matchedTerms: string[] = [];
-  const scoringExplanation: string[] = [];
-  let score = 0;
-
-  for (const alias of getAliases(input.chunk.metadataJson)) {
-    const aliasTokens = tokensFor(alias);
-    const aliasOverlap = aliasTokens.filter((token) => input.queryTokens.includes(token));
-
-    if (aliasOverlap.length > 0) {
-      score += 0.38 + aliasOverlap.length * 0.07;
-      matchedTerms.push(...aliasOverlap, alias);
-      scoringExplanation.push(`Alias overlap matched ${aliasOverlap.join(", ")} from "${alias}".`);
-    }
-  }
-
-  if (input.chunk.brand && hasPhrase(input.normalizedQuery, input.chunk.brand)) {
-    score += 0.3;
-    matchedTerms.push(input.chunk.brand);
-    scoringExplanation.push(`Brand matched ${input.chunk.brand}.`);
-  }
-
-  if (input.chunk.productLine && hasPhrase(input.normalizedQuery, input.chunk.productLine)) {
-    score += 0.38;
-    matchedTerms.push(input.chunk.productLine);
-    scoringExplanation.push(`Product line matched ${input.chunk.productLine}.`);
-  }
-
-  if (input.chunk.category && input.queryTokens.includes(normalize(input.chunk.category))) {
-    score += 0.2;
-    matchedTerms.push(input.chunk.category);
-    scoringExplanation.push(`Category token matched ${input.chunk.category}.`);
-  }
-
   const searchableTokens = new Set(tokensFor(searchable));
+  const aliases = getAliases(input.chunk.metadataJson);
+  const conditionFlags = getConditionFlags(input.chunk.metadataJson);
+
+  const brand = scoreBrandComponent({
+    normalizedQuery: input.normalizedQuery,
+    compactQuery,
+    brand: input.chunk.brand
+  });
+
+  const productLine = scoreProductLineComponent({
+    normalizedQuery: input.normalizedQuery,
+    compactQuery,
+    productLine: input.chunk.productLine,
+    aliases
+  });
+
+  const category = scoreCategoryComponent({
+    normalizedQuery: input.normalizedQuery,
+    compactQuery,
+    category: input.chunk.category
+  });
+
+  const shaft = scoreShaftComponent({
+    normalizedQuery: input.normalizedQuery,
+    compactQuery,
+    searchable,
+    conditionFlags
+  });
+
+  const notes = scoreNotesComponent({
+    normalizedQuery: input.normalizedQuery,
+    compactQuery,
+    conditionFlags
+  });
+
+  const vector = component({
+    score: input.vectorScore,
+    weight: TRADE_IN_SCORE_WEIGHTS.vector,
+    explanation:
+      input.vectorScore === null
+        ? "No pgvector score was available, deterministic fallback scoring was used."
+        : `Vector similarity contributed ${input.vectorScore.toFixed(3)} at 5% weight.`
+  });
+
+  const weightedScore = Number(
+    (
+      brand.component.score! * brand.component.weight +
+      productLine.component.score! * productLine.component.weight +
+      category.component.score! * category.component.weight +
+      shaft.component.score! * shaft.component.weight +
+      notes.component.score! * notes.component.weight +
+      (vector.score ?? 0) * vector.weight
+    ).toFixed(3)
+  );
+
+  const aliasMatches = aliases.flatMap((alias) =>
+    tokensFor(alias).filter((token) => input.queryTokens.includes(token))
+  );
   const tokenMatches = input.queryTokens.filter((token) => searchableTokens.has(token));
-  if (tokenMatches.length > 0) {
-    score += tokenMatches.length * 0.055;
-    matchedTerms.push(...tokenMatches);
-    scoringExplanation.push(`Token overlap matched ${unique(tokenMatches).join(", ")}.`);
-  }
 
-  for (const flag of getConditionFlags(input.chunk.metadataJson)) {
-    const flagTokens = tokensFor(flag);
-    if (flagTokens.some((token) => input.queryTokens.includes(token))) {
-      score += 0.13;
-      matchedTerms.push(flag);
-      scoringExplanation.push(`Condition or policy flag matched ${flag}.`);
-    }
-  }
+  const matchedTerms = unique(
+    [
+      ...brand.matchedTerms,
+      ...productLine.matchedTerms,
+      ...category.matchedTerms,
+      ...shaft.matchedTerms,
+      ...notes.matchedTerms,
+      ...aliasMatches,
+      ...tokenMatches
+    ]
+      .map((term) => term.trim())
+      .filter(Boolean)
+  );
 
-  if (input.filters.brand && input.chunk.brand && normalize(input.filters.brand) === normalize(input.chunk.brand)) {
-    score += 0.16;
-    scoringExplanation.push("Brand filter matched.");
-  }
-
-  if (
-    input.filters.category &&
-    input.chunk.category &&
-    normalize(input.filters.category) === normalize(input.chunk.category)
-  ) {
-    score += 0.16;
-    scoringExplanation.push("Category filter matched.");
-  }
-
-  if (input.filters.chunkType && input.filters.chunkType === input.chunk.chunkType) {
-    score += 0.16;
-    scoringExplanation.push("Chunk type filter matched.");
-  }
+  const scoringExplanation = [
+    brand.component.explanation,
+    productLine.component.explanation,
+    category.component.explanation,
+    shaft.component.explanation,
+    notes.component.explanation,
+    vector.explanation
+  ].filter((value): value is string => Boolean(value));
 
   return {
-    score: Math.min(0.98, Number(score.toFixed(3))),
-    matchedTerms: unique(matchedTerms.map((term) => term.trim()).filter(Boolean)),
+    score: Math.min(0.99, weightedScore),
+    scoreBreakdown: {
+      weightedScore: Math.min(0.99, weightedScore),
+      vectorScore: input.vectorScore,
+      components: {
+        brand: brand.component,
+        productLine: productLine.component,
+        category: category.component,
+        shaft: shaft.component,
+        notes: notes.component,
+        vector
+      }
+    },
+    matchedTerms,
     scoringExplanation
   };
 }
@@ -310,6 +772,7 @@ function toDeterministicResultItem(input: {
     productLine: input.chunk.productLine,
     category: input.chunk.category,
     score: input.scored.score,
+    scoreBreakdown: input.scored.scoreBreakdown,
     matchedTerms: input.scored.matchedTerms,
     scoringExplanation: input.scored.scoringExplanation,
     metadata: input.chunk.metadataJson,
@@ -325,11 +788,6 @@ function toPgvectorResultItem(input: {
   row: PgvectorKnowledgeRow;
   scored: ReturnType<typeof scoreChunk>;
 }): KnowledgeSearchResultItem {
-  const blendedScore = Math.min(
-    0.99,
-    Number((input.row.vector_score * 0.72 + input.scored.score * 0.28).toFixed(3))
-  );
-
   return {
     chunkId: input.row.id,
     documentId: input.row.document_id,
@@ -340,12 +798,10 @@ function toPgvectorResultItem(input: {
     brand: input.row.brand,
     productLine: input.row.product_line,
     category: input.row.category,
-    score: blendedScore,
+    score: input.scored.score,
+    scoreBreakdown: input.scored.scoreBreakdown,
     matchedTerms: input.scored.matchedTerms,
-    scoringExplanation: [
-      `pgvector cosine similarity score ${input.row.vector_score.toFixed(3)} using deterministic local embeddings.`,
-      ...input.scored.scoringExplanation
-    ],
+    scoringExplanation: input.scored.scoringExplanation,
     metadata: input.row.metadata_json,
     citation: {
       sourceName: input.row.source_name,
@@ -393,6 +849,7 @@ async function searchWithDeterministicFallback(input: {
       const scored = scoreChunk({
         normalizedQuery: input.normalizedQuery,
         queryTokens: input.queryTokens,
+        vectorScore: null,
         chunk,
         filters: input.filters
       });
@@ -468,6 +925,7 @@ async function searchWithPgvector(input: {
       const scored = scoreChunk({
         normalizedQuery: input.normalizedQuery,
         queryTokens: input.queryTokens,
+        vectorScore: row.vector_score,
         chunk: {
           chunkText: row.chunk_text,
           searchText: row.search_text,

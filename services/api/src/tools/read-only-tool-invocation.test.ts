@@ -247,7 +247,18 @@ describe("read-only tool invocation", () => {
           expect.objectContaining({
             brand: "TaylorMade",
             productLine: "Stealth 2",
-            category: "DRIVER"
+            category: "DRIVER",
+            scoreBreakdown: expect.objectContaining({
+              weightedScore: expect.any(Number),
+              components: expect.objectContaining({
+                brand: expect.objectContaining({
+                  weight: 0.25
+                }),
+                vector: expect.objectContaining({
+                  weight: 0.05
+                })
+              })
+            })
           })
         ]),
         queryMetadata: {

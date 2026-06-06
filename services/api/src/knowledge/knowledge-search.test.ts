@@ -87,8 +87,41 @@ describe("knowledge base ingestion and search", () => {
     expect(result.results[0]).toMatchObject({
       brand: "Callaway",
       productLine: "Ai Smoke",
-      category: "FAIRWAY_WOOD"
+      category: "FAIRWAY_WOOD",
+      scoreBreakdown: {
+        components: {
+          brand: {
+            score: 1,
+            weight: 0.25
+          },
+          productLine: {
+            score: 1,
+            weight: 0.3
+          },
+          category: {
+            score: 1,
+            weight: 0.15
+          },
+          shaft: {
+            score: 1,
+            weight: 0.15
+          },
+          vector: {
+            weight: 0.05
+          }
+        }
+      }
     });
+    expect(result.results[0]?.score).toBeGreaterThan(0.85);
+    expect(result.results[0]?.scoreBreakdown.vectorScore).toEqual(
+      expect.any(Number)
+    );
+    expect(
+      result.results[0]?.scoreBreakdown.components.vector.score
+    ).toBeCloseTo(result.results[0]?.scoreBreakdown.vectorScore ?? 0, 3);
+    expect(result.results[0]?.scoringExplanation.join(" ")).toContain(
+      "Brand matched alias"
+    );
     expect(result.citations[0]).toMatchObject({
       sourceName: TEST_KNOWLEDGE_SOURCE_NAME
     });
@@ -109,6 +142,7 @@ describe("knowledge base ingestion and search", () => {
       category: "DRIVER"
     });
     expect(result.results[0]?.score).toBeGreaterThan(0);
+    expect(result.results[0]?.scoreBreakdown.components.vector.weight).toBe(0.05);
   });
 
   it("passes deterministic retrieval evals", async () => {

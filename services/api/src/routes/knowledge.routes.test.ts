@@ -54,7 +54,29 @@ describe("knowledge routes", () => {
     expect(searchResponse.json().results[0]).toMatchObject({
       brand: "Callaway",
       productLine: "Ai Smoke",
-      category: "FAIRWAY_WOOD"
+      category: "FAIRWAY_WOOD",
+      scoreBreakdown: {
+        components: {
+          brand: {
+            weight: 0.25
+          },
+          productLine: {
+            weight: 0.3
+          },
+          category: {
+            weight: 0.15
+          },
+          shaft: {
+            weight: 0.15
+          },
+          notes: {
+            weight: 0.1
+          },
+          vector: {
+            weight: 0.05
+          }
+        }
+      }
     });
 
     await app.close();

@@ -25,6 +25,19 @@ function formatScore(score: number): string {
   return score.toFixed(2);
 }
 
+function formatNullableScore(score: number | null): string {
+  return score === null ? "n/a" : score.toFixed(2);
+}
+
+const SCORE_BREAKDOWN_LABELS = [
+  ["brand", "Brand"],
+  ["productLine", "Product line"],
+  ["category", "Category"],
+  ["shaft", "Shaft"],
+  ["notes", "Notes"],
+  ["vector", "Vector"],
+] as const;
+
 export function McpConnectorsPage({
   connectorCatalog,
   isLoadingConnectorCatalog,
@@ -235,7 +248,9 @@ export function McpConnectorsPage({
                         {result.chunkType}
                       </p>
                     </div>
-                    <span>{formatScore(result.score)}</span>
+                    <span title="Weighted trade-in relevance score">
+                      {formatScore(result.score)}
+                    </span>
                   </div>
 
                   <p>{result.chunkText}</p>
@@ -251,7 +266,33 @@ export function McpConnectorsPage({
                       <dt>Matched Terms</dt>
                       <dd>{result.matchedTerms.join(", ") || "None"}</dd>
                     </div>
+                    <div>
+                      <dt>Scoring</dt>
+                      <dd>
+                        Weighted {formatScore(result.scoreBreakdown.weightedScore)}
+                        {result.scoreBreakdown.vectorScore === null
+                          ? " / vector n/a"
+                          : ` / vector ${formatScore(result.scoreBreakdown.vectorScore)}`}
+                      </dd>
+                    </div>
                   </dl>
+
+                  <div className="knowledge-base-score-breakdown">
+                    {SCORE_BREAKDOWN_LABELS.map(([key, label]) => {
+                      const component = result.scoreBreakdown.components[key];
+
+                      return (
+                        <div key={key}>
+                          <strong>{label}</strong>{" "}
+                          {formatNullableScore(component.score)} ×{" "}
+                          {Math.round(component.weight * 100)}%
+                          {component.explanation ? (
+                            <span> — {component.explanation}</span>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </article>
               ))}
             </div>
