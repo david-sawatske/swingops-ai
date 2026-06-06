@@ -24,7 +24,7 @@ export function OverviewPage({
           This demo shows how an agentic operations system can ingest
           inconsistent golf retail notes, start auditable workflow runs,
           route model work across providers, create human review tasks, and
-          expose internal tools through a guarded MCP-style connector layer.
+          expose internal tools through a guarded MCP-compatible connector layer.
         </p>
       </div>
 
@@ -81,7 +81,7 @@ export function OverviewPage({
 
         <article>
           <span>05</span>
-          <h3>MCP-style Tool Safety</h3>
+          <h3>MCP-compatible Tool Safety</h3>
           <p>Expose internal data through read-only tools with policy checks before execution.</p>
         </article>
 

@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { previewModelRouting } from "./api/modelRouting";
 import {
-  executeReadOnlyToolInvocation,
+  callMcpCompatibleTool,
   listConnectorCatalog,
   listConnectorInvocationHistory,
 } from "./api/mcp";
@@ -25,7 +25,7 @@ import {
 import type {
   ConnectorCatalogItem,
   ConnectorInvocationHistoryItem,
-  ExecuteReadOnlyToolInvocationResponse,
+  McpCompatibleToolCallResponse,
 } from "./types/mcp";
 import type {
   ModelRoutingGoal,
@@ -178,7 +178,7 @@ function App() {
   const [selectedReadOnlyMcpWorkflowRunId, setSelectedReadOnlyMcpWorkflowRunId] =
     useState("");
   const [readOnlyMcpInvocationResult, setReadOnlyMcpInvocationResult] =
-    useState<ExecuteReadOnlyToolInvocationResponse | null>(null);
+    useState<McpCompatibleToolCallResponse | null>(null);
   const [isExecutingReadOnlyMcpTool, setIsExecutingReadOnlyMcpTool] =
     useState(false);
   const [readOnlyMcpInvocationError, setReadOnlyMcpInvocationError] = useState<
@@ -775,18 +775,17 @@ function App() {
       setIsExecutingReadOnlyMcpTool(true);
       setReadOnlyMcpInvocationError(null);
 
-      const result = await executeReadOnlyToolInvocation({
-        toolName: selectedReadOnlyMcpToolName,
-        inputJson: getReadOnlyMcpToolInput(
+      const result = await callMcpCompatibleTool(selectedReadOnlyMcpToolName, {
+        arguments: getReadOnlyMcpToolInput(
           selectedReadOnlyMcpToolName,
           selectedMcpWorkflowRunId,
         ),
-        requestedBy: "agent.web-readonly-demo",
+        requestedBy: "agent.web-mcp-compatible-demo",
         workflowRunId:
           selectedReadOnlyMcpToolName === "swingops.workflowRuns.get"
             ? selectedMcpWorkflowRunId
             : undefined,
-        executionMode: selectedReadOnlyMcpTool.blockedDemo
+        invocationMode: selectedReadOnlyMcpTool.blockedDemo
           ? "HUMAN_APPROVED"
           : "AGENT_AUTONOMOUS",
         humanApprovalGranted: selectedReadOnlyMcpTool.blockedDemo,
@@ -796,19 +795,24 @@ function App() {
       await loadGlobalWorkflowRuns();
       await loadGlobalReviewQueueItems();
 
+      const selectedDetailWorkflowRunId =
+        selectedWorkflowRunDetail?.workflowRun.id ?? null;
+      const invokedWorkflowRunId =
+        result.toolId === "swingops.workflowRuns.get"
+          ? selectedMcpWorkflowRunId
+          : null;
+
       if (
-        selectedWorkflowRunDetail &&
-        result.invocation.workflowRunId === selectedWorkflowRunDetail.workflowRun.id
+        selectedDetailWorkflowRunId &&
+        invokedWorkflowRunId === selectedDetailWorkflowRunId
       ) {
-        await refreshSelectedWorkflowRunDetail(
-          selectedWorkflowRunDetail.workflowRun.id,
-        );
+        await refreshSelectedWorkflowRunDetail(selectedDetailWorkflowRunId);
       }
     } catch (error) {
       setReadOnlyMcpInvocationError(
         error instanceof Error
           ? error.message
-          : "Unable to execute read-only MCP connector demo.",
+          : "Unable to call MCP-compatible connector demo.",
       );
     } finally {
       setIsExecutingReadOnlyMcpTool(false);

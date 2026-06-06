@@ -4,6 +4,8 @@ import type {
   ConnectorInvocationHistoryResponse,
   ExecuteReadOnlyToolInvocationRequest,
   ExecuteReadOnlyToolInvocationResponse,
+  McpCompatibleToolCallRequest,
+  McpCompatibleToolCallResponse,
 } from "../types/mcp";
 
 export async function listConnectorCatalog(): Promise<ConnectorCatalogResponse> {
@@ -25,4 +27,14 @@ export async function executeReadOnlyToolInvocation(
     ExecuteReadOnlyToolInvocationResponse,
     ExecuteReadOnlyToolInvocationRequest
   >("/mcp/tools/invocations/execute-readonly", request);
+}
+
+export async function callMcpCompatibleTool(
+  toolId: string,
+  request: McpCompatibleToolCallRequest,
+): Promise<McpCompatibleToolCallResponse> {
+  return apiPost<McpCompatibleToolCallResponse, McpCompatibleToolCallRequest>(
+    `/mcp/tools/${toolId}/call`,
+    request,
+  );
 }

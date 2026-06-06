@@ -1,9 +1,116 @@
-import type { ExecuteWorkflowToolCallingPlanResponse } from "../../types/workflow";
+import type {
+  ExecuteWorkflowToolCallingPlanResponse,
+  ToolCallLog,
+} from "../../types/workflow";
 import { formatConnectorJson, formatShortId } from "../../utils/formatting";
+
+type PersistedToolAuditReplayItem = {
+  id: string;
+  toolName: string;
+  status: "SUCCEEDED" | "FAILED" | "BLOCKED" | string;
+  policyDecision: string;
+  policyReasonCodes: string[];
+  executionAttempted: boolean;
+  requestedBy: string | null;
+  resultPreview: unknown | null;
+  failurePreview: string | null;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+function getConnectorResult(outputJson: unknown): unknown | null {
+  if (!isRecord(outputJson)) {
+    return null;
+  }
+
+  const connectorResult = outputJson.connectorResult;
+
+  if (isRecord(connectorResult) && "data" in connectorResult) {
+    return connectorResult.data;
+  }
+
+  return connectorResult ?? null;
+}
+
+function isPersistedToolPlanReplayLog(log: ToolCallLog): boolean {
+  const outputJson = isRecord(log.outputJson) ? log.outputJson : {};
+  const requestedBy =
+    typeof outputJson.requestedBy === "string" ? outputJson.requestedBy : "";
+
+  return (
+    outputJson.connectorInvocation === true ||
+    log.toolName.startsWith("swingops.") ||
+    requestedBy.startsWith("agent.workflow-tool-calling-plan")
+  );
+}
+
+function toPersistedReplayItem(log: ToolCallLog): PersistedToolAuditReplayItem {
+  const outputJson = isRecord(log.outputJson) ? log.outputJson : {};
+  const executionAttempted =
+    typeof outputJson.executionAttempted === "boolean"
+      ? outputJson.executionAttempted
+      : log.status === "SUCCEEDED";
+  const policyDecision =
+    typeof outputJson.policyDecision === "string"
+      ? outputJson.policyDecision
+      : log.status === "SUCCEEDED"
+        ? "ALLOW"
+        : "UNKNOWN";
+  const policyReasonCodes = getStringArray(outputJson.policyReasonCodes);
+  const requestedBy =
+    typeof outputJson.requestedBy === "string" ? outputJson.requestedBy : null;
+  const failureReason =
+    typeof outputJson.failureReason === "string"
+      ? outputJson.failureReason
+      : log.errorMessage;
+
+  return {
+    id: log.id,
+    toolName: log.toolName,
+    status:
+      !executionAttempted && log.status === "FAILED" ? "BLOCKED" : log.status,
+    policyDecision,
+    policyReasonCodes,
+    executionAttempted,
+    requestedBy,
+    resultPreview: getConnectorResult(log.outputJson),
+    failurePreview: failureReason,
+  };
+}
+
+function getPersistedReplayStatus(
+  items: PersistedToolAuditReplayItem[],
+): "EXECUTED" | "PARTIALLY_EXECUTED" | "FAILED" | "BLOCKED" {
+  const succeededCount = items.filter((item) => item.status === "SUCCEEDED").length;
+  const blockedCount = items.filter((item) => item.status === "BLOCKED").length;
+
+  if (succeededCount === items.length) {
+    return "EXECUTED";
+  }
+
+  if (blockedCount === items.length) {
+    return "BLOCKED";
+  }
+
+  if (succeededCount > 0 && blockedCount > 0) {
+    return "PARTIALLY_EXECUTED";
+  }
+
+  return "FAILED";
+}
 
 export function WorkflowToolCallingPlanPanel({
   workflowRunId,
   result,
+  persistedToolCallLogs,
   isRunning,
   error,
   success,
@@ -11,11 +118,18 @@ export function WorkflowToolCallingPlanPanel({
 }: {
   workflowRunId: string;
   result: ExecuteWorkflowToolCallingPlanResponse | null;
+  persistedToolCallLogs: ToolCallLog[];
   isRunning: boolean;
   error: string | null;
   success: string | null;
   onRun: (workflowRunId: string) => void;
 }) {
+  const persistedReplayItems = persistedToolCallLogs
+    .filter(isPersistedToolPlanReplayLog)
+    .map(toPersistedReplayItem);
+  const shouldShowPersistedReplay =
+    !result && persistedReplayItems.length > 0;
+
   return (
     <section className="workflow-tool-calling-plan">
       <div className="workflow-tool-calling-plan__header">
@@ -127,11 +241,103 @@ export function WorkflowToolCallingPlanPanel({
             ))}
           </div>
         </div>
-      ) : (
+      ) : null}
+
+      {shouldShowPersistedReplay ? (
+        <div className="workflow-tool-calling-plan__result">
+          <dl className="workflow-tool-calling-plan__metadata">
+            <div>
+              <dt>Replay Source</dt>
+              <dd>ToolCallLog</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>{getPersistedReplayStatus(persistedReplayItems)}</dd>
+            </div>
+            <div>
+              <dt>Calls</dt>
+              <dd>{persistedReplayItems.length}</dd>
+            </div>
+            <div>
+              <dt>Mode</dt>
+              <dd>Persisted Audit Replay</dd>
+            </div>
+          </dl>
+
+          <p className="workflow-tool-calling-plan__empty">
+            Reconstructed from persisted ToolCallLog records because the full
+            in-memory plan result is not available in this UI session.
+          </p>
+
+          <div className="workflow-tool-calling-plan__steps">
+            {persistedReplayItems.map((item, index) => (
+              <article
+                className={
+                  item.status === "SUCCEEDED"
+                    ? "workflow-tool-calling-plan-card workflow-tool-calling-plan-card--success"
+                    : "workflow-tool-calling-plan-card workflow-tool-calling-plan-card--blocked"
+                }
+                key={item.id}
+              >
+                <div className="workflow-tool-calling-plan-card__header">
+                  <div>
+                    <strong>
+                      {index + 1}. {item.toolName}
+                    </strong>
+                    <p>Persisted connector/tool audit record.</p>
+                  </div>
+                  <span>{item.status}</span>
+                </div>
+
+                <dl className="workflow-tool-calling-plan-card__metadata">
+                  <div>
+                    <dt>Policy</dt>
+                    <dd>{item.policyDecision}</dd>
+                  </div>
+                  <div>
+                    <dt>Reason Codes</dt>
+                    <dd>{item.policyReasonCodes.join(", ") || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>Execution Attempted</dt>
+                    <dd>{item.executionAttempted ? "true" : "false"}</dd>
+                  </div>
+                  <div>
+                    <dt>ToolCallLog</dt>
+                    <dd>{formatShortId(item.id)}</dd>
+                  </div>
+                  <div>
+                    <dt>Requested By</dt>
+                    <dd>{item.requestedBy ?? "—"}</dd>
+                  </div>
+                </dl>
+
+                {item.failurePreview ? (
+                  <p className="workflow-tool-calling-plan-card__reason">
+                    {item.failurePreview}
+                  </p>
+                ) : null}
+
+                <details className="workflow-tool-calling-plan-card__preview">
+                  <summary>Persisted result / failure preview</summary>
+                  <pre>
+                    {formatConnectorJson(
+                      item.resultPreview ?? item.failurePreview,
+                    )}
+                  </pre>
+                </details>
+              </article>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {!result && !shouldShowPersistedReplay ? (
         <p className="workflow-tool-calling-plan__empty">
-          No tool-calling plan has been run for this selected workflow run in the current UI session.
+          No tool-calling plan or persisted connector audit logs have been
+          recorded for this selected workflow run yet.
         </p>
-      )}
+      ) : null}
     </section>
   );
 }

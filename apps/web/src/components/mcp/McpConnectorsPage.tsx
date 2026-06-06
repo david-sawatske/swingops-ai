@@ -2,11 +2,10 @@ import type { FormEvent } from "react";
 import type {
   ConnectorCatalogItem,
   ConnectorInvocationHistoryItem,
-  ExecuteReadOnlyToolInvocationResponse,
+  McpCompatibleToolCallResponse,
 } from "../../types/mcp";
 import type { GlobalWorkflowRunSummary } from "../../types/workflow";
 import {
-  READ_ONLY_MCP_TOOL_OPTIONS,
   type ReadOnlyMcpToolDemoOption,
   type ReadOnlyMcpToolName,
 } from "../../constants/mcpDemoTools";
@@ -15,7 +14,7 @@ import { DashboardSection } from "../DashboardSection";
 import { EmptyState } from "../EmptyState";
 import { ConnectorCatalogCard } from "./ConnectorCatalogCard";
 import { ConnectorInvocationHistoryCard } from "./ConnectorInvocationHistoryCard";
-import { ReadOnlyMcpConnectorResultCard } from "./ReadOnlyMcpConnectorResultCard";
+import { McpCompatibleToolCallResultCard } from "./McpCompatibleToolCallResultCard";
 
 export function McpConnectorsPage({
   connectorCatalog,
@@ -51,7 +50,7 @@ export function McpConnectorsPage({
   selectedWorkflowRunId: string;
   selectedTool: ReadOnlyMcpToolDemoOption;
   workflowRuns: GlobalWorkflowRunSummary[];
-  invocationResult: ExecuteReadOnlyToolInvocationResponse | null;
+  invocationResult: McpCompatibleToolCallResponse | null;
   invocationError: string | null;
   isExecutingTool: boolean;
   onRefreshCatalog: () => void;
@@ -62,17 +61,20 @@ export function McpConnectorsPage({
 }) {
   return (
     <DashboardSection
-      title="MCP Connector Catalog and Run History"
-      description="Catalog internal connector tools, try policy-governed read-only execution, and review persisted ToolCallLog audit history."
+      title="MCP-Compatible Connector Surface"
+      description="Expose internal SwingOps tools through a protocol-shaped adapter, run policy-governed calls, and inspect persisted ToolCallLog audit history."
     >
       <div className="section-intro-card">
-        <span className="model-route-card__eyebrow">Internal MCP-style Surface</span>
-        <h3>Policy-governed tool invocation with audit history</h3>
+        <span className="model-route-card__eyebrow">
+          Internal MCP-compatible surface
+        </span>
+        <h3>Connector registry exposed through a guarded tool-call boundary</h3>
         <p>
-          This is currently an internal MCP-style connector invocation surface,
-          not an external MCP server. The page shows which tools are exposed,
-          why policy allows or blocks them, whether execution was attempted,
-          and the persisted ToolCallLog trail for portfolio review.
+          This page now uses a REST adapter shaped around MCP tools/list and
+          tools/call semantics. It does not claim an external MCP server yet.
+          The demo proves the safer boundary: list exposed tools, call an
+          allowed read-only tool, block a visible mutation tool before
+          execution, and persist both outcomes to ToolCallLog.
         </p>
       </div>
 
@@ -80,7 +82,9 @@ export function McpConnectorsPage({
         <section className="mcp-page-section">
           <div className="mcp-page-section__header">
             <div>
-              <span className="model-route-card__eyebrow">Connector Catalog</span>
+              <span className="model-route-card__eyebrow">
+                Connector Catalog
+              </span>
               <h3>Available internal connector tools</h3>
               <p>
                 Each card shows risk, mutation behavior, approval requirements,
@@ -116,7 +120,10 @@ export function McpConnectorsPage({
           connectorCatalog.length > 0 ? (
             <div className="mcp-connector-catalog-grid">
               {connectorCatalog.map((connector) => (
-                <ConnectorCatalogCard connector={connector} key={connector.name} />
+                <ConnectorCatalogCard
+                  connector={connector}
+                  key={connector.name}
+                />
               ))}
             </div>
           ) : null}
@@ -125,12 +132,15 @@ export function McpConnectorsPage({
         <section className="mcp-page-section">
           <div className="mcp-page-section__header">
             <div>
-              <span className="model-route-card__eyebrow">Try a Connector</span>
-              <h3>Run a safe read-only connector or blocked mutation demo</h3>
+              <span className="model-route-card__eyebrow">
+                MCP-compatible tools/call
+              </span>
+              <h3>Run a safe read-only tool or blocked mutation proof</h3>
               <p>
-                The request is evaluated by policy first. Allowed read-only
-                calls execute. Disabled or mutating calls are blocked and still
-                persisted as ToolCallLog audit records.
+                The browser sends a tool ID and JSON arguments to
+                /mcp/tools/:toolId/call. The backend reuses the internal policy
+                evaluator and executor, then returns an MCP-compatible response
+                with policy, status, result JSON, and ToolCallLog ID.
               </p>
             </div>
           </div>
@@ -140,7 +150,9 @@ export function McpConnectorsPage({
               Tool
               <select
                 onChange={(event) =>
-                  onSelectedToolNameChange(event.target.value as ReadOnlyMcpToolName)
+                  onSelectedToolNameChange(
+                    event.target.value as ReadOnlyMcpToolName,
+                  )
                 }
                 value={selectedToolName}
               >
@@ -174,7 +186,7 @@ export function McpConnectorsPage({
               <div>
                 <span className="model-route-card__eyebrow">
                   {selectedTool.blockedDemo
-                    ? "Blocked mutation demo"
+                    ? "Blocked mutation proof"
                     : "Safe read-only tool"}
                 </span>
                 <h3>{selectedTool.name}</h3>
@@ -212,19 +224,19 @@ export function McpConnectorsPage({
 
             <button disabled={isExecutingTool} type="submit">
               {isExecutingTool
-                ? "Executing connector…"
+                ? "Calling MCP-compatible tool…"
                 : selectedTool.blockedDemo
-                  ? "Run Blocked Demo"
-                  : "Execute Read-Only Tool"}
+                  ? "Run Blocked Mutation Proof"
+                  : "Call Read-Only Tool"}
             </button>
           </form>
 
           {invocationResult ? (
-            <ReadOnlyMcpConnectorResultCard result={invocationResult} />
+            <McpCompatibleToolCallResultCard result={invocationResult} />
           ) : (
             <EmptyState
-              title="No connector invocation yet"
-              message="Choose a safe read-only connector or the blocked mutation demo to see policy enforcement and persisted audit logs."
+              title="No MCP-compatible tool call yet"
+              message="Choose a safe read-only connector or the blocked mutation proof to see policy enforcement, result JSON, and persisted audit logs."
             />
           )}
         </section>
@@ -232,7 +244,9 @@ export function McpConnectorsPage({
         <section className="mcp-page-section">
           <div className="mcp-page-section__header">
             <div>
-              <span className="model-route-card__eyebrow">Invocation History</span>
+              <span className="model-route-card__eyebrow">
+                Invocation History
+              </span>
               <h3>Recent ToolCallLog audit records</h3>
               <p>{auditStory}</p>
             </div>
@@ -258,7 +272,7 @@ export function McpConnectorsPage({
           invocationHistory.length === 0 ? (
             <EmptyState
               title="No connector history yet"
-              message="Run the safe read-only connector and the blocked mutation demo to populate the audit history."
+              message="Run the safe read-only connector and the blocked mutation proof to populate the audit history."
             />
           ) : null}
 

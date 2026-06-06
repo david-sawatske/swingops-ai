@@ -744,7 +744,7 @@ describe("tool routes", () => {
   });
 
   describe("GET /mcp/tools", () => {
-    it("returns the MCP-style internal tool registry preview", async () => {
+    it("returns the MCP-compatible internal tool registry surface", async () => {
       const app = buildApp();
 
       const response = await app.inject({
@@ -756,11 +756,11 @@ describe("tool routes", () => {
 
       const body = response.json();
 
-      expect(body.registryMetadata).toEqual({
-        transport: "INTERNAL_PREVIEW",
-        executionEnabled: false,
-        status:
-          "Tool registry preview only. MCP transport and tool execution are intentionally not enabled in this slice."
+      expect(body.mcpSurface).toMatchObject({
+        name: "swingops.internal.mcp-compatible-tools",
+        protocolShape: "MCP_TOOLS_LIST_COMPATIBLE",
+        transport: "REST_ADAPTER",
+        externalMcpServer: false
       });
 
       expect(body.tools.map((tool: { name: string }) => tool.name)).toEqual([
@@ -894,6 +894,145 @@ describe("tool routes", () => {
 
       expect(response.statusCode).toBe(404);
       expect(response.json().error).toBe("Agent tool not found");
+
+      await app.close();
+    });
+  });
+
+  describe("MCP-compatible tool call surface", () => {
+    it("calls an allowed read-only tool through the MCP-compatible adapter and persists the audit log", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/mcp/tools/swingops.workflowRuns.list/call",
+        payload: {
+          arguments: {},
+          requestedBy: "agent.mcp-route-test"
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body).toMatchObject({
+        toolId: "swingops.workflowRuns.list",
+        policyDecision: {
+          decision: "ALLOW",
+          reasonCodes: ["TOOL_ALLOWED"],
+          executionMode: "AGENT_AUTONOMOUS",
+          executionEnabled: true,
+          humanApprovalGranted: false
+        },
+        executionAttempted: true,
+        status: "SUCCEEDED",
+        errorMessage: null,
+        toolCallLogId: expect.any(String),
+        startedAt: expect.any(String),
+        completedAt: expect.any(String),
+        mcpSurface: {
+          protocolShape: "MCP_TOOLS_CALL_COMPATIBLE",
+          transport: "REST_ADAPTER",
+          externalMcpServer: false,
+          reusedInternalPolicyAndExecutor: true,
+          auditLogPersistence: "TOOL_CALL_LOG"
+        }
+      });
+      expect(body.resultJson).toMatchObject({
+        workflowRuns: expect.any(Array)
+      });
+
+      const persistedLog = await prisma.toolCallLog.findUniqueOrThrow({
+        where: {
+          id: body.toolCallLogId
+        }
+      });
+
+      expect(persistedLog).toMatchObject({
+        toolName: "swingops.workflowRuns.list",
+        status: "SUCCEEDED",
+        errorMessage: null
+      });
+
+      await app.close();
+    });
+
+    it("blocks a visible mutation proof tool before execution and persists the audit log", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/mcp/tools/swingops.reviewQueueItems.resolve/call",
+        payload: {
+          arguments: {
+            id: "review-item-1",
+            reviewerNotes: "Looks correct."
+          },
+          requestedBy: "agent.mcp-route-test",
+          invocationMode: "HUMAN_APPROVED",
+          humanApprovalGranted: true
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body).toMatchObject({
+        toolId: "swingops.reviewQueueItems.resolve",
+        policyDecision: {
+          decision: "BLOCK",
+          reasonCodes: ["TOOL_DISABLED"],
+          executionMode: "HUMAN_APPROVED",
+          executionEnabled: false,
+          humanApprovalGranted: true
+        },
+        executionAttempted: false,
+        status: "BLOCKED",
+        resultJson: null,
+        errorMessage: "Tool is disabled and cannot be executed.",
+        toolCallLogId: expect.any(String)
+      });
+
+      const persistedLog = await prisma.toolCallLog.findUniqueOrThrow({
+        where: {
+          id: body.toolCallLogId
+        }
+      });
+
+      expect(persistedLog).toMatchObject({
+        toolName: "swingops.reviewQueueItems.resolve",
+        status: "FAILED",
+        errorMessage: "Tool is disabled and cannot be executed."
+      });
+      expect(persistedLog.outputJson).toMatchObject({
+        connectorInvocation: true,
+        executionAttempted: false,
+        requestedBy: "agent.mcp-route-test",
+        policyDecision: "BLOCK",
+        policyReasonCodes: ["TOOL_DISABLED"]
+      });
+
+      await app.close();
+    });
+
+    it("returns 400 for invalid MCP-compatible tool call requests", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/mcp/tools/swingops.workflowRuns.list/call",
+        payload: {
+          requestedBy: "",
+          invocationMode: "NOT_A_MODE"
+        }
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().error).toBe(
+        "Invalid MCP-compatible tool call request"
+      );
 
       await app.close();
     });

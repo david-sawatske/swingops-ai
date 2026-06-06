@@ -14,6 +14,10 @@ import {
 } from "../tools/tool-invocation-preview-logging.js";
 import { executeReadOnlyToolInvocation } from "../tools/read-only-tool-invocation.js";
 import {
+  callMcpCompatibleTool,
+  listMcpCompatibleTools
+} from "../tools/mcp-compatible-tool-surface.js";
+import {
   listConnectorCatalog,
   listConnectorInvocationHistory
 } from "../tools/connector-catalog.js";
@@ -47,6 +51,10 @@ const listAgentToolsQuerySchema = z
 
 const agentToolParamsSchema = z.object({
   name: z.string().min(1)
+});
+
+const mcpCompatibleToolParamsSchema = z.object({
+  toolId: z.string().min(1)
 });
 
 const toolExecutionModeSchema = z.enum([
@@ -83,6 +91,17 @@ const readOnlyToolInvocationBodySchema = z
     workflowRunId: z.string().min(1).optional(),
     workflowStepId: z.string().min(1).optional(),
     executionMode: toolExecutionModeSchema.default("AGENT_AUTONOMOUS"),
+    humanApprovalGranted: z.boolean().default(false)
+  })
+  .strict();
+
+const mcpCompatibleToolCallBodySchema = z
+  .object({
+    arguments: z.unknown().optional(),
+    requestedBy: z.string().min(1).default("agent.mcp-compatible"),
+    workflowRunId: z.string().min(1).optional(),
+    workflowStepId: z.string().min(1).optional(),
+    invocationMode: toolExecutionModeSchema.default("AGENT_AUTONOMOUS"),
     humanApprovalGranted: z.boolean().default(false)
   })
   .strict();
@@ -254,17 +273,59 @@ export async function toolRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
+    if (Object.keys(parsedQuery.data).length === 0) {
+      return listMcpCompatibleTools();
+    }
+
     const tools = listAgentTools(toRegistryFilter(parsedQuery.data));
 
     return {
       tools,
       registryMetadata: {
-        transport: "INTERNAL_PREVIEW",
-        executionEnabled: false,
+        transport: "REST_ADAPTER",
+        executionEnabled: true,
         status:
-          "Tool registry preview only. MCP transport and tool execution are intentionally not enabled in this slice."
+          "Filtered legacy registry response. Use the unfiltered response for MCP-compatible tools/list semantics."
       }
     };
+  });
+
+  app.post("/mcp/tools/:toolId/call", async (request, reply) => {
+    const parsedParams = mcpCompatibleToolParamsSchema.safeParse(request.params);
+
+    if (!parsedParams.success) {
+      return reply.status(400).send({
+        error: "Invalid MCP-compatible tool call params",
+        details: parsedParams.error.flatten()
+      });
+    }
+
+    const parsedBody = mcpCompatibleToolCallBodySchema.safeParse(
+      request.body ?? {}
+    );
+
+    if (!parsedBody.success) {
+      return reply.status(400).send({
+        error: "Invalid MCP-compatible tool call request",
+        details: parsedBody.error.flatten()
+      });
+    }
+
+    return callMcpCompatibleTool({
+      toolId: parsedParams.data.toolId,
+      ...(parsedBody.data.arguments === undefined
+        ? {}
+        : { arguments: parsedBody.data.arguments }),
+      requestedBy: parsedBody.data.requestedBy,
+      ...(parsedBody.data.workflowRunId === undefined
+        ? {}
+        : { workflowRunId: parsedBody.data.workflowRunId }),
+      ...(parsedBody.data.workflowStepId === undefined
+        ? {}
+        : { workflowStepId: parsedBody.data.workflowStepId }),
+      invocationMode: parsedBody.data.invocationMode,
+      humanApprovalGranted: parsedBody.data.humanApprovalGranted
+    });
   });
 
   app.get("/mcp/tools/:name", async (request, reply) => {

@@ -453,6 +453,7 @@ export function WorkflowRunsPage({
               isRunning={isExecutingWorkflowToolCallingPlan}
               error={workflowToolCallingPlanError}
               success={workflowToolCallingPlanSuccess}
+              persistedToolCallLogs={selectedWorkflowRunDetail.toolCallLogs}
               onRun={onRunWorkflowToolCallingPlan}
             />
 

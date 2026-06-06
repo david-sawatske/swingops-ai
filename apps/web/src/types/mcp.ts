@@ -7,7 +7,7 @@ export type ToolExecutionMode =
   | "AGENT_AUTONOMOUS"
   | "HUMAN_APPROVED";
 
-export type ToolExecutionPolicyDecision = "ALLOW" | "BLOCK";
+export type ToolExecutionPolicyDecision = "ALLOW" | "REQUIRE_HUMAN_APPROVAL" | "BLOCK";
 
 export type ReadOnlyToolInvocationStatus =
   | "SUCCEEDED"
@@ -151,5 +151,40 @@ export type ExecuteReadOnlyToolInvocationResponse = {
     readOnlyOnly: true;
     mutationToolsEnabled: false;
     policyCheckedBeforeExecution: true;
+  };
+};
+
+export type McpCompatibleToolCallRequest = {
+  arguments?: unknown;
+  requestedBy?: string;
+  workflowRunId?: string;
+  workflowStepId?: string;
+  invocationMode?: ToolExecutionMode;
+  humanApprovalGranted?: boolean;
+};
+
+export type McpCompatibleToolCallResponse = {
+  toolId: string;
+  policyDecision: {
+    decision: ToolExecutionPolicyDecision;
+    reasonCodes: string[];
+    reason: string;
+    executionMode: ToolExecutionMode;
+    executionEnabled: boolean;
+    humanApprovalGranted: boolean;
+  };
+  executionAttempted: boolean;
+  status: ReadOnlyToolInvocationStatus;
+  resultJson: unknown | null;
+  errorMessage: string | null;
+  toolCallLogId: string;
+  startedAt: string;
+  completedAt: string;
+  mcpSurface: {
+    protocolShape: "MCP_TOOLS_CALL_COMPATIBLE";
+    transport: "REST_ADAPTER";
+    externalMcpServer: false;
+    reusedInternalPolicyAndExecutor: true;
+    auditLogPersistence: "TOOL_CALL_LOG";
   };
 };

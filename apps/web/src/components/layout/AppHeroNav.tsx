@@ -16,7 +16,7 @@ export function AppHeroNav({
 
         <p className="hero__description">
           SwingOps AI turns messy golf trade-in notes into structured workflow
-          runs using model routing, tool execution, human review, and MCP-style
+          runs using model routing, tool execution, human review, and MCP-compatible
           connector safety.
         </p>
       </section>
