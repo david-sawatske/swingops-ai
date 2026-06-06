@@ -36,6 +36,16 @@ export type ModelCallStatus =
   | "RETRIED"
   | "SKIPPED";
 
+export type ModelCallAttemptStatus =
+  | "SUCCESS"
+  | "SUCCEEDED"
+  | "SKIPPED"
+  | "FAILED"
+  | "TIMEOUT"
+  | "RATE_LIMITED"
+  | "DISABLED"
+  | "UNHEALTHY";
+
 export type ReviewQueueItemStatus =
   | "OPEN"
   | "IN_REVIEW"
@@ -72,6 +82,24 @@ export type WorkflowStep = {
   updatedAt: string;
 };
 
+export type ModelCallAttemptLog = {
+  id: string;
+  modelCallLogId: string;
+  provider: ModelProviderName;
+  model: string;
+  status: ModelCallAttemptStatus;
+  reason: string | null;
+  promptTokens: number | null;
+  completionTokens: number | null;
+  totalTokens: number | null;
+  latencyMs: number | null;
+  estimatedCostUsd: number | null;
+  errorMessage: string | null;
+  startedAt: string;
+  completedAt: string | null;
+  createdAt: string;
+};
+
 export type ModelCallLog = {
   id: string;
   workflowRunId: string | null;
@@ -89,6 +117,7 @@ export type ModelCallLog = {
   errorMessage: string | null;
   startedAt: string;
   completedAt: string | null;
+  attemptLogs?: ModelCallAttemptLog[];
   createdAt: string;
 };
 

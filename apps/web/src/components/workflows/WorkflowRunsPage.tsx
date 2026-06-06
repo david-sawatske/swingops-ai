@@ -2,6 +2,8 @@ import type { IntakeBatchDetail } from "../../types/intake";
 import type {
   ExecuteWorkflowToolCallingPlanResponse,
   GlobalWorkflowRunSummary,
+  ModelCallAttemptStatus,
+  ModelCallLog,
   WorkflowRunDetail,
   WorkflowRunStatus,
 } from "../../types/workflow";
@@ -21,6 +23,95 @@ import { DashboardSection } from "../DashboardSection";
 import { EmptyState } from "../EmptyState";
 import { ToolCallLogCard } from "./ToolCallLogCard";
 import { WorkflowToolCallingPlanPanel } from "./WorkflowToolCallingPlanPanel";
+
+function formatProviderAttemptCost(cost: number | null) {
+  if (cost === null) {
+    return "—";
+  }
+
+  return `$${cost.toFixed(6)}`;
+}
+
+function formatProviderAttemptLatency(latencyMs: number | null) {
+  if (latencyMs === null) {
+    return "—";
+  }
+
+  return `${latencyMs}ms`;
+}
+
+function getProviderAttemptStatusClassName(status: ModelCallAttemptStatus) {
+  const normalizedStatus = status.toLowerCase().replace(/_/g, "-");
+
+  return `provider-attempt-card__status provider-attempt-card__status--${normalizedStatus}`;
+}
+
+function ModelCallLogCard({ modelCallLog }: { modelCallLog: ModelCallLog }) {
+  const attemptLogs = modelCallLog.attemptLogs ?? [];
+
+  return (
+    <article className="workflow-model-log-card">
+      <div className="workflow-model-log-card__header">
+        <div>
+          <strong>
+            Final model: {modelCallLog.provider} / {modelCallLog.model}
+          </strong>
+          <p>
+            Status: {modelCallLog.status} · Latency:{" "}
+            {formatProviderAttemptLatency(modelCallLog.latencyMs)} · Estimated
+            cost: {formatProviderAttemptCost(modelCallLog.estimatedCostUsd)}
+          </p>
+          {modelCallLog.errorMessage ? (
+            <p className="workflow-model-log-card__error">
+              Error: {modelCallLog.errorMessage}
+            </p>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="provider-attempt-list">
+        <h6>Provider attempts</h6>
+
+        {attemptLogs.length === 0 ? (
+          <p>No provider attempts recorded for this model call.</p>
+        ) : (
+          attemptLogs.map((attempt, attemptIndex) => (
+            <article className="provider-attempt-card" key={attempt.id}>
+              <div className="provider-attempt-card__header">
+                <strong>
+                  {attemptIndex + 1}. {attempt.provider} / {attempt.model}
+                </strong>
+                <span className={getProviderAttemptStatusClassName(attempt.status)}>
+                  {attempt.status}
+                </span>
+              </div>
+
+              <dl className="provider-attempt-card__metadata">
+                <div>
+                  <dt>Reason</dt>
+                  <dd>{attempt.reason ?? "—"}</dd>
+                </div>
+                <div>
+                  <dt>Error</dt>
+                  <dd>{attempt.errorMessage ?? "—"}</dd>
+                </div>
+                <div>
+                  <dt>Latency</dt>
+                  <dd>{formatProviderAttemptLatency(attempt.latencyMs)}</dd>
+                </div>
+                <div>
+                  <dt>Estimated cost</dt>
+                  <dd>{formatProviderAttemptCost(attempt.estimatedCostUsd)}</dd>
+                </div>
+              </dl>
+            </article>
+          ))
+        )}
+      </div>
+    </article>
+  );
+}
+
 
 export function WorkflowRunsPage({
   workflowRuns,
@@ -232,6 +323,21 @@ export function WorkflowRunsPage({
                     </div>
                     <span>{step.status}</span>
                   </article>
+                ))}
+              </div>
+            )}
+
+            <h5>Model Routing / Provider Attempts</h5>
+
+            {selectedWorkflowRunDetail.modelCallLogs.length === 0 ? (
+              <p>No model call logs recorded yet.</p>
+            ) : (
+              <div className="workflow-model-log-list">
+                {selectedWorkflowRunDetail.modelCallLogs.map((modelCallLog) => (
+                  <ModelCallLogCard
+                    key={modelCallLog.id}
+                    modelCallLog={modelCallLog}
+                  />
                 ))}
               </div>
             )}
