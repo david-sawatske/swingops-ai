@@ -8,6 +8,10 @@ import {
   WorkflowToolCallingPlanWorkflowRunNotFoundError
 } from "../workflows/workflow-tool-calling-plan.js";
 import { createMockModelCallLogForWorkflowRun } from "../workflows/workflow-model-logging.js";
+import {
+  AgenticTradeInWorkflowRunNotFoundError,
+  executeAgenticTradeInWorkflowRun
+} from "../workflows/agentic-trade-in-workflow.js";
 
 const workflowRunParamsSchema = z.object({
   id: z.string().min(1)
@@ -509,6 +513,41 @@ export async function workflowRunRoutes(app: FastifyInstance): Promise<void> {
     return {
       modelCallLog: serializeModelCallLog(modelCallLogWithAttempts)
     };
+  });
+
+  app.post("/workflow-runs/:id/agentic-trade-in-run", async (request, reply) => {
+    const parsedParams = workflowRunParamsSchema.safeParse(request.params);
+
+    if (!parsedParams.success) {
+      return reply.status(400).send({
+        error: "Invalid workflow run id",
+        details: parsedParams.error.flatten()
+      });
+    }
+
+    try {
+      const result = await executeAgenticTradeInWorkflowRun({
+        workflowRunId: parsedParams.data.id
+      });
+
+      return {
+        workflowRunId: result.workflowRunId,
+        modelCallLog: serializeModelCallLog(result.modelCallLog),
+        plan: result.toolCallingPlanExecution.plan,
+        results: result.toolCallingPlanExecution.results,
+        toolCallLogs: result.toolCallLogs.map(serializeToolCallLog),
+        evalSummary: result.evalSummary,
+        executionMetadata: result.executionMetadata
+      };
+    } catch (error) {
+      if (error instanceof AgenticTradeInWorkflowRunNotFoundError) {
+        return reply.status(404).send({
+          error: "Workflow run not found"
+        });
+      }
+
+      throw error;
+    }
   });
 
   app.post("/workflow-runs/:id/tool-calling-plan/execute", async (request, reply) => {

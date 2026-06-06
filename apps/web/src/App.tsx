@@ -12,6 +12,7 @@ import {
 } from "./api/intakeBatches";
 import {
   createProviderFallbackDemo,
+  executeAgenticTradeInRun,
   dismissReviewQueueItem,
   executeWorkflowRun,
   executeWorkflowToolCallingPlan,
@@ -37,6 +38,7 @@ import type {
   IntakeBatchSummary,
 } from "./types/intake";
 import type {
+  ExecuteAgenticTradeInRunResponse,
   GlobalReviewQueueItem,
   ExecuteWorkflowToolCallingPlanResponse,
   GlobalWorkflowRunSummary,
@@ -136,6 +138,14 @@ function App() {
   const [providerFallbackDemoError, setProviderFallbackDemoError] =
     useState<string | null>(null);
   const [providerFallbackDemoSuccess, setProviderFallbackDemoSuccess] =
+    useState<string | null>(null);
+  const [agenticTradeInRunResult, setAgenticTradeInRunResult] =
+    useState<ExecuteAgenticTradeInRunResponse | null>(null);
+  const [isExecutingAgenticTradeInRun, setIsExecutingAgenticTradeInRun] =
+    useState(false);
+  const [agenticTradeInRunError, setAgenticTradeInRunError] =
+    useState<string | null>(null);
+  const [agenticTradeInRunSuccess, setAgenticTradeInRunSuccess] =
     useState<string | null>(null);
 
   const [isStartingWorkflow, setIsStartingWorkflow] = useState(false);
@@ -412,6 +422,9 @@ function App() {
       setWorkflowToolCallingPlanResult(null);
       setProviderFallbackDemoError(null);
       setProviderFallbackDemoSuccess(null);
+      setAgenticTradeInRunResult(null);
+      setAgenticTradeInRunError(null);
+      setAgenticTradeInRunSuccess(null);
 
       const detail = await getWorkflowRun(workflowRunId);
 
@@ -514,6 +527,56 @@ function App() {
       );
     } finally {
       setIsExecutingWorkflowToolCallingPlan(false);
+    }
+  }
+
+  async function handleExecuteAgenticTradeInRun(workflowRunId: string) {
+    try {
+      setIsExecutingAgenticTradeInRun(true);
+      setAgenticTradeInRunError(null);
+      setAgenticTradeInRunSuccess(null);
+      setWorkflowToolCallingPlanError(null);
+      setWorkflowToolCallingPlanSuccess(null);
+      setProviderFallbackDemoError(null);
+      setProviderFallbackDemoSuccess(null);
+
+      const result = await executeAgenticTradeInRun(workflowRunId);
+
+      setAgenticTradeInRunResult(result);
+      setWorkflowToolCallingPlanResult({
+        plan: result.plan,
+        results: result.results,
+        toolCallLogs: result.toolCallLogs,
+        executionMetadata: {
+          planner: result.executionMetadata.orchestrator,
+          requestedBy: "agentic-trade-in-run",
+          readOnlyConnectorSurface:
+            result.executionMetadata.readOnlyMcpConnectorSurface,
+          mutationToolsEnabled: false,
+          policyCheckedBeforeEachExecution: true,
+        },
+      });
+      setAgenticTradeInRunSuccess(
+        "Agentic trade-in run completed: " +
+          result.evalSummary.toolCallsSucceeded +
+          "/" +
+          result.evalSummary.toolCallsAttempted +
+          " MCP connector calls succeeded. Provider fallback " +
+          (result.evalSummary.modelProviderFallbackUsed ? "used." : "not used."),
+      );
+
+      await refreshSelectedWorkflowRunDetail(workflowRunId);
+      await loadGlobalWorkflowRuns();
+      await loadGlobalReviewQueueItems();
+      await loadMcpInvocationHistory();
+    } catch (error) {
+      setAgenticTradeInRunError(
+        error instanceof Error
+          ? error.message
+          : "Unable to run agentic trade-in workflow.",
+      );
+    } finally {
+      setIsExecutingAgenticTradeInRun(false);
     }
   }
 
@@ -887,6 +950,10 @@ function App() {
           isCreatingProviderFallbackDemo={isCreatingProviderFallbackDemo}
           providerFallbackDemoError={providerFallbackDemoError}
           providerFallbackDemoSuccess={providerFallbackDemoSuccess}
+          agenticTradeInRunResult={agenticTradeInRunResult}
+          isExecutingAgenticTradeInRun={isExecutingAgenticTradeInRun}
+          agenticTradeInRunError={agenticTradeInRunError}
+          agenticTradeInRunSuccess={agenticTradeInRunSuccess}
           onStatusFilterChange={setWorkflowRunStatusFilter}
           onSelectWorkflowRun={(workflowRunId) =>
             void handleSelectWorkflowRun(workflowRunId)
@@ -896,6 +963,9 @@ function App() {
           }
           onCreateProviderFallbackDemo={(workflowRunId) =>
             void handleCreateProviderFallbackDemo(workflowRunId)
+          }
+          onExecuteAgenticTradeInRun={(workflowRunId) =>
+            void handleExecuteAgenticTradeInRun(workflowRunId)
           }
         />
       ) : null}

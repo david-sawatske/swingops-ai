@@ -1,5 +1,6 @@
 import type { IntakeBatchDetail } from "../../types/intake";
 import type {
+  ExecuteAgenticTradeInRunResponse,
   ExecuteWorkflowToolCallingPlanResponse,
   GlobalWorkflowRunSummary,
   ModelCallAttemptStatus,
@@ -131,10 +132,15 @@ export function WorkflowRunsPage({
   isCreatingProviderFallbackDemo,
   providerFallbackDemoError,
   providerFallbackDemoSuccess,
+  agenticTradeInRunResult,
+  isExecutingAgenticTradeInRun,
+  agenticTradeInRunError,
+  agenticTradeInRunSuccess,
   onStatusFilterChange,
   onSelectWorkflowRun,
   onRunWorkflowToolCallingPlan,
   onCreateProviderFallbackDemo,
+  onExecuteAgenticTradeInRun,
 }: {
   workflowRuns: GlobalWorkflowRunSummary[];
   filteredWorkflowRuns: GlobalWorkflowRunSummary[];
@@ -153,10 +159,15 @@ export function WorkflowRunsPage({
   isCreatingProviderFallbackDemo: boolean;
   providerFallbackDemoError: string | null;
   providerFallbackDemoSuccess: string | null;
+  agenticTradeInRunResult: ExecuteAgenticTradeInRunResponse | null;
+  isExecutingAgenticTradeInRun: boolean;
+  agenticTradeInRunError: string | null;
+  agenticTradeInRunSuccess: string | null;
   onStatusFilterChange: (statusFilter: WorkflowRunStatusFilter) => void;
   onSelectWorkflowRun: (workflowRunId: string) => void;
   onRunWorkflowToolCallingPlan: (workflowRunId: string) => void;
   onCreateProviderFallbackDemo: (workflowRunId: string) => void;
+  onExecuteAgenticTradeInRun: (workflowRunId: string) => void;
 }) {
   return (
     <DashboardSection
@@ -264,6 +275,16 @@ export function WorkflowRunsPage({
                       ? "Running Fallback Demo…"
                       : "Log High-Quality Fallback Demo"}
                   </button>
+
+                  <button
+                    disabled={isExecutingAgenticTradeInRun}
+                    onClick={() => onExecuteAgenticTradeInRun(run.id)}
+                    type="button"
+                  >
+                    {isExecutingAgenticTradeInRun
+                      ? "Running Agentic Workflow…"
+                      : "Run Agentic Trade-In Workflow"}
+                  </button>
                 </div>
               </div>
 
@@ -337,6 +358,53 @@ export function WorkflowRunsPage({
 
             {providerFallbackDemoError ? (
               <p className="error-message">{providerFallbackDemoError}</p>
+            ) : null}
+
+            {agenticTradeInRunSuccess ? (
+              <p className="success-message">{agenticTradeInRunSuccess}</p>
+            ) : null}
+
+            {agenticTradeInRunError ? (
+              <p className="error-message">{agenticTradeInRunError}</p>
+            ) : null}
+
+            {agenticTradeInRunResult?.workflowRunId === selectedWorkflowRunDetail.workflowRun.id ? (
+              <article className="workflow-agentic-run-summary">
+                <div>
+                  <span className="model-route-card__eyebrow">Agentic Trade-In Run</span>
+                  <h5>Routing + MCP + Eval</h5>
+                  <p>
+                    One deterministic workflow connected model routing, provider fallback attempts, policy-checked MCP connector calls, and a quality eval summary.
+                  </p>
+                </div>
+
+                <dl className="global-workflow-run-card__context">
+                  <div>
+                    <dt>Extraction</dt>
+                    <dd>{Math.round(agenticTradeInRunResult.evalSummary.extractionCompleteness * 100)}%</dd>
+                  </div>
+                  <div>
+                    <dt>Grounding</dt>
+                    <dd>{Math.round(agenticTradeInRunResult.evalSummary.groundingConfidence * 100)}%</dd>
+                  </div>
+                  <div>
+                    <dt>Tool Calls</dt>
+                    <dd>{agenticTradeInRunResult.evalSummary.toolCallsSucceeded} / {agenticTradeInRunResult.evalSummary.toolCallsAttempted} succeeded</dd>
+                  </div>
+                  <div>
+                    <dt>Provider Fallback</dt>
+                    <dd>{agenticTradeInRunResult.evalSummary.modelProviderFallbackUsed ? "Used" : "Not used"}</dd>
+                  </div>
+                  <div>
+                    <dt>Review Required</dt>
+                    <dd>{agenticTradeInRunResult.evalSummary.reviewRequired ? "Yes" : "No"}</dd>
+                  </div>
+                  <div>
+                    <dt>Pass</dt>
+                    <dd>{agenticTradeInRunResult.evalSummary.pass ? "Yes" : "No"}</dd>
+                  </div>
+                </dl>
+              </article>
             ) : null}
 
             <h5>Workflow Steps</h5>

@@ -1,6 +1,7 @@
 import { apiGet, apiPost } from "./client";
 import type {
   CreateProviderFallbackDemoResponse,
+  ExecuteAgenticTradeInRunResponse,
   ExecuteWorkflowRunRequest,
   ExecuteWorkflowRunResponse,
   ExecuteWorkflowToolCallingPlanResponse,
@@ -80,5 +81,14 @@ export async function dismissReviewQueueItem(
   return apiPost<ReviewQueueItemActionResponse, ReviewQueueItemActionRequest>(
     `/review-queue-items/${reviewQueueItemId}/dismiss`,
     request,
+  );
+}
+
+export async function executeAgenticTradeInRun(
+  workflowRunId: string,
+): Promise<ExecuteAgenticTradeInRunResponse> {
+  return apiPost<ExecuteAgenticTradeInRunResponse, Record<string, never>>(
+    `/workflow-runs/${workflowRunId}/agentic-trade-in-run`,
+    {},
   );
 }

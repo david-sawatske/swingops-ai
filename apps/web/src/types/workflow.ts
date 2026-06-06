@@ -283,3 +283,31 @@ export type ExecuteWorkflowToolCallingPlanResponse = {
     policyCheckedBeforeEachExecution: boolean;
   };
 };
+
+export type AgenticTradeInRunEvalSummary = {
+  extractionCompleteness: number;
+  groundingConfidence: number;
+  toolCallsAttempted: number;
+  toolCallsSucceeded: number;
+  modelProviderFallbackUsed: boolean;
+  reviewRequired: boolean;
+  pass: boolean;
+};
+
+export type ExecuteAgenticTradeInRunResponse = {
+  workflowRunId: string;
+  modelCallLog: ModelCallLog;
+  plan: ExecuteWorkflowToolCallingPlanResponse["plan"];
+  results: ExecuteWorkflowToolCallingPlanResponse["results"];
+  toolCallLogs: ToolCallLog[];
+  evalSummary: AgenticTradeInRunEvalSummary;
+  executionMetadata: {
+    orchestrator: string;
+    modelRoutingGoal: "HIGH_QUALITY";
+    modelTaskType: "INTAKE_PARSING";
+    providerFallbackExecutor: boolean;
+    deterministicToolPlan: boolean;
+    readOnlyMcpConnectorSurface: boolean;
+    qualityEvalPersisted: boolean;
+  };
+};

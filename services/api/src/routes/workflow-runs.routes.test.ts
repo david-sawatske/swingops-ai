@@ -963,5 +963,173 @@ describe("workflow run routes", () => {
       await app.close();
     });
   });
+  describe("POST /workflow-runs/:id/agentic-trade-in-run", () => {
+    it("returns 404 when the workflow run does not exist", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/workflow-runs/not-real/agentic-trade-in-run"
+      });
+
+      expect(response.statusCode).toBe(404);
+      expect(response.json()).toMatchObject({
+        error: "Workflow run not found"
+      });
+
+      await app.close();
+    });
+
+    it("runs model routing, provider fallback attempts, MCP connector plan, and deterministic eval summary", async () => {
+      const app = buildApp();
+
+      const workflowRun = await prisma.workflowRun.create({
+        data: {
+          workflowName: "test-agentic-trade-in-run",
+          status: "NEEDS_REVIEW",
+          reviewQueueItems: {
+            create: [
+              {
+                reason: "LOW_CONFIDENCE",
+                status: "OPEN",
+                originalText: "Titleist TSR maybe TS2 fairway wood",
+                proposedGolfClubJson: {
+                  brand: "Titleist",
+                  confidenceScore: 0.58
+                }
+              }
+            ]
+          }
+        }
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: `/workflow-runs/${workflowRun.id}/agentic-trade-in-run`
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.workflowRunId).toBe(workflowRun.id);
+      expect(body.modelCallLog).toMatchObject({
+        workflowRunId: workflowRun.id,
+        provider: "MOCK",
+        model: "mock-golf-workflow-model",
+        status: "SUCCEEDED",
+        requestJson: {
+          workflowRunId: workflowRun.id,
+          taskType: "INTAKE_PARSING",
+          routingGoal: "HIGH_QUALITY",
+          providerFallbackExecutor: true
+        }
+      });
+      expect(body.modelCallLog.attemptLogs).toHaveLength(3);
+      expect(
+        body.modelCallLog.attemptLogs.map(
+          (attempt: { provider: string }) => attempt.provider
+        )
+      ).toEqual(["OPENAI", "AZURE_OPENAI", "MOCK"]);
+      expect(
+        body.modelCallLog.attemptLogs.map(
+          (attempt: { status: string }) => attempt.status
+        )
+      ).toEqual(["SKIPPED", "SKIPPED", "SUCCESS"]);
+
+      expect(body.plan).toMatchObject({
+        workflowRunId: workflowRun.id,
+        status: "PARTIALLY_EXECUTED"
+      });
+      expect(body.results).toHaveLength(4);
+      expect(
+        body.results.map((result: { toolName: string }) => result.toolName)
+      ).toEqual([
+        "swingops.workflowRuns.get",
+        "swingops.reviewQueueItems.list",
+        "swingops.clubReference.search",
+        "swingops.reviewQueueItems.resolve"
+      ]);
+      expect(
+        body.results.map((result: { status: string }) => result.status)
+      ).toEqual(["SUCCEEDED", "SUCCEEDED", "SUCCEEDED", "BLOCKED"]);
+      expect(body.toolCallLogs).toHaveLength(4);
+
+      expect(body.evalSummary).toEqual({
+        extractionCompleteness: 0.75,
+        groundingConfidence: 0.86,
+        toolCallsAttempted: 4,
+        toolCallsSucceeded: 3,
+        modelProviderFallbackUsed: true,
+        reviewRequired: true,
+        pass: true
+      });
+      expect(body.executionMetadata).toMatchObject({
+        orchestrator: "deterministic.swingops.agentic-trade-in-run.v1",
+        modelRoutingGoal: "HIGH_QUALITY",
+        modelTaskType: "INTAKE_PARSING",
+        providerFallbackExecutor: true,
+        deterministicToolPlan: true,
+        readOnlyMcpConnectorSurface: true,
+        qualityEvalPersisted: false
+      });
+
+      const persistedModelLogs = await prisma.modelCallLog.findMany({
+        where: {
+          workflowRunId: workflowRun.id
+        },
+        include: {
+          attemptLogs: true
+        }
+      });
+      const persistedToolLogs = await prisma.toolCallLog.findMany({
+        where: {
+          workflowRunId: workflowRun.id,
+          toolName: {
+            in: [
+              "swingops.workflowRuns.get",
+              "swingops.reviewQueueItems.list",
+              "swingops.clubReference.search",
+              "swingops.reviewQueueItems.resolve"
+            ]
+          }
+        }
+      });
+
+      expect(persistedModelLogs).toHaveLength(1);
+      expect(persistedModelLogs[0]!.attemptLogs).toHaveLength(3);
+      expect(persistedToolLogs).toHaveLength(4);
+
+      await prisma.modelCallAttemptLog.deleteMany({
+        where: {
+          modelCallLog: {
+            workflowRunId: workflowRun.id
+          }
+        }
+      });
+      await prisma.modelCallLog.deleteMany({
+        where: {
+          workflowRunId: workflowRun.id
+        }
+      });
+      await prisma.toolCallLog.deleteMany({
+        where: {
+          workflowRunId: workflowRun.id
+        }
+      });
+      await prisma.reviewQueueItem.deleteMany({
+        where: {
+          workflowRunId: workflowRun.id
+        }
+      });
+      await prisma.workflowRun.delete({
+        where: {
+          id: workflowRun.id
+        }
+      });
+
+      await app.close();
+    });
+  });
 
 });
