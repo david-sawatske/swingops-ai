@@ -15,6 +15,7 @@ export type AgentToolRegistryFilter = {
 const registeredAgentTools: AgentToolDefinition[] = [
   {
     name: "swingops.intakeBatches.list",
+    displayName: "List intake batches",
     description:
       "List intake batches so an agent can inspect incoming trade-in intake work before planning workflow actions.",
     category: "INTAKE",
@@ -32,10 +33,16 @@ const registeredAgentTools: AgentToolDefinition[] = [
     existingHttpRoute: {
       method: "GET",
       path: "/intake-batches"
-    }
+    },
+    outputSummary:
+      "Returns intake batch summaries intentionally exposed for read-only agent planning.",
+    auditBehavior: "PERSIST_TOOL_CALL_LOG",
+    redactionNotes:
+      "Only serialized intake batch summary fields are returned; raw connector internals are not exposed."
   },
   {
     name: "swingops.intakeBatches.get",
+    displayName: "Get intake batch",
     description:
       "Look up one intake batch with its raw intake items and associated workflow runs.",
     category: "INTAKE",
@@ -60,10 +67,16 @@ const registeredAgentTools: AgentToolDefinition[] = [
     existingHttpRoute: {
       method: "GET",
       path: "/intake-batches/:id"
-    }
+    },
+    outputSummary:
+      "Returns one intake batch with serialized intake items and workflow run summaries.",
+    auditBehavior: "PERSIST_TOOL_CALL_LOG",
+    redactionNotes:
+      "Returns operational demo fields needed for review context; no transport credentials or internal Prisma metadata are exposed."
   },
   {
     name: "swingops.clubReference.search",
+    displayName: "Search club reference",
     description:
       "Search a local read-only golf club reference dataset to ground ambiguous trade-in notes before human review.",
     category: "WORKFLOW",
@@ -85,9 +98,13 @@ const registeredAgentTools: AgentToolDefinition[] = [
     implementationStatus: "REGISTERED",
     statusReason:
       "Safe read-only lookup against a local demo club reference dataset. It does not mutate operational data.",
+    outputSummary: "Returns local club-reference matches for ambiguous golf shorthand.",
+    auditBehavior: "PERSIST_TOOL_CALL_LOG",
+    redactionNotes: "Returns intentionally public demo reference data only."
   },
   {
     name: "swingops.knowledgeBase.search",
+    displayName: "Search knowledge base",
     description:
       "Search the local golf trade-in knowledge base for equipment aliases, condition rules, policy notes, and grounding context before an agent creates or resolves workflow output.",
     category: "WORKFLOW",
@@ -100,6 +117,13 @@ const registeredAgentTools: AgentToolDefinition[] = [
           required: true,
           description:
             "Messy golf trade-in text to ground, such as TM stealth2 drv 10.5 stiff no hc."
+        },
+        {
+          name: "sourceName",
+          type: "string",
+          required: false,
+          description:
+            "Optional knowledge source filter for deterministic tests or scoped connector calls."
         },
         {
           name: "brand",
@@ -144,10 +168,16 @@ const registeredAgentTools: AgentToolDefinition[] = [
     existingHttpRoute: {
       method: "POST",
       path: "/knowledge/search"
-    }
+    },
+    outputSummary:
+      "Returns grounded knowledge chunks with citations, matched terms, and weighted scoreBreakdown components.",
+    auditBehavior: "PERSIST_TOOL_CALL_LOG",
+    redactionNotes:
+      "Returns curated knowledge chunks and scoring metadata only; connector response is sanitized before MCP-compatible exposure."
   },
   {
     name: "swingops.workflowRuns.list",
+    displayName: "List workflow runs",
     description:
       "List workflow runs with intake context, latest model routing log, and review queue counts.",
     category: "WORKFLOW",
@@ -179,10 +209,16 @@ const registeredAgentTools: AgentToolDefinition[] = [
     existingHttpRoute: {
       method: "GET",
       path: "/workflow-runs"
-    }
+    },
+    outputSummary:
+      "Returns serialized workflow run summaries with latest model/tool/review context.",
+    auditBehavior: "PERSIST_TOOL_CALL_LOG",
+    redactionNotes:
+      "Returns summary fields only; detailed request/response internals stay behind explicit get-by-id calls."
   },
   {
     name: "swingops.workflowRuns.get",
+    displayName: "Get workflow run",
     description:
       "Look up a workflow run with its steps, model call logs, tool call logs, and review queue items.",
     category: "WORKFLOW",
@@ -207,10 +243,16 @@ const registeredAgentTools: AgentToolDefinition[] = [
     existingHttpRoute: {
       method: "GET",
       path: "/workflow-runs/:id"
-    }
+    },
+    outputSummary:
+      "Returns one workflow run with serialized steps, model logs, tool logs, and review queue items.",
+    auditBehavior: "PERSIST_TOOL_CALL_LOG",
+    redactionNotes:
+      "Serializers expose audit-relevant fields while omitting database/client internals and external provider secrets."
   },
   {
     name: "swingops.reviewQueueItems.list",
+    displayName: "List review queue items",
     description:
       "List review queue items with workflow and intake context for human-in-the-loop workflow planning.",
     category: "REVIEW_QUEUE",
@@ -236,10 +278,16 @@ const registeredAgentTools: AgentToolDefinition[] = [
     existingHttpRoute: {
       method: "GET",
       path: "/review-queue-items"
-    }
+    },
+    outputSummary:
+      "Returns serialized review queue items with workflow and intake context.",
+    auditBehavior: "PERSIST_TOOL_CALL_LOG",
+    redactionNotes:
+      "Returns human-review context only; mutation endpoints remain blocked on this surface."
   },
   {
     name: "swingops.reviewQueueItems.get",
+    displayName: "Get review queue item",
     description:
       "Look up one review queue item with its proposed structured golf-club data and workflow context.",
     category: "REVIEW_QUEUE",
@@ -264,10 +312,16 @@ const registeredAgentTools: AgentToolDefinition[] = [
     existingHttpRoute: {
       method: "GET",
       path: "/review-queue-items/:id"
-    }
+    },
+    outputSummary:
+      "Returns one serialized review queue item with workflow and intake context.",
+    auditBehavior: "PERSIST_TOOL_CALL_LOG",
+    redactionNotes:
+      "Returns review context for human-in-the-loop decisions; no mutation response is exposed."
   },
   {
     name: "swingops.reviewQueueItems.resolve",
+    displayName: "Resolve review queue item",
     description:
       "Resolve a review queue item after a human reviewer accepts or corrects the proposed workflow output.",
     category: "REVIEW_QUEUE",
@@ -298,10 +352,16 @@ const registeredAgentTools: AgentToolDefinition[] = [
     existingHttpRoute: {
       method: "POST",
       path: "/review-queue-items/:id/resolve"
-    }
+    },
+    outputSummary:
+      "Mutation output is intentionally unavailable because this tool is visible but disabled on the connector surface.",
+    auditBehavior: "PERSIST_TOOL_CALL_LOG",
+    redactionNotes:
+      "No mutation output is exposed; blocked attempts persist policy metadata only."
   },
   {
     name: "swingops.reviewQueueItems.dismiss",
+    displayName: "Dismiss review queue item",
     description:
       "Dismiss a review queue item after a human reviewer determines no workflow update should be applied.",
     category: "REVIEW_QUEUE",
@@ -332,7 +392,12 @@ const registeredAgentTools: AgentToolDefinition[] = [
     existingHttpRoute: {
       method: "POST",
       path: "/review-queue-items/:id/dismiss"
-    }
+    },
+    outputSummary:
+      "Mutation output is intentionally unavailable because this tool is visible but disabled on the connector surface.",
+    auditBehavior: "PERSIST_TOOL_CALL_LOG",
+    redactionNotes:
+      "No mutation output is exposed; blocked attempts persist policy metadata only."
   }
 ];
 
@@ -389,9 +454,5 @@ export function listAgentTools(
 }
 
 export function getAgentTool(name: string): AgentToolDefinition | null {
-  const tool = registeredAgentTools.find(
-    (registeredTool) => registeredTool.name === name
-  );
-
-  return tool ? cloneTool(tool) : null;
+  return listAgentTools().find((tool) => tool.name === name) ?? null;
 }

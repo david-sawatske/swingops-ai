@@ -2,15 +2,21 @@ import {
   executeReadOnlyToolInvocation,
   type ReadOnlyToolInvocationResult
 } from "./read-only-tool-invocation.js";
-import {
-  evaluateToolExecutionPolicy,
-  type ToolExecutionMode,
-  type ToolExecutionPolicyEvaluation
+import type {
+  ToolExecutionMode,
+  ToolExecutionPolicyEvaluation
 } from "./tool-execution-policy.js";
 import { listAgentTools } from "./tool-registry.js";
+import {
+  toAgentToolContract,
+  toMcpInputSchema,
+  type McpCompatibleInputSchema
+} from "./tool-contracts.js";
+import { sanitizeMcpToolOutput } from "./mcp-output-sanitizer.js";
+import { getExternalMcpServerReadiness } from "./mcp-server-readiness.js";
 import type {
-  AgentToolDefinition,
-  AgentToolInputField
+  AgentToolContract,
+  AgentToolDefinition
 } from "./tool-registry.types.js";
 
 export type McpCompatibleToolCallInput = {
@@ -26,21 +32,20 @@ export type McpCompatibleToolCallInput = {
 export type McpCompatibleToolDefinition = {
   name: string;
   description: string;
-  inputSchema: {
-    type: "object";
-    properties: Record<string, unknown>;
-    required: string[];
-    additionalProperties: false;
-  };
+  inputSchema: McpCompatibleInputSchema;
   annotations: {
     title: string;
+    contract: AgentToolContract;
     riskLevel: AgentToolDefinition["riskLevel"];
     mutatesData: boolean;
     requiresApproval: boolean;
     enabled: boolean;
-    allowedMode: "AGENT_AUTONOMOUS" | "HUMAN_APPROVED" | "DISABLED";
+    allowedMode: AgentToolContract["allowedMode"];
     implementationStatus: AgentToolDefinition["implementationStatus"];
     existingHttpRoute: AgentToolDefinition["existingHttpRoute"] | null;
+    auditBehavior: AgentToolDefinition["auditBehavior"];
+    redactionNotes: string;
+    outputSchema: AgentToolContract["outputSchema"];
     policyPreview: {
       decision: ToolExecutionPolicyEvaluation["decision"];
       reasonCodes: ToolExecutionPolicyEvaluation["reasonCodes"];
@@ -59,6 +64,7 @@ export type McpCompatibleToolListResponse = {
     externalMcpServer: false;
     summary: string;
   };
+  externalMcpReadiness: ReturnType<typeof getExternalMcpServerReadiness>;
 };
 
 export type McpCompatibleToolCallResponse = {
@@ -74,6 +80,12 @@ export type McpCompatibleToolCallResponse = {
   executionAttempted: boolean;
   status: ReadOnlyToolInvocationResult["invocation"]["status"];
   resultJson: unknown | null;
+  outputSafety: {
+    sanitized: boolean;
+    sanitizerVersion: string | null;
+    redactionNotes: string | null;
+    intentionallyExposedFieldsOnly: boolean;
+  };
   errorMessage: string | null;
   toolCallLogId: string;
   startedAt: string;
@@ -87,100 +99,47 @@ export type McpCompatibleToolCallResponse = {
   };
 };
 
-function toTitle(name: string): string {
-  return name
-    .replace(/^swingops\./, "")
-    .split(".")
-    .map((part) => part.slice(0, 1).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-function fieldToJsonSchema(field: AgentToolInputField): unknown {
-  if (field.type === "enum") {
-    return {
-      type: "string",
-      enum: field.enumValues ?? [],
-      description: field.description
-    };
-  }
-
-  return {
-    type: field.type,
-    description: field.description
-  };
-}
-
-function toInputSchema(tool: AgentToolDefinition): McpCompatibleToolDefinition["inputSchema"] {
-  return {
-    type: "object",
-    properties: Object.fromEntries(
-      tool.inputShape.fields.map((field) => [field.name, fieldToJsonSchema(field)])
-    ),
-    required: tool.inputShape.fields
-      .filter((field) => field.required)
-      .map((field) => field.name),
-    additionalProperties: false
-  };
-}
-
-function getAllowedMode(input: {
-  tool: AgentToolDefinition;
-  policyEvaluation: ToolExecutionPolicyEvaluation;
-}): McpCompatibleToolDefinition["annotations"]["allowedMode"] {
-  if (!input.tool.enabled || input.policyEvaluation.decision === "BLOCK") {
-    return "DISABLED";
-  }
-
-  if (
-    input.tool.requiresHumanApproval ||
-    input.tool.mutatesData ||
-    input.policyEvaluation.decision === "REQUIRE_HUMAN_APPROVAL"
-  ) {
-    return "HUMAN_APPROVED";
-  }
-
-  return "AGENT_AUTONOMOUS";
-}
-
 function toMcpCompatibleToolDefinition(
   tool: AgentToolDefinition
 ): McpCompatibleToolDefinition {
-  const policyEvaluation = evaluateToolExecutionPolicy({
-    toolName: tool.name,
-    executionMode: "AGENT_AUTONOMOUS",
-    humanApprovalGranted: false
-  });
+  const contract = toAgentToolContract(tool);
+  const policyPreview = contract.allowedMode === "DISABLED"
+    ? {
+        decision: "BLOCK" as const,
+        reasonCodes: tool.enabled ? ["TOOL_ALLOWED" as const] : ["TOOL_DISABLED" as const],
+        reason: tool.enabled
+          ? "Tool is visible but not executable through this connector mode."
+          : "Tool is disabled and cannot be executed.",
+        executionEnabled: false
+      }
+    : {
+        decision: "ALLOW" as const,
+        reasonCodes: ["TOOL_ALLOWED" as const],
+        reason:
+          "Tool is enabled and policy allows execution in the requested mode.",
+        executionEnabled: true
+      };
 
   return {
     name: tool.name,
     description: tool.description,
-    inputSchema: toInputSchema(tool),
+    inputSchema: toMcpInputSchema(tool),
     annotations: {
-      title: toTitle(tool.name),
+      title: tool.displayName,
+      contract,
       riskLevel: tool.riskLevel,
       mutatesData: tool.mutatesData,
       requiresApproval: tool.requiresHumanApproval,
       enabled: tool.enabled,
-      allowedMode: getAllowedMode({
-        tool,
-        policyEvaluation
-      }),
+      allowedMode: contract.allowedMode,
       implementationStatus: tool.implementationStatus,
       existingHttpRoute: tool.existingHttpRoute ?? null,
-      policyPreview: {
-        decision: policyEvaluation.decision,
-        reasonCodes: policyEvaluation.reasonCodes,
-        reason: policyEvaluation.reason,
-        executionEnabled: policyEvaluation.executionEnabled
-      }
+      auditBehavior: tool.auditBehavior,
+      redactionNotes: tool.redactionNotes,
+      outputSchema: contract.outputSchema,
+      policyPreview
     }
   };
-}
-
-function getResultJson(
-  invocationResult: ReadOnlyToolInvocationResult
-): unknown | null {
-  return invocationResult.connectorResult?.data ?? null;
 }
 
 function getErrorMessage(
@@ -208,7 +167,8 @@ export function listMcpCompatibleTools(): McpCompatibleToolListResponse {
       externalMcpServer: false,
       summary:
         "Internal connector registry exposed through an MCP-compatible REST adapter. External MCP transport is not claimed in this slice."
-    }
+    },
+    externalMcpReadiness: getExternalMcpServerReadiness()
   };
 }
 
@@ -228,6 +188,13 @@ export async function callMcpCompatibleTool(
     executionMode: input.invocationMode ?? "AGENT_AUTONOMOUS",
     humanApprovalGranted: input.humanApprovalGranted ?? false
   });
+  const sanitizedOutput =
+    invocationResult.connectorResult === null
+      ? null
+      : sanitizeMcpToolOutput({
+          data: invocationResult.connectorResult.data,
+          tool: invocationResult.policyEvaluation.tool
+        });
 
   return {
     toolId: input.toolId,
@@ -242,7 +209,14 @@ export async function callMcpCompatibleTool(
     },
     executionAttempted: invocationResult.invocation.executionAttempted,
     status: invocationResult.invocation.status,
-    resultJson: getResultJson(invocationResult),
+    resultJson: sanitizedOutput?.data ?? null,
+    outputSafety: {
+      sanitized: sanitizedOutput?.metadata.sanitized ?? false,
+      sanitizerVersion: sanitizedOutput?.metadata.sanitizerVersion ?? null,
+      redactionNotes: sanitizedOutput?.metadata.redactionNotes ?? null,
+      intentionallyExposedFieldsOnly:
+        sanitizedOutput?.metadata.intentionallyExposedFieldsOnly ?? false
+    },
     errorMessage: getErrorMessage(invocationResult),
     toolCallLogId: invocationResult.invocation.toolCallLogId,
     startedAt: invocationResult.invocation.startedAt,

@@ -14,18 +14,61 @@ export type ReadOnlyToolInvocationStatus =
   | "FAILED"
   | "BLOCKED";
 
+export type McpReadinessCheck = {
+  name: string;
+  status: "PASS" | "TODO";
+  detail: string;
+};
+
+export type ExternalMcpServerReadiness = {
+  externalMcpServerReady: false;
+  statusLabel: "Not externalized yet";
+  readinessChecks: McpReadinessCheck[];
+};
+
+export type AgentToolContract = {
+  toolId: string;
+  displayName: string;
+  description: string;
+  inputSchema: {
+    type: "object";
+    fields: {
+      name: string;
+      type: string;
+      required: boolean;
+      description: string;
+      enumValues?: string[];
+    }[];
+  };
+  outputSchema: {
+    type: "object";
+    summary: string;
+  };
+  riskLevel: AgentToolRiskLevel;
+  mutatesData: boolean;
+  requiresHumanApproval: boolean;
+  enabled: boolean;
+  allowedMode: "AGENT_AUTONOMOUS" | "HUMAN_APPROVED" | "DISABLED";
+  auditBehavior: "PERSIST_TOOL_CALL_LOG" | "PREVIEW_ONLY_NO_PERSISTENCE";
+  redactionNotes: string;
+};
+
 export type AgentToolSummary = {
   name: string;
-  displayName?: string;
   description: string;
   category: "INTAKE" | "WORKFLOW" | "REVIEW_QUEUE";
   riskLevel: AgentToolRiskLevel;
   enabled: boolean;
   mutatesData: boolean;
   requiresHumanApproval: boolean;
+  displayName: string;
+  outputSummary: string;
+  auditBehavior: "PERSIST_TOOL_CALL_LOG" | "PREVIEW_ONLY_NO_PERSISTENCE";
+  redactionNotes: string;
 };
 
 export type ConnectorCatalogItem = AgentToolSummary & {
+  contract: AgentToolContract;
   inputShape: {
     type: "object";
     fields: {
@@ -65,6 +108,7 @@ export type ConnectorCatalogResponse = {
     auditLogPersistence: "TOOL_CALL_LOG";
     summary: string;
   };
+  externalMcpReadiness: ExternalMcpServerReadiness;
 };
 
 export type ConnectorInvocationHistoryItem = {
@@ -176,6 +220,12 @@ export type McpCompatibleToolCallResponse = {
   executionAttempted: boolean;
   status: ReadOnlyToolInvocationStatus;
   resultJson: unknown | null;
+  outputSafety: {
+    sanitized: boolean;
+    sanitizerVersion: string | null;
+    redactionNotes: string | null;
+    intentionallyExposedFieldsOnly: boolean;
+  };
   errorMessage: string | null;
   toolCallLogId: string;
   startedAt: string;

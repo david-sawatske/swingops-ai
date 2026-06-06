@@ -51,11 +51,18 @@ describe("agent tool registry", () => {
     });
     expect(knowledgeTool?.inputShape.fields.map((field) => field.name)).toEqual([
       "query",
+      "sourceName",
       "brand",
       "category",
       "chunkType",
       "maxResults"
     ]);
+    expect(knowledgeTool).toMatchObject({
+      displayName: "Search knowledge base",
+      outputSummary: expect.stringContaining("scoreBreakdown"),
+      auditBehavior: "PERSIST_TOOL_CALL_LOG",
+      redactionNotes: expect.stringContaining("sanitized")
+    });
   });
 
   it("marks review mutations as high-risk, approval-required, and disabled for execution", () => {

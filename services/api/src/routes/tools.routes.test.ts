@@ -628,12 +628,26 @@ describe("tool routes", () => {
         mutationExecutionEnabled: false,
         auditLogPersistence: "TOOL_CALL_LOG"
       });
+      expect(body.externalMcpReadiness).toMatchObject({
+        externalMcpServerReady: false,
+        statusLabel: "Not externalized yet",
+        readinessChecks: expect.arrayContaining([
+          expect.objectContaining({ name: "Tool contracts defined", status: "PASS" }),
+          expect.objectContaining({ name: "Output sanitizer enabled", status: "PASS" }),
+          expect.objectContaining({ name: "External MCP transport implemented", status: "TODO" })
+        ])
+      });
 
       expect(body.connectors).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             name: "swingops.intakeBatches.list",
-            displayName: "Intake Batches List",
+            displayName: "List intake batches",
+            contract: expect.objectContaining({
+              toolId: "swingops.intakeBatches.list",
+              displayName: "List intake batches",
+              auditBehavior: "PERSIST_TOOL_CALL_LOG"
+            }),
             policyDecision: "ALLOW",
             policyReasonCodes: ["TOOL_ALLOWED"],
             allowedExecutionMode: "AGENT_AUTONOMOUS",
@@ -644,7 +658,12 @@ describe("tool routes", () => {
           }),
           expect.objectContaining({
             name: "swingops.reviewQueueItems.resolve",
-            displayName: "Review Queue Items Resolve",
+            displayName: "Resolve review queue item",
+            contract: expect.objectContaining({
+              toolId: "swingops.reviewQueueItems.resolve",
+              allowedMode: "DISABLED",
+              mutatesData: true
+            }),
             policyDecision: "BLOCK",
             policyReasonCodes: ["TOOL_DISABLED"],
             allowedExecutionMode: "DISABLED",
@@ -762,6 +781,39 @@ describe("tool routes", () => {
         transport: "REST_ADAPTER",
         externalMcpServer: false
       });
+      expect(body.externalMcpReadiness).toMatchObject({
+        externalMcpServerReady: false,
+        statusLabel: "Not externalized yet",
+        readinessChecks: expect.arrayContaining([
+          expect.objectContaining({ name: "Tool contracts defined", status: "PASS" }),
+          expect.objectContaining({ name: "Mutation tools blocked", status: "PASS" }),
+          expect.objectContaining({ name: "External MCP transport implemented", status: "TODO" })
+        ])
+      });
+
+      expect(body.tools).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: "swingops.knowledgeBase.search",
+            inputSchema: expect.objectContaining({
+              required: ["query"],
+              additionalProperties: false
+            }),
+            annotations: expect.objectContaining({
+              title: "Search knowledge base",
+              auditBehavior: "PERSIST_TOOL_CALL_LOG",
+              redactionNotes: expect.any(String),
+              outputSchema: expect.objectContaining({
+                summary: expect.stringContaining("scoreBreakdown")
+              }),
+              contract: expect.objectContaining({
+                toolId: "swingops.knowledgeBase.search",
+                allowedMode: "AGENT_AUTONOMOUS"
+              })
+            })
+          })
+        ])
+      );
 
       expect(body.tools.map((tool: { name: string }) => tool.name)).toEqual([
         "swingops.intakeBatches.list",
@@ -929,6 +981,12 @@ describe("tool routes", () => {
         executionAttempted: true,
         status: "SUCCEEDED",
         errorMessage: null,
+        outputSafety: {
+          sanitized: true,
+          sanitizerVersion: "2026-06-06",
+          redactionNotes: expect.any(String),
+          intentionallyExposedFieldsOnly: true
+        },
         toolCallLogId: expect.any(String),
         startedAt: expect.any(String),
         completedAt: expect.any(String),
@@ -992,6 +1050,12 @@ describe("tool routes", () => {
         executionAttempted: false,
         status: "BLOCKED",
         resultJson: null,
+        outputSafety: {
+          sanitized: false,
+          sanitizerVersion: null,
+          redactionNotes: null,
+          intentionallyExposedFieldsOnly: false
+        },
         errorMessage: "Tool is disabled and cannot be executed.",
         toolCallLogId: expect.any(String)
       });

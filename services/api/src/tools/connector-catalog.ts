@@ -2,6 +2,8 @@ import type { Prisma } from "@prisma/client";
 
 import { prisma } from "../lib/prisma.js";
 import { listAgentTools } from "./tool-registry.js";
+import { toAgentToolContract } from "./tool-contracts.js";
+import { getExternalMcpServerReadiness } from "./mcp-server-readiness.js";
 import type { AgentToolDefinition } from "./tool-registry.types.js";
 
 type ConnectorPolicyDecision = "ALLOW" | "BLOCK";
@@ -16,6 +18,7 @@ type ConnectorInvocationSummary = {
 };
 
 export type ConnectorCatalogItem = AgentToolDefinition & {
+  contract: ReturnType<typeof toAgentToolContract>;
   displayName: string;
   allowedExecutionMode: "AGENT_AUTONOMOUS" | "HUMAN_APPROVED" | "DISABLED";
   policyDecision: ConnectorPolicyDecision;
@@ -40,6 +43,7 @@ export type ConnectorCatalogResponse = {
     auditLogPersistence: "TOOL_CALL_LOG";
     summary: string;
   };
+  externalMcpReadiness: ReturnType<typeof getExternalMcpServerReadiness>;
 };
 
 export type ConnectorInvocationHistoryItem = {
@@ -274,7 +278,8 @@ export async function listConnectorCatalog(): Promise<ConnectorCatalogResponse> 
 
     return {
       ...tool,
-      displayName: displayNameFromToolName(tool.name),
+      displayName: tool.displayName,
+      contract: toAgentToolContract(tool),
       ...policy,
       lastInvokedAt: summary?.lastInvokedAt ?? null,
       invocationCounts: {
@@ -296,7 +301,8 @@ export async function listConnectorCatalog(): Promise<ConnectorCatalogResponse> 
       auditLogPersistence: "TOOL_CALL_LOG",
       summary:
         "Internal MCP-style connector catalog. External MCP transport is not enabled yet; read-only execution is policy-governed and persisted to ToolCallLog."
-    }
+    },
+    externalMcpReadiness: getExternalMcpServerReadiness()
   };
 }
 

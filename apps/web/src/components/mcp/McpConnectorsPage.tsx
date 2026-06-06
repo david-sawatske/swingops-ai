@@ -2,6 +2,7 @@ import type { FormEvent } from "react";
 import type {
   ConnectorCatalogItem,
   ConnectorInvocationHistoryItem,
+  ExternalMcpServerReadiness,
   McpCompatibleToolCallResponse,
 } from "../../types/mcp";
 import type {
@@ -40,6 +41,7 @@ const SCORE_BREAKDOWN_LABELS = [
 
 export function McpConnectorsPage({
   connectorCatalog,
+  externalMcpReadiness,
   isLoadingConnectorCatalog,
   connectorCatalogError,
   invocationHistory,
@@ -74,6 +76,7 @@ export function McpConnectorsPage({
   onRunKnowledgeRetrievalEvals,
 }: {
   connectorCatalog: ConnectorCatalogItem[];
+  externalMcpReadiness: ExternalMcpServerReadiness | null;
   isLoadingConnectorCatalog: boolean;
   connectorCatalogError: string | null;
   invocationHistory: ConnectorInvocationHistoryItem[];
@@ -127,6 +130,30 @@ export function McpConnectorsPage({
           execution, and persist both outcomes to ToolCallLog.
         </p>
       </div>
+
+      <section className="mcp-readiness-card">
+        <div>
+          <span className="model-route-card__eyebrow">
+            External MCP Server Readiness
+          </span>
+          <h3>{externalMcpReadiness?.statusLabel ?? "Checking readiness"}</h3>
+          <p>
+            This is still an internal REST adapter shaped around MCP tools/list and tools/call. Contracts, policy, validation, audit logging, and output sanitization are being prepared so a future external MCP server can wrap the same guarded surface.
+          </p>
+        </div>
+
+        <div className="mcp-readiness-list">
+          {(externalMcpReadiness?.readinessChecks ?? []).map((check) => (
+            <article className="mcp-readiness-check" key={check.name}>
+              <strong>{check.name}</strong>
+              <span className={check.status === "PASS" ? "status-pill status-pill--success" : "status-pill status-pill--warning"}>
+                {check.status}
+              </span>
+              <p>{check.detail}</p>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <div className="mcp-page-grid">
         <section className="mcp-page-section">

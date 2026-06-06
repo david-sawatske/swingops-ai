@@ -30,6 +30,7 @@ import {
 import type {
   ConnectorCatalogItem,
   ConnectorInvocationHistoryItem,
+  ExternalMcpServerReadiness,
   McpCompatibleToolCallResponse,
 } from "./types/mcp";
 import type {
@@ -197,6 +198,8 @@ function App() {
   const [mcpConnectorCatalog, setMcpConnectorCatalog] = useState<
     ConnectorCatalogItem[]
   >([]);
+  const [externalMcpReadiness, setExternalMcpReadiness] =
+    useState<ExternalMcpServerReadiness | null>(null);
   const [isLoadingMcpConnectorCatalog, setIsLoadingMcpConnectorCatalog] =
     useState(true);
   const [mcpConnectorCatalogError, setMcpConnectorCatalogError] = useState<
@@ -350,6 +353,7 @@ function App() {
       const response = await listConnectorCatalog();
 
       setMcpConnectorCatalog(response.connectors);
+      setExternalMcpReadiness(response.externalMcpReadiness);
     } catch (error) {
       setMcpConnectorCatalogError(
         error instanceof Error
@@ -1125,6 +1129,7 @@ function App() {
       {activeView === "MCP_CONNECTORS" ? (
         <McpConnectorsPage
           connectorCatalog={mcpConnectorCatalog}
+          externalMcpReadiness={externalMcpReadiness}
           isLoadingConnectorCatalog={isLoadingMcpConnectorCatalog}
           connectorCatalogError={mcpConnectorCatalogError}
           invocationHistory={mcpInvocationHistory}
