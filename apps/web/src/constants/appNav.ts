@@ -1,5 +1,6 @@
 export type AppView =
   | "OVERVIEW"
+  | "AGENTIC_DEMO"
   | "INTAKE"
   | "WORKFLOW_RUNS"
   | "REVIEW_QUEUE"
@@ -17,6 +18,11 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     view: "OVERVIEW",
     label: "Overview",
     eyebrow: "Product story",
+  },
+  {
+    view: "AGENTIC_DEMO",
+    label: "Agentic Demo",
+    eyebrow: "End-to-end",
   },
   {
     view: "INTAKE",

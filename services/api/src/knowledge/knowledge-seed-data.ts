@@ -154,9 +154,10 @@ export const DEMO_KNOWLEDGE_DOCUMENTS: KnowledgeSeedDocument[] = [
         brand: "Titleist",
         productLine: "TSR2",
         category: "DRIVER",
-        aliases: ["Titleist TSR2", "TSR 2 drv", "TSR2 10*", "TSR2 Tensei blue"],
+        aliases: ["Titleist TSR2", "TSR 2 drv", "TSR2 10*", "TSR2 Tensei blue", "titleist tsr two driver no cover crown scratch"],
+        conditionFlags: ["missing headcover", "no cover", "crown scratch"],
         text:
-          "Titleist TSR2 driver may appear as TSR2, TSR 2 drv, TSR2 10*, or TSR2 Tensei blue. Distinguish TSR2 from older TS2 when the R is missing or unclear."
+          "Titleist TSR2 driver may appear as TSR2, TSR 2 drv, TSR2 10*, TSR2 Tensei blue, or titleist tsr two driver no cover crown scratch. Distinguish TSR2 driver from older TS2 or ambiguous TSR fairway notes when the R or model number is unclear."
       },
       {
         chunkType: "BRAND_ALIAS",
@@ -390,10 +391,10 @@ export const DEMO_KNOWLEDGE_DOCUMENTS: KnowledgeSeedDocument[] = [
         brand: "Titleist",
         productLine: "TSR2",
         category: "DRIVER",
-        aliases: ["Titleist TSR2 10 tensei blue", "TSR 2 drv stiff", "TSR2 no cover crown scratch"],
-        conditionFlags: ["stiff", "missing headcover", "crown scratch"],
+        aliases: ["Titleist TSR2 10 tensei blue", "TSR 2 drv stiff", "TSR2 no cover crown scratch", "titleist tsr two driver no cover crown scratch"],
+        conditionFlags: ["stiff", "missing headcover", "no cover", "crown scratch"],
         text:
-          "Example normalized record: Titleist TSR2 10* Tensei blue stiff no cover crown scratch maps to Titleist TSR2 driver, stiff shaft, missing headcover, and crown scratch note."
+          "Example normalized record: Titleist TSR2 10* Tensei blue stiff no cover crown scratch, including the written phrase titleist tsr two driver no cover crown scratch, maps to Titleist TSR2 driver, stiff shaft, missing headcover, and crown scratch note."
       },
       {
         chunkType: "CLUB_REFERENCE",
@@ -404,6 +405,36 @@ export const DEMO_KNOWLEDGE_DOCUMENTS: KnowledgeSeedDocument[] = [
         conditionFlags: ["regular", "missing headcover", "older model"],
         text:
           "Example normalized record: Titleist TS2 3w reg no hc maps to Titleist TS2 fairway wood, regular shaft, missing headcover, and older model generation context."
+      },
+      {
+        chunkType: "CLUB_REFERENCE",
+        brand: "TaylorMade",
+        productLine: "Stealth 2",
+        category: "DRIVER",
+        aliases: ["TM stealth2 drv 10.5 Ventus stiff", "Stealth2 driver Ventus stiff no hc", "TaylorMade Stealth 2 driver sky mark"],
+        conditionFlags: ["Ventus", "stiff", "missing headcover", "sky mark", "crown mark"],
+        text:
+          "Agentic demo example: TM stealth2 drv 10.5 Ventus stiff, no hc, sky mark on crown maps to TaylorMade Stealth 2 driver, 10.5 degree loft, Fujikura Ventus stiff shaft, missing headcover, and sky mark condition note."
+      },
+      {
+        chunkType: "CLUB_REFERENCE",
+        brand: "Titleist",
+        productLine: "TSR",
+        category: "FAIRWAY_WOOD",
+        aliases: ["Titleist TSR maybe TS2 3w 15 deg Tensei s flex", "TSR 3 wood Tensei stiff face wear", "Titleist TSR fairway hc included"],
+        conditionFlags: ["Tensei", "stiff", "face wear", "headcover included", "model uncertain"],
+        text:
+          "Agentic demo example: Titleist TSR maybe TS2 3w 15 deg Tensei s flex, face wear, hc included should be parsed as a Titleist TSR fairway wood candidate with 15 degree loft, Mitsubishi Tensei stiff shaft, face wear, headcover included, and model uncertainty because the note mentions maybe TS2."
+      },
+      {
+        chunkType: "CLUB_REFERENCE",
+        brand: "Callaway",
+        productLine: "Rogue ST Max",
+        category: "DRIVER",
+        aliases: ["Cally Rogue ST Max driver 9 Project X HZRDUS x-stiff", "Rogue ST Max driver HZRDUS x stiff", "Callaway Rogue ST Max paint wear no wrench"],
+        conditionFlags: ["Project X", "HZRDUS", "x-stiff", "paint wear", "missing wrench"],
+        text:
+          "Agentic demo example: Cally Rogue ST Max driver 9 Project X HZRDUS x-stiff, paint wear, no wrench maps to Callaway Rogue ST Max driver, 9 degree loft, Project X HZRDUS x-stiff shaft, paint wear condition note, and missing wrench accessory note."
       }
     ]
   }

@@ -331,6 +331,141 @@ describe("workflow run routes", () => {
     });
   });
 
+  describe("POST /workflow-runs/agentic-trade-in-demo", () => {
+    it("runs the polished end-to-end agentic trade-in demo and returns an audit trail", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/workflow-runs/agentic-trade-in-demo",
+        payload: {
+          rawInput: [
+            "TM stealth2 drv 10.5 Ventus stiff, no hc, sky mark on crown",
+            "unknown maybe 5w shaft unknown condition unclear"
+          ].join("\n")
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.rawInput).toContain("TM stealth2");
+      expect(body.parsedItems).toHaveLength(2);
+      expect(body.parsedItems[0]).toMatchObject({
+        brand: "TaylorMade",
+        productLine: "Stealth 2",
+        category: "DRIVER",
+        shaftFlex: "STIFF",
+        missingFields: []
+      });
+      expect(body.parsedItems[1].confidence).toBeLessThan(0.72);
+      expect(body.parsedItems[1].missingFields.length).toBeGreaterThan(0);
+
+      expect(body.knowledgeMatchesByItem).toHaveLength(2);
+      expect(Array.isArray(body.knowledgeMatchesByItem[0].search.results)).toBe(true);
+      if (body.knowledgeMatchesByItem[0].search.results.length > 0) {
+        expect(body.knowledgeMatchesByItem[0].search.results[0]).toHaveProperty(
+          "scoreBreakdown"
+        );
+        expect(body.knowledgeMatchesByItem[0].search.results[0].scoreBreakdown.components).toHaveProperty(
+          "brand"
+        );
+      }
+
+      expect(body.modelRoutingDecision).toMatchObject({
+        selectedProvider: expect.any(String),
+        selectedModel: expect.any(String),
+        candidatesConsidered: expect.any(Array)
+      });
+      expect(body.modelCallLog).toMatchObject({
+        workflowRunId: body.persisted.workflowRunId,
+        status: "SUCCEEDED"
+      });
+
+      expect(body.toolCallingPlan.plannedCalls.map((call: { toolName: string }) => call.toolName)).toEqual([
+        "swingops.workflowRuns.get",
+        "swingops.knowledgeBase.search",
+        "swingops.reviewQueueItems.list",
+        "swingops.reviewQueueItems.resolve"
+      ]);
+      expect(body.toolCallResults).toHaveLength(4);
+      expect(body.toolCallResults.filter((result: { status: string }) => result.status === "SUCCEEDED")).toHaveLength(3);
+      expect(body.blockedToolCallResult).toMatchObject({
+        toolName: "swingops.reviewQueueItems.resolve",
+        status: "BLOCKED",
+        executionAttempted: false
+      });
+
+      expect(body.reviewQueueItemsCreated.length).toBeGreaterThanOrEqual(1);
+      expect(body.reviewQueueItemsCreated[0]).toMatchObject({
+        workflowRunId: body.persisted.workflowRunId,
+        status: "OPEN"
+      });
+      expect(body.finalSummary).toMatchObject({
+        parsedItemCount: 2,
+        lowConfidenceItemCount: 1,
+        reviewQueueItemCount: body.reviewQueueItemsCreated.length,
+        successfulReadOnlyToolCallCount: 3,
+        blockedMutationToolCallCount: 1
+      });
+      expect(body.auditTrail.map((event: { label: string }) => event.label)).toEqual([
+        "Raw messy intake received",
+        "Structured equipment records parsed",
+        "RAG knowledge retrieved",
+        "Model route selected",
+        "Read-only tools executed",
+        "Mutation tool blocked",
+        "Human review surfaced",
+        "Final demo summary"
+      ]);
+
+      expect(body.persisted.toolCallLogIds).toHaveLength(4);
+
+      const persistedToolCallLogCount = await prisma.toolCallLog.count({
+        where: {
+          id: {
+            in: body.persisted.toolCallLogIds
+          }
+        }
+      });
+      expect(persistedToolCallLogCount).toBe(body.persisted.toolCallLogIds.length);
+
+      await prisma.intakeBatch.delete({
+        where: {
+          id: body.persisted.intakeBatchId
+        }
+      });
+      await prisma.workflowRun.delete({
+        where: {
+          id: body.persisted.workflowRunId
+        }
+      });
+
+      await app.close();
+    });
+
+    it("rejects invalid agentic trade-in demo payloads", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/workflow-runs/agentic-trade-in-demo",
+        payload: {
+          rawInput: "TM stealth2 driver",
+          unexpected: true
+        }
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toMatchObject({
+        error: "Invalid agentic trade-in demo request"
+      });
+
+      await app.close();
+    });
+  });
+
   describe("POST /workflow-runs/:id/model-provider-fallback-demo", () => {
     it("creates a high-quality provider fallback model call log for a workflow run", async () => {
       const app = buildApp();

@@ -12,6 +12,10 @@ import {
   AgenticTradeInWorkflowRunNotFoundError,
   executeAgenticTradeInWorkflowRun
 } from "../workflows/agentic-trade-in-workflow.js";
+import {
+  DEFAULT_AGENTIC_TRADE_IN_DEMO_INPUT,
+  executeEndToEndAgenticTradeInDemo
+} from "../workflows/end-to-end-agentic-trade-in-demo.js";
 
 const workflowRunParamsSchema = z.object({
   id: z.string().min(1)
@@ -20,6 +24,12 @@ const workflowRunParamsSchema = z.object({
 const executeWorkflowRunBodySchema = z.object({
   scenario: z.enum(["HAPPY_PATH", "NEEDS_REVIEW"]).optional()
 });
+
+const agenticTradeInDemoBodySchema = z
+  .object({
+    rawInput: z.string().optional()
+  })
+  .strict();
 
 function serializeWorkflowRun(run: {
   id: string;
@@ -365,6 +375,21 @@ function serializeWorkflowRunListItem(run: {
 }
 
 export async function workflowRunRoutes(app: FastifyInstance): Promise<void> {
+  app.post("/workflow-runs/agentic-trade-in-demo", async (request, reply) => {
+    const parsedBody = agenticTradeInDemoBodySchema.safeParse(request.body ?? {});
+
+    if (!parsedBody.success) {
+      return reply.status(400).send({
+        error: "Invalid agentic trade-in demo request",
+        details: parsedBody.error.flatten()
+      });
+    }
+
+    return executeEndToEndAgenticTradeInDemo({
+      rawInput: parsedBody.data.rawInput ?? DEFAULT_AGENTIC_TRADE_IN_DEMO_INPUT
+    });
+  });
+
   app.get("/workflow-runs", async () => {
     const workflowRuns = await prisma.workflowRun.findMany({
       orderBy: {

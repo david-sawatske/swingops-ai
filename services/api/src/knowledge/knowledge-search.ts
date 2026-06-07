@@ -372,6 +372,23 @@ function scoreProductLineComponent(input: {
     };
   }
 
+  const directAlias = firstMatchingAlias({
+    normalizedQuery: input.normalizedQuery,
+    compactQuery: input.compactQuery,
+    aliases: input.aliases
+  });
+
+  if (directAlias) {
+    return {
+      component: component({
+        score: 1,
+        weight: TRADE_IN_SCORE_WEIGHTS.productLine,
+        explanation: `Product line matched alias ${directAlias} → ${input.productLine}.`
+      }),
+      matchedTerms: [directAlias, input.productLine]
+    };
+  }
+
   const productCompact = compactNormalize(input.productLine);
   const alias = input.aliases.find(
     (candidateAlias) =>
