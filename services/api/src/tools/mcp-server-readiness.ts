@@ -9,8 +9,8 @@ export type McpReadinessCheck = {
 };
 
 export type ExternalMcpServerReadiness = {
-  externalMcpServerReady: false;
-  statusLabel: "Not externalized yet";
+  externalMcpServerReady: true;
+  statusLabel: "Local external MCP transport available";
   readinessChecks: McpReadinessCheck[];
 };
 
@@ -32,8 +32,8 @@ export function getExternalMcpServerReadiness(): ExternalMcpServerReadiness {
     .every((tool) => !tool.enabled && tool.requiresHumanApproval);
 
   return {
-    externalMcpServerReady: false,
-    statusLabel: "Not externalized yet",
+    externalMcpServerReady: true,
+    statusLabel: "Local external MCP transport available",
     readinessChecks: [
       {
         name: "Tool contracts defined",
@@ -67,9 +67,15 @@ export function getExternalMcpServerReadiness(): ExternalMcpServerReadiness {
       },
       {
         name: "External MCP transport implemented",
+        status: "PASS",
+        detail:
+          "A local stdio MCP server wraps the existing SwingOps connector contracts, policy evaluator, read-only executor, ToolCallLog persistence, and sanitizer metadata."
+      },
+      {
+        name: "Production auth and deployment",
         status: "TODO",
         detail:
-          "This slice intentionally keeps the surface as an internal REST adapter, not a full external MCP server."
+          "This slice does not claim OAuth, hosted deployment, tenant isolation, or production remote MCP access."
       }
     ]
   };

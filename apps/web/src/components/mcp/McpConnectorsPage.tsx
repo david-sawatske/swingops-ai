@@ -123,11 +123,12 @@ export function McpConnectorsPage({
         </span>
         <h3>Connector registry exposed through a guarded tool-call boundary</h3>
         <p>
-          This page now uses a REST adapter shaped around MCP tools/list and
-          tools/call semantics. It does not claim an external MCP server yet.
-          The demo proves the safer boundary: list exposed tools, call an
-          allowed read-only tool, block a visible mutation tool before
-          execution, and persist both outcomes to ToolCallLog.
+          This page uses a REST adapter shaped around MCP tools/list and
+          tools/call semantics, plus a local stdio MCP server that wraps the
+          same guarded connector surface. The demo proves the safer boundary:
+          list exposed tools, call an allowed read-only tool, block a visible
+          mutation tool before execution, and persist both outcomes to
+          ToolCallLog.
         </p>
       </div>
 
@@ -138,7 +139,7 @@ export function McpConnectorsPage({
           </span>
           <h3>{externalMcpReadiness?.statusLabel ?? "Checking readiness"}</h3>
           <p>
-            This is still an internal REST adapter shaped around MCP tools/list and tools/call. Contracts, policy, validation, audit logging, and output sanitization are being prepared so a future external MCP server can wrap the same guarded surface.
+            A local stdio MCP server now wraps the same guarded SwingOps connector surface as the REST adapter. This proves external MCP transport wiring for local development, while production auth, hosted deployment, and tenant isolation remain future work.
           </p>
         </div>
 

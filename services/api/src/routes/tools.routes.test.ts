@@ -623,18 +623,18 @@ describe("tool routes", () => {
 
       expect(body.catalogMetadata).toMatchObject({
         surface: "INTERNAL_MCP_STYLE_CONNECTOR_SURFACE",
-        externalMcpTransportEnabled: false,
+        externalMcpTransportEnabled: true,
         readOnlyExecutionEnabled: true,
         mutationExecutionEnabled: false,
         auditLogPersistence: "TOOL_CALL_LOG"
       });
       expect(body.externalMcpReadiness).toMatchObject({
-        externalMcpServerReady: false,
-        statusLabel: "Not externalized yet",
+        externalMcpServerReady: true,
+        statusLabel: "Local external MCP transport available",
         readinessChecks: expect.arrayContaining([
           expect.objectContaining({ name: "Tool contracts defined", status: "PASS" }),
           expect.objectContaining({ name: "Output sanitizer enabled", status: "PASS" }),
-          expect.objectContaining({ name: "External MCP transport implemented", status: "TODO" })
+          expect.objectContaining({ name: "External MCP transport implemented", status: "PASS" })
         ])
       });
 
@@ -782,12 +782,12 @@ describe("tool routes", () => {
         externalMcpServer: false
       });
       expect(body.externalMcpReadiness).toMatchObject({
-        externalMcpServerReady: false,
-        statusLabel: "Not externalized yet",
+        externalMcpServerReady: true,
+        statusLabel: "Local external MCP transport available",
         readinessChecks: expect.arrayContaining([
           expect.objectContaining({ name: "Tool contracts defined", status: "PASS" }),
           expect.objectContaining({ name: "Mutation tools blocked", status: "PASS" }),
-          expect.objectContaining({ name: "External MCP transport implemented", status: "TODO" })
+          expect.objectContaining({ name: "External MCP transport implemented", status: "PASS" })
         ])
       });
 

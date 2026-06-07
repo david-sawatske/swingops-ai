@@ -37,7 +37,7 @@ export type ConnectorCatalogResponse = {
   connectors: ConnectorCatalogItem[];
   catalogMetadata: {
     surface: "INTERNAL_MCP_STYLE_CONNECTOR_SURFACE";
-    externalMcpTransportEnabled: false;
+    externalMcpTransportEnabled: true;
     readOnlyExecutionEnabled: true;
     mutationExecutionEnabled: false;
     auditLogPersistence: "TOOL_CALL_LOG";
@@ -295,12 +295,12 @@ export async function listConnectorCatalog(): Promise<ConnectorCatalogResponse> 
     connectors,
     catalogMetadata: {
       surface: "INTERNAL_MCP_STYLE_CONNECTOR_SURFACE",
-      externalMcpTransportEnabled: false,
+      externalMcpTransportEnabled: true,
       readOnlyExecutionEnabled: true,
       mutationExecutionEnabled: false,
       auditLogPersistence: "TOOL_CALL_LOG",
       summary:
-        "Internal MCP-style connector catalog. External MCP transport is not enabled yet; read-only execution is policy-governed and persisted to ToolCallLog."
+        "Internal MCP-style connector catalog with read-only execution, policy previews, ToolCallLog-backed audit history, and a local stdio external MCP transport."
     },
     externalMcpReadiness: getExternalMcpServerReadiness()
   };

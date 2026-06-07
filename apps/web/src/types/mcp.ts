@@ -21,8 +21,8 @@ export type McpReadinessCheck = {
 };
 
 export type ExternalMcpServerReadiness = {
-  externalMcpServerReady: false;
-  statusLabel: "Not externalized yet";
+  externalMcpServerReady: boolean;
+  statusLabel: string;
   readinessChecks: McpReadinessCheck[];
 };
 
@@ -102,7 +102,7 @@ export type ConnectorCatalogResponse = {
   connectors: ConnectorCatalogItem[];
   catalogMetadata: {
     surface: "INTERNAL_MCP_STYLE_CONNECTOR_SURFACE";
-    externalMcpTransportEnabled: false;
+    externalMcpTransportEnabled: boolean;
     readOnlyExecutionEnabled: boolean;
     mutationExecutionEnabled: boolean;
     auditLogPersistence: "TOOL_CALL_LOG";
