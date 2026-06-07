@@ -311,3 +311,134 @@ export type ExecuteAgenticTradeInRunResponse = {
     qualityEvalPersisted: boolean;
   };
 };
+
+export type AgenticTradeInDemoParsedItem = {
+  id: string;
+  rawLine: string;
+  brand: string | null;
+  productLine: string | null;
+  model: string | null;
+  category: string | null;
+  loft: string | null;
+  clubNumber: string | null;
+  shaftBrand: string | null;
+  shaftModel: string | null;
+  shaftFlex: string | null;
+  conditionNotes: string[];
+  accessoriesNotes: string[];
+  uncertaintyNotes: string[];
+  confidence: number;
+  missingFields: string[];
+};
+
+export type AgenticTradeInDemoAuditEvent = {
+  orderIndex: number;
+  label: string;
+  status: "SUCCEEDED" | "NEEDS_REVIEW" | "BLOCKED" | "INFO";
+  summary: string;
+  details: unknown;
+};
+
+export type AgenticTradeInDemoToolCallResult = {
+  toolName: string;
+  status: "SUCCEEDED" | "FAILED" | "BLOCKED";
+  policyDecision: string;
+  policyReason: string;
+  executionAttempted: boolean;
+  toolCallLogId: string;
+  outputPreview: unknown | null;
+  errorMessage: string | null;
+};
+
+export type ExecuteEndToEndAgenticTradeInDemoRequest = {
+  rawInput?: string;
+};
+
+export type ExecuteEndToEndAgenticTradeInDemoResponse = {
+  rawInput: string;
+  parsedItems: AgenticTradeInDemoParsedItem[];
+  knowledgeMatchesByItem: {
+    parsedItemId: string;
+    query: string;
+    search: {
+      query: string;
+      results: {
+        chunkId: string;
+        documentTitle: string;
+        sourceName: string;
+        chunkText: string;
+        chunkType: string;
+        brand: string | null;
+        productLine: string | null;
+        category: string | null;
+        score: number;
+        scoreBreakdown?: {
+          weightedScore: number;
+          vectorScore: number | null;
+          components: Record<
+            string,
+            {
+              score: number | null;
+              weight: number;
+              explanation: string | null;
+            }
+          >;
+        };
+        matchedTerms: string[];
+        scoringExplanation: string[];
+      }[];
+      summary: string;
+    };
+  }[];
+  modelRoutingDecision: {
+    selectedProvider: string;
+    selectedModel: string;
+    selectedReason: string;
+    estimatedCostTier: string;
+    expectedLatencyTier: string;
+    qualityTier: string;
+    healthStatus: string;
+    estimatedCostUsd: number;
+    fallbackProvider: string | null;
+    fallbackModel: string | null;
+    routingFactors: string[];
+    candidatesConsidered: unknown[];
+    rejectedCandidates: unknown[];
+  };
+  modelCallLog: ModelCallLog;
+  toolCallingPlan: {
+    planId: string;
+    plannedCalls: {
+      orderIndex: number;
+      toolName: string;
+      reason: string;
+      inputJson: Record<string, unknown>;
+      expectedRiskLevel: "LOW" | "HIGH";
+      expectedMutatesData: boolean;
+      expectedRequiresHumanApproval: boolean;
+    }[];
+  };
+  toolCallResults: AgenticTradeInDemoToolCallResult[];
+  blockedToolCallResult: AgenticTradeInDemoToolCallResult | null;
+  reviewQueueItemsCreated: ReviewQueueItem[];
+  persisted: {
+    intakeBatchId: string;
+    intakeItemIds: string[];
+    workflowRunId: string;
+    modelCallLogId: string;
+    toolCallLogIds: string[];
+    reviewQueueItemIds: string[];
+  };
+  finalSummary: {
+    parsedItemCount: number;
+    knowledgeMatchCount: number;
+    lowConfidenceItemCount: number;
+    reviewQueueItemCount: number;
+    successfulReadOnlyToolCallCount: number;
+    blockedMutationToolCallCount: number;
+    selectedProvider: string;
+    selectedModel: string;
+    productStory: string;
+  };
+  auditTrail: AgenticTradeInDemoAuditEvent[];
+};

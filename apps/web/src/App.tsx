@@ -18,6 +18,7 @@ import {
 import {
   createProviderFallbackDemo,
   executeAgenticTradeInRun,
+  executeEndToEndAgenticTradeInDemo,
   dismissReviewQueueItem,
   executeWorkflowRun,
   executeWorkflowToolCallingPlan,
@@ -50,6 +51,7 @@ import type {
 } from "./types/intake";
 import type {
   ExecuteAgenticTradeInRunResponse,
+  ExecuteEndToEndAgenticTradeInDemoResponse,
   GlobalReviewQueueItem,
   ExecuteWorkflowToolCallingPlanResponse,
   GlobalWorkflowRunSummary,
@@ -76,6 +78,7 @@ import { ModelRoutingPage } from "./components/model-routing/ModelRoutingPage";
 import { ReviewQueuePage } from "./components/review-queue/ReviewQueuePage";
 import { WorkflowRunsPage } from "./components/workflows/WorkflowRunsPage";
 import { IntakePage } from "./components/intake/IntakePage";
+import { AgenticTradeInDemoPage } from "./components/agentic-demo/AgenticTradeInDemoPage";
 
 function App() {
   const [activeView, setActiveView] = useState<AppView>("OVERVIEW");
@@ -158,6 +161,25 @@ function App() {
     useState<string | null>(null);
   const [agenticTradeInRunSuccess, setAgenticTradeInRunSuccess] =
     useState<string | null>(null);
+
+  const [endToEndAgenticDemoRawInput, setEndToEndAgenticDemoRawInput] = useState(
+    [
+      "TM stealth2 drv 10.5 Ventus stiff, no hc, sky mark on crown",
+      "Titleist TSR maybe TS2 3w 15 deg Tensei s flex, face wear, hc included",
+      "Cally Rogue ST Max driver 9 Project X HZRDUS x-stiff, paint wear, no wrench",
+      "PING G425 irons 5-PW reg, worn grips, condition unclear",
+    ].join("\n"),
+  );
+  const [endToEndAgenticDemoResult, setEndToEndAgenticDemoResult] =
+    useState<ExecuteEndToEndAgenticTradeInDemoResponse | null>(null);
+  const [isRunningEndToEndAgenticDemo, setIsRunningEndToEndAgenticDemo] =
+    useState(false);
+  const [endToEndAgenticDemoError, setEndToEndAgenticDemoError] = useState<
+    string | null
+  >(null);
+  const [endToEndAgenticDemoSuccess, setEndToEndAgenticDemoSuccess] = useState<
+    string | null
+  >(null);
 
   const [isStartingWorkflow, setIsStartingWorkflow] = useState(false);
   const [startWorkflowError, setStartWorkflowError] = useState<string | null>(
@@ -698,6 +720,48 @@ function App() {
     }
   }
 
+  async function handleExecuteEndToEndAgenticDemo(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    try {
+      setIsRunningEndToEndAgenticDemo(true);
+      setEndToEndAgenticDemoError(null);
+      setEndToEndAgenticDemoSuccess(null);
+
+      const result = await executeEndToEndAgenticTradeInDemo({
+        rawInput: endToEndAgenticDemoRawInput,
+      });
+
+      setEndToEndAgenticDemoResult(result);
+      setEndToEndAgenticDemoSuccess(
+        "Demo created workflow " +
+          result.persisted.workflowRunId +
+          ": " +
+          result.finalSummary.parsedItemCount +
+          " parsed, " +
+          result.finalSummary.knowledgeMatchCount +
+          " RAG matches, " +
+          result.finalSummary.reviewQueueItemCount +
+          " review items, " +
+          result.finalSummary.blockedMutationToolCallCount +
+          " mutation blocked.",
+      );
+
+      await loadIntakeBatches();
+      await loadGlobalWorkflowRuns();
+      await loadGlobalReviewQueueItems();
+      await loadMcpInvocationHistory();
+    } catch (error) {
+      setEndToEndAgenticDemoError(
+        error instanceof Error
+          ? error.message
+          : "Unable to run end-to-end agentic trade-in demo.",
+      );
+    } finally {
+      setIsRunningEndToEndAgenticDemo(false);
+    }
+  }
+
   async function handleReviewQueueItemAction(input: {
     reviewQueueItemId: string;
     action: "resolve" | "dismiss";
@@ -1008,6 +1072,18 @@ function App() {
           openReviewQueueItemCount={openReviewQueueItemCount}
           toolCallLogCount={totalToolCallLogCount}
           needsReviewWorkflowRunCount={needsReviewWorkflowRunCount}
+        />
+      ) : null}
+
+      {activeView === "AGENTIC_DEMO" ? (
+        <AgenticTradeInDemoPage
+          error={endToEndAgenticDemoError}
+          isRunning={isRunningEndToEndAgenticDemo}
+          onRawInputChange={setEndToEndAgenticDemoRawInput}
+          onSubmit={handleExecuteEndToEndAgenticDemo}
+          rawInput={endToEndAgenticDemoRawInput}
+          result={endToEndAgenticDemoResult}
+          success={endToEndAgenticDemoSuccess}
         />
       ) : null}
 

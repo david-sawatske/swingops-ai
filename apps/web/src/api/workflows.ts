@@ -1,5 +1,7 @@
 import { apiGet, apiPost } from "./client";
 import type {
+  ExecuteEndToEndAgenticTradeInDemoRequest,
+  ExecuteEndToEndAgenticTradeInDemoResponse,
   CreateProviderFallbackDemoResponse,
   ExecuteAgenticTradeInRunResponse,
   ExecuteWorkflowRunRequest,
@@ -91,4 +93,13 @@ export async function executeAgenticTradeInRun(
     `/workflow-runs/${workflowRunId}/agentic-trade-in-run`,
     {},
   );
+}
+
+export async function executeEndToEndAgenticTradeInDemo(
+  request: ExecuteEndToEndAgenticTradeInDemoRequest,
+): Promise<ExecuteEndToEndAgenticTradeInDemoResponse> {
+  return apiPost<
+    ExecuteEndToEndAgenticTradeInDemoResponse,
+    ExecuteEndToEndAgenticTradeInDemoRequest
+  >("/workflow-runs/agentic-trade-in-demo", request);
 }
