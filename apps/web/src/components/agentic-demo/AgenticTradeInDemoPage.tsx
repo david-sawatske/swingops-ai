@@ -86,6 +86,12 @@ export function AgenticTradeInDemoPage({
             grounding, provider-aware model routing, MCP-compatible tool calls,
             policy-blocked mutations, persisted audit logs, and human review.
           </p>
+          <p>
+            For the richest RAG section, first open MCP Connectors and ingest the demo
+            knowledge base. The seed data includes sample-matching examples for the
+            TaylorMade Stealth 2 driver, Titleist TSR fairway, and Callaway Rogue ST Max
+            driver used below. The PING G425 irons are intentionally less grounded so the review path stays visible.
+          </p>
         </article>
       </div>
 

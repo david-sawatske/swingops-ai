@@ -28,7 +28,7 @@ describe("knowledge base ingestion and search", () => {
       status: "SUCCEEDED",
       sourceName: TEST_KNOWLEDGE_SOURCE_NAME,
       documentsCreated: 3,
-      chunksCreated: 42,
+      chunksCreated: 45,
       errorMessage: null
     });
 

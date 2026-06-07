@@ -38,7 +38,7 @@ describe("knowledge routes", () => {
       status: "SUCCEEDED",
       sourceName: DEMO_KNOWLEDGE_SOURCE_NAME,
       documentsCreated: 3,
-      chunksCreated: 42
+      chunksCreated: 45
     });
 
     const searchResponse = await app.inject({
