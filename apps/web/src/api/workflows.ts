@@ -1,7 +1,9 @@
 import { apiGet, apiPost } from "./client";
 import type {
   ExecuteEndToEndAgenticTradeInDemoRequest,
+  ExecuteMultiSourceIntakeDemoRequest,
   ExecuteEndToEndAgenticTradeInDemoResponse,
+  ExecuteMultiSourceIntakeDemoResponse,
   CreateProviderFallbackDemoResponse,
   ExecuteAgenticTradeInRunResponse,
   ExecuteWorkflowRunRequest,
@@ -102,4 +104,13 @@ export async function executeEndToEndAgenticTradeInDemo(
     ExecuteEndToEndAgenticTradeInDemoResponse,
     ExecuteEndToEndAgenticTradeInDemoRequest
   >("/workflow-runs/agentic-trade-in-demo", request);
+}
+
+export async function executeMultiSourceIntakeDemo(
+  request: ExecuteMultiSourceIntakeDemoRequest = {},
+): Promise<ExecuteMultiSourceIntakeDemoResponse> {
+  return apiPost<
+    ExecuteMultiSourceIntakeDemoResponse,
+    ExecuteMultiSourceIntakeDemoRequest
+  >("/workflow-runs/multi-source-intake-demo", request);
 }

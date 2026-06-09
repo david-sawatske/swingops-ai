@@ -1,6 +1,7 @@
 export type AppView =
   | "OVERVIEW"
   | "AGENTIC_DEMO"
+  | "MULTI_SOURCE_INTAKE_DEMO"
   | "INTAKE"
   | "WORKFLOW_RUNS"
   | "REVIEW_QUEUE"
@@ -23,6 +24,11 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     view: "AGENTIC_DEMO",
     label: "Agentic Demo",
     eyebrow: "End-to-end",
+  },
+  {
+    view: "MULTI_SOURCE_INTAKE_DEMO",
+    label: "Multi-Source Intake",
+    eyebrow: "AI-ready assets",
   },
   {
     view: "INTAKE",
