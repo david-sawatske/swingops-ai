@@ -466,6 +466,229 @@ describe("workflow run routes", () => {
     });
   });
 
+  describe("POST /workflow-runs/multi-source-intake-demo", () => {
+    it("runs the multi-source intake demo for all four source types", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/workflow-runs/multi-source-intake-demo",
+        payload: {}
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.sourcesProcessed).toBe(4);
+      expect(body.sourceResults.map((source: { sourceType: string }) => source.sourceType)).toEqual([
+        "FREE_TEXT",
+        "POORLY_FORMED_CSV",
+        "EMAIL",
+        "LOG"
+      ]);
+      expect(body.recordsExtracted).toBeGreaterThanOrEqual(8);
+      expect(body.assetsCreated).toBe(6);
+      expect(body.reviewNeeded).toBeGreaterThanOrEqual(1);
+      expect(body.cleanedDatasetPreview).toHaveLength(body.recordsExtracted);
+      expect(body.inferredDatasetSchema.map((field: { fieldName: string }) => field.fieldName)).toContain(
+        "reviewNeeded"
+      );
+      expect(body.ragReadinessSummary).toMatchObject({
+        embeddingReady: true,
+        ragIndexReady: true
+      });
+      expect(body.finalSummary).toBe(
+        "Processed 4 source types into normalized records, inferred schema fields, metadata, review signals, and RAG-ready asset summaries."
+      );
+      expect(body.persistedIds).toMatchObject({
+        intakeBatchId: expect.any(String),
+        workflowRunId: expect.any(String)
+      });
+
+      await prisma.intakeBatch.delete({
+        where: {
+          id: body.persistedIds.intakeBatchId
+        }
+      });
+      await prisma.workflowRun.delete({
+        where: {
+          id: body.persistedIds.workflowRunId
+        }
+      });
+
+      await app.close();
+    });
+
+    it("extracts records from malformed CSV input through the route", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/workflow-runs/multi-source-intake-demo",
+        payload: {
+          sourceTypes: ["POORLY_FORMED_CSV"]
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.sourcesProcessed).toBe(1);
+      expect(body.sourceResults[0]).toMatchObject({
+        sourceType: "POORLY_FORMED_CSV"
+      });
+      expect(body.sourceResults[0].metadata.operationalTags).toContain(
+        "delimiter-normalization"
+      );
+      expect(body.cleanedDatasetPreview.some((record: { brand: string | null }) => record.brand === "Callaway")).toBe(true);
+
+      await prisma.intakeBatch.delete({
+        where: {
+          id: body.persistedIds.intakeBatchId
+        }
+      });
+      await prisma.workflowRun.delete({
+        where: {
+          id: body.persistedIds.workflowRunId
+        }
+      });
+
+      await app.close();
+    });
+
+    it("runs the multi-source intake demo with user-provided sources", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/workflow-runs/multi-source-intake-demo",
+        payload: {
+          sources: [
+            {
+              sourceType: "EMAIL",
+              sourceName: "Forwarded customer email",
+              rawContent: [
+                "From: Alex Kim <alex.kim@example.com>",
+                "Subject: Trade estimate",
+                "",
+                "I have a Titleist TSR2 3 wood with Tensei stiff shaft.",
+                "There is face wear and I can bring it to store 104."
+              ].join("\n")
+            }
+          ]
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+      expect(body.sourcesProcessed).toBe(1);
+      expect(body.sourceResults[0]).toMatchObject({
+        sourceType: "EMAIL",
+        sourceName: "Forwarded customer email"
+      });
+      expect(body.metadataSummary.customerEmails).toContain("alex.kim@example.com");
+      expect(body.metadataSummary.detectedStoreIds).toContain("104");
+      expect(body.cleanedDatasetPreview.some((record: { brand: string }) => record.brand === "Titleist")).toBe(
+        true
+      );
+
+      await prisma.intakeBatch.delete({
+        where: {
+          id: body.persistedIds.intakeBatchId
+        }
+      });
+      await prisma.workflowRun.delete({
+        where: {
+          id: body.persistedIds.workflowRunId
+        }
+      });
+
+      await app.close();
+    });
+
+    it("extracts email metadata and log timestamps through filtered runs", async () => {
+      const app = buildApp();
+
+      const emailResponse = await app.inject({
+        method: "POST",
+        url: "/workflow-runs/multi-source-intake-demo",
+        payload: {
+          sourceTypes: ["EMAIL"]
+        }
+      });
+
+      expect(emailResponse.statusCode).toBe(200);
+
+      const emailBody = emailResponse.json();
+      expect(emailBody.metadataSummary.customerEmails).toContain("hannah.lee@example.com");
+      expect(emailBody.metadataSummary.attachmentNames).toContain("trade_sheet_8821.pdf");
+
+      await prisma.intakeBatch.delete({
+        where: {
+          id: emailBody.persistedIds.intakeBatchId
+        }
+      });
+      await prisma.workflowRun.delete({
+        where: {
+          id: emailBody.persistedIds.workflowRunId
+        }
+      });
+
+      const logResponse = await app.inject({
+        method: "POST",
+        url: "/workflow-runs/multi-source-intake-demo",
+        payload: {
+          sourceTypes: ["LOG"]
+        }
+      });
+
+      expect(logResponse.statusCode).toBe(200);
+
+      const logBody = logResponse.json();
+      expect(logBody.metadataSummary.eventTimestamps).toContain(
+        "2026-05-18T14:33:04Z"
+      );
+      expect(logBody.metadataSummary.operationalTags).toContain("import-observability");
+
+      await prisma.intakeBatch.delete({
+        where: {
+          id: logBody.persistedIds.intakeBatchId
+        }
+      });
+      await prisma.workflowRun.delete({
+        where: {
+          id: logBody.persistedIds.workflowRunId
+        }
+      });
+
+      await app.close();
+    });
+
+    it("rejects invalid multi-source intake demo payloads", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/workflow-runs/multi-source-intake-demo",
+        payload: {
+          sourceTypes: ["FREE_TEXT"],
+          unexpected: true
+        }
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toMatchObject({
+        error: "Invalid multi-source intake demo request"
+      });
+
+      await app.close();
+    });
+  });
+
+
   describe("POST /workflow-runs/:id/model-provider-fallback-demo", () => {
     it("creates a high-quality provider fallback model call log for a workflow run", async () => {
       const app = buildApp();

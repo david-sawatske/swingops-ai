@@ -16,6 +16,9 @@ import {
   DEFAULT_AGENTIC_TRADE_IN_DEMO_INPUT,
   executeEndToEndAgenticTradeInDemo
 } from "../workflows/end-to-end-agentic-trade-in-demo.js";
+import {
+  executeMultiSourceIntakeDemo
+} from "../workflows/multi-source-intake-demo.js";
 
 const workflowRunParamsSchema = z.object({
   id: z.string().min(1)
@@ -28,6 +31,32 @@ const executeWorkflowRunBodySchema = z.object({
 const agenticTradeInDemoBodySchema = z
   .object({
     rawInput: z.string().optional()
+  })
+  .strict();
+
+const multiSourceIntakeSourceTypeSchema = z.enum([
+  "FREE_TEXT",
+  "POORLY_FORMED_CSV",
+  "EMAIL",
+  "LOG"
+]);
+
+const multiSourceIntakeDemoBodySchema = z
+  .object({
+    sourceTypes: z.array(multiSourceIntakeSourceTypeSchema).min(1).optional(),
+    sources: z
+      .array(
+        z
+          .object({
+            sourceType: multiSourceIntakeSourceTypeSchema,
+            sourceName: z.string().trim().min(1).max(120).optional(),
+            rawContent: z.string().trim().min(1).max(20000)
+          })
+          .strict()
+      )
+      .min(1)
+      .max(8)
+      .optional()
   })
   .strict();
 
@@ -375,6 +404,31 @@ function serializeWorkflowRunListItem(run: {
 }
 
 export async function workflowRunRoutes(app: FastifyInstance): Promise<void> {
+  app.post("/workflow-runs/multi-source-intake-demo", async (request, reply) => {
+    const parsedBody = multiSourceIntakeDemoBodySchema.safeParse(request.body ?? {});
+
+    if (!parsedBody.success) {
+      return reply.status(400).send({
+        error: "Invalid multi-source intake demo request",
+        details: parsedBody.error.flatten()
+      });
+    }
+
+    const demoInput: Parameters<typeof executeMultiSourceIntakeDemo>[0] = {};
+
+    if (parsedBody.data.sources) {
+      demoInput.sources = parsedBody.data.sources.map((source) => ({
+        sourceType: source.sourceType,
+        rawContent: source.rawContent,
+        ...(source.sourceName ? { sourceName: source.sourceName } : {})
+      }));
+    } else if (parsedBody.data.sourceTypes) {
+      demoInput.sourceTypes = parsedBody.data.sourceTypes;
+    }
+
+    return executeMultiSourceIntakeDemo(demoInput);
+  });
+
   app.post("/workflow-runs/agentic-trade-in-demo", async (request, reply) => {
     const parsedBody = agenticTradeInDemoBodySchema.safeParse(request.body ?? {});
 

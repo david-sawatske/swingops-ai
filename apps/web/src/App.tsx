@@ -19,6 +19,7 @@ import {
   createProviderFallbackDemo,
   executeAgenticTradeInRun,
   executeEndToEndAgenticTradeInDemo,
+  executeMultiSourceIntakeDemo,
   dismissReviewQueueItem,
   executeWorkflowRun,
   executeWorkflowToolCallingPlan,
@@ -52,6 +53,8 @@ import type {
 import type {
   ExecuteAgenticTradeInRunResponse,
   ExecuteEndToEndAgenticTradeInDemoResponse,
+  ExecuteMultiSourceIntakeDemoRequest,
+  ExecuteMultiSourceIntakeDemoResponse,
   GlobalReviewQueueItem,
   ExecuteWorkflowToolCallingPlanResponse,
   GlobalWorkflowRunSummary,
@@ -79,6 +82,7 @@ import { ReviewQueuePage } from "./components/review-queue/ReviewQueuePage";
 import { WorkflowRunsPage } from "./components/workflows/WorkflowRunsPage";
 import { IntakePage } from "./components/intake/IntakePage";
 import { AgenticTradeInDemoPage } from "./components/agentic-demo/AgenticTradeInDemoPage";
+import { MultiSourceIntakeDemoPage } from "./components/multi-source-intake/MultiSourceIntakeDemoPage";
 
 function App() {
   const [activeView, setActiveView] = useState<AppView>("OVERVIEW");
@@ -180,6 +184,16 @@ function App() {
   const [endToEndAgenticDemoSuccess, setEndToEndAgenticDemoSuccess] = useState<
     string | null
   >(null);
+
+  const [multiSourceIntakeDemoResult, setMultiSourceIntakeDemoResult] =
+    useState<ExecuteMultiSourceIntakeDemoResponse | null>(null);
+  const [isRunningMultiSourceIntakeDemo, setIsRunningMultiSourceIntakeDemo] =
+    useState(false);
+  const [multiSourceIntakeDemoError, setMultiSourceIntakeDemoError] = useState<
+    string | null
+  >(null);
+  const [multiSourceIntakeDemoSuccess, setMultiSourceIntakeDemoSuccess] =
+    useState<string | null>(null);
 
   const [isStartingWorkflow, setIsStartingWorkflow] = useState(false);
   const [startWorkflowError, setStartWorkflowError] = useState<string | null>(
@@ -762,6 +776,44 @@ function App() {
     }
   }
 
+  async function handleRunMultiSourceIntakeDemo(
+    request: ExecuteMultiSourceIntakeDemoRequest = {},
+  ) {
+    try {
+      setIsRunningMultiSourceIntakeDemo(true);
+      setMultiSourceIntakeDemoError(null);
+      setMultiSourceIntakeDemoSuccess(null);
+
+      const result = await executeMultiSourceIntakeDemo(request);
+
+      setMultiSourceIntakeDemoResult(result);
+      setMultiSourceIntakeDemoSuccess(
+        "Processed " +
+          result.sourcesProcessed +
+          " source types into " +
+          result.recordsExtracted +
+          " normalized records, " +
+          result.assetsCreated +
+          " AI-ready asset summaries, and " +
+          result.reviewNeeded +
+          " review signals.",
+      );
+
+      await loadIntakeBatches();
+      await loadGlobalWorkflowRuns();
+      await loadGlobalReviewQueueItems();
+      await loadMcpInvocationHistory();
+    } catch (error) {
+      setMultiSourceIntakeDemoError(
+        error instanceof Error
+          ? error.message
+          : "Unable to run multi-source intake demo.",
+      );
+    } finally {
+      setIsRunningMultiSourceIntakeDemo(false);
+    }
+  }
+
   async function handleReviewQueueItemAction(input: {
     reviewQueueItemId: string;
     action: "resolve" | "dismiss";
@@ -1084,6 +1136,16 @@ function App() {
           rawInput={endToEndAgenticDemoRawInput}
           result={endToEndAgenticDemoResult}
           success={endToEndAgenticDemoSuccess}
+        />
+      ) : null}
+
+      {activeView === "MULTI_SOURCE_INTAKE_DEMO" ? (
+        <MultiSourceIntakeDemoPage
+          error={multiSourceIntakeDemoError}
+          isRunning={isRunningMultiSourceIntakeDemo}
+          onRunDemo={handleRunMultiSourceIntakeDemo}
+          result={multiSourceIntakeDemoResult}
+          success={multiSourceIntakeDemoSuccess}
         />
       ) : null}
 
