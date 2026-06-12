@@ -409,6 +409,125 @@ describe("workflow run routes", () => {
         successfulReadOnlyToolCallCount: 3,
         blockedMutationToolCallCount: 1
       });
+
+      expect(body.agentPlan.map((step: { id: string }) => step.id)).toEqual([
+        "agent-plan-validate-fields",
+        "agent-plan-search-knowledge",
+        "agent-plan-select-tools",
+        "agent-plan-provider-fallback",
+        "agent-plan-retry-shaft-flex",
+        "agent-plan-human-review",
+        "agent-plan-block-mutation",
+        "agent-plan-record-quality-summary"
+      ]);
+      expect(body.agentPlan).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            label: "Attempt targeted retry for recoverable missing fields",
+            actionType: "RETRY_EXTRACTION",
+            retryPolicy: "one targeted retry before human review"
+          }),
+          expect.objectContaining({
+            label: "Block unsafe mutations unless approved",
+            actionType: "ENFORCE_POLICY",
+            status: "BLOCKED"
+          })
+        ])
+      );
+
+      expect(body.validationChecks).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            label: "Brand recognized",
+            status: "PASS"
+          }),
+          expect.objectContaining({
+            label: "Shaft/flex data complete",
+            status: "WARNING",
+            field: "shaftFlex",
+            reviewRequired: true
+          }),
+          expect.objectContaining({
+            label: "Review requirement determined",
+            status: "WARNING",
+            reviewRequired: true
+          }),
+          expect.objectContaining({
+            label: "Unsafe mutation blocked",
+            status: "PASS",
+            reviewRequired: false
+          })
+        ])
+      );
+
+      expect(body.retryEvents).toEqual([
+        expect.objectContaining({
+          reason: "missing or uncertain shaft/flex data",
+          targetField: "shaftFlex",
+          status: "UNRESOLVED",
+          policy: "one targeted retry before human review"
+        })
+      ]);
+
+      expect(body.providerFallbackTrace).toMatchObject({
+        routingGoal: "HIGH_QUALITY",
+        finalProvider: body.modelCallLog.provider,
+        finalModel: body.modelCallLog.model,
+        fallbackUsed: true,
+        attempts: expect.any(Array)
+      });
+      expect(body.providerFallbackTrace.attempts.length).toBeGreaterThanOrEqual(1);
+
+      expect(body.toolSelectionRationales).toEqual([
+        expect.objectContaining({
+          toolName: "swingops.workflowRuns.get",
+          expectedRiskLevel: "LOW",
+          expectedMutatesData: false
+        }),
+        expect.objectContaining({
+          toolName: "swingops.knowledgeBase.search",
+          expectedRiskLevel: "LOW",
+          expectedMutatesData: false
+        }),
+        expect.objectContaining({
+          toolName: "swingops.reviewQueueItems.list",
+          expectedRiskLevel: "LOW",
+          expectedMutatesData: false
+        }),
+        expect.objectContaining({
+          toolName: "swingops.reviewQueueItems.resolve",
+          expectedRiskLevel: "HIGH",
+          expectedMutatesData: true,
+          expectedRequiresHumanApproval: true
+        })
+      ]);
+
+      expect(body.reviewOutcomes.length).toBeGreaterThanOrEqual(1);
+      expect(body.reviewOutcomes[0]).toMatchObject({
+        reviewQueueItemId: body.reviewQueueItemsCreated[0].id,
+        reason: body.reviewQueueItemsCreated[0].reason,
+        validationWarnings: expect.any(Array),
+        suggestedNextAction:
+          "Review the original text, confirm uncertain equipment fields, and approve or correct the proposed structured record."
+      });
+
+      expect(body.workflowQualitySummary).toMatchObject({
+        status: "NEEDS_REVIEW",
+        recordsProcessed: 2,
+        validationFailures: 0,
+        retryAttempts: 1,
+        reviewItemsCreated: body.reviewQueueItemsCreated.length,
+        toolCalls: 4,
+        blockedMutations: 1,
+        providerFallbackUsed: true,
+        evidenceCoverage: expect.any(String)
+      });
+      expect(body.workflowQualitySummary.validationPassed).toBeGreaterThan(0);
+      expect(body.workflowQualitySummary.validationWarnings).toBeGreaterThan(0);
+      expect(body.workflowQualitySummary.summary).toContain(
+        "validation found unresolved uncertainty"
+      );
+
       expect(body.auditTrail.map((event: { label: string }) => event.label)).toEqual([
         "Raw messy intake received",
         "Structured equipment records parsed",
