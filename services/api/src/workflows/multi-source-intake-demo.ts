@@ -179,7 +179,7 @@ const DEFAULT_MULTI_SOURCE_INPUTS: MultiSourceInput[] = [
       "2026-05-18T14:33:02Z INFO import start store=104 batch=nightly_tradeins",
       "2026-05-18T14:33:04Z WARN malformed payload brand=Titleist model=TSR cat=3w shaft='Tensei S' value=145",
       "2026-05-18T14:33:07Z ERROR row=18 missing category payload={brand:'PING', model:'G425', notes:'irons 5-PW reg worn grips'}",
-      "2026-05-18T14:33:11Z INFO normalized sku candidate Callaway Rogue ST Max driver store=207"
+      "2026-05-18T14:33:11Z INFO normalized sku match Callaway Rogue ST Max driver store=207"
     ].join("\n")
   },
 ];

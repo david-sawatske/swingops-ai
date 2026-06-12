@@ -4,7 +4,7 @@ import { buildApp } from "../app.js";
 
 describe("AI routes", () => {
   describe("POST /ai/model-routing/preview", () => {
-    it("returns a high-quality routing preview with candidates and rejected reasons", async () => {
+    it("returns a high-quality routing preview with provider options and rejected reasons", async () => {
       const app = buildApp();
 
       const response = await app.inject({

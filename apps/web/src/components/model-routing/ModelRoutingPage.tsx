@@ -47,7 +47,7 @@ export function ModelRoutingPage({
       description="Preview health, latency, cost, quality, and fallback-aware provider selection across mock, OpenAI, Anthropic, Azure OpenAI, and local/open-source style providers."
     >
       <div className="section-intro-card">
-        <span className="model-route-card__eyebrow">Resume Story</span>
+        <span className="model-route-card__eyebrow">Routing Story</span>
         <h3>Provider routing separated from workflow logic</h3>
         <p>
           The workflow asks for a task outcome. The routing layer decides which
@@ -170,7 +170,7 @@ export function ModelRoutingPage({
 
           <div className="model-routing-preview-grid">
             <div>
-              <h4>Candidates Considered</h4>
+              <h4>Providers Considered</h4>
 
               <div className="model-routing-candidate-list">
                 {preview.routingDecision.candidatesConsidered.map(
@@ -217,11 +217,11 @@ export function ModelRoutingPage({
             </div>
 
             <div>
-              <h4>Rejected Candidates</h4>
+              <h4>Rejected Providers</h4>
 
               {preview.routingDecision.rejectedCandidates.length === 0 ? (
                 <EmptyState
-                  title="No rejected candidates"
+                  title="No rejected provider options"
                   message="Every considered provider/model matched this routing request."
                 />
               ) : (

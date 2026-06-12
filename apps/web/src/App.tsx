@@ -75,7 +75,6 @@ import {
 import { getReviewActionFallbackNote } from "./utils/reviewQueueDisplay";
 import { getReadOnlyMcpToolInput } from "./utils/readOnlyMcpToolInput";
 import { McpConnectorsPage } from "./components/mcp/McpConnectorsPage";
-import { AppHeroNav } from "./components/layout/AppHeroNav";
 import { OverviewPage } from "./components/overview/OverviewPage";
 import { ModelRoutingPage } from "./components/model-routing/ModelRoutingPage";
 import { ReviewQueuePage } from "./components/review-queue/ReviewQueuePage";
@@ -83,9 +82,15 @@ import { WorkflowRunsPage } from "./components/workflows/WorkflowRunsPage";
 import { IntakePage } from "./components/intake/IntakePage";
 import { AgenticTradeInDemoPage } from "./components/agentic-demo/AgenticTradeInDemoPage";
 import { MultiSourceIntakeDemoPage } from "./components/multi-source-intake/MultiSourceIntakeDemoPage";
+import {
+  GuidedDemoPathPage,
+  type GuidedStep,
+} from "./components/guided-demo/GuidedDemoPathPage";
+import { AppHeroNav } from "./components/layout/AppHeroNav";
 
 function App() {
-  const [activeView, setActiveView] = useState<AppView>("OVERVIEW");
+  const [activeView, setActiveView] = useState<AppView>("GUIDED_DEMO");
+  const [guidedActiveStep, setGuidedActiveStep] = useState<GuidedStep>("SCENARIO");
   const [intakeBatches, setIntakeBatches] = useState<IntakeBatchSummary[]>([]);
   const [isLoadingIntakeBatches, setIsLoadingIntakeBatches] = useState(true);
   const [intakeBatchesError, setIntakeBatchesError] = useState<string | null>(
@@ -1115,7 +1120,39 @@ function App() {
 
   return (
     <main className="app-shell">
-      <AppHeroNav activeView={activeView} onViewChange={setActiveView} />
+      <AppHeroNav />
+
+      {activeView !== "GUIDED_DEMO" ? (
+        <section className="guided-return-panel">
+          <button onClick={() => setActiveView("GUIDED_DEMO")} type="button">
+            ← Back to Guided Workflow
+          </button>
+        </section>
+      ) : null}
+
+      {activeView === "GUIDED_DEMO" ? (
+        <GuidedDemoPathPage
+          sourceIntakeResult={multiSourceIntakeDemoResult}
+          sourceIntakeError={multiSourceIntakeDemoError}
+          sourceIntakeSuccess={multiSourceIntakeDemoSuccess}
+          isRunningSourceIntake={isRunningMultiSourceIntakeDemo}
+          tradeInRawInput={endToEndAgenticDemoRawInput}
+          tradeInResult={endToEndAgenticDemoResult}
+          tradeInError={endToEndAgenticDemoError}
+          tradeInSuccess={endToEndAgenticDemoSuccess}
+          isRunningTradeInWorkflow={isRunningEndToEndAgenticDemo}
+          workflowRuns={globalWorkflowRuns}
+          reviewQueueItems={globalReviewQueueItems}
+          openReviewQueueItemCount={openReviewQueueItemCount}
+          toolCallLogCount={totalToolCallLogCount}
+          onTradeInRawInputChange={setEndToEndAgenticDemoRawInput}
+          onRunSourceIntake={handleRunMultiSourceIntakeDemo}
+          onRunTradeInWorkflow={handleExecuteEndToEndAgenticDemo}
+          onViewChange={setActiveView}
+          activeStep={guidedActiveStep}
+          onActiveStepChange={setGuidedActiveStep}
+        />
+      ) : null}
 
       {activeView === "OVERVIEW" ? (
         <OverviewPage

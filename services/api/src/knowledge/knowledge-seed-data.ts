@@ -424,7 +424,7 @@ export const DEMO_KNOWLEDGE_DOCUMENTS: KnowledgeSeedDocument[] = [
         aliases: ["Titleist TSR maybe TS2 3w 15 deg Tensei s flex", "TSR 3 wood Tensei stiff face wear", "Titleist TSR fairway hc included"],
         conditionFlags: ["Tensei", "stiff", "face wear", "headcover included", "model uncertain"],
         text:
-          "Agentic demo example: Titleist TSR maybe TS2 3w 15 deg Tensei s flex, face wear, hc included should be parsed as a Titleist TSR fairway wood candidate with 15 degree loft, Mitsubishi Tensei stiff shaft, face wear, headcover included, and model uncertainty because the note mentions maybe TS2."
+          "Agentic demo example: Titleist TSR maybe TS2 3w 15 deg Tensei s flex, face wear, hc included should be parsed as a Titleist TSR fairway wood match with 15 degree loft, Mitsubishi Tensei stiff shaft, face wear, headcover included, and model uncertainty because the note mentions maybe TS2."
       },
       {
         chunkType: "CLUB_REFERENCE",
