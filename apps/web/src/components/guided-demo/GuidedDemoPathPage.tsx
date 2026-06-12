@@ -697,6 +697,41 @@ export function GuidedDemoPathPage({
               {tradeInResult ? (
                 <>
                   <div className="guided-execution-evidence-grid">
+                    <article className="guided-execution-evidence-card guided-execution-evidence-card--wide">
+                      <span className="model-route-card__eyebrow">Agent plan</span>
+                      <strong>
+                        {tradeInResult.agentPlan.length} planned step(s)
+                      </strong>
+                      <p>
+                        The agent planned validation, knowledge grounding, approved
+                        tool selection, targeted retry, review handoff, policy
+                        enforcement, and audit recording before summarizing the run.
+                      </p>
+                    </article>
+
+                    <article className="guided-execution-evidence-card">
+                      <span className="model-route-card__eyebrow">Validation checks</span>
+                      <strong>
+                        {tradeInResult.workflowQualitySummary.validationPassed} passed,{" "}
+                        {tradeInResult.workflowQualitySummary.validationWarnings} warning(s)
+                      </strong>
+                      <p>
+                        Field completeness, confidence, evidence, review routing,
+                        and mutation policy checks are structured as first-class
+                        validation output.
+                      </p>
+                    </article>
+
+                    <article className="guided-execution-evidence-card">
+                      <span className="model-route-card__eyebrow">Targeted retry</span>
+                      <strong>
+                        {tradeInResult.workflowQualitySummary.retryAttempts} retry attempt(s)
+                      </strong>
+                      <p>
+                        Retry behavior is tracked separately from provider fallback
+                        and focuses only on recoverable extraction uncertainty.
+                      </p>
+                    </article>
                     <article className="guided-execution-evidence-card">
                       <span className="model-route-card__eyebrow">Model routing</span>
                       <strong>
@@ -706,11 +741,11 @@ export function GuidedDemoPathPage({
                       <dl className="agentic-demo-metadata">
                         <div>
                           <dt>Fallback used</dt>
-                          <dd>{providerFallbackUsed ? "Yes" : "No"}</dd>
+                          <dd>{tradeInResult.providerFallbackTrace.fallbackUsed ? "Yes" : "No"}</dd>
                         </div>
                         <div>
                           <dt>Provider attempts</dt>
-                          <dd>{tradeInResult.modelCallLog.attemptLogs?.length ?? 0}</dd>
+                          <dd>{tradeInResult.providerFallbackTrace.attempts.length}</dd>
                         </div>
                       </dl>
                     </article>
@@ -744,8 +779,8 @@ export function GuidedDemoPathPage({
                         {tradeInResult.reviewQueueItemsCreated.length} review item(s) created
                       </strong>
                       <p>
-                        Low-confidence, missing-field, or incomplete equipment records
-                        were escalated for review.
+                        Validation found uncertainty. A human review item was created
+                        instead of silently accepting the record.
                       </p>
                     </article>
 
@@ -753,9 +788,9 @@ export function GuidedDemoPathPage({
                       <span className="model-route-card__eyebrow">Audit proof</span>
                       <strong>{tradeInResult.auditTrail.length} audit event(s) captured</strong>
                       <p>
-                        The run includes ordered evidence for parsing, grounding,
-                        routing, tool execution, blocked mutation checks, and review
-                        creation.
+                        The run includes ordered evidence for planning, validation,
+                        retry behavior, routing, tool execution, blocked mutation
+                        checks, and review creation.
                       </p>
                     </article>
 
@@ -775,8 +810,49 @@ export function GuidedDemoPathPage({
                   </button>
 
                   <details className="guided-workflow-details">
-                    <summary>View more: model routing, tools, and knowledge evidence</summary>
+                    <summary>View more: agent plan, validation, retry, tools, and knowledge evidence</summary>
                     <div className="guided-workflow-proof-grid">
+                      <article>
+                        <strong>Agent Plan</strong>
+                        <ol className="guided-workflow-compact-list">
+                          {tradeInResult.agentPlan.map((step) => (
+                            <li key={step.id}>
+                              <span>{step.label}</span>
+                              <small>
+                                {step.status} · {step.actionType}
+                              </small>
+                            </li>
+                          ))}
+                        </ol>
+                      </article>
+
+                      <article>
+                        <strong>Validation Checks</strong>
+                        <ol className="guided-workflow-compact-list">
+                          {tradeInResult.validationChecks.slice(0, 8).map((check) => (
+                            <li key={check.id}>
+                              <span>{check.label}</span>
+                              <small>
+                                {check.status} · {check.message}
+                              </small>
+                            </li>
+                          ))}
+                        </ol>
+                      </article>
+
+                      <article>
+                        <strong>Retry Events</strong>
+                        <ol className="guided-workflow-compact-list">
+                          {tradeInResult.retryEvents.map((event) => (
+                            <li key={event.id}>
+                              <span>{event.reason}</span>
+                              <small>
+                                {event.status} · {event.message}
+                              </small>
+                            </li>
+                          ))}
+                        </ol>
+                      </article>
                       <article>
                         <strong>Model Routing & Fallback</strong>
                         <dl className="agentic-demo-metadata">
@@ -790,13 +866,42 @@ export function GuidedDemoPathPage({
                           </div>
                           <div>
                             <dt>Fallback</dt>
-                            <dd>{providerFallbackUsed ? "Yes" : "No"}</dd>
+                            <dd>{tradeInResult.providerFallbackTrace.fallbackUsed ? "Yes" : "No"}</dd>
                           </div>
                           <div>
                             <dt>Attempts</dt>
-                            <dd>{tradeInResult.modelCallLog.attemptLogs?.length ?? 0}</dd>
+                            <dd>{tradeInResult.providerFallbackTrace.attempts.length}</dd>
                           </div>
                         </dl>
+                      </article>
+
+                      <article>
+                        <strong>Provider Fallback Trace</strong>
+                        <ol className="guided-workflow-compact-list">
+                          {tradeInResult.providerFallbackTrace.attempts.map((attempt) => (
+                            <li key={`${attempt.attemptOrder}-${attempt.provider}-${attempt.model}`}>
+                              <span>
+                                {attempt.provider} / {attempt.model}
+                              </span>
+                              <small>
+                                {attempt.status}
+                                {attempt.reason ? ` · ${attempt.reason}` : ""}
+                              </small>
+                            </li>
+                          ))}
+                        </ol>
+                      </article>
+
+                      <article>
+                        <strong>Tool Selection Rationale</strong>
+                        <ol className="guided-workflow-compact-list">
+                          {tradeInResult.toolSelectionRationales.map((tool) => (
+                            <li key={tool.toolName}>
+                              <span>{tool.toolName}</span>
+                              <small>{tool.rationale}</small>
+                            </li>
+                          ))}
+                        </ol>
                       </article>
 
                       <article>
@@ -870,6 +975,10 @@ export function GuidedDemoPathPage({
                       <span>Current-run review items</span>
                     </article>
                     <article>
+                      <strong>{tradeInResult.reviewOutcomes.length}</strong>
+                      <span>Validation-linked outcomes</span>
+                    </article>
+                    <article>
                       <strong>{tradeInResult.finalSummary.lowConfidenceItemCount}</strong>
                       <span>Low-confidence records</span>
                     </article>
@@ -897,12 +1006,24 @@ export function GuidedDemoPathPage({
                             </span>
                           </div>
                           <p>
-                            Suggested action: confirm missing shaft, model, or condition
-                            details, then approve the normalized trade-in record.
+                            Validation found uncertainty. Suggested action: confirm
+                            missing shaft, model, or condition details, then approve
+                            or correct the normalized trade-in record.
                           </p>
                           <details className="guided-workflow-details">
-                            <summary>View more: extracted fields</summary>
-                            <pre>{JSON.stringify(item.proposedGolfClubJson, null, 2)}</pre>
+                            <summary>View more: validation warnings and extracted fields</summary>
+                            <pre>
+                              {JSON.stringify(
+                                {
+                                  reviewOutcome: tradeInResult.reviewOutcomes.find(
+                                    (outcome) => outcome.reviewQueueItemId === item.id,
+                                  ),
+                                  proposedGolfClubJson: item.proposedGolfClubJson,
+                                },
+                                null,
+                                2,
+                              )}
+                            </pre>
                           </details>
                         </article>
                       ))}
@@ -946,29 +1067,41 @@ export function GuidedDemoPathPage({
                 <>
                   <div className="guided-workflow-metrics">
                     <article>
-                      <strong>{tradeInResult.finalSummary.parsedItemCount}</strong>
-                      <span>Records extracted</span>
+                      <strong>{tradeInResult.workflowQualitySummary.status}</strong>
+                      <span>Quality status</span>
+                    </article>
+                    <article>
+                      <strong>{tradeInResult.workflowQualitySummary.recordsProcessed}</strong>
+                      <span>Records processed</span>
                     </article>
                     <article>
                       <strong>
-                        {tradeInResult.finalSummary.reviewQueueItemCount === 0 ? "Yes" : "Partial"}
+                        {tradeInResult.workflowQualitySummary.validationPassed}
                       </strong>
                       <span>Validation passed</span>
                     </article>
                     <article>
-                      <strong>{tradeInResult.finalSummary.reviewQueueItemCount}</strong>
+                      <strong>{tradeInResult.workflowQualitySummary.validationWarnings}</strong>
+                      <span>Validation warnings</span>
+                    </article>
+                    <article>
+                      <strong>{tradeInResult.workflowQualitySummary.retryAttempts}</strong>
+                      <span>Retry attempts</span>
+                    </article>
+                    <article>
+                      <strong>{tradeInResult.workflowQualitySummary.reviewItemsCreated}</strong>
                       <span>Needs review</span>
                     </article>
                     <article>
-                      <strong>{tradeInResult.toolCallResults.length}</strong>
+                      <strong>{tradeInResult.workflowQualitySummary.toolCalls}</strong>
                       <span>Tool calls</span>
                     </article>
                     <article>
-                      <strong>{tradeInResult.finalSummary.blockedMutationToolCallCount}</strong>
+                      <strong>{tradeInResult.workflowQualitySummary.blockedMutations}</strong>
                       <span>Blocked mutations</span>
                     </article>
                     <article>
-                      <strong>{providerFallbackUsed ? "Yes" : "No"}</strong>
+                      <strong>{tradeInResult.workflowQualitySummary.providerFallbackUsed ? "Yes" : "No"}</strong>
                       <span>Provider fallback used</span>
                     </article>
                     <article>
@@ -981,11 +1114,18 @@ export function GuidedDemoPathPage({
                     </article>
                   </div>
 
+                  <article className="guided-execution-evidence-card guided-execution-evidence-card--wide">
+                    <span className="model-route-card__eyebrow">Run summary</span>
+                    <strong>{tradeInResult.workflowQualitySummary.evidenceCoverage}</strong>
+                    <p>{tradeInResult.workflowQualitySummary.summary}</p>
+                  </article>
+
                   <details className="guided-workflow-details">
-                    <summary>View more: persisted audit identifiers</summary>
+                    <summary>View more: quality summary and persisted audit identifiers</summary>
                     <pre>
                       {JSON.stringify(
                         {
+                          workflowQualitySummary: tradeInResult.workflowQualitySummary,
                           workflowRunId: tradeInResult.persisted.workflowRunId,
                           modelCallLogId: tradeInResult.persisted.modelCallLogId,
                           toolCallLogIds: tradeInResult.persisted.toolCallLogIds,

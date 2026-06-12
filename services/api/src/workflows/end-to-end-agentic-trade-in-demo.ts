@@ -9,6 +9,10 @@ import {
 } from "../tools/read-only-tool-invocation.js";
 import { createMockModelCallLogForWorkflowRun } from "./workflow-model-logging.js";
 import {
+  buildWorkflowQualityBundle,
+  type WorkflowQualityBundle
+} from "./workflow-quality.js";
+import {
   parseTradeInDemoText,
   type ParsedTradeInDemoItem
 } from "./trade-in-demo-parser.js";
@@ -83,6 +87,13 @@ export type EndToEndAgenticTradeInDemoResult = {
     selectedModel: string;
     productStory: string;
   };
+  agentPlan: WorkflowQualityBundle["agentPlan"];
+  validationChecks: WorkflowQualityBundle["validationChecks"];
+  retryEvents: WorkflowQualityBundle["retryEvents"];
+  providerFallbackTrace: WorkflowQualityBundle["providerFallbackTrace"];
+  toolSelectionRationales: WorkflowQualityBundle["toolSelectionRationales"];
+  reviewOutcomes: WorkflowQualityBundle["reviewOutcomes"];
+  workflowQualitySummary: WorkflowQualityBundle["workflowQualitySummary"];
   auditTrail: EndToEndAgenticTradeInDemoAuditEvent[];
 };
 
@@ -471,6 +482,15 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
   const blockedToolCallResult =
     toolCallResults.find((result) => result.status === "BLOCKED") ?? null;
 
+  const workflowQualityBundle = buildWorkflowQualityBundle({
+    parsedItems,
+    knowledgeMatchesByItem,
+    modelCallLog,
+    toolCallingPlan,
+    toolCallResults,
+    reviewQueueItemsCreated
+  });
+
   const resultWithoutAuditTrail = {
     rawInput,
     parsedItems,
@@ -489,7 +509,8 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
       toolCallLogIds: toolCallLogs.map((log) => log.id),
       reviewQueueItemIds: reviewQueueItemsCreated.map((item) => item.id)
     },
-    finalSummary
+    finalSummary,
+    ...workflowQualityBundle
   };
 
   return {

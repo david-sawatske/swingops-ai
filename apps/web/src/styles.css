@@ -4778,3 +4778,30 @@ h1 {
     grid-template-columns: 1fr;
   }
 }
+
+.guided-workflow-compact-list {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0.85rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guided-workflow-compact-list li {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 0.8rem;
+  background: rgba(15, 23, 42, 0.34);
+}
+
+.guided-workflow-compact-list span {
+  color: #f8fafc;
+  font-weight: 700;
+}
+
+.guided-workflow-compact-list small {
+  color: #cbd5e1;
+  line-height: 1.45;
+}
