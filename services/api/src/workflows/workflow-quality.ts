@@ -258,20 +258,6 @@ function buildValidationChecks(input: {
     }
 
     checks.push({
-      id: `${item.id}-knowledge-evidence`,
-      label: "Knowledge evidence found",
-      status: knowledgeResultCount > 0 ? "PASS" : "WARNING",
-      severity: knowledgeResultCount > 0 ? "INFO" : "MEDIUM",
-      message:
-        knowledgeResultCount > 0
-          ? `${knowledgeResultCount} weighted knowledge match(es) found for this record.`
-          : "No weighted knowledge evidence was found for this record.",
-      field: null,
-      recordId: item.id,
-      reviewRequired: knowledgeResultCount === 0 || reviewRequired
-    });
-
-    checks.push({
       id: `${item.id}-confidence-threshold`,
       label: "Confidence threshold met",
       status: item.confidence >= 0.72 ? "PASS" : "WARNING",
@@ -285,6 +271,25 @@ function buildValidationChecks(input: {
       reviewRequired: item.confidence < 0.72 || reviewRequired
     });
   }
+
+  const recordsWithKnowledgeEvidence = input.knowledgeMatchesByItem.filter(
+    (match) => match.search.results.length > 0
+  ).length;
+  const evidenceCoverageMessage =
+    `${recordsWithKnowledgeEvidence}/${input.parsedItems.length} records had weighted knowledge evidence.`;
+
+  checks.push({
+    id: "workflow-knowledge-evidence-coverage",
+    label: "Knowledge evidence coverage",
+    status:
+      recordsWithKnowledgeEvidence === input.parsedItems.length ? "PASS" : "WARNING",
+    severity:
+      recordsWithKnowledgeEvidence === input.parsedItems.length ? "INFO" : "MEDIUM",
+    message: evidenceCoverageMessage,
+    field: null,
+    recordId: null,
+    reviewRequired: recordsWithKnowledgeEvidence === 0
+  });
 
   checks.push({
     id: "workflow-review-requirement",

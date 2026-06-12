@@ -747,8 +747,35 @@ function App() {
       setEndToEndAgenticDemoError(null);
       setEndToEndAgenticDemoSuccess(null);
 
+      const generatedTradeInRawInput =
+        multiSourceIntakeDemoResult?.cleanedDatasetPreview
+          .map((record, index) => {
+            const identity = [record.brand, record.productLine, record.category]
+              .filter(Boolean)
+              .join(" ");
+
+            const details = [
+              record.shaftFlex ? "shaft flex " + record.shaftFlex : null,
+              record.condition ? "condition " + record.condition : null,
+              record.tradeInValue === null ? null : "trade value $" + record.tradeInValue,
+              record.storeId ? "store " + record.storeId : null,
+              record.reviewNeeded ? "review needed" : "review clear",
+              record.missingFields.length > 0
+                ? "missing " + record.missingFields.join(", ")
+                : null,
+            ].filter(Boolean);
+
+            return (
+              String(index + 1) +
+              ". " +
+              (identity || "Unknown equipment") +
+              (details.length > 0 ? " — " + details.join("; ") : "")
+            );
+          })
+          .join("\n") ?? "";
+
       const result = await executeEndToEndAgenticTradeInDemo({
-        rawInput: endToEndAgenticDemoRawInput,
+        rawInput: endToEndAgenticDemoRawInput.trim() || generatedTradeInRawInput,
       });
 
       setEndToEndAgenticDemoResult(result);
@@ -792,6 +819,38 @@ function App() {
       const result = await executeMultiSourceIntakeDemo(request);
 
       setMultiSourceIntakeDemoResult(result);
+
+      const generatedTradeInRawInput = result.cleanedDatasetPreview
+        .map((record, index) => {
+          const identity = [record.brand, record.productLine, record.category]
+            .filter(Boolean)
+            .join(" ");
+
+          const details = [
+            record.shaftFlex ? "shaft flex " + record.shaftFlex : null,
+            record.condition ? "condition " + record.condition : null,
+            record.tradeInValue === null ? null : "trade value $" + record.tradeInValue,
+            record.storeId ? "store " + record.storeId : null,
+            record.reviewNeeded ? "review needed" : "review clear",
+            record.missingFields.length > 0
+              ? "missing " + record.missingFields.join(", ")
+              : null,
+          ].filter(Boolean);
+
+          return (
+            String(index + 1) +
+            ". " +
+            (identity || "Unknown equipment") +
+            (details.length > 0 ? " — " + details.join("; ") : "")
+          );
+        })
+        .join("\n");
+
+      setEndToEndAgenticDemoRawInput(generatedTradeInRawInput);
+      setEndToEndAgenticDemoResult(null);
+      setEndToEndAgenticDemoSuccess(null);
+      setEndToEndAgenticDemoError(null);
+
       setMultiSourceIntakeDemoSuccess(
         "Processed " +
           result.sourcesProcessed +

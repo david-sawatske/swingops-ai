@@ -707,6 +707,7 @@ export function GuidedDemoPathPage({
                         tool selection, targeted retry, review handoff, policy
                         enforcement, and audit recording before summarizing the run.
                       </p>
+
                     </article>
 
                     <article className="guided-execution-evidence-card">
@@ -720,6 +721,105 @@ export function GuidedDemoPathPage({
                         and mutation policy checks are structured as first-class
                         validation output.
                       </p>
+                      <details className="guided-workflow-inline-details">
+                        <summary>View validation checks</summary>
+                        <ol className="guided-workflow-check-list">
+                          {tradeInResult.parsedItems.map((item) => {
+                            const itemChecks = tradeInResult.validationChecks.filter(
+                              (check) => check.recordId === item.id,
+                            );
+                            const warningCount = itemChecks.filter(
+                              (check) => check.status === "WARNING",
+                            ).length;
+                            const failCount = itemChecks.filter(
+                              (check) => check.status === "FAIL",
+                            ).length;
+                            const rowStatus =
+                              failCount > 0 ? "FAIL" : warningCount > 0 ? "WARNING" : "PASS";
+                            const clubLabel = [
+                              item.brand,
+                              item.productLine,
+                              item.category,
+                              item.shaftFlex,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ");
+
+                            return (
+                              <li key={item.id}>
+                                <details className="guided-workflow-club-details">
+                                  <summary>
+                                    <span className={`guided-workflow-check-status guided-workflow-check-status--${rowStatus.toLowerCase()}`}>
+                                      {rowStatus}
+                                    </span>
+                                    <span>{clubLabel || item.rawLine}</span>
+                                    <small>
+                                      confidence {item.confidence} · {warningCount} warning(s)
+                                    </small>
+                                  </summary>
+                                  <dl className="agentic-demo-metadata">
+                                    <div>
+                                      <dt>Raw input</dt>
+                                      <dd>{item.rawLine}</dd>
+                                    </div>
+                                    <div>
+                                      <dt>Parsed club</dt>
+                                      <dd>{clubLabel || "Unresolved club details"}</dd>
+                                    </div>
+                                    <div>
+                                      <dt>Missing fields</dt>
+                                      <dd>{item.missingFields.length > 0 ? item.missingFields.join(", ") : "None"}</dd>
+                                    </div>
+                                    <div>
+                                      <dt>Uncertainty</dt>
+                                      <dd>{item.uncertaintyNotes.length > 0 ? item.uncertaintyNotes.join(", ") : "None"}</dd>
+                                    </div>
+                                  </dl>
+                                  <ol className="guided-workflow-club-checks">
+                                    {itemChecks.map((check) => (
+                                      <li key={check.id}>
+                                        <span className={`guided-workflow-check-status guided-workflow-check-status--${check.status.toLowerCase()}`}>
+                                          {check.status}
+                                        </span>
+                                        <span>{check.label}</span>
+                                        <small>{check.message}</small>
+                                      </li>
+                                    ))}
+                                  </ol>
+                                </details>
+                              </li>
+                            );
+                          })}
+
+                        </ol>
+
+                        <aside className="guided-workflow-policy-footnote">
+                          <div>
+                            <span className="model-route-card__eyebrow">
+                              Workflow-level checks
+                            </span>
+                            <p>
+                              These checks apply to the full run, not a single club
+                              record. They confirm evidence coverage, review routing,
+                              and mutation safety.
+                            </p>
+                          </div>
+
+                          <ol className="guided-workflow-policy-checks">
+                            {tradeInResult.validationChecks
+                              .filter((check) => check.recordId === null)
+                              .map((check) => (
+                                <li key={check.id}>
+                                  <span className={`guided-workflow-check-status guided-workflow-check-status--${check.status.toLowerCase()}`}>
+                                    {check.status}
+                                  </span>
+                                  <strong>{check.label}</strong>
+                                  <small>{check.message}</small>
+                                </li>
+                              ))}
+                          </ol>
+                        </aside>
+                      </details>
                     </article>
 
                     <article className="guided-execution-evidence-card">
@@ -731,6 +831,19 @@ export function GuidedDemoPathPage({
                         Retry behavior is tracked separately from provider fallback
                         and focuses only on recoverable extraction uncertainty.
                       </p>
+                      <details className="guided-workflow-inline-details">
+                        <summary>View retry details</summary>
+                        <ol className="guided-workflow-compact-list">
+                          {tradeInResult.retryEvents.map((event) => (
+                            <li key={event.id}>
+                              <span>{event.reason}</span>
+                              <small>
+                                {event.status} · {event.message}
+                              </small>
+                            </li>
+                          ))}
+                        </ol>
+                      </details>
                     </article>
                     <article className="guided-execution-evidence-card">
                       <span className="model-route-card__eyebrow">Model routing</span>
@@ -748,6 +861,22 @@ export function GuidedDemoPathPage({
                           <dd>{tradeInResult.providerFallbackTrace.attempts.length}</dd>
                         </div>
                       </dl>
+                      <details className="guided-workflow-inline-details">
+                        <summary>View provider attempts</summary>
+                        <ol className="guided-workflow-compact-list">
+                          {tradeInResult.providerFallbackTrace.attempts.map((attempt) => (
+                            <li key={`${attempt.attemptOrder}-${attempt.provider}-${attempt.model}`}>
+                              <span>
+                                {attempt.provider} / {attempt.model}
+                              </span>
+                              <small>
+                                {attempt.status}
+                                {attempt.reason ? ` · ${attempt.reason}` : ""}
+                              </small>
+                            </li>
+                          ))}
+                        </ol>
+                      </details>
                     </article>
 
                     <article className="guided-execution-evidence-card">
@@ -759,6 +888,19 @@ export function GuidedDemoPathPage({
                         Product knowledge search was attempted and logged before
                         workflow output was trusted.
                       </p>
+                      <details className="guided-workflow-inline-details">
+                        <summary>View knowledge evidence</summary>
+                        <dl className="agentic-demo-metadata">
+                          <div>
+                            <dt>Matches</dt>
+                            <dd>{tradeInResult.finalSummary.knowledgeMatchCount}</dd>
+                          </div>
+                          <div>
+                            <dt>Top query</dt>
+                            <dd>{tradeInResult.knowledgeMatchesByItem[0]?.query ?? "—"}</dd>
+                          </div>
+                        </dl>
+                      </details>
                     </article>
 
                     <article className="guided-execution-evidence-card">
@@ -771,6 +913,17 @@ export function GuidedDemoPathPage({
                         Approved read-only tools executed. Unsafe mutation requests
                         were blocked before execution.
                       </p>
+                      <details className="guided-workflow-inline-details">
+                        <summary>View tool rationale</summary>
+                        <ol className="guided-workflow-compact-list">
+                          {tradeInResult.toolSelectionRationales.map((tool) => (
+                            <li key={tool.toolName}>
+                              <span>{tool.toolName}</span>
+                              <small>{tool.rationale}</small>
+                            </li>
+                          ))}
+                        </ol>
+                      </details>
                     </article>
 
                     <article className="guided-execution-evidence-card">
@@ -809,138 +962,6 @@ export function GuidedDemoPathPage({
                     Continue to Human Review
                   </button>
 
-                  <details className="guided-workflow-details">
-                    <summary>View more: agent plan, validation, retry, tools, and knowledge evidence</summary>
-                    <div className="guided-workflow-proof-grid">
-                      <article>
-                        <strong>Agent Plan</strong>
-                        <ol className="guided-workflow-compact-list">
-                          {tradeInResult.agentPlan.map((step) => (
-                            <li key={step.id}>
-                              <span>{step.label}</span>
-                              <small>
-                                {step.status} · {step.actionType}
-                              </small>
-                            </li>
-                          ))}
-                        </ol>
-                      </article>
-
-                      <article>
-                        <strong>Validation Checks</strong>
-                        <ol className="guided-workflow-compact-list">
-                          {tradeInResult.validationChecks.slice(0, 8).map((check) => (
-                            <li key={check.id}>
-                              <span>{check.label}</span>
-                              <small>
-                                {check.status} · {check.message}
-                              </small>
-                            </li>
-                          ))}
-                        </ol>
-                      </article>
-
-                      <article>
-                        <strong>Retry Events</strong>
-                        <ol className="guided-workflow-compact-list">
-                          {tradeInResult.retryEvents.map((event) => (
-                            <li key={event.id}>
-                              <span>{event.reason}</span>
-                              <small>
-                                {event.status} · {event.message}
-                              </small>
-                            </li>
-                          ))}
-                        </ol>
-                      </article>
-                      <article>
-                        <strong>Model Routing & Fallback</strong>
-                        <dl className="agentic-demo-metadata">
-                          <div>
-                            <dt>Provider</dt>
-                            <dd>{tradeInResult.modelRoutingDecision.selectedProvider}</dd>
-                          </div>
-                          <div>
-                            <dt>Model</dt>
-                            <dd>{tradeInResult.modelRoutingDecision.selectedModel}</dd>
-                          </div>
-                          <div>
-                            <dt>Fallback</dt>
-                            <dd>{tradeInResult.providerFallbackTrace.fallbackUsed ? "Yes" : "No"}</dd>
-                          </div>
-                          <div>
-                            <dt>Attempts</dt>
-                            <dd>{tradeInResult.providerFallbackTrace.attempts.length}</dd>
-                          </div>
-                        </dl>
-                      </article>
-
-                      <article>
-                        <strong>Provider Fallback Trace</strong>
-                        <ol className="guided-workflow-compact-list">
-                          {tradeInResult.providerFallbackTrace.attempts.map((attempt) => (
-                            <li key={`${attempt.attemptOrder}-${attempt.provider}-${attempt.model}`}>
-                              <span>
-                                {attempt.provider} / {attempt.model}
-                              </span>
-                              <small>
-                                {attempt.status}
-                                {attempt.reason ? ` · ${attempt.reason}` : ""}
-                              </small>
-                            </li>
-                          ))}
-                        </ol>
-                      </article>
-
-                      <article>
-                        <strong>Tool Selection Rationale</strong>
-                        <ol className="guided-workflow-compact-list">
-                          {tradeInResult.toolSelectionRationales.map((tool) => (
-                            <li key={tool.toolName}>
-                              <span>{tool.toolName}</span>
-                              <small>{tool.rationale}</small>
-                            </li>
-                          ))}
-                        </ol>
-                      </article>
-
-                      <article>
-                        <strong>Internal Tool Connectors</strong>
-                        <dl className="agentic-demo-metadata">
-                          <div>
-                            <dt>Total calls</dt>
-                            <dd>{tradeInResult.toolCallResults.length}</dd>
-                          </div>
-                          <div>
-                            <dt>Read-only success</dt>
-                            <dd>{tradeInResult.finalSummary.successfulReadOnlyToolCallCount}</dd>
-                          </div>
-                          <div>
-                            <dt>Blocked</dt>
-                            <dd>{tradeInResult.finalSummary.blockedMutationToolCallCount}</dd>
-                          </div>
-                          <div>
-                            <dt>Policy checked</dt>
-                            <dd>Yes</dd>
-                          </div>
-                        </dl>
-                      </article>
-
-                      <article>
-                        <strong>Knowledge Evidence</strong>
-                        <dl className="agentic-demo-metadata">
-                          <div>
-                            <dt>Matches</dt>
-                            <dd>{tradeInResult.finalSummary.knowledgeMatchCount}</dd>
-                          </div>
-                          <div>
-                            <dt>Top query</dt>
-                            <dd>{tradeInResult.knowledgeMatchesByItem[0]?.query ?? "—"}</dd>
-                          </div>
-                        </dl>
-                      </article>
-                    </div>
-                  </details>
                 </>
               ) : (
                 <EmptyState

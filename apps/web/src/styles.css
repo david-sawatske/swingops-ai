@@ -4805,3 +4805,335 @@ h1 {
   color: #cbd5e1;
   line-height: 1.45;
 }
+
+.guided-workflow-inline-details {
+  margin-top: 0.9rem;
+  border-top: 1px solid rgba(20, 44, 23, 0.12);
+  padding-top: 0.75rem;
+}
+
+.guided-workflow-inline-details summary {
+  cursor: pointer;
+  color: #142c17;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.guided-workflow-inline-details .guided-workflow-compact-list li {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(20, 44, 23, 0.12);
+}
+
+.guided-workflow-inline-details .guided-workflow-compact-list span {
+  color: #142c17;
+}
+
+.guided-workflow-inline-details .guided-workflow-compact-list small {
+  color: rgba(20, 44, 23, 0.72);
+}
+
+.guided-workflow-compact-list--plan {
+  grid-template-columns: 1fr;
+}
+
+.guided-execution-evidence-card:has(.guided-workflow-inline-details[open]) {
+  grid-column: 1 / -1;
+}
+
+.guided-execution-evidence-card:has(.guided-workflow-inline-details[open]) .guided-workflow-compact-list {
+  grid-template-columns: 1fr;
+}
+
+.guided-workflow-inline-details[open] {
+  display: block;
+}
+
+.guided-execution-evidence-card .guided-workflow-inline-details[open] {
+  width: 100%;
+}
+
+.guided-execution-evidence-card .guided-workflow-inline-details[open] .guided-workflow-compact-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+}
+
+.guided-execution-evidence-card .guided-workflow-inline-details[open] .guided-workflow-compact-list li {
+  width: 100%;
+}
+
+.guided-execution-evidence-card .guided-workflow-inline-details[open] .agentic-demo-metadata {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.guided-execution-evidence-grid {
+  grid-template-columns: 1fr;
+}
+
+.guided-execution-evidence-card,
+.guided-execution-evidence-card--wide,
+.guided-execution-evidence-card--blocked {
+  grid-column: 1 / -1;
+}
+
+.guided-workflow-check-list {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.85rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guided-workflow-check-details {
+  border: 1px solid rgba(20, 44, 23, 0.12);
+  border-radius: 0.72rem;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.guided-workflow-check-details summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+  padding: 0.72rem 0.8rem;
+  color: #142c17;
+  font-size: 0.86rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.guided-workflow-check-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.guided-workflow-check-details summary::before {
+  content: "›";
+  color: #142c17;
+  font-weight: 900;
+}
+
+.guided-workflow-check-details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.guided-workflow-check-details summary span:nth-of-type(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guided-workflow-check-details summary small {
+  color: rgba(20, 44, 23, 0.62);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.guided-workflow-check-details .agentic-demo-metadata {
+  margin: 0;
+  padding: 0 0.8rem 0.8rem;
+}
+
+.guided-workflow-check-status {
+  border-radius: 999px;
+  padding: 0.18rem 0.46rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.guided-workflow-check-status--pass {
+  background: rgba(34, 197, 94, 0.12);
+  color: #166534;
+}
+
+.guided-workflow-check-status--warning {
+  background: rgba(245, 158, 11, 0.16);
+  color: #92400e;
+}
+
+.guided-workflow-check-status--fail {
+  background: rgba(239, 68, 68, 0.14);
+  color: #991b1b;
+}
+
+.guided-workflow-club-details {
+  border: 1px solid rgba(20, 44, 23, 0.12);
+  border-radius: 0.72rem;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.guided-workflow-club-details summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+  padding: 0.72rem 0.8rem;
+  color: #142c17;
+  font-size: 0.86rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.guided-workflow-club-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.guided-workflow-club-details summary::before {
+  content: "›";
+  color: #142c17;
+  font-weight: 900;
+}
+
+.guided-workflow-club-details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.guided-workflow-club-details summary span:nth-of-type(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guided-workflow-club-details summary small {
+  color: rgba(20, 44, 23, 0.62);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.guided-workflow-club-details .agentic-demo-metadata {
+  margin: 0;
+  padding: 0 0.8rem 0.8rem;
+}
+
+.guided-workflow-club-checks {
+  display: grid;
+  gap: 0.42rem;
+  margin: 0;
+  padding: 0 0.8rem 0.8rem;
+  list-style: none;
+}
+
+.guided-workflow-club-checks li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 0.8fr) minmax(0, 1.2fr);
+  align-items: start;
+  gap: 0.55rem;
+  padding: 0.55rem 0;
+  border-top: 1px solid rgba(20, 44, 23, 0.08);
+}
+
+.guided-workflow-club-checks span:nth-of-type(2) {
+  color: #142c17;
+  font-weight: 800;
+}
+
+.guided-workflow-club-checks small {
+  color: rgba(20, 44, 23, 0.68);
+  line-height: 1.35;
+}
+
+.guided-workflow-club-details summary {
+  grid-template-columns: auto auto minmax(0, 1fr);
+  grid-template-areas:
+    "chevron status title"
+    ". meta meta";
+  gap: 0.45rem 0.65rem;
+}
+
+.guided-workflow-club-details summary::before {
+  grid-area: chevron;
+  align-self: center;
+}
+
+.guided-workflow-club-details summary .guided-workflow-check-status {
+  grid-area: status;
+  align-self: center;
+  justify-self: start;
+  white-space: nowrap;
+}
+
+.guided-workflow-club-details summary span:nth-of-type(2) {
+  grid-area: title;
+  min-width: 0;
+  align-self: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guided-workflow-club-details summary small {
+  grid-area: meta;
+  justify-self: start;
+  min-width: 0;
+  white-space: normal;
+}
+
+.guided-workflow-check-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .guided-workflow-club-details summary {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "chevron title"
+      ". status"
+      ". meta";
+  }
+}
+
+.guided-workflow-policy-footnote {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 0.9rem;
+  padding: 0.95rem;
+  border: 1px solid rgba(20, 44, 23, 0.12);
+  border-radius: 0.9rem;
+  background: rgba(20, 44, 23, 0.035);
+}
+
+.guided-workflow-policy-footnote p {
+  margin: 0.25rem 0 0;
+  color: rgba(20, 44, 23, 0.72);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.guided-workflow-policy-checks {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guided-workflow-policy-checks li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 0.55rem;
+  align-items: start;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(20, 44, 23, 0.08);
+}
+
+.guided-workflow-policy-checks strong {
+  color: #142c17;
+}
+
+.guided-workflow-policy-checks small {
+  color: rgba(20, 44, 23, 0.68);
+  line-height: 1.35;
+}
