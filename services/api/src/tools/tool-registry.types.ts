@@ -1,7 +1,10 @@
 export type AgentToolCategory =
   | "INTAKE"
   | "WORKFLOW"
-  | "REVIEW_QUEUE";
+  | "REVIEW_QUEUE"
+  | "INVENTORY"
+  | "VALUATION"
+  | "CUSTOMER_COMMUNICATION";
 
 export type AgentToolRiskLevel =
   | "LOW"

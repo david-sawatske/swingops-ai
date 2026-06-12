@@ -34,12 +34,12 @@ describe("tool execution policy", () => {
 
   it("allows enabled low-risk read-only tools in autonomous mode", () => {
     const evaluation = evaluateToolExecutionPolicy({
-      toolName: "swingops.workflowRuns.get",
+      toolName: "swingops.tradeInValuation.estimate",
       executionMode: "AGENT_AUTONOMOUS"
     });
 
     expect(evaluation).toMatchObject({
-      toolName: "swingops.workflowRuns.get",
+      toolName: "swingops.tradeInValuation.estimate",
       decision: "ALLOW",
       reasonCodes: ["TOOL_ALLOWED"],
       executionMode: "AGENT_AUTONOMOUS",
@@ -56,13 +56,13 @@ describe("tool execution policy", () => {
 
   it("blocks disabled mutation tools even when human approval is granted", () => {
     const evaluation = evaluateToolExecutionPolicy({
-      toolName: "swingops.reviewQueueItems.resolve",
+      toolName: "swingops.tradeInOffer.create",
       executionMode: "HUMAN_APPROVED",
       humanApprovalGranted: true
     });
 
     expect(evaluation).toMatchObject({
-      toolName: "swingops.reviewQueueItems.resolve",
+      toolName: "swingops.tradeInOffer.create",
       decision: "BLOCK",
       reasonCodes: ["TOOL_DISABLED"],
       executionEnabled: false,

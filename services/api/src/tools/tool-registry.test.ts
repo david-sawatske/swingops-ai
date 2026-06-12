@@ -11,6 +11,13 @@ describe("agent tool registry", () => {
       "swingops.intakeBatches.get",
       "swingops.clubReference.search",
       "swingops.knowledgeBase.search",
+      "swingops.inventory.lookupProduct",
+      "swingops.inventory.findSimilarProducts",
+      "swingops.tradeInValuation.estimate",
+      "swingops.tradeInValuation.explainAdjustments",
+      "swingops.inventory.createSku",
+      "swingops.tradeInOffer.create",
+      "swingops.customerMessage.send",
       "swingops.workflowRuns.list",
       "swingops.workflowRuns.get",
       "swingops.reviewQueueItems.list",
@@ -26,6 +33,10 @@ describe("agent tool registry", () => {
       "swingops.intakeBatches.get",
       "swingops.clubReference.search",
       "swingops.knowledgeBase.search",
+      "swingops.inventory.lookupProduct",
+      "swingops.inventory.findSimilarProducts",
+      "swingops.tradeInValuation.estimate",
+      "swingops.tradeInValuation.explainAdjustments",
       "swingops.workflowRuns.list",
       "swingops.workflowRuns.get",
       "swingops.reviewQueueItems.list",
@@ -65,9 +76,46 @@ describe("agent tool registry", () => {
     });
   });
 
-  it("marks review mutations as high-risk, approval-required, and disabled for execution", () => {
+  it("registers inventory and valuation read-only tools", () => {
+    const inventoryLookupTool = getAgentTool("swingops.inventory.lookupProduct");
+    const valuationTool = getAgentTool("swingops.tradeInValuation.estimate");
+
+    expect(inventoryLookupTool).toMatchObject({
+      category: "INVENTORY",
+      riskLevel: "LOW",
+      requiresHumanApproval: false,
+      mutatesData: false,
+      enabled: true,
+      implementationStatus: "REGISTERED"
+    });
+    expect(inventoryLookupTool?.inputShape.fields.map((field) => field.name)).toEqual([
+      "brand",
+      "productLine",
+      "category",
+      "year",
+      "shaftBrand",
+      "shaftModel",
+      "rawText"
+    ]);
+
+    expect(valuationTool).toMatchObject({
+      category: "VALUATION",
+      riskLevel: "LOW",
+      requiresHumanApproval: false,
+      mutatesData: false,
+      enabled: true,
+      implementationStatus: "REGISTERED",
+      outputSummary: expect.stringContaining("demo valuation range")
+    });
+    expect(valuationTool?.redactionNotes).toContain("seeded demo valuation ranges");
+  });
+
+  it("marks review and internal mutation tools as high-risk, approval-required, and disabled for execution", () => {
     const resolveTool = getAgentTool("swingops.reviewQueueItems.resolve");
     const dismissTool = getAgentTool("swingops.reviewQueueItems.dismiss");
+    const createSkuTool = getAgentTool("swingops.inventory.createSku");
+    const createOfferTool = getAgentTool("swingops.tradeInOffer.create");
+    const sendMessageTool = getAgentTool("swingops.customerMessage.send");
 
     expect(resolveTool).toMatchObject({
       riskLevel: "HIGH",
@@ -92,6 +140,16 @@ describe("agent tool registry", () => {
         path: "/review-queue-items/:id/dismiss"
       }
     });
+
+    for (const tool of [createSkuTool, createOfferTool, sendMessageTool]) {
+      expect(tool).toMatchObject({
+        riskLevel: "HIGH",
+        requiresHumanApproval: true,
+        mutatesData: true,
+        enabled: false,
+        implementationStatus: "DISABLED_PREVIEW_ONLY"
+      });
+    }
   });
 
   it("filters tools by category and enabled status", () => {
@@ -113,6 +171,9 @@ describe("agent tool registry", () => {
     });
 
     expect(approvalRequiredMutationTools.map((tool) => tool.name)).toEqual([
+      "swingops.inventory.createSku",
+      "swingops.tradeInOffer.create",
+      "swingops.customerMessage.send",
       "swingops.reviewQueueItems.resolve",
       "swingops.reviewQueueItems.dismiss"
     ]);

@@ -2,6 +2,14 @@ import type { Prisma, ToolCallLog } from "@prisma/client";
 import { z } from "zod";
 
 import { prisma } from "../lib/prisma.js";
+import {
+  findSimilarInventoryProducts,
+  lookupInventoryProduct
+} from "../internal-systems/inventory-service.js";
+import {
+  estimateTradeInValuation,
+  explainTradeInValuationAdjustments
+} from "../internal-systems/trade-in-valuation-service.js";
 import { searchKnowledgeBase } from "../knowledge/knowledge-search.js";
 import { searchClubReference } from "./club-reference.js";
 import {
@@ -99,13 +107,66 @@ const knowledgeChunkTypeSchema = z.enum([
 const knowledgeBaseSearchInputSchema = z
   .object({
     query: z.string().min(1),
-  sourceName: z.string().min(1).optional(),
+    sourceName: z.string().min(1).optional(),
     brand: z.string().min(1).optional(),
     category: z.string().min(1).optional(),
     chunkType: knowledgeChunkTypeSchema.optional(),
     maxResults: z.number().int().min(1).max(10).optional()
   })
   .strict();
+
+const inventoryLookupInputSchema = z
+  .object({
+    brand: z.string().min(1).optional(),
+    productLine: z.string().min(1).optional(),
+    category: z.string().min(1).optional(),
+    year: z.number().int().optional(),
+    shaftBrand: z.string().min(1).optional(),
+    shaftModel: z.string().min(1).optional(),
+    rawText: z.string().min(1).optional()
+  })
+  .strict();
+
+const inventorySimilarProductsInputSchema = z
+  .object({
+    brand: z.string().min(1).optional(),
+    productLine: z.string().min(1).optional(),
+    category: z.string().min(1).optional(),
+    rawText: z.string().min(1).optional()
+  })
+  .strict();
+
+const pipeSeparatedNotesSchema = z
+  .string()
+  .optional()
+  .transform((value) =>
+    value
+      ? value
+          .split("|")
+          .map((part) => part.trim())
+          .filter(Boolean)
+      : []
+  );
+
+const tradeInValuationInputSchema = z
+  .object({
+    brand: z.string().min(1).optional(),
+    productLine: z.string().min(1).optional(),
+    category: z.string().min(1).optional(),
+    year: z.number().int().optional(),
+    shaftBrand: z.string().min(1).optional(),
+    shaftModel: z.string().min(1).optional(),
+    rawText: z.string().min(1).optional(),
+    conditionNotes: pipeSeparatedNotesSchema,
+    accessoriesNotes: pipeSeparatedNotesSchema
+  })
+  .strict();
+
+function omitUndefinedFields<T extends Record<string, unknown>>(value: T): T {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, entryValue]) => entryValue !== undefined)
+  ) as T;
+}
 
 function serializeIntakeBatch(batch: {
   id: string;
@@ -686,6 +747,39 @@ async function executeConnectorTool(input: {
           ? {}
           : { maxResults: parsedInput.maxResults })
       })
+    });
+  }
+
+  if (input.toolName === "swingops.inventory.lookupProduct") {
+    const parsedInput = inventoryLookupInputSchema.parse(inputObject);
+
+    return connectorResult({
+      inventoryProductLookup: lookupInventoryProduct(omitUndefinedFields(parsedInput))
+    });
+  }
+
+  if (input.toolName === "swingops.inventory.findSimilarProducts") {
+    const parsedInput = inventorySimilarProductsInputSchema.parse(inputObject);
+
+    return connectorResult({
+      similarInventoryProducts: findSimilarInventoryProducts(omitUndefinedFields(parsedInput))
+    });
+  }
+
+  if (input.toolName === "swingops.tradeInValuation.estimate") {
+    const parsedInput = tradeInValuationInputSchema.parse(inputObject);
+
+    return connectorResult({
+      tradeInValuationEstimate: estimateTradeInValuation(omitUndefinedFields(parsedInput))
+    });
+  }
+
+  if (input.toolName === "swingops.tradeInValuation.explainAdjustments") {
+    const parsedInput = tradeInValuationInputSchema.parse(inputObject);
+
+    return connectorResult({
+      tradeInValuationAdjustmentExplanation:
+        explainTradeInValuationAdjustments(omitUndefinedFields(parsedInput))
     });
   }
 

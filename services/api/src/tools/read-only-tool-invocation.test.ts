@@ -30,6 +30,9 @@ afterEach(async () => {
           toolName: {
             in: [
               "swingops.reviewQueueItems.resolve",
+              "swingops.inventory.createSku",
+              "swingops.inventory.lookupProduct",
+              "swingops.tradeInValuation.estimate",
               "swingops.notRegistered"
             ]
           }
@@ -273,6 +276,93 @@ describe("read-only tool invocation", () => {
     });
   });
 
+  it("executes inventory product lookup and persists a succeeded ToolCallLog", async () => {
+    const result = await executeReadOnlyToolInvocation({
+      toolName: "swingops.inventory.lookupProduct",
+      inputJson: {
+        brand: "TM",
+        productLine: "stealth2",
+        category: "drv",
+        shaftBrand: "Ventus",
+        rawText: "TM stealth2 drv 10.5 Ventus stiff, no hc, sky mark on crown"
+      },
+      requestedBy: "agent.readonly-test"
+    });
+
+    expect(result.invocation).toMatchObject({
+      toolName: "swingops.inventory.lookupProduct",
+      status: "SUCCEEDED",
+      executionAttempted: true
+    });
+    expect(result.policyEvaluation).toMatchObject({
+      decision: "ALLOW",
+      reasonCodes: ["TOOL_ALLOWED"],
+      tool: {
+        name: "swingops.inventory.lookupProduct",
+        enabled: true,
+        riskLevel: "LOW",
+        mutatesData: false,
+        requiresHumanApproval: false
+      }
+    });
+    expect(result.connectorResult?.data).toMatchObject({
+      inventoryProductLookup: {
+        sku: "TM-STEALTH2-DRV-2023",
+        confidence: expect.any(Number),
+        matchReasons: expect.arrayContaining([
+          "Brand matched TaylorMade.",
+          "Product line matched Stealth 2."
+        ])
+      }
+    });
+    expect(result.toolCallLog).toMatchObject({
+      toolName: "swingops.inventory.lookupProduct",
+      status: "SUCCEEDED"
+    });
+  });
+
+  it("executes trade-in valuation estimate and persists a succeeded ToolCallLog", async () => {
+    const result = await executeReadOnlyToolInvocation({
+      toolName: "swingops.tradeInValuation.estimate",
+      inputJson: {
+        brand: "Callaway",
+        productLine: "Rogue ST Max",
+        category: "driver",
+        rawText:
+          "Cally Rogue ST Max driver 9 Project X HZRDUS x-stiff, paint wear, no wrench",
+        conditionNotes: "paint wear",
+        accessoriesNotes: "no wrench"
+      },
+      requestedBy: "agent.readonly-test"
+    });
+
+    expect(result.invocation).toMatchObject({
+      toolName: "swingops.tradeInValuation.estimate",
+      status: "SUCCEEDED",
+      executionAttempted: true
+    });
+    expect(result.connectorResult?.data).toMatchObject({
+      tradeInValuationEstimate: {
+        lowValue: 107,
+        highValue: 145,
+        confidence: "MEDIUM",
+        reviewRequired: false,
+        adjustments: expect.arrayContaining([
+          expect.objectContaining({
+            reason: "Paint wear reduces the demo range."
+          }),
+          expect.objectContaining({
+            reason: "Missing wrench reduces the demo range for adjustable clubs."
+          })
+        ])
+      }
+    });
+    expect(result.toolCallLog).toMatchObject({
+      toolName: "swingops.tradeInValuation.estimate",
+      status: "SUCCEEDED"
+    });
+  });
+
   it("executes list tools with structured connector results", async () => {
     await prisma.workflowRun.create({
       data: {
@@ -336,17 +426,16 @@ describe("read-only tool invocation", () => {
 
   it("blocks disabled mutation tools even when human approval is granted", async () => {
     const result = await executeReadOnlyToolInvocation({
-      toolName: "swingops.reviewQueueItems.resolve",
+      toolName: "swingops.inventory.createSku",
       inputJson: {
-        id: "review-item-1",
-        reviewerNotes: "Looks correct."
+        productId: "prod_taylormade_stealth2_driver_2023"
       },
       executionMode: "HUMAN_APPROVED",
       humanApprovalGranted: true
     });
 
     expect(result.invocation).toMatchObject({
-      toolName: "swingops.reviewQueueItems.resolve",
+      toolName: "swingops.inventory.createSku",
       status: "BLOCKED",
       executionAttempted: false
     });
@@ -362,7 +451,7 @@ describe("read-only tool invocation", () => {
       }
     });
     expect(result.toolCallLog).toMatchObject({
-      toolName: "swingops.reviewQueueItems.resolve",
+      toolName: "swingops.inventory.createSku",
       status: "FAILED",
       errorMessage: "Tool is disabled and cannot be executed."
     });

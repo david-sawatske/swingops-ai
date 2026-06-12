@@ -5,13 +5,13 @@ import {
 } from "./inventory-demo-data.js";
 
 export type InventoryLookupInput = {
-  brand?: string | null;
-  productLine?: string | null;
-  category?: string | null;
-  year?: number | null;
-  shaftBrand?: string | null;
-  shaftModel?: string | null;
-  rawText?: string | null;
+  brand?: string | null | undefined;
+  productLine?: string | null | undefined;
+  category?: string | null | undefined;
+  year?: number | null | undefined;
+  shaftBrand?: string | null | undefined;
+  shaftModel?: string | null | undefined;
+  rawText?: string | null | undefined;
 };
 
 export type SimilarInventoryProduct = {
