@@ -23,6 +23,18 @@ function formatList(values: string[]) {
   return values.length > 0 ? values.join(", ") : "—";
 }
 
+function formatCurrencyRange(lowValue: number, highValue: number, currency: string) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(lowValue) + "–" + new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(highValue);
+}
+
 function getAuditStatusClassName(status: string) {
   return `agentic-demo-audit-event__status agentic-demo-audit-event__status--${status.toLowerCase().replace(/_/g, "-")}`;
 }
@@ -120,6 +132,16 @@ export function AgenticTradeInDemoPage({
               <span className="model-route-card__eyebrow">RAG</span>
               <strong>{result.finalSummary.knowledgeMatchCount}</strong>
               <p>knowledge matches</p>
+            </article>
+            <article>
+              <span className="model-route-card__eyebrow">Inventory</span>
+              <strong>{result.finalSummary.inventoryMatchCount}</strong>
+              <p>seeded product matches</p>
+            </article>
+            <article>
+              <span className="model-route-card__eyebrow">Valuation</span>
+              <strong>{result.finalSummary.valuationRangeCount}</strong>
+              <p>demo ranges</p>
             </article>
             <article>
               <span className="model-route-card__eyebrow">Review</span>
@@ -260,7 +282,93 @@ export function AgenticTradeInDemoPage({
           </section>
 
           <section className="agentic-demo-section">
-            <h3>3. Model route decision</h3>
+            <h3>3. Internal inventory and demo valuation evidence</h3>
+            <div className="agentic-demo-card-list">
+              {result.parsedItems.map((item) => {
+                const inventoryMatch = result.inventoryMatchesByItem.find(
+                  (match) => match.parsedItemId === item.id,
+                );
+                const valuationEvidence = result.valuationEvidenceByItem.find(
+                  (evidence) => evidence.parsedItemId === item.id,
+                );
+
+                return (
+                  <article className="agentic-demo-card" key={`${item.id}-internal-evidence`}>
+                    <div className="agentic-demo-card__header">
+                      <div>
+                        <span className="model-route-card__eyebrow">
+                          {inventoryMatch?.lookup.sku ?? "No SKU match"}
+                        </span>
+                        <h4>
+                          {item.brand ?? "Unknown brand"}{" "}
+                          {item.productLine ?? "Unknown model"}
+                        </h4>
+                      </div>
+                      {valuationEvidence?.estimate.reviewRequired ? (
+                        <span className="agentic-demo-pill agentic-demo-pill--warning">
+                          Valuation review
+                        </span>
+                      ) : (
+                        <span className="agentic-demo-pill agentic-demo-pill--success">
+                          Demo range
+                        </span>
+                      )}
+                    </div>
+
+                    <dl className="agentic-demo-metadata">
+                      <div>
+                        <dt>Inventory match</dt>
+                        <dd>{inventoryMatch?.lookup.displayName ?? "—"}</dd>
+                      </div>
+                      <div>
+                        <dt>Match confidence</dt>
+                        <dd>{formatScore(inventoryMatch?.lookup.confidence)}</dd>
+                      </div>
+                      <div>
+                        <dt>Demo range</dt>
+                        <dd>
+                          {valuationEvidence
+                            ? formatCurrencyRange(
+                                valuationEvidence.estimate.lowValue,
+                                valuationEvidence.estimate.highValue,
+                                valuationEvidence.estimate.currency,
+                              )
+                            : "—"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Valuation confidence</dt>
+                        <dd>{valuationEvidence?.estimate.confidence ?? "—"}</dd>
+                      </div>
+                      <div>
+                        <dt>Match reasons</dt>
+                        <dd>{formatList(inventoryMatch?.lookup.matchReasons ?? [])}</dd>
+                      </div>
+                      <div>
+                        <dt>Adjustments</dt>
+                        <dd>
+                          {valuationEvidence && valuationEvidence.estimate.adjustments.length > 0
+                            ? valuationEvidence.estimate.adjustments
+                                .map((adjustment) => adjustment.reason)
+                                .join("; ")
+                            : "—"}
+                        </dd>
+                      </div>
+                    </dl>
+
+                    {valuationEvidence?.estimate.reviewReasons.length ? (
+                      <p className="agentic-demo-raw-line">
+                        Review reason: {valuationEvidence.estimate.reviewReasons.join(", ")}
+                      </p>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="agentic-demo-section">
+            <h3>4. Model route decision</h3>
             <article className="agentic-demo-card">
               <div className="agentic-demo-card__header">
                 <div>
@@ -305,7 +413,7 @@ export function AgenticTradeInDemoPage({
           </section>
 
           <section className="agentic-demo-section">
-            <h3>4. Tool plan, execution, and blocked mutation</h3>
+            <h3>5. Tool plan, execution, and blocked mutation</h3>
             <div className="agentic-demo-card-list">
               {result.toolCallingPlan.plannedCalls.map((call) => {
                 const callResult = result.toolCallResults.find(
@@ -367,7 +475,7 @@ export function AgenticTradeInDemoPage({
           </section>
 
           <section className="agentic-demo-section">
-            <h3>5. Review queue outcomes</h3>
+            <h3>6. Review queue outcomes</h3>
             {result.reviewQueueItemsCreated.length === 0 ? (
               <p>No review queue items were created.</p>
             ) : (
@@ -387,7 +495,7 @@ export function AgenticTradeInDemoPage({
           </section>
 
           <section className="agentic-demo-section">
-            <h3>6. Audit trail</h3>
+            <h3>7. Audit trail</h3>
             <div className="agentic-demo-audit-list">
               {result.auditTrail.map((event) => (
                 <article className="agentic-demo-audit-event" key={event.orderIndex}>

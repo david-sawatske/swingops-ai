@@ -350,9 +350,52 @@ export type AgenticTradeInDemoToolCallResult = {
   errorMessage: string | null;
 };
 
+export type AgenticTradeInDemoInventoryLookup = {
+  productId: string | null;
+  sku: string | null;
+  displayName: string | null;
+  brand: string | null;
+  productLine: string | null;
+  category: string | null;
+  year: number | null;
+  confidence: number;
+  matchReasons: string[];
+  similarProducts: {
+    productId: string;
+    sku: string;
+    displayName: string;
+    brand: string;
+    productLine: string;
+    category: string;
+    year: number;
+    confidence: number;
+    matchReasons: string[];
+  }[];
+};
+
+export type AgenticTradeInDemoValuationEstimate = {
+  productId: string | null;
+  sku: string | null;
+  lowValue: number;
+  highValue: number;
+  currency: string;
+  confidence: "LOW" | "MEDIUM" | "HIGH";
+  valueFactors: string[];
+  adjustments: {
+    factor: string;
+    direction: "INCREASE" | "DECREASE" | "NEUTRAL";
+    amount: number;
+    reason: string;
+  }[];
+  reviewRequired: boolean;
+  reviewReasons: string[];
+};
+
 export type AgentPlanActionType =
   | "VALIDATE_FIELDS"
   | "SEARCH_KNOWLEDGE"
+  | "MATCH_INVENTORY"
+  | "ESTIMATE_VALUE"
   | "SELECT_TOOLS"
   | "EXECUTE_TOOLS"
   | "VALIDATE_CONFIDENCE"
@@ -465,6 +508,9 @@ export type WorkflowQualitySummary = {
   reviewItemsCreated: number;
   toolCalls: number;
   blockedMutations: number;
+  inventoryMatches: number;
+  valuationRangesGenerated: number;
+  valuationReviewRequired: number;
   providerFallbackUsed: boolean;
   evidenceCoverage: string;
   summary: string;
@@ -509,6 +555,14 @@ export type ExecuteEndToEndAgenticTradeInDemoResponse = {
       }[];
       summary: string;
     };
+  }[];
+  inventoryMatchesByItem: {
+    parsedItemId: string;
+    lookup: AgenticTradeInDemoInventoryLookup;
+  }[];
+  valuationEvidenceByItem: {
+    parsedItemId: string;
+    estimate: AgenticTradeInDemoValuationEstimate;
   }[];
   modelRoutingDecision: {
     selectedProvider: string;
@@ -556,6 +610,9 @@ export type ExecuteEndToEndAgenticTradeInDemoResponse = {
     reviewQueueItemCount: number;
     successfulReadOnlyToolCallCount: number;
     blockedMutationToolCallCount: number;
+    inventoryMatchCount: number;
+    valuationRangeCount: number;
+    valuationReviewRequiredCount: number;
     selectedProvider: string;
     selectedModel: string;
     productStory: string;

@@ -73,8 +73,9 @@ const GUIDED_STEPS: {
 const AGENT_PLAN = [
   "Validate extracted trade-in fields.",
   "Search product knowledge.",
+  "Match parsed records to seeded internal inventory products.",
+  "Estimate demo valuation ranges with condition and accessory adjustments.",
   "Use approved internal tools.",
-  "Prepare valuation context when evidence is available.",
   "Validate confidence and evidence.",
   "Escalate uncertainty to human review.",
   "Block unsafe mutations unless approved.",
@@ -565,6 +566,7 @@ export function GuidedDemoPathPage({
                       <ul>
                         <li>model routing and fallback logging</li>
                         <li>knowledge search for product evidence</li>
+                        <li>inventory product lookup and demo valuation range estimation</li>
                         <li>approved read-only tool calls</li>
                         <li>validation, blocked mutation checks, and review creation</li>
                       </ul>
@@ -605,8 +607,9 @@ export function GuidedDemoPathPage({
                         <p>{tradeInSuccess}</p>
                         <p>
                           The run has created an execution trace, captured model routing,
-                          checked product knowledge, executed approved read-only tools,
-                          and prepared review work where needed.
+                          checked product knowledge, matched inventory, estimated demo
+                          valuation ranges, executed approved read-only tools, and
+                          prepared review work where needed.
                         </p>
                       </div>
                     ) : null}
@@ -904,6 +907,50 @@ export function GuidedDemoPathPage({
                     </article>
 
                     <article className="guided-execution-evidence-card">
+                      <span className="model-route-card__eyebrow">Internal systems</span>
+                      <strong>
+                        {tradeInResult.finalSummary.inventoryMatchCount} inventory match(es),{" "}
+                        {tradeInResult.finalSummary.valuationRangeCount} demo valuation range(s)
+                      </strong>
+                      <p>
+                        The workflow connected parsed records to seeded internal product
+                        matches and demo valuation ranges without creating SKUs or offers.
+                      </p>
+                      <details className="guided-workflow-inline-details">
+                        <summary>View internal system evidence</summary>
+                        <dl className="agentic-demo-metadata">
+                          <div>
+                            <dt>Inventory matches</dt>
+                            <dd>{tradeInResult.workflowQualitySummary.inventoryMatches}</dd>
+                          </div>
+                          <div>
+                            <dt>Valuation ranges</dt>
+                            <dd>{tradeInResult.workflowQualitySummary.valuationRangesGenerated}</dd>
+                          </div>
+                          <div>
+                            <dt>Valuation review</dt>
+                            <dd>{tradeInResult.workflowQualitySummary.valuationReviewRequired}</dd>
+                          </div>
+                          <div>
+                            <dt>Top SKU</dt>
+                            <dd>{tradeInResult.inventoryMatchesByItem[0]?.lookup.sku ?? "—"}</dd>
+                          </div>
+                          <div>
+                            <dt>Top demo range</dt>
+                            <dd>
+                              {tradeInResult.valuationEvidenceByItem[0]
+                                ? "$" +
+                                  tradeInResult.valuationEvidenceByItem[0].estimate.lowValue +
+                                  "–$" +
+                                  tradeInResult.valuationEvidenceByItem[0].estimate.highValue
+                                : "—"}
+                            </dd>
+                          </div>
+                        </dl>
+                      </details>
+                    </article>
+
+                    <article className="guided-execution-evidence-card">
                       <span className="model-route-card__eyebrow">Tool safety</span>
                       <strong>
                         {tradeInResult.finalSummary.successfulReadOnlyToolCallCount} read-only call(s),{" "}
@@ -1112,6 +1159,14 @@ export function GuidedDemoPathPage({
                     <article>
                       <strong>{tradeInResult.workflowQualitySummary.reviewItemsCreated}</strong>
                       <span>Needs review</span>
+                    </article>
+                    <article>
+                      <strong>{tradeInResult.workflowQualitySummary.inventoryMatches}</strong>
+                      <span>Inventory matches</span>
+                    </article>
+                    <article>
+                      <strong>{tradeInResult.workflowQualitySummary.valuationRangesGenerated}</strong>
+                      <span>Demo valuation ranges</span>
                     </article>
                     <article>
                       <strong>{tradeInResult.workflowQualitySummary.toolCalls}</strong>
