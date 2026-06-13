@@ -396,7 +396,7 @@ export function GuidedDemoPathPage({
                     </article>
                     <article>
                       <strong>{sourceIntakeResult.inferredDatasetSchema.length}</strong>
-                      <span>Schema fields</span>
+                      <span>Dataset schema fields</span>
                     </article>
                     <article>
                       <strong>{sourceIntakeResult.reviewNeeded}</strong>
@@ -472,7 +472,7 @@ export function GuidedDemoPathPage({
                               <dd>{formatList(sourceResult.metadata.detectedBrands)}</dd>
                             </div>
                             <div>
-                              <dt>Fields</dt>
+                              <dt>Source metadata fields</dt>
                               <dd>{sourceResult.ragIndexReadiness.metadataFields.length}</dd>
                             </div>
                             <div>
