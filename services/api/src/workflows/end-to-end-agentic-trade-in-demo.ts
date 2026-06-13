@@ -1,6 +1,14 @@
 import type { Prisma, ReviewQueueItem, ToolCallLog } from "@prisma/client";
 
 import { routeModel } from "../ai/model-router.js";
+import {
+  lookupInventoryProduct,
+  type InventoryProductLookupResult
+} from "../internal-systems/inventory-service.js";
+import {
+  estimateTradeInValuation,
+  type TradeInValuationResult
+} from "../internal-systems/trade-in-valuation-service.js";
 import { searchKnowledgeBase, type KnowledgeSearchResult } from "../knowledge/knowledge-search.js";
 import { prisma } from "../lib/prisma.js";
 import {
@@ -32,6 +40,14 @@ export type EndToEndAgenticTradeInDemoResult = {
     parsedItemId: string;
     query: string;
     search: KnowledgeSearchResult;
+  }[];
+  inventoryMatchesByItem: {
+    parsedItemId: string;
+    lookup: InventoryProductLookupResult;
+  }[];
+  valuationEvidenceByItem: {
+    parsedItemId: string;
+    estimate: TradeInValuationResult;
   }[];
   modelRoutingDecision: ReturnType<typeof routeModel>;
   modelCallLog: Awaited<ReturnType<typeof createMockModelCallLogForWorkflowRun>>;
@@ -83,6 +99,9 @@ export type EndToEndAgenticTradeInDemoResult = {
     reviewQueueItemCount: number;
     successfulReadOnlyToolCallCount: number;
     blockedMutationToolCallCount: number;
+    inventoryMatchCount: number;
+    valuationRangeCount: number;
+    valuationReviewRequiredCount: number;
     selectedProvider: string;
     selectedModel: string;
     productStory: string;
@@ -132,6 +151,33 @@ function needsReview(item: ParsedTradeInDemoItem): boolean {
   return item.confidence < 0.72 || item.missingFields.length > 0;
 }
 
+function buildInventoryLookupInput(item: ParsedTradeInDemoItem): Record<string, string> {
+  return {
+    ...(item.brand ? { brand: item.brand } : {}),
+    ...(item.productLine ? { productLine: item.productLine } : {}),
+    ...(item.category ? { category: item.category } : {}),
+    ...(item.shaftBrand ? { shaftBrand: item.shaftBrand } : {}),
+    ...(item.shaftModel ? { shaftModel: item.shaftModel } : {}),
+    rawText: item.rawLine
+  };
+}
+
+function buildValuationInput(input: {
+  item: ParsedTradeInDemoItem;
+  inventoryMatch: InventoryProductLookupResult;
+}) {
+  return {
+    ...buildInventoryLookupInput(input.item),
+    inventoryMatch: input.inventoryMatch,
+    conditionNotes: input.item.conditionNotes,
+    accessoriesNotes: input.item.accessoriesNotes
+  };
+}
+
+function valuationNeedsReview(estimate: TradeInValuationResult): boolean {
+  return estimate.reviewRequired || estimate.confidence === "LOW";
+}
+
 function getReviewReason(item: ParsedTradeInDemoItem): "LOW_CONFIDENCE" | "MISSING_REQUIRED_FIELDS" | "AMBIGUOUS_INPUT" {
   if (item.missingFields.length > 0) {
     return "MISSING_REQUIRED_FIELDS";
@@ -144,14 +190,20 @@ function getReviewReason(item: ParsedTradeInDemoItem): "LOW_CONFIDENCE" | "MISSI
   return "LOW_CONFIDENCE";
 }
 
-function summarizeReviewReason(item: ParsedTradeInDemoItem): string {
+function summarizeReviewReason(input: {
+  item: ParsedTradeInDemoItem;
+  valuationEstimate?: TradeInValuationResult;
+}): string {
   const reasons = [
-    item.confidence < 0.72 ? `confidence ${item.confidence}` : null,
-    item.missingFields.length > 0
-      ? `missing ${item.missingFields.join(", ")}`
+    input.item.confidence < 0.72 ? `confidence ${input.item.confidence}` : null,
+    input.item.missingFields.length > 0
+      ? `missing ${input.item.missingFields.join(", ")}`
       : null,
-    item.uncertaintyNotes.length > 0
-      ? `uncertainty: ${item.uncertaintyNotes.join(", ")}`
+    input.item.uncertaintyNotes.length > 0
+      ? `uncertainty: ${input.item.uncertaintyNotes.join(", ")}`
+      : null,
+    input.valuationEstimate?.reviewRequired
+      ? `valuation review: ${input.valuationEstimate.reviewReasons.join(", ")}`
       : null
   ].filter(Boolean);
 
@@ -175,6 +227,8 @@ function buildAuditTrail(input: {
   rawInput: string;
   parsedItems: ParsedTradeInDemoItem[];
   knowledgeMatchesByItem: EndToEndAgenticTradeInDemoResult["knowledgeMatchesByItem"];
+  inventoryMatchesByItem: EndToEndAgenticTradeInDemoResult["inventoryMatchesByItem"];
+  valuationEvidenceByItem: EndToEndAgenticTradeInDemoResult["valuationEvidenceByItem"];
   modelRoutingDecision: ReturnType<typeof routeModel>;
   toolCallResults: DemoToolResult[];
   reviewQueueItemsCreated: ReviewQueueItem[];
@@ -210,13 +264,34 @@ function buildAuditTrail(input: {
     },
     {
       orderIndex: 4,
+      label: "Inventory product matched",
+      status: "SUCCEEDED",
+      summary: `${input.finalSummary.inventoryMatchCount}/${input.parsedItems.length} parsed records matched seeded internal products or SKU candidates.`,
+      details: {
+        inventoryMatchesByItem: input.inventoryMatchesByItem
+      }
+    },
+    {
+      orderIndex: 5,
+      label: "Demo valuation range estimated",
+      status:
+        input.finalSummary.valuationReviewRequiredCount > 0
+          ? "NEEDS_REVIEW"
+          : "SUCCEEDED",
+      summary: `${input.finalSummary.valuationRangeCount} demo valuation range(s) estimated with condition and accessory adjustments.`,
+      details: {
+        valuationEvidenceByItem: input.valuationEvidenceByItem
+      }
+    },
+    {
+      orderIndex: 6,
       label: "Model route selected",
       status: "SUCCEEDED",
       summary: `${input.modelRoutingDecision.selectedProvider} / ${input.modelRoutingDecision.selectedModel} selected for intake parsing with cost, latency, quality, and health rationale.`,
       details: input.modelRoutingDecision
     },
     {
-      orderIndex: 5,
+      orderIndex: 7,
       label: "Read-only tools executed",
       status: "SUCCEEDED",
       summary: `${input.finalSummary.successfulReadOnlyToolCallCount} safe read-only tool calls executed and logged.`,
@@ -227,7 +302,7 @@ function buildAuditTrail(input: {
       }
     },
     {
-      orderIndex: 6,
+      orderIndex: 8,
       label: "Mutation tool blocked",
       status: "BLOCKED",
       summary: `${input.finalSummary.blockedMutationToolCallCount} mutation tool call was policy-blocked before execution.`,
@@ -238,7 +313,7 @@ function buildAuditTrail(input: {
       }
     },
     {
-      orderIndex: 7,
+      orderIndex: 9,
       label: "Human review surfaced",
       status: input.reviewQueueItemsCreated.length > 0 ? "NEEDS_REVIEW" : "SUCCEEDED",
       summary:
@@ -250,7 +325,7 @@ function buildAuditTrail(input: {
       }
     },
     {
-      orderIndex: 8,
+      orderIndex: 10,
       label: "Final demo summary",
       status: "INFO",
       summary: input.finalSummary.productStory,
@@ -317,6 +392,27 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     });
   }
 
+  const inventoryMatchesByItem = parsedItems.map((item) => ({
+    parsedItemId: item.id,
+    lookup: lookupInventoryProduct(buildInventoryLookupInput(item))
+  }));
+
+  const valuationEvidenceByItem = parsedItems.map((item) => {
+    const inventoryMatch = inventoryMatchesByItem.find(
+      (match) => match.parsedItemId === item.id
+    );
+
+    return {
+      parsedItemId: item.id,
+      estimate: estimateTradeInValuation(
+        buildValuationInput({
+          item,
+          inventoryMatch: inventoryMatch!.lookup
+        })
+      )
+    };
+  });
+
   const modelRoutingDecision = routeModel({
     taskType: "INTAKE_PARSING",
     preferredGoal: "HIGH_QUALITY",
@@ -333,7 +429,14 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
   const reviewQueueItemsCreated: ReviewQueueItem[] = [];
 
   for (const [index, item] of parsedItems.entries()) {
-    if (!needsReview(item)) {
+    const valuationEvidence = valuationEvidenceByItem.find(
+      (evidence) => evidence.parsedItemId === item.id
+    );
+    const inventoryEvidence = inventoryMatchesByItem.find(
+      (evidence) => evidence.parsedItemId === item.id
+    );
+
+    if (!needsReview(item) && !valuationNeedsReview(valuationEvidence!.estimate)) {
       continue;
     }
 
@@ -348,10 +451,15 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         originalText: item.rawLine,
         proposedGolfClubJson: toInputJson({
           ...item,
-          reviewReasonSummary: summarizeReviewReason(item),
+          reviewReasonSummary: summarizeReviewReason({
+            item,
+            valuationEstimate: valuationEvidence!.estimate
+          }),
           knowledgeMatches:
             knowledgeMatchesByItem.find((match) => match.parsedItemId === item.id)
-              ?.search.results.slice(0, 2) ?? []
+              ?.search.results.slice(0, 2) ?? [],
+          inventoryMatch: inventoryEvidence?.lookup ?? null,
+          demoValuationRange: valuationEvidence?.estimate ?? null
         })
       }
     });
@@ -387,9 +495,33 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     },
     {
       orderIndex: 3,
+      toolName: "swingops.inventory.lookupProduct",
+      reason:
+        "Use a read-only internal inventory lookup to match the first parsed record to a product and SKU.",
+      inputJson: buildInventoryLookupInput(parsedItems[0]!),
+      expectedRiskLevel: "LOW" as const,
+      expectedMutatesData: false,
+      expectedRequiresHumanApproval: false
+    },
+    {
+      orderIndex: 4,
+      toolName: "swingops.tradeInValuation.estimate",
+      reason:
+        "Use a read-only valuation lookup to estimate a seeded demo trade-in range for the first parsed record.",
+      inputJson: {
+        ...buildInventoryLookupInput(parsedItems[0]!),
+        conditionNotes: parsedItems[0]!.conditionNotes.join("|"),
+        accessoriesNotes: parsedItems[0]!.accessoriesNotes.join("|")
+      },
+      expectedRiskLevel: "LOW" as const,
+      expectedMutatesData: false,
+      expectedRequiresHumanApproval: false
+    },
+    {
+      orderIndex: 5,
       toolName: "swingops.reviewQueueItems.list",
       reason:
-        "Inspect open human-review work created by low-confidence parsing.",
+        "Inspect open human-review work created by low-confidence parsing or valuation uncertainty.",
       inputJson: {
         status: "OPEN"
       },
@@ -398,14 +530,14 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
       expectedRequiresHumanApproval: false
     },
     {
-      orderIndex: 4,
-      toolName: "swingops.reviewQueueItems.resolve",
+      orderIndex: 6,
+      toolName: "swingops.inventory.createSku",
       reason:
-        "Demonstrate that the agent can see a mutation tool but cannot execute it without human approval.",
+        "Demonstrate that the agent can see a mutation-style inventory tool but cannot create SKUs without approval.",
       inputJson: {
-        id: reviewQueueItemsCreated[0]?.id ?? "blocked-demo-review-item",
-        reviewerNotes:
-          "Blocked by demo policy. Human approval is required before review queue mutation."
+        productId:
+          inventoryMatchesByItem[0]?.lookup.productId ??
+          "blocked-demo-product"
       },
       expectedRiskLevel: "HIGH" as const,
       expectedMutatesData: true,
@@ -462,6 +594,15 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     (count, item) => count + item.search.results.length,
     0
   );
+  const inventoryMatchCount = inventoryMatchesByItem.filter(
+    (match) => match.lookup.productId !== null
+  ).length;
+  const valuationRangeCount = valuationEvidenceByItem.filter(
+    (evidence) => evidence.estimate.highValue > 0
+  ).length;
+  const valuationReviewRequiredCount = valuationEvidenceByItem.filter(
+    (evidence) => evidence.estimate.reviewRequired
+  ).length;
   const finalSummary = {
     parsedItemCount: parsedItems.length,
     knowledgeMatchCount,
@@ -469,10 +610,13 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     reviewQueueItemCount: reviewQueueItemsCreated.length,
     successfulReadOnlyToolCallCount,
     blockedMutationToolCallCount,
+    inventoryMatchCount,
+    valuationRangeCount,
+    valuationReviewRequiredCount,
     selectedProvider: modelRoutingDecision.selectedProvider,
     selectedModel: modelRoutingDecision.selectedModel,
     productStory:
-      "Messy golf trade-in intake became structured, grounded with weighted RAG matches, routed through provider/cost/quality logic, tool-executed through safe read-only MCP-compatible connectors, policy-guarded against mutation, logged, and reviewable."
+      "Messy golf trade-in intake became structured, grounded with weighted RAG matches, matched to seeded internal inventory products, assigned demo valuation ranges, routed through provider/cost/quality logic, tool-executed through safe read-only MCP-compatible connectors, policy-guarded against mutation, logged, and reviewable."
   };
 
   const toolCallingPlan = {
@@ -485,6 +629,8 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
   const workflowQualityBundle = buildWorkflowQualityBundle({
     parsedItems,
     knowledgeMatchesByItem,
+    inventoryMatchesByItem,
+    valuationEvidenceByItem,
     modelCallLog,
     toolCallingPlan,
     toolCallResults,
@@ -495,6 +641,8 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     rawInput,
     parsedItems,
     knowledgeMatchesByItem,
+    inventoryMatchesByItem,
+    valuationEvidenceByItem,
     modelRoutingDecision,
     modelCallLog,
     toolCallingPlan,

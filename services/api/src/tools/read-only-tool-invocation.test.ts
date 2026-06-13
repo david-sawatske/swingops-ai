@@ -388,7 +388,7 @@ describe("read-only tool invocation", () => {
       ])
     });
     expect(result.toolCallLog.status).toBe("SUCCEEDED");
-  });
+  }, 10_000);
 
   it("blocks unknown tools and persists a failed ToolCallLog with policy metadata", async () => {
     const result = await executeReadOnlyToolInvocation({

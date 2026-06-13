@@ -373,6 +373,39 @@ describe("workflow run routes", () => {
         );
       }
 
+      expect(body.inventoryMatchesByItem).toHaveLength(2);
+      expect(body.inventoryMatchesByItem[0]).toMatchObject({
+        parsedItemId: body.parsedItems[0].id,
+        lookup: {
+          sku: "TM-STEALTH2-DRV-2023",
+          confidence: expect.any(Number),
+          matchReasons: expect.arrayContaining([
+            "Brand matched TaylorMade.",
+            "Product line matched Stealth 2."
+          ])
+        }
+      });
+
+      expect(body.valuationEvidenceByItem).toHaveLength(2);
+      expect(body.valuationEvidenceByItem[0]).toMatchObject({
+        parsedItemId: body.parsedItems[0].id,
+        estimate: {
+          lowValue: 109,
+          highValue: 149,
+          confidence: "MEDIUM",
+          reviewRequired: false,
+          adjustments: expect.arrayContaining([
+            expect.objectContaining({
+              reason: "Crown sky mark reduces the demo range."
+            }),
+            expect.objectContaining({
+              reason: "Missing headcover reduces the demo range."
+            })
+          ])
+        }
+      });
+      expect(body.valuationEvidenceByItem[1].estimate.reviewRequired).toBe(true);
+
       expect(body.modelRoutingDecision).toMatchObject({
         selectedProvider: expect.any(String),
         selectedModel: expect.any(String),
@@ -386,13 +419,15 @@ describe("workflow run routes", () => {
       expect(body.toolCallingPlan.plannedCalls.map((call: { toolName: string }) => call.toolName)).toEqual([
         "swingops.workflowRuns.get",
         "swingops.knowledgeBase.search",
+        "swingops.inventory.lookupProduct",
+        "swingops.tradeInValuation.estimate",
         "swingops.reviewQueueItems.list",
-        "swingops.reviewQueueItems.resolve"
+        "swingops.inventory.createSku"
       ]);
-      expect(body.toolCallResults).toHaveLength(4);
-      expect(body.toolCallResults.filter((result: { status: string }) => result.status === "SUCCEEDED")).toHaveLength(3);
+      expect(body.toolCallResults).toHaveLength(6);
+      expect(body.toolCallResults.filter((result: { status: string }) => result.status === "SUCCEEDED")).toHaveLength(5);
       expect(body.blockedToolCallResult).toMatchObject({
-        toolName: "swingops.reviewQueueItems.resolve",
+        toolName: "swingops.inventory.createSku",
         status: "BLOCKED",
         executionAttempted: false
       });
@@ -406,13 +441,18 @@ describe("workflow run routes", () => {
         parsedItemCount: 2,
         lowConfidenceItemCount: 1,
         reviewQueueItemCount: body.reviewQueueItemsCreated.length,
-        successfulReadOnlyToolCallCount: 3,
-        blockedMutationToolCallCount: 1
+        successfulReadOnlyToolCallCount: 5,
+        blockedMutationToolCallCount: 1,
+        inventoryMatchCount: 1,
+        valuationRangeCount: 1,
+        valuationReviewRequiredCount: 1
       });
 
       expect(body.agentPlan.map((step: { id: string }) => step.id)).toEqual([
         "agent-plan-validate-fields",
         "agent-plan-search-knowledge",
+        "agent-plan-match-inventory",
+        "agent-plan-estimate-value",
         "agent-plan-select-tools",
         "agent-plan-provider-fallback",
         "agent-plan-retry-shaft-flex",
@@ -446,6 +486,15 @@ describe("workflow run routes", () => {
             status: "WARNING",
             field: "shaftFlex",
             reviewRequired: true
+          }),
+          expect.objectContaining({
+            label: "Inventory product match",
+            status: "PASS"
+          }),
+          expect.objectContaining({
+            label: "Demo valuation range generated",
+            status: "PASS",
+            field: "demoValuationRange"
           }),
           expect.objectContaining({
             label: "Review requirement determined",
@@ -490,12 +539,22 @@ describe("workflow run routes", () => {
           expectedMutatesData: false
         }),
         expect.objectContaining({
+          toolName: "swingops.inventory.lookupProduct",
+          expectedRiskLevel: "LOW",
+          expectedMutatesData: false
+        }),
+        expect.objectContaining({
+          toolName: "swingops.tradeInValuation.estimate",
+          expectedRiskLevel: "LOW",
+          expectedMutatesData: false
+        }),
+        expect.objectContaining({
           toolName: "swingops.reviewQueueItems.list",
           expectedRiskLevel: "LOW",
           expectedMutatesData: false
         }),
         expect.objectContaining({
-          toolName: "swingops.reviewQueueItems.resolve",
+          toolName: "swingops.inventory.createSku",
           expectedRiskLevel: "HIGH",
           expectedMutatesData: true,
           expectedRequiresHumanApproval: true
@@ -517,8 +576,11 @@ describe("workflow run routes", () => {
         validationFailures: 0,
         retryAttempts: 1,
         reviewItemsCreated: body.reviewQueueItemsCreated.length,
-        toolCalls: 4,
+        toolCalls: 6,
         blockedMutations: 1,
+        inventoryMatches: 1,
+        valuationRangesGenerated: 1,
+        valuationReviewRequired: 1,
         providerFallbackUsed: true,
         evidenceCoverage: expect.any(String)
       });
@@ -532,6 +594,8 @@ describe("workflow run routes", () => {
         "Raw messy intake received",
         "Structured equipment records parsed",
         "RAG knowledge retrieved",
+        "Inventory product matched",
+        "Demo valuation range estimated",
         "Model route selected",
         "Read-only tools executed",
         "Mutation tool blocked",
@@ -539,7 +603,7 @@ describe("workflow run routes", () => {
         "Final demo summary"
       ]);
 
-      expect(body.persisted.toolCallLogIds).toHaveLength(4);
+      expect(body.persisted.toolCallLogIds).toHaveLength(6);
 
       const persistedToolCallLogCount = await prisma.toolCallLog.count({
         where: {

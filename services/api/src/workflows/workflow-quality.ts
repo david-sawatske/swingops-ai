@@ -6,6 +6,8 @@ import type { EndToEndAgenticTradeInDemoResult } from "./end-to-end-agentic-trad
 export type AgentPlanActionType =
   | "VALIDATE_FIELDS"
   | "SEARCH_KNOWLEDGE"
+  | "MATCH_INVENTORY"
+  | "ESTIMATE_VALUE"
   | "SELECT_TOOLS"
   | "EXECUTE_TOOLS"
   | "VALIDATE_CONFIDENCE"
@@ -118,6 +120,9 @@ export type WorkflowQualitySummary = {
   reviewItemsCreated: number;
   toolCalls: number;
   blockedMutations: number;
+  inventoryMatches: number;
+  valuationRangesGenerated: number;
+  valuationReviewRequired: number;
   providerFallbackUsed: boolean;
   evidenceCoverage: string;
   summary: string;
@@ -137,6 +142,10 @@ type ToolCallingPlan = EndToEndAgenticTradeInDemoResult["toolCallingPlan"];
 type ToolCallResults = EndToEndAgenticTradeInDemoResult["toolCallResults"];
 type KnowledgeMatchesByItem =
   EndToEndAgenticTradeInDemoResult["knowledgeMatchesByItem"];
+type InventoryMatchesByItem =
+  EndToEndAgenticTradeInDemoResult["inventoryMatchesByItem"];
+type ValuationEvidenceByItem =
+  EndToEndAgenticTradeInDemoResult["valuationEvidenceByItem"];
 type ModelCallLog = EndToEndAgenticTradeInDemoResult["modelCallLog"];
 
 function itemNeedsReview(item: ParsedTradeInDemoItem): boolean {
@@ -176,6 +185,8 @@ function validationSeverityForStatus(
 function buildValidationChecks(input: {
   parsedItems: ParsedTradeInDemoItem[];
   knowledgeMatchesByItem: KnowledgeMatchesByItem;
+  inventoryMatchesByItem: InventoryMatchesByItem;
+  valuationEvidenceByItem: ValuationEvidenceByItem;
   blockedMutationCount: number;
 }): ValidationCheck[] {
   const checks: ValidationCheck[] = [];
@@ -257,6 +268,46 @@ function buildValidationChecks(input: {
       });
     }
 
+    const inventoryMatch = input.inventoryMatchesByItem.find(
+      (match) => match.parsedItemId === item.id
+    );
+    const valuationEvidence = input.valuationEvidenceByItem.find(
+      (evidence) => evidence.parsedItemId === item.id
+    );
+
+    checks.push({
+      id: `${item.id}-inventory-product-match`,
+      label: "Inventory product match",
+      status: inventoryMatch?.lookup.productId ? "PASS" : "WARNING",
+      severity: inventoryMatch?.lookup.productId ? "INFO" : "MEDIUM",
+      message: inventoryMatch?.lookup.productId
+        ? `Matched internal SKU ${inventoryMatch.lookup.sku} with confidence ${inventoryMatch.lookup.confidence}.`
+        : "No internal inventory product cleared the match threshold.",
+      field: "inventoryMatch",
+      recordId: item.id,
+      reviewRequired: !inventoryMatch?.lookup.productId
+    });
+
+    checks.push({
+      id: `${item.id}-demo-valuation-range`,
+      label: "Demo valuation range generated",
+      status:
+        valuationEvidence && valuationEvidence.estimate.highValue > 0
+          ? valuationEvidence.estimate.reviewRequired
+            ? "WARNING"
+            : "PASS"
+          : "WARNING",
+      severity:
+        valuationEvidence?.estimate.reviewRequired ? "MEDIUM" : "INFO",
+      message:
+        valuationEvidence && valuationEvidence.estimate.highValue > 0
+          ? `Demo trade-in range ${valuationEvidence.estimate.lowValue}-${valuationEvidence.estimate.highValue} generated with ${valuationEvidence.estimate.confidence} confidence.`
+          : "No demo valuation range was generated.",
+      field: "demoValuationRange",
+      recordId: item.id,
+      reviewRequired: valuationEvidence?.estimate.reviewRequired ?? true
+    });
+
     checks.push({
       id: `${item.id}-confidence-threshold`,
       label: "Confidence threshold met",
@@ -275,16 +326,30 @@ function buildValidationChecks(input: {
   const recordsWithKnowledgeEvidence = input.knowledgeMatchesByItem.filter(
     (match) => match.search.results.length > 0
   ).length;
+  const recordsWithInventoryMatches = input.inventoryMatchesByItem.filter(
+    (match) => match.lookup.productId !== null
+  ).length;
+  const recordsWithValuationRanges = input.valuationEvidenceByItem.filter(
+    (evidence) => evidence.estimate.highValue > 0
+  ).length;
   const evidenceCoverageMessage =
-    `${recordsWithKnowledgeEvidence}/${input.parsedItems.length} records had weighted knowledge evidence.`;
+    `${recordsWithKnowledgeEvidence}/${input.parsedItems.length} records had weighted knowledge evidence; ${recordsWithInventoryMatches}/${input.parsedItems.length} had inventory matches; ${recordsWithValuationRanges}/${input.parsedItems.length} had demo valuation ranges.`;
 
   checks.push({
     id: "workflow-knowledge-evidence-coverage",
     label: "Knowledge evidence coverage",
     status:
-      recordsWithKnowledgeEvidence === input.parsedItems.length ? "PASS" : "WARNING",
+      recordsWithKnowledgeEvidence === input.parsedItems.length &&
+      recordsWithInventoryMatches === input.parsedItems.length &&
+      recordsWithValuationRanges === input.parsedItems.length
+        ? "PASS"
+        : "WARNING",
     severity:
-      recordsWithKnowledgeEvidence === input.parsedItems.length ? "INFO" : "MEDIUM",
+      recordsWithKnowledgeEvidence === input.parsedItems.length &&
+      recordsWithInventoryMatches === input.parsedItems.length &&
+      recordsWithValuationRanges === input.parsedItems.length
+        ? "INFO"
+        : "MEDIUM",
     message: evidenceCoverageMessage,
     field: null,
     recordId: null,
@@ -499,6 +564,34 @@ function buildAgentPlan(input: {
       safetyPolicy: "read-only connector execution"
     },
     {
+      id: "agent-plan-match-inventory",
+      label: "Match parsed records to inventory products",
+      purpose:
+        "Use internal inventory evidence to connect messy trade-in records to product and SKU candidates.",
+      actionType: "MATCH_INVENTORY",
+      expectedOutput: "Inventory product match, SKU, confidence, and similar candidates.",
+      status: "COMPLETED",
+      linkedTraceEventIds: ["audit-event-4"],
+      requiredTools: ["swingops.inventory.lookupProduct"],
+      validationRules: ["inventory product match"],
+      retryPolicy: null,
+      safetyPolicy: "read-only inventory lookup"
+    },
+    {
+      id: "agent-plan-estimate-value",
+      label: "Estimate demo trade-in range",
+      purpose:
+        "Use seeded valuation evidence to generate a demo trade-in range with condition and accessory adjustments.",
+      actionType: "ESTIMATE_VALUE",
+      expectedOutput: "Demo valuation range, confidence, adjustments, and review reasons.",
+      status: hasWarnings ? "NEEDS_REVIEW" : "COMPLETED",
+      linkedTraceEventIds: ["audit-event-5"],
+      requiredTools: ["swingops.tradeInValuation.estimate"],
+      validationRules: ["demo valuation range generated"],
+      retryPolicy: null,
+      safetyPolicy: "read-only valuation lookup"
+    },
+    {
       id: "agent-plan-select-tools",
       label: "Choose approved internal tools",
       purpose:
@@ -506,7 +599,7 @@ function buildAgentPlan(input: {
       actionType: "SELECT_TOOLS",
       expectedOutput: "Tool plan with concise selection rationale and risk level.",
       status: "COMPLETED",
-      linkedTraceEventIds: ["audit-event-5"],
+      linkedTraceEventIds: ["audit-event-7"],
       requiredTools: input.toolSelectionRationales.map((tool) => tool.toolName),
       validationRules: [],
       retryPolicy: null,
@@ -520,7 +613,7 @@ function buildAgentPlan(input: {
       actionType: "RECORD_TRACE",
       expectedOutput: "Provider attempts, skipped reasons, and final provider.",
       status: "COMPLETED",
-      linkedTraceEventIds: ["audit-event-4"],
+      linkedTraceEventIds: ["audit-event-6"],
       requiredTools: [],
       validationRules: [],
       retryPolicy: null,
@@ -548,7 +641,7 @@ function buildAgentPlan(input: {
       actionType: "ESCALATE_REVIEW",
       expectedOutput: "Review outcome linked to validation warnings.",
       status: hasReview ? "NEEDS_REVIEW" : "COMPLETED",
-      linkedTraceEventIds: ["audit-event-7"],
+      linkedTraceEventIds: ["audit-event-9"],
       requiredTools: ["swingops.reviewQueueItems.list"],
       validationRules: ["review requirement determined"],
       retryPolicy: "preserve review requirement when retry is unresolved",
@@ -562,8 +655,8 @@ function buildAgentPlan(input: {
       actionType: "ENFORCE_POLICY",
       expectedOutput: "Blocked mutation log with policy reason.",
       status: input.blockedMutationCount > 0 ? "BLOCKED" : "SKIPPED",
-      linkedTraceEventIds: ["audit-event-6"],
-      requiredTools: ["swingops.reviewQueueItems.resolve"],
+      linkedTraceEventIds: ["audit-event-8"],
+      requiredTools: ["swingops.inventory.createSku"],
       validationRules: ["unsafe mutation blocked if attempted"],
       retryPolicy: null,
       safetyPolicy: "human approval required for mutation tools"
@@ -576,7 +669,7 @@ function buildAgentPlan(input: {
       actionType: "RECORD_TRACE",
       expectedOutput: "Workflow quality summary for the current run.",
       status: "COMPLETED",
-      linkedTraceEventIds: ["audit-event-8"],
+      linkedTraceEventIds: ["audit-event-10"],
       requiredTools: [],
       validationRules: [],
       retryPolicy: null,
@@ -593,6 +686,8 @@ function buildWorkflowQualitySummary(input: {
   toolCallResults: ToolCallResults;
   providerFallbackTrace: ProviderFallbackTrace;
   knowledgeMatchesByItem: KnowledgeMatchesByItem;
+  inventoryMatchesByItem: InventoryMatchesByItem;
+  valuationEvidenceByItem: ValuationEvidenceByItem;
 }): WorkflowQualitySummary {
   const validationPassed = input.validationChecks.filter(
     (check) => check.status === "PASS"
@@ -611,6 +706,15 @@ function buildWorkflowQualitySummary(input: {
   ).length;
   const recordsWithEvidence = input.knowledgeMatchesByItem.filter(
     (match) => match.search.results.length > 0
+  ).length;
+  const inventoryMatches = input.inventoryMatchesByItem.filter(
+    (match) => match.lookup.productId !== null
+  ).length;
+  const valuationRangesGenerated = input.valuationEvidenceByItem.filter(
+    (evidence) => evidence.estimate.highValue > 0
+  ).length;
+  const valuationReviewRequired = input.valuationEvidenceByItem.filter(
+    (evidence) => evidence.estimate.reviewRequired
   ).length;
   const status: WorkflowQualityStatus =
     validationFailures > 0
@@ -631,6 +735,9 @@ function buildWorkflowQualitySummary(input: {
     reviewItemsCreated: input.reviewOutcomes.length,
     toolCalls: input.toolCallResults.length,
     blockedMutations,
+    inventoryMatches,
+    valuationRangesGenerated,
+    valuationReviewRequired,
     providerFallbackUsed: input.providerFallbackTrace.fallbackUsed,
     evidenceCoverage: `${recordsWithEvidence}/${input.parsedItems.length} records`,
     summary:
@@ -643,6 +750,8 @@ function buildWorkflowQualitySummary(input: {
 export function buildWorkflowQualityBundle(input: {
   parsedItems: ParsedTradeInDemoItem[];
   knowledgeMatchesByItem: KnowledgeMatchesByItem;
+  inventoryMatchesByItem: InventoryMatchesByItem;
+  valuationEvidenceByItem: ValuationEvidenceByItem;
   modelCallLog: ModelCallLog;
   toolCallingPlan: ToolCallingPlan;
   toolCallResults: ToolCallResults;
@@ -654,6 +763,8 @@ export function buildWorkflowQualityBundle(input: {
   const validationChecks = buildValidationChecks({
     parsedItems: input.parsedItems,
     knowledgeMatchesByItem: input.knowledgeMatchesByItem,
+    inventoryMatchesByItem: input.inventoryMatchesByItem,
+    valuationEvidenceByItem: input.valuationEvidenceByItem,
     blockedMutationCount
   });
   const retryEvents = buildRetryEvents(input.parsedItems);
@@ -681,7 +792,9 @@ export function buildWorkflowQualityBundle(input: {
     reviewOutcomes,
     toolCallResults: input.toolCallResults,
     providerFallbackTrace,
-    knowledgeMatchesByItem: input.knowledgeMatchesByItem
+    knowledgeMatchesByItem: input.knowledgeMatchesByItem,
+    inventoryMatchesByItem: input.inventoryMatchesByItem,
+    valuationEvidenceByItem: input.valuationEvidenceByItem
   });
 
   return {
