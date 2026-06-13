@@ -1208,6 +1208,12 @@ function App() {
           onRunSourceIntake={handleRunMultiSourceIntakeDemo}
           onRunTradeInWorkflow={handleExecuteEndToEndAgenticDemo}
           onViewChange={setActiveView}
+          activeReviewQueueItemId={activeReviewQueueItemId}
+          reviewQueueNotesById={reviewQueueNotesById}
+          onReviewQueueNotesChange={handleReviewQueueNotesChange}
+          onReviewQueueItemAction={(input) =>
+            void handleReviewQueueItemAction(input)
+          }
           activeStep={guidedActiveStep}
           onActiveStepChange={setGuidedActiveStep}
         />

@@ -5137,3 +5137,412 @@ h1 {
   color: rgba(20, 44, 23, 0.68);
   line-height: 1.35;
 }
+
+.guided-review-walkthrough {
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.guided-review-walkthrough__header {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.guided-review-walkthrough__header strong {
+  color: var(--text-strong);
+  font-size: 1.1rem;
+}
+
+.guided-review-issue-list {
+  display: grid;
+  gap: 0.75rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.guided-review-issue-list li {
+  align-items: flex-start;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: auto 1fr auto;
+  padding: 0.85rem;
+}
+
+.guided-review-issue-list li > span {
+  align-items: center;
+  background: var(--surface-muted);
+  border-radius: 999px;
+  color: var(--text-strong);
+  display: inline-flex;
+  font-weight: 800;
+  height: 1.75rem;
+  justify-content: center;
+  width: 1.75rem;
+}
+
+.guided-review-issue-list strong {
+  color: var(--text-strong);
+  display: block;
+}
+
+.guided-review-issue-list p {
+  margin: 0.2rem 0 0;
+}
+
+.guided-review-issue-list em {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.guided-review-evidence-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+.guided-review-evidence-grid article {
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 0.85rem;
+}
+
+.guided-review-evidence-grid p {
+  color: var(--text-strong);
+  font-weight: 700;
+  margin: 0.35rem 0 0;
+}
+
+.guided-review-issue-list__item {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  display: grid;
+  gap: 0.75rem;
+  padding: 0;
+}
+
+.guided-review-issue-list__item--active {
+  border-color: var(--text-strong);
+}
+
+.guided-review-issue-list__item--resolved {
+  background: rgba(236, 246, 232, 0.78);
+}
+
+.guided-review-issue-button {
+  align-items: flex-start;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: auto 1fr auto;
+  padding: 0.85rem;
+  text-align: left;
+  width: 100%;
+}
+
+.guided-review-issue-button:hover strong {
+  text-decoration: underline;
+}
+
+.guided-review-issue-button > span {
+  align-items: center;
+  background: var(--surface-muted);
+  border-radius: 999px;
+  color: var(--text-strong);
+  display: inline-flex;
+  font-weight: 800;
+  height: 1.75rem;
+  justify-content: center;
+  width: 1.75rem;
+}
+
+.guided-review-issue-editor {
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 0.75rem;
+  padding: 0 0.85rem 0.85rem;
+}
+
+.guided-review-issue-editor label {
+  color: var(--text-strong);
+  display: grid;
+  font-weight: 800;
+  gap: 0.45rem;
+}
+
+.guided-review-issue-editor textarea {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  font: inherit;
+  min-height: 5rem;
+  padding: 0.75rem;
+}
+
+/* Guided human review issue editor layout override */
+.guided-review-issue-list .guided-review-issue-list__item {
+  align-items: stretch;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  display: block;
+  padding: 0;
+}
+
+.guided-review-issue-list .guided-review-issue-list__item--active {
+  border-color: var(--text-strong);
+  box-shadow: 0 0 0 2px rgba(35, 64, 37, 0.08);
+}
+
+.guided-review-issue-list .guided-review-issue-list__item--resolved {
+  background: rgba(236, 246, 232, 0.78);
+}
+
+.guided-review-issue-list .guided-review-issue-button {
+  align-items: flex-start;
+  background: transparent;
+  border: 0;
+  border-radius: 1rem;
+  box-shadow: none;
+  color: var(--text);
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  gap: 0.9rem;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 0.95rem 1rem;
+  text-align: left;
+  width: 100%;
+}
+
+.guided-review-issue-list .guided-review-issue-button:hover {
+  background: rgba(236, 246, 232, 0.58);
+  transform: none;
+}
+
+.guided-review-issue-list .guided-review-issue-button > span {
+  align-items: center;
+  background: var(--surface-muted);
+  border-radius: 999px;
+  color: var(--text-strong);
+  display: inline-flex;
+  flex-shrink: 0;
+  font-weight: 800;
+  height: 1.75rem;
+  justify-content: center;
+  width: 1.75rem;
+}
+
+.guided-review-issue-list .guided-review-issue-button strong {
+  color: var(--text-strong);
+  display: block;
+  line-height: 1.25;
+}
+
+.guided-review-issue-list .guided-review-issue-button p {
+  color: var(--text);
+  font-weight: 500;
+  line-height: 1.45;
+  margin: 0.25rem 0 0;
+}
+
+.guided-review-issue-list .guided-review-issue-button em {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-align: right;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.guided-review-issue-list .guided-review-issue-editor {
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.guided-review-issue-list .guided-review-issue-editor label {
+  color: var(--text-strong);
+  display: grid;
+  font-weight: 800;
+  gap: 0.45rem;
+  max-width: none;
+  width: 100%;
+}
+
+.guided-review-issue-list .guided-review-issue-editor textarea {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  color: var(--text-strong);
+  font: inherit;
+  min-height: 6rem;
+  padding: 0.75rem;
+  resize: vertical;
+  width: 100%;
+}
+
+.guided-review-issue-list .guided-review-issue-editor .workflow-run-card__actions {
+  justify-content: flex-start;
+}
+
+.guided-review-issue-list .guided-review-issue-editor button {
+  width: auto;
+}
+
+@media (max-width: 760px) {
+  .guided-review-issue-list .guided-review-issue-button {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .guided-review-issue-list .guided-review-issue-button em {
+    grid-column: 2;
+    text-align: left;
+  }
+}
+
+.guided-review-context {
+  background: rgba(236, 246, 232, 0.58);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 0.9rem 1rem;
+}
+
+.guided-review-context p {
+  margin: 0.25rem 0 0;
+}
+
+.guided-review-category-correction {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.guided-review-category-correction fieldset {
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  margin: 0;
+  padding: 0.85rem;
+}
+
+.guided-review-category-correction legend {
+  color: var(--text-strong);
+  font-weight: 800;
+  padding: 0 0.35rem;
+}
+
+.guided-review-category-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.65rem;
+}
+
+.guided-review-category-options label {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  font-weight: 800;
+  gap: 0.4rem;
+  padding: 0.45rem 0.7rem;
+}
+
+.guided-review-category-options label:has(input:checked) {
+  background: var(--text-strong);
+  border-color: var(--text-strong);
+  color: #fff;
+}
+
+.guided-review-category-correction input[type="text"] {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  color: var(--text-strong);
+  font: inherit;
+  padding: 0.75rem;
+  width: 100%;
+}
+
+.guided-review-category-correction select {
+  appearance: none;
+  background:
+    linear-gradient(45deg, transparent 50%, var(--text-strong) 50%),
+    linear-gradient(135deg, var(--text-strong) 50%, transparent 50%),
+    rgba(255, 255, 255, 0.82);
+  background-position:
+    calc(100% - 1.05rem) 50%,
+    calc(100% - 0.75rem) 50%,
+    0 0;
+  background-repeat: no-repeat;
+  background-size:
+    0.35rem 0.35rem,
+    0.35rem 0.35rem,
+    100% 100%;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  color: var(--text-strong);
+  font: inherit;
+  font-weight: 700;
+  padding: 0.75rem 2.25rem 0.75rem 0.75rem;
+  width: 100%;
+}
+
+.guided-review-category-correction select:focus,
+.guided-review-category-correction input[type="text"]:focus {
+  border-color: var(--text-strong);
+  outline: 2px solid rgba(35, 64, 37, 0.12);
+  outline-offset: 2px;
+}
+
+.guided-outcome-card {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.guided-outcome-list {
+  display: grid;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
+}
+
+.guided-outcome-list li {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.75rem;
+}
+
+.guided-outcome-list li strong {
+  color: var(--text-strong);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.guided-outcome-list li span {
+  white-space: pre-wrap;
+}
