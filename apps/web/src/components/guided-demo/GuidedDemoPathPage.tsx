@@ -9,6 +9,7 @@ import type {
   GlobalWorkflowRunSummary,
 } from "../../types/workflow";
 import { EmptyState } from "../EmptyState";
+import { getReviewQueueEvidenceSummary } from "../../utils/reviewQueueDisplay";
 import { GuidedSourceIntakeBuilder } from "./GuidedSourceIntakeBuilder";
 
 export type GuidedStep =
@@ -79,6 +80,16 @@ const AGENT_PLAN = [
   "Validate confidence and evidence.",
   "Escalate uncertainty to human review.",
   "Block unsafe mutations unless approved.",
+];
+
+const REVIEW_CATEGORY_OPTIONS = [
+  { label: "Driver", value: "DRIVER" },
+  { label: "Fairway Wood", value: "FAIRWAY_WOOD" },
+  { label: "Hybrid", value: "HYBRID" },
+  { label: "Iron Set", value: "IRON_SET" },
+  { label: "Single Iron", value: "SINGLE_IRON" },
+  { label: "Wedge", value: "WEDGE" },
+  { label: "Putter", value: "PUTTER" },
 ];
 
 function formatScore(value: number | null | undefined) {
@@ -153,6 +164,10 @@ export function GuidedDemoPathPage({
   onRunSourceIntake,
   onRunTradeInWorkflow,
   onViewChange,
+  activeReviewQueueItemId,
+  reviewQueueNotesById,
+  onReviewQueueNotesChange,
+  onReviewQueueItemAction,
 }: {
   activeStep: GuidedStep;
   onActiveStepChange: (step: GuidedStep) => void;
@@ -173,9 +188,28 @@ export function GuidedDemoPathPage({
   onRunSourceIntake: (request?: ExecuteMultiSourceIntakeDemoRequest) => void;
   onRunTradeInWorkflow: (event: FormEvent<HTMLFormElement>) => void;
   onViewChange: (view: AppView) => void;
+  activeReviewQueueItemId: string | null;
+  reviewQueueNotesById: Record<string, string>;
+  onReviewQueueNotesChange: (reviewQueueItemId: string, reviewerNotes: string) => void;
+  onReviewQueueItemAction: (input: {
+    reviewQueueItemId: string;
+    action: "resolve" | "dismiss";
+    workflowRunId?: string | null;
+    intakeBatchId?: string | null;
+  }) => void;
 }) {
   const setActiveStep = onActiveStepChange;
   const [workflowInputBaseline, setWorkflowInputBaseline] = useState("");
+  const [activeGuidedReviewIssueKey, setActiveGuidedReviewIssueKey] =
+    useState<string | null>(null);
+  const [guidedReviewIssueCorrections, setGuidedReviewIssueCorrections] =
+    useState<Record<string, string>>({});
+  const [guidedReviewCategorySelections, setGuidedReviewCategorySelections] =
+    useState<Record<string, string>>({});
+  const [guidedReviewRawTextMatches, setGuidedReviewRawTextMatches] =
+    useState<Record<string, string>>({});
+  const [resolvedGuidedReviewIssueKeys, setResolvedGuidedReviewIssueKeys] =
+    useState<Record<string, boolean>>({});
 
   const currentRunWorkflow = useMemo(() => {
     const workflowRunId =
@@ -188,7 +222,19 @@ export function GuidedDemoPathPage({
     return workflowRuns.find((run) => run.id === workflowRunId) ?? null;
   }, [sourceIntakeResult, tradeInResult, workflowRuns]);
 
-  const currentRunReviewItems = getInitialCurrentRunReviewItems(tradeInResult);
+  const currentRunReviewItems = useMemo(() => {
+    const initialItems = getInitialCurrentRunReviewItems(tradeInResult);
+
+    if (initialItems.length === 0) {
+      return [];
+    }
+
+    const refreshedItemsById = new Map(
+      reviewQueueItems.map((item) => [item.id, item]),
+    );
+
+    return initialItems.map((item) => refreshedItemsById.get(item.id) ?? item);
+  }, [reviewQueueItems, tradeInResult]);
 
   const blockedMutation = tradeInResult?.blockedToolCallResult ?? null;
   const providerFallbackUsed = Boolean(
@@ -198,6 +244,80 @@ export function GuidedDemoPathPage({
   const currentStepIndex = getStepIndex(activeStep);
   const hasEditedGeneratedInput =
     Boolean(workflowInputBaseline) && tradeInRawInput !== workflowInputBaseline;
+
+  const currentRunReviewItemCount = currentRunReviewItems.length;
+  const currentRunClosedReviewItemCount = currentRunReviewItems.filter(
+    (item) => item.status === "RESOLVED" || item.status === "DISMISSED",
+  ).length;
+  const currentRunOpenReviewItemCount = currentRunReviewItems.filter(
+    (item) => item.status === "OPEN" || item.status === "IN_REVIEW",
+  ).length;
+  const currentRunHumanApprovedCorrectionCount = currentRunReviewItems.filter(
+    (item) => item.reviewerNotes && item.reviewerNotes.trim().length > 0,
+  ).length;
+  const currentRunReviewLoopComplete =
+    currentRunReviewItemCount > 0 && currentRunOpenReviewItemCount === 0;
+
+  function getGuidedReviewIssueKey(reviewQueueItemId: string, issueId: string) {
+    return reviewQueueItemId + "::" + issueId;
+  }
+
+  function handleGuidedReviewIssueCorrectionChange(
+    issueKey: string,
+    value: string,
+  ) {
+    setGuidedReviewIssueCorrections((current) => ({
+      ...current,
+      [issueKey]: value,
+    }));
+  }
+
+  function handleGuidedReviewCategorySelectionChange(
+    issueKey: string,
+    value: string,
+  ) {
+    setGuidedReviewCategorySelections((current) => ({
+      ...current,
+      [issueKey]: value,
+    }));
+  }
+
+  function handleGuidedReviewRawTextMatchChange(
+    issueKey: string,
+    value: string,
+  ) {
+    setGuidedReviewRawTextMatches((current) => ({
+      ...current,
+      [issueKey]: value,
+    }));
+  }
+
+  function handleApplyGuidedReviewIssueCorrection(input: {
+    reviewQueueItemId: string;
+    issueKey: string;
+    issueLabel: string;
+    correctionOverride?: string;
+  }) {
+    const correction =
+      input.correctionOverride?.trim() ??
+      guidedReviewIssueCorrections[input.issueKey]?.trim();
+    const existingNotes = reviewQueueNotesById[input.reviewQueueItemId]?.trim();
+
+    const correctionLine = correction
+      ? `Addressed issue: ${input.issueLabel}. Correction: ${correction}`
+      : `Addressed issue: ${input.issueLabel}.`;
+
+    const nextNotes = existingNotes
+      ? existingNotes + "\n" + correctionLine
+      : correctionLine;
+
+    onReviewQueueNotesChange(input.reviewQueueItemId, nextNotes);
+    setResolvedGuidedReviewIssueKeys((current) => ({
+      ...current,
+      [input.issueKey]: true,
+    }));
+    setActiveGuidedReviewIssueKey(null);
+  }
 
   function isStepComplete(step: GuidedStep) {
     const stepIndex = getStepIndex(step);
@@ -1062,39 +1182,347 @@ export function GuidedDemoPathPage({
 
                   {currentRunReviewItems.length > 0 ? (
                     <div className="agentic-demo-card-list">
-                      {currentRunReviewItems.map((item) => (
-                        <article className="agentic-demo-card" key={item.id}>
-                          <div className="agentic-demo-card__header">
-                            <div>
-                              <span className="model-route-card__eyebrow">{item.status}</span>
-                              <h4>{item.reason}</h4>
+                      {currentRunReviewItems.map((item) => {
+                        const evidence = getReviewQueueEvidenceSummary(item);
+                        const reviewOutcome = tradeInResult.reviewOutcomes.find(
+                          (outcome) => outcome.reviewQueueItemId === item.id,
+                        );
+                        const isClosed =
+                          item.status === "RESOLVED" || item.status === "DISMISSED";
+
+                        return (
+                          <article className="agentic-demo-card" key={item.id}>
+                            <div className="agentic-demo-card__header">
+                              <div>
+                                <span className="model-route-card__eyebrow">
+                                  {isClosed ? "Human review recorded" : "Human review needed"}
+                                </span>
+                                <h4>{item.reason}</h4>
+                              </div>
+                              <span
+                                className={
+                                  isClosed
+                                    ? "agentic-demo-pill"
+                                    : "agentic-demo-pill agentic-demo-pill--warning"
+                                }
+                              >
+                                {item.status}
+                              </span>
                             </div>
-                            <span className="agentic-demo-pill agentic-demo-pill--warning">
-                              Review needed
-                            </span>
-                          </div>
-                          <p>
-                            Validation found uncertainty. Suggested action: confirm
-                            missing shaft, model, or condition details, then approve
-                            or correct the normalized trade-in record.
-                          </p>
-                          <details className="guided-workflow-details">
-                            <summary>View more: validation warnings and extracted fields</summary>
-                            <pre>
-                              {JSON.stringify(
-                                {
-                                  reviewOutcome: tradeInResult.reviewOutcomes.find(
-                                    (outcome) => outcome.reviewQueueItemId === item.id,
-                                  ),
-                                  proposedGolfClubJson: item.proposedGolfClubJson,
-                                },
-                                null,
-                                2,
+
+                            <p>
+                              {isClosed
+                                ? "A human review action has been recorded for this item. The workflow can now show the uncertainty loop as reviewed."
+                                : "Validation found uncertainty. Inspect the evidence, confirm or correct the normalized trade-in record, then resolve as a controlled human action."}
+                            </p>
+
+                            <section className="guided-review-walkthrough">
+                              <div className="guided-review-context">
+                                <span className="model-route-card__eyebrow">
+                                  Review context
+                                </span>
+                                <p>
+                                  Low parse confidence explains why this record was routed
+                                  to human review. The checklist below only shows the
+                                  actionable record issues to confirm or correct.
+                                </p>
+                              </div>
+
+                              <div className="guided-review-walkthrough__header">
+                                <span className="model-route-card__eyebrow">
+                                  Issue checklist
+                                </span>
+                                <strong>
+                                  {evidence.reviewIssues.length} actionable{" "}
+                                  {evidence.reviewIssues.length === 1 ? "issue" : "issues"} to confirm
+                                </strong>
+                              </div>
+
+                              {evidence.reviewIssues.length > 0 ? (
+                                <ol className="guided-review-issue-list">
+                                  {evidence.reviewIssues.map((issue, index) => {
+                                    const issueKey = getGuidedReviewIssueKey(
+                                      item.id,
+                                      issue.id,
+                                    );
+                                    const isIssueActive =
+                                      activeGuidedReviewIssueKey === issueKey;
+                                    const isIssueResolved =
+                                      resolvedGuidedReviewIssueKeys[issueKey] === true;
+
+                                    return (
+                                      <li
+                                        className={
+                                          isIssueResolved
+                                            ? "guided-review-issue-list__item guided-review-issue-list__item--resolved"
+                                            : isIssueActive
+                                              ? "guided-review-issue-list__item guided-review-issue-list__item--active"
+                                              : "guided-review-issue-list__item"
+                                        }
+                                        key={issueKey}
+                                      >
+                                        <button
+                                          className="guided-review-issue-button"
+                                          onClick={() =>
+                                            setActiveGuidedReviewIssueKey(
+                                              isIssueActive ? null : issueKey,
+                                            )
+                                          }
+                                          type="button"
+                                        >
+                                          <span>{index + 1}</span>
+                                          <div>
+                                            <strong>{issue.label}</strong>
+                                            <p>{issue.detail}</p>
+                                          </div>
+                                          <em>
+                                            {isIssueResolved ? "Addressed" : issue.severity}
+                                          </em>
+                                        </button>
+
+                                        {isIssueActive ? (
+                                          <div className="guided-review-issue-editor">
+                                            {issue.id === "missing-category" ? (
+                                              <div className="guided-review-category-correction">
+                                                <label>
+                                                  Choose category
+                                                  <select
+                                                    onChange={(event) =>
+                                                      handleGuidedReviewCategorySelectionChange(
+                                                        issueKey,
+                                                        event.target.value,
+                                                      )
+                                                    }
+                                                    value={guidedReviewCategorySelections[issueKey] ?? ""}
+                                                  >
+                                                    <option value="">Select a category…</option>
+                                                    {REVIEW_CATEGORY_OPTIONS.map((option) => (
+                                                      <option key={option.value} value={option.value}>
+                                                        {option.label}
+                                                      </option>
+                                                    ))}
+                                                  </select>
+                                                </label>
+
+                                                <label>
+                                                  Matching raw text from original input
+                                                  <input
+                                                    onChange={(event) =>
+                                                      handleGuidedReviewRawTextMatchChange(
+                                                        issueKey,
+                                                        event.target.value,
+                                                      )
+                                                    }
+                                                    placeholder="Copy the phrase from Original raw text, for example IRON_SET"
+                                                    type="text"
+                                                    value={guidedReviewRawTextMatches[issueKey] ?? ""}
+                                                  />
+                                                </label>
+
+                                                <p className="review-queue-card__meta">
+                                                  Reference the Original raw text evidence below. This
+                                                  records a human-approved learning candidate in
+                                                  reviewer notes. It does not update shared knowledge
+                                                  automatically.
+                                                </p>
+                                              </div>
+                                            ) : (
+                                              <label>
+                                                Correction or confirmation
+                                                <textarea
+                                                  onChange={(event) =>
+                                                    handleGuidedReviewIssueCorrectionChange(
+                                                      issueKey,
+                                                      event.target.value,
+                                                    )
+                                                  }
+                                                  placeholder="Example: condition notes updated to worn grips."
+                                                  rows={3}
+                                                  value={
+                                                    guidedReviewIssueCorrections[issueKey] ?? ""
+                                                  }
+                                                />
+                                              </label>
+                                            )}
+
+                                            <div className="workflow-run-card__actions">
+                                              <button
+                                                disabled={
+                                                  issue.id === "missing-category" &&
+                                                  !guidedReviewCategorySelections[issueKey]
+                                                }
+                                                onClick={() => {
+                                                  const selectedCategory =
+                                                    guidedReviewCategorySelections[issueKey];
+                                                  const rawTextMatch =
+                                                    guidedReviewRawTextMatches[issueKey]?.trim();
+
+                                                  handleApplyGuidedReviewIssueCorrection({
+                                                    reviewQueueItemId: item.id,
+                                                    issueKey,
+                                                    issueLabel: issue.label,
+                                                    correctionOverride:
+                                                      issue.id === "missing-category" &&
+                                                      selectedCategory
+                                                        ? "category=" +
+                                                          selectedCategory +
+                                                          (rawTextMatch
+                                                            ? '. Review learning candidate: raw text "' +
+                                                              rawTextMatch +
+                                                              '" maps to category ' +
+                                                              selectedCategory +
+                                                              "."
+                                                            : ".")
+                                                        : undefined,
+                                                  });
+                                                }}
+                                                type="button"
+                                              >
+                                                Mark issue addressed
+                                              </button>
+                                            </div>
+                                          </div>
+                                        ) : null}
+                                      </li>
+                                    );
+                                  })}
+                                </ol>
+                              ) : (
+                                <p className="review-queue-card__meta">
+                                  No structured review issues were extracted. Inspect the
+                                  evidence before resolving.
+                                </p>
                               )}
-                            </pre>
-                          </details>
-                        </article>
-                      ))}
+
+                              <div className="guided-review-evidence-grid">
+                                <article>
+                                  <span className="model-route-card__eyebrow">
+                                    Original raw text
+                                  </span>
+                                  <p>{evidence.rawText}</p>
+                                </article>
+
+                                <article>
+                                  <span className="model-route-card__eyebrow">
+                                    Proposed club
+                                  </span>
+                                  <p>{evidence.parsedClubLabel}</p>
+                                </article>
+
+                                <article>
+                                  <span className="model-route-card__eyebrow">
+                                    Inventory match
+                                  </span>
+                                  <p>
+                                    {evidence.inventoryMatchSummary ??
+                                      "No inventory match captured."}
+                                  </p>
+                                </article>
+
+                                <article>
+                                  <span className="model-route-card__eyebrow">
+                                    Demo valuation range
+                                  </span>
+                                  <p>
+                                    {evidence.demoValuationRangeSummary ??
+                                      "No demo valuation range captured."}
+                                  </p>
+                                </article>
+
+                                <article>
+                                  <span className="model-route-card__eyebrow">
+                                    Review outcome
+                                  </span>
+                                  <p>
+                                    {item.resolvedAt
+                                      ? "Resolved at " + item.resolvedAt
+                                      : "Awaiting controlled human action"}
+                                  </p>
+                                </article>
+
+                                <article>
+                                  <span className="model-route-card__eyebrow">
+                                    Reviewer notes
+                                  </span>
+                                  <p>{item.reviewerNotes ?? "Not recorded yet."}</p>
+                                </article>
+                              </div>
+                            </section>
+
+                            <article className="guided-execution-evidence-card guided-execution-evidence-card--wide">
+                              <span className="model-route-card__eyebrow">
+                                Review lifecycle
+                              </span>
+                              <strong>
+                                {isClosed
+                                  ? "After: human review action recorded"
+                                  : "Before: workflow paused for human review"}
+                              </strong>
+                              <p>{evidence.suggestedNextAction}</p>
+                            </article>
+
+                            {!isClosed ? (
+                              <div className="review-queue-card__review-actions">
+                                <p className="review-queue-card__meta">
+                                  Controlled human action. Reviewer notes are recorded before
+                                  this workflow review item is resolved.
+                                </p>
+
+                                <label>
+                                  Reviewer Notes
+                                  <textarea
+                                    onChange={(event) =>
+                                      onReviewQueueNotesChange(item.id, event.target.value)
+                                    }
+                                    placeholder="Add approval context, corrections, or reviewer notes before resolving."
+                                    rows={3}
+                                    value={reviewQueueNotesById[item.id] ?? ""}
+                                  />
+                                </label>
+
+                                <div className="workflow-run-card__actions">
+                                  <button
+                                    disabled={activeReviewQueueItemId === item.id}
+                                    onClick={() =>
+                                      onReviewQueueItemAction({
+                                        reviewQueueItemId: item.id,
+                                        action: "resolve",
+                                        workflowRunId: item.workflowRunId,
+                                      })
+                                    }
+                                    type="button"
+                                  >
+                                    {activeReviewQueueItemId === item.id
+                                      ? "Updating…"
+                                      : "Resolve as human-approved"}
+                                  </button>
+
+                                  <button
+                                    onClick={() => onViewChange("REVIEW_QUEUE")}
+                                    type="button"
+                                  >
+                                    Open Full Review Queue
+                                  </button>
+                                </div>
+                              </div>
+                            ) : null}
+
+                            <details className="guided-workflow-details">
+                              <summary>View more: validation warnings and extracted fields</summary>
+                              <pre>
+                                {JSON.stringify(
+                                  {
+                                    reviewOutcome,
+                                    proposedGolfClubJson: item.proposedGolfClubJson,
+                                  },
+                                  null,
+                                  2,
+                                )}
+                              </pre>
+                            </details>
+                          </article>
+                        );
+                      })}
                     </div>
                   ) : (
                     <EmptyState
@@ -1135,30 +1563,26 @@ export function GuidedDemoPathPage({
                 <>
                   <div className="guided-workflow-metrics">
                     <article>
-                      <strong>{tradeInResult.workflowQualitySummary.status}</strong>
-                      <span>Quality status</span>
+                      <strong>
+                        {currentRunReviewLoopComplete ? "REVIEW_COMPLETED" : "REVIEW_OPEN"}
+                      </strong>
+                      <span>Final review status</span>
+                    </article>
+                    <article>
+                      <strong>{currentRunWorkflow?.status ?? "Created"}</strong>
+                      <span>Workflow lifecycle status</span>
+                    </article>
+                    <article>
+                      <strong>{currentRunOpenReviewItemCount}</strong>
+                      <span>Unresolved review items</span>
+                    </article>
+                    <article>
+                      <strong>{currentRunHumanApprovedCorrectionCount}</strong>
+                      <span>Human-approved corrections</span>
                     </article>
                     <article>
                       <strong>{tradeInResult.workflowQualitySummary.recordsProcessed}</strong>
                       <span>Records processed</span>
-                    </article>
-                    <article>
-                      <strong>
-                        {tradeInResult.workflowQualitySummary.validationPassed}
-                      </strong>
-                      <span>Validation passed</span>
-                    </article>
-                    <article>
-                      <strong>{tradeInResult.workflowQualitySummary.validationWarnings}</strong>
-                      <span>Validation warnings</span>
-                    </article>
-                    <article>
-                      <strong>{tradeInResult.workflowQualitySummary.retryAttempts}</strong>
-                      <span>Retry attempts</span>
-                    </article>
-                    <article>
-                      <strong>{tradeInResult.workflowQualitySummary.reviewItemsCreated}</strong>
-                      <span>Needs review</span>
                     </article>
                     <article>
                       <strong>{tradeInResult.workflowQualitySummary.inventoryMatches}</strong>
@@ -1169,31 +1593,66 @@ export function GuidedDemoPathPage({
                       <span>Demo valuation ranges</span>
                     </article>
                     <article>
-                      <strong>{tradeInResult.workflowQualitySummary.toolCalls}</strong>
-                      <span>Tool calls</span>
-                    </article>
-                    <article>
                       <strong>{tradeInResult.workflowQualitySummary.blockedMutations}</strong>
-                      <span>Blocked mutations</span>
-                    </article>
-                    <article>
-                      <strong>{tradeInResult.workflowQualitySummary.providerFallbackUsed ? "Yes" : "No"}</strong>
-                      <span>Provider fallback used</span>
-                    </article>
-                    <article>
-                      <strong>{currentRunWorkflow?.status ?? "Created"}</strong>
-                      <span>Workflow status</span>
-                    </article>
-                    <article>
-                      <strong>{toolCallLogCount}</strong>
-                      <span>System tool logs</span>
+                      <span>Blocked unsafe mutations</span>
                     </article>
                   </div>
 
-                  <article className="guided-execution-evidence-card guided-execution-evidence-card--wide">
-                    <span className="model-route-card__eyebrow">Run summary</span>
-                    <strong>{tradeInResult.workflowQualitySummary.evidenceCoverage}</strong>
-                    <p>{tradeInResult.workflowQualitySummary.summary}</p>
+                  <article className="guided-execution-evidence-card guided-execution-evidence-card--wide guided-outcome-card">
+                    <span className="model-route-card__eyebrow">Outcome</span>
+                    <strong>
+                      {currentRunReviewLoopComplete
+                        ? "Human review completed the workflow loop"
+                        : "Human review still needs attention"}
+                    </strong>
+                    <p>
+                      {currentRunReviewLoopComplete
+                        ? "The workflow found uncertainty, created a review item, and a human resolved it. The workflow lifecycle is now complete."
+                        : "The workflow found uncertainty and created review work. Resolve the open review item before treating this run as complete."}
+                    </p>
+                  </article>
+
+                  <article className="guided-execution-evidence-card guided-execution-evidence-card--wide guided-outcome-card">
+                    <span className="model-route-card__eyebrow">
+                      Human-approved record
+                    </span>
+                    <strong>
+                      {currentRunHumanApprovedCorrectionCount > 0
+                        ? "Reviewer corrections are attached to the record"
+                        : "No reviewer corrections attached yet"}
+                    </strong>
+                    <p>
+                      The reviewed trade-in record now carries reviewer notes with
+                      corrections, confirmations, and any raw-text category mapping
+                      candidates captured during Human Review.
+                    </p>
+                    {currentRunReviewItems.length > 0 ? (
+                      <ul className="guided-outcome-list">
+                        {currentRunReviewItems.map((item) => (
+                          <li key={item.id}>
+                            <strong>{item.status}</strong>
+                            <span>{item.reviewerNotes ?? "No reviewer notes recorded."}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </article>
+
+                  <article className="guided-execution-evidence-card guided-execution-evidence-card--wide guided-outcome-card">
+                    <span className="model-route-card__eyebrow">
+                      Downstream readiness
+                    </span>
+                    <strong>
+                      {currentRunReviewLoopComplete
+                        ? "Ready for the next controlled workflow step"
+                        : "Not ready until review is resolved"}
+                    </strong>
+                    <p>
+                      For this slice, the improved output is represented by the resolved
+                      review item and reviewer notes. A later learning-events slice can
+                      persist reusable mappings, increase future parse confidence, and
+                      write finalized normalized records to a dedicated output table.
+                    </p>
                   </article>
 
                   <details className="guided-workflow-details">
