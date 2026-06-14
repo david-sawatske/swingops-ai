@@ -505,6 +505,173 @@ describe("review queue item routes", () => {
       await app.close();
     });
 
+    it("updates a persisted AI-ready intake record after human review", async () => {
+      const app = buildApp();
+      const reviewQueueItem = await createReviewQueueItem();
+
+      const aiReadyRecord = await prisma.aiReadyIntakeRecord.create({
+        data: {
+          intakeItemId: reviewQueueItem.intakeItemId,
+          workflowRunId: reviewQueueItem.workflowRunId,
+          sourceType: "FREE_TEXT",
+          sourceName: "Human review lifecycle test",
+          rawText: reviewQueueItem.originalText ?? "Raw review text",
+          cleanedText: reviewQueueItem.originalText ?? "Cleaned review text",
+          normalizedJson: {
+            id: "review-lifecycle-record",
+            sourceId: "review-source",
+            sourceType: "FREE_TEXT",
+            normalizedText: reviewQueueItem.originalText,
+            brand: "TM",
+            productLine: null,
+            category: null,
+            shaftFlex: null,
+            conditionGrade: null,
+            tradeInValue: null,
+            customerName: null,
+            customerEmail: null,
+            storeId: null,
+            reviewNeeded: true,
+            missingFields: ["productLine", "category", "conditionGrade"]
+          },
+          status: "NEEDS_REVIEW",
+          reviewNeeded: true,
+          embeddingReady: false,
+          ragReady: false
+        }
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: `/review-queue-items/${reviewQueueItem.id}/resolve-with-corrections`,
+        payload: {
+          reviewerNotes: "Human approved AI-ready record.",
+          correctedRecord: {
+            brand: "TaylorMade",
+            productLine: "Stealth 2",
+            category: "DRIVER",
+            shaftFlex: "STIFF",
+            conditionGrade: "8.0 Average",
+            demoValue: 185
+          },
+          learningEvents: [
+            {
+              fieldName: "conditionGrade",
+              rawTextMatch: "8.0 Average",
+              correctedValue: "8.0 Average",
+              evidenceText: "Condition grade supplied by review."
+            }
+          ]
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.aiReadyIntakeRecord).toMatchObject({
+        id: aiReadyRecord.id,
+        status: "READY_FOR_RAG",
+        reviewNeeded: false,
+        embeddingReady: true,
+        ragReady: true,
+        normalizedJson: expect.objectContaining({
+          brand: "TaylorMade",
+          productLine: "Stealth 2",
+          category: "DRIVER",
+          shaftFlex: "STIFF",
+          conditionGrade: "8.0 Average",
+          tradeInValue: 185,
+          reviewNeeded: false,
+          missingFields: []
+        })
+      });
+
+      const persistedAiReadyRecord =
+        await prisma.aiReadyIntakeRecord.findUniqueOrThrow({
+          where: {
+            id: aiReadyRecord.id
+          }
+        });
+
+      expect(persistedAiReadyRecord.status).toBe("READY_FOR_RAG");
+      expect(persistedAiReadyRecord.reviewNeeded).toBe(false);
+      expect(persistedAiReadyRecord.ragReady).toBe(true);
+      expect(persistedAiReadyRecord.normalizedJson).toEqual(
+        expect.objectContaining({
+          brand: "TaylorMade",
+          productLine: "Stealth 2",
+          category: "DRIVER",
+          conditionGrade: "8.0 Average",
+          tradeInValue: 185
+        })
+      );
+
+      await deleteWorkflowRun(reviewQueueItem.workflowRunId!);
+
+      await app.close();
+    });
+
+    it("creates an AI-ready intake record when human review has no existing record", async () => {
+      const app = buildApp();
+      const reviewQueueItem = await createReviewQueueItem();
+
+      const response = await app.inject({
+        method: "POST",
+        url: `/review-queue-items/${reviewQueueItem.id}/resolve-with-corrections`,
+        payload: {
+          reviewerNotes: "Human approved newly durable AI-ready record.",
+          correctedRecord: {
+            brand: "TaylorMade",
+            productLine: "Stealth 2",
+            category: "DRIVER",
+            shaftFlex: "STIFF",
+            conditionGrade: "8.0 Average",
+            demoValue: 185
+          },
+          learningEvents: []
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.aiReadyIntakeRecord).toMatchObject({
+        workflowRunId: reviewQueueItem.workflowRunId,
+        sourceRecordId: reviewQueueItem.id,
+        sourceType: "FREE_TEXT",
+        sourceName: "Human-reviewed workflow record",
+        status: "READY_FOR_RAG",
+        reviewNeeded: false,
+        embeddingReady: true,
+        ragReady: true,
+        normalizedJson: expect.objectContaining({
+          brand: "TaylorMade",
+          productLine: "Stealth 2",
+          category: "DRIVER",
+          shaftFlex: "STIFF",
+          conditionGrade: "8.0 Average",
+          tradeInValue: 185,
+          reviewNeeded: false,
+          missingFields: []
+        })
+      });
+
+      const persistedAiReadyRecord =
+        await prisma.aiReadyIntakeRecord.findUniqueOrThrow({
+          where: {
+            id: body.aiReadyIntakeRecord.id
+          }
+        });
+
+      expect(persistedAiReadyRecord.ragReady).toBe(true);
+
+      await deleteWorkflowRun(reviewQueueItem.workflowRunId!);
+
+      await app.close();
+    });
+
     it("rejects condition values outside the fixed review grade list", async () => {
       const app = buildApp();
       const reviewQueueItem = await createReviewQueueItem();

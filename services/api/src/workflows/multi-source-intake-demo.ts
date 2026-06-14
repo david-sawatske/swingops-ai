@@ -1,4 +1,4 @@
-import type { Prisma, ReviewQueueItem, ToolCallLog } from "@prisma/client";
+import type { AiReadyIntakeRecord, Prisma, ReviewQueueItem, ToolCallLog } from "@prisma/client";
 
 import { prisma } from "../lib/prisma.js";
 
@@ -16,7 +16,7 @@ export type MultiSourceIntakeRecord = {
   productLine: string | null;
   category: string | null;
   shaftFlex: string | null;
-  condition: string | null;
+  conditionGrade: string | null;
   tradeInValue: number | null;
   customerName: string | null;
   customerEmail: string | null;
@@ -116,6 +116,7 @@ export type MultiSourceIntakeDemoResult = {
     workflowRunId: string;
     reviewQueueItemIds: string[];
     toolCallLogIds: string[];
+    aiReadyIntakeRecordIds: string[];
   };
 };
 
@@ -139,8 +140,8 @@ const DEFAULT_MULTI_SOURCE_INPUTS: MultiSourceInput[] = [
     sourceName: "Counter notebook notes",
     rawContent: [
       "Sat counter notes - trade pile",
-      "1) TM stealth2 drv 10.5 ventus stiff. no hc. crown sky mark. cust: Mark R.",
-      "2) Ping g425 irons 5-pw reg flex, grips slick, missing serial maybe. needs manager look.",
+      "1) TM stealth2 drv 10.5 ventus stiff condition 8.0 Average cust: Mark R.",
+      "2) Ping g425 irons 5-pw reg flex condition 7.0 Below Average needs manager look.",
       "Store 104 / associate jules"
     ].join("\n")
   },
@@ -149,10 +150,10 @@ const DEFAULT_MULTI_SOURCE_INPUTS: MultiSourceInput[] = [
     sourceType: "POORLY_FORMED_CSV",
     sourceName: "Store export with broken rows",
     rawContent: [
-      "brand|model,cat,shaft,cond,value,store",
-      "Titleist; TSR2; 3w ; Tensei S ; face wear ; $145 ; 104",
-      "Cally,Rogue ST Max driver,HZRDUS X,paint chip no wrench,190,STORE-207",
-      "PING|G425 irons|reg|worn grips||104"
+      "brand|model,cat,shaft,condition_grade,value,store",
+      "Titleist; TSR2; 3w ; Tensei S ; 8.0 Average ; $145 ; 104",
+      "Cally,Rogue ST Max driver,HZRDUS X,7.0 Below Average,190,STORE-207",
+      "PING|G425 irons|reg|6.0 Poor||104"
     ].join("\n")
   },
   {
@@ -165,8 +166,8 @@ const DEFAULT_MULTI_SOURCE_INPUTS: MultiSourceInput[] = [
       "Subject: Trade values for two clubs - receipt attached",
       "",
       "Hi team, I am bringing in a Callaway Rogue ST Max 9 degree driver with HZRDUS x-stiff.",
-      "There is paint wear on the sole and I do not have the wrench.",
-      "Also a TaylorMade Stealth 2 10.5 driver with Ventus stiff and a sky mark.",
+      "Condition grade is 7.0 Below Average.",
+      "Also a TaylorMade Stealth 2 10.5 driver with Ventus stiff and condition 8.0 Average.",
       "Attached: trade_sheet_8821.pdf, driver_photos.zip",
       "Preferred store: 207"
     ].join("\n")
@@ -177,8 +178,8 @@ const DEFAULT_MULTI_SOURCE_INPUTS: MultiSourceInput[] = [
     sourceName: "Import worker event log",
     rawContent: [
       "2026-05-18T14:33:02Z INFO import start store=104 batch=nightly_tradeins",
-      "2026-05-18T14:33:04Z WARN malformed payload brand=Titleist model=TSR cat=3w shaft='Tensei S' value=145",
-      "2026-05-18T14:33:07Z ERROR row=18 missing category payload={brand:'PING', model:'G425', notes:'irons 5-PW reg worn grips'}",
+      "2026-05-18T14:33:04Z WARN malformed payload brand=Titleist model=TSR cat=3w shaft='Tensei S' condition='8.0 Average' value=145",
+      "2026-05-18T14:33:07Z ERROR row=18 missing category payload={brand:'PING', model:'G425', condition:'6.0 Poor', notes:'irons 5-PW reg'}",
       "2026-05-18T14:33:11Z INFO normalized sku match Callaway Rogue ST Max driver store=207"
     ].join("\n")
   },
@@ -214,11 +215,11 @@ const SHARED_SCHEMA: MultiSourceIntakeSourceResult["inferredSchema"] = [
     examples: ["STIFF", "X_STIFF", "REGULAR"]
   },
   {
-    fieldName: "condition",
+    fieldName: "conditionGrade",
     type: "string",
     nullable: true,
-    description: "Cleaned condition or accessory notes.",
-    examples: ["sky mark; missing headcover", "face wear"]
+    description: "Normalized condition grade supplied by the intake source.",
+    examples: ["9.5 Mint", "9.0 Above Average", "8.0 Average", "7.0 Below Average", "6.0 Poor"]
   },
   {
     fieldName: "tradeInValue",
@@ -346,22 +347,20 @@ function detectShaftFlex(text: string): string | null {
   return null;
 }
 
-function detectCondition(text: string): string | null {
-  const notes = [
-    /\bsky\s*mark\b/i.test(text) ? "sky mark" : null,
-    /\bno hc\b|\bheadcover missing\b|\bmissing headcover\b/i.test(text)
-      ? "missing headcover"
-      : null,
-    /\bface wear\b/i.test(text) ? "face wear" : null,
-    /\bpaint\s*(wear|chip)\b/i.test(text) ? "paint wear" : null,
-    /\bno wrench\b|\bmissing wrench\b/i.test(text) ? "missing wrench" : null,
-    /\bworn grips?\b|\bgrips slick\b|\bslick\b/i.test(text) ? "worn grips" : null,
-    /\bserial number unreadable\b|\bmissing serial\b/i.test(text)
-      ? "serial unclear"
-      : null
-  ];
+const CONDITION_GRADES = [
+  "9.5 Mint",
+  "9.0 Above Average",
+  "8.0 Average",
+  "7.0 Below Average",
+  "6.0 Poor"
+] as const;
 
-  return unique(notes).join("; ") || null;
+function detectConditionGrade(text: string): string | null {
+  const conditionGrade = CONDITION_GRADES.find((grade) =>
+    new RegExp(`\\b${grade.replace(".", "\\.")}\\b`, "i").test(text)
+  );
+
+  return conditionGrade ?? null;
 }
 
 function detectTradeInValue(text: string): number | null {
@@ -467,7 +466,7 @@ function buildRecord(source: MultiSourceInput, fragment: string, index: number):
   const productLine = detectProductLine(fragment);
   const category = detectCategory(fragment);
   const shaftFlex = detectShaftFlex(fragment);
-  const condition = detectCondition(fragment);
+  const conditionGrade = detectConditionGrade(sourceContext);
   const tradeInValue = detectTradeInValue(fragment);
   const customerName = detectCustomerName(sourceContext);
   const customerEmail = detectCustomerEmail(sourceContext);
@@ -480,7 +479,7 @@ function buildRecord(source: MultiSourceInput, fragment: string, index: number):
     productLine ? null : "productLine",
     category ? null : "category",
     shaftFlex ? null : "shaftFlex",
-    condition ? null : "condition",
+    conditionGrade ? null : "conditionGrade",
     tradeInValue === null ? "tradeInValue" : null
   ].filter((field): field is string => Boolean(field));
 
@@ -497,7 +496,7 @@ function buildRecord(source: MultiSourceInput, fragment: string, index: number):
     productLine,
     category,
     shaftFlex,
-    condition,
+    conditionGrade,
     tradeInValue,
     customerName,
     customerEmail,
@@ -512,7 +511,7 @@ function buildRecord(source: MultiSourceInput, fragment: string, index: number):
       productLine,
       category,
       shaftFlex,
-      condition,
+      conditionGrade,
       tradeInValue === null ? null : `value ${tradeInValue}`,
       storeId ? `store ${storeId}` : null
     ].filter(Boolean).join(" | ")
@@ -757,6 +756,46 @@ async function persistDemoAudit(input: {
     }
   });
 
+  const aiReadyIntakeRecords: AiReadyIntakeRecord[] = [];
+  const intakeItemByRecordId = new Map(
+    input.cleanedDatasetPreview.map((record, index) => [
+      record.id,
+      intakeBatch.items[index] ?? null
+    ])
+  );
+  const sourceResultById = new Map(
+    input.sourceResults.map((sourceResult) => [sourceResult.id, sourceResult])
+  );
+
+  for (const record of input.cleanedDatasetPreview) {
+    const sourceResult = sourceResultById.get(record.sourceId);
+    const intakeItem = intakeItemByRecordId.get(record.id) ?? null;
+    const hasRagReadyShape = record.normalizedText.length > 20 && Boolean(record.brand && record.category);
+
+    const aiReadyIntakeRecord = await prisma.aiReadyIntakeRecord.create({
+      data: {
+        intakeBatchId: intakeBatch.id,
+        intakeItemId: intakeItem?.id ?? null,
+        workflowRunId: workflowRun.id,
+        sourceRecordId: record.id,
+        sourceType: record.sourceType,
+        sourceName: sourceResult?.sourceName ?? record.sourceType,
+        rawText: sourceResult?.rawContent ?? record.normalizedText,
+        cleanedText: sourceResult?.cleanedText ?? record.normalizedText,
+        normalizedJson: toInputJson(record),
+        inferredSchemaJson: toInputJson(sourceResult?.inferredSchema ?? SHARED_SCHEMA),
+        metadataJson: toInputJson(sourceResult?.metadata ?? {}),
+        qualitySignalsJson: toInputJson(sourceResult?.qualitySignals ?? []),
+        status: record.reviewNeeded ? "NEEDS_REVIEW" : "READY_FOR_RAG",
+        reviewNeeded: record.reviewNeeded,
+        embeddingReady: hasRagReadyShape,
+        ragReady: hasRagReadyShape && !record.reviewNeeded
+      }
+    });
+
+    aiReadyIntakeRecords.push(aiReadyIntakeRecord);
+  }
+
   const reviewQueueItems: ReviewQueueItem[] = [];
   for (const reviewRecord of input.reviewRecords) {
     const intakeItem = intakeBatch.items.find(
@@ -842,7 +881,8 @@ async function persistDemoAudit(input: {
     intakeBatch,
     workflowRun,
     reviewQueueItems,
-    toolCallLogs
+    toolCallLogs,
+    aiReadyIntakeRecords
   };
 }
 
@@ -946,7 +986,8 @@ export async function executeMultiSourceIntakeDemo(input: {
       intakeItemIds: persisted.intakeBatch.items.map((item) => item.id),
       workflowRunId: persisted.workflowRun.id,
       reviewQueueItemIds: persisted.reviewQueueItems.map((item) => item.id),
-      toolCallLogIds: persisted.toolCallLogs.map((log) => log.id)
+      toolCallLogIds: persisted.toolCallLogs.map((log) => log.id),
+      aiReadyIntakeRecordIds: persisted.aiReadyIntakeRecords.map((record) => record.id)
     }
   };
 

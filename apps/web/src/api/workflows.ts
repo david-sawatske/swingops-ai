@@ -9,6 +9,7 @@ import type {
   ExecuteWorkflowRunRequest,
   ExecuteWorkflowRunResponse,
   ExecuteWorkflowToolCallingPlanResponse,
+  ListAiReadyIntakeRecordsResponse,
   ListReviewQueueItemsResponse,
   ListWorkflowRunsResponse,
   ResolveReviewQueueItemWithCorrectionsRequest,
@@ -125,4 +126,29 @@ export async function executeMultiSourceIntakeDemo(
     ExecuteMultiSourceIntakeDemoResponse,
     ExecuteMultiSourceIntakeDemoRequest
   >("/workflow-runs/multi-source-intake-demo", request);
+}
+
+
+export async function listAiReadyIntakeRecords(filters: {
+  workflowRunId?: string;
+  intakeBatchId?: string;
+  sourceType?: string;
+  status?: string;
+  limit?: number;
+} = {}) {
+  const searchParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined && value !== null && String(value).length > 0) {
+      searchParams.set(key, String(value));
+    }
+  }
+
+  const queryString = searchParams.toString();
+
+  return apiGet<ListAiReadyIntakeRecordsResponse>(
+    queryString
+      ? `/ai-ready-intake-records?${queryString}`
+      : "/ai-ready-intake-records",
+  );
 }

@@ -21,11 +21,12 @@ const REVIEW_CATEGORY_VALUES = [
 ] as const;
 
 const REVIEW_SHAFT_FLEX_VALUES = [
-  "LADIES",
-  "SENIOR",
-  "REGULAR",
   "STIFF",
-  "X_STIFF"
+  "REGULAR",
+  "SENIOR",
+  "X_STIFF",
+  "LADIES",
+  "TOUR_X_STIFF"
 ] as const;
 
 const reviewQueueItemParamsSchema = z.object({
@@ -169,6 +170,35 @@ function serializeReviewQueueItem(item: {
     createdAt: item.createdAt.toISOString(),
     updatedAt: item.updatedAt.toISOString()
   };
+}
+
+function toJsonObject(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+
+  return {};
+}
+
+function hasRagReadyReviewShape(record: Record<string, unknown>) {
+  return Boolean(
+    record.brand &&
+      record.productLine &&
+      record.category &&
+      record.conditionGrade
+  );
+}
+
+function getProposedClubField(
+  proposedGolfClubJson: unknown,
+  fieldName: string,
+): string | null {
+  const proposed = toJsonObject(proposedGolfClubJson);
+  const value = proposed[fieldName];
+
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : null;
 }
 
 function serializeReviewedTradeInRecord(record: {
@@ -510,6 +540,125 @@ async function resolveReviewQueueItemWithCorrections(input: {
       });
     }
 
+    const existingAiReadyRecord = reviewQueueItem.workflowRunId
+      ? await tx.aiReadyIntakeRecord.findFirst({
+          where: {
+            workflowRunId: reviewQueueItem.workflowRunId,
+            ...(reviewQueueItem.intakeItemId
+              ? { intakeItemId: reviewQueueItem.intakeItemId }
+              : {})
+          },
+          orderBy: {
+            createdAt: "desc"
+          }
+        })
+      : reviewQueueItem.intakeItemId
+        ? await tx.aiReadyIntakeRecord.findFirst({
+            where: {
+              intakeItemId: reviewQueueItem.intakeItemId
+            },
+            orderBy: {
+              createdAt: "desc"
+            }
+          })
+        : null;
+
+    const existingAiReadyJson = toJsonObject(existingAiReadyRecord?.normalizedJson);
+    const proposedBrand =
+      getProposedClubField(reviewQueueItem.proposedGolfClubJson, "brand") ??
+      getProposedClubField(reviewQueueItem.proposedGolfClubJson, "correctedBrand");
+    const proposedProductLine =
+      getProposedClubField(reviewQueueItem.proposedGolfClubJson, "productLine") ??
+      getProposedClubField(reviewQueueItem.proposedGolfClubJson, "model");
+    const proposedCategory =
+      getProposedClubField(reviewQueueItem.proposedGolfClubJson, "category");
+    const proposedShaftFlex =
+      getProposedClubField(reviewQueueItem.proposedGolfClubJson, "shaftFlex");
+    const proposedConditionGrade =
+      getProposedClubField(reviewQueueItem.proposedGolfClubJson, "conditionGrade");
+
+    const reviewedAiReadyJson = {
+      ...existingAiReadyJson,
+      id: existingAiReadyRecord?.sourceRecordId ?? reviewQueueItem.id,
+      sourceId: reviewQueueItem.workflowRunId ?? reviewQueueItem.id,
+      sourceType: existingAiReadyRecord?.sourceType ?? "FREE_TEXT",
+      normalizedText:
+        existingAiReadyRecord?.cleanedText ??
+        reviewQueueItem.originalText ??
+        "",
+      brand:
+        correctedBrand ??
+        (typeof existingAiReadyJson.brand === "string"
+          ? existingAiReadyJson.brand
+          : proposedBrand),
+      productLine:
+        correctedProductLine ??
+        (typeof existingAiReadyJson.productLine === "string"
+          ? existingAiReadyJson.productLine
+          : proposedProductLine),
+      category:
+        correctedCategory ??
+        (typeof existingAiReadyJson.category === "string"
+          ? existingAiReadyJson.category
+          : proposedCategory),
+      shaftFlex:
+        correctedShaftFlex ??
+        (typeof existingAiReadyJson.shaftFlex === "string"
+          ? existingAiReadyJson.shaftFlex
+          : proposedShaftFlex),
+      conditionGrade:
+        correctedConditionGrade ??
+        (typeof existingAiReadyJson.conditionGrade === "string"
+          ? existingAiReadyJson.conditionGrade
+          : proposedConditionGrade),
+      ...(correctedDemoValue === null ? {} : { tradeInValue: correctedDemoValue }),
+      reviewNeeded: false,
+      missingFields: []
+    };
+
+    const reviewedAiReadyShapeIsRagReady =
+      hasRagReadyReviewShape(reviewedAiReadyJson);
+
+    const updatedAiReadyIntakeRecord = existingAiReadyRecord
+      ? await tx.aiReadyIntakeRecord.update({
+          where: {
+            id: existingAiReadyRecord.id
+          },
+          data: {
+            normalizedJson: reviewedAiReadyJson,
+            status: reviewedAiReadyShapeIsRagReady
+              ? "READY_FOR_RAG"
+              : "READY_FOR_REVIEW",
+            reviewNeeded: false,
+            embeddingReady: true,
+            ragReady: reviewedAiReadyShapeIsRagReady
+          }
+        })
+      : await tx.aiReadyIntakeRecord.create({
+          data: {
+            intakeItemId: reviewQueueItem.intakeItemId,
+            workflowRunId: reviewQueueItem.workflowRunId,
+            sourceRecordId: reviewQueueItem.id,
+            sourceType: "FREE_TEXT",
+            sourceName: "Human-reviewed workflow record",
+            rawText: reviewQueueItem.originalText ?? "",
+            cleanedText: reviewQueueItem.originalText ?? "",
+            normalizedJson: reviewedAiReadyJson,
+            metadataJson: {
+              createdFrom: "HUMAN_REVIEW_RESOLUTION",
+              reviewQueueItemId: reviewQueueItem.id,
+              reviewedTradeInRecordId: reviewedTradeInRecord.id
+            },
+            qualitySignalsJson: input.learningEvents,
+            status: reviewedAiReadyShapeIsRagReady
+              ? "READY_FOR_RAG"
+              : "READY_FOR_REVIEW",
+            reviewNeeded: false,
+            embeddingReady: true,
+            ragReady: reviewedAiReadyShapeIsRagReady
+          }
+        });
+
     const learningEvents = await tx.humanReviewLearningEvent.findMany({
       where: {
         reviewedTradeInRecordId: reviewedTradeInRecord.id
@@ -522,6 +671,7 @@ async function resolveReviewQueueItemWithCorrections(input: {
     return {
       reviewQueueItem,
       reviewedTradeInRecord,
+      updatedAiReadyIntakeRecord,
       learningEvents
     };
   });
@@ -664,6 +814,7 @@ export async function reviewQueueItemRoutes(
         reviewedTradeInRecord: serializeReviewedTradeInRecord(
           result.reviewedTradeInRecord
         ),
+        aiReadyIntakeRecord: result.updatedAiReadyIntakeRecord,
         learningEvents: result.learningEvents.map(
           serializeHumanReviewLearningEvent
         )

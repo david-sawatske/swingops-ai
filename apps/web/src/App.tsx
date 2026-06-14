@@ -20,6 +20,7 @@ import {
   executeAgenticTradeInRun,
   executeEndToEndAgenticTradeInDemo,
   executeMultiSourceIntakeDemo,
+  listAiReadyIntakeRecords,
   dismissReviewQueueItem,
   executeWorkflowRun,
   executeWorkflowToolCallingPlan,
@@ -54,6 +55,7 @@ import type {
 import type {
   ExecuteAgenticTradeInRunResponse,
   ExecuteEndToEndAgenticTradeInDemoResponse,
+  AiReadyIntakeRecord,
   ExecuteMultiSourceIntakeDemoRequest,
   ExecuteMultiSourceIntakeDemoResponse,
   GlobalReviewQueueItem,
@@ -83,7 +85,6 @@ import { ReviewQueuePage } from "./components/review-queue/ReviewQueuePage";
 import { WorkflowRunsPage } from "./components/workflows/WorkflowRunsPage";
 import { IntakePage } from "./components/intake/IntakePage";
 import { AgenticTradeInDemoPage } from "./components/agentic-demo/AgenticTradeInDemoPage";
-import { MultiSourceIntakeDemoPage } from "./components/multi-source-intake/MultiSourceIntakeDemoPage";
 import {
   GuidedDemoPathPage,
   type GuidedStep,
@@ -175,10 +176,10 @@ function App() {
 
   const [endToEndAgenticDemoRawInput, setEndToEndAgenticDemoRawInput] = useState(
     [
-      "TM stealth2 drv 10.5 Ventus stiff, no hc, sky mark on crown",
-      "Titleist TSR maybe TS2 3w 15 deg Tensei s flex, face wear, hc included",
-      "Cally Rogue ST Max driver 9 Project X HZRDUS x-stiff, paint wear, no wrench",
-      "PING G425 irons 5-PW reg, worn grips, condition unclear",
+      "TM stealth2 drv 10.5 Ventus stiff condition 8.0 Average",
+      "Titleist TSR maybe TS2 3w 15 deg Tensei s flex condition 8.0 Average",
+      "Cally Rogue ST Max driver 9 Project X HZRDUS x-stiff condition 7.0 Below Average",
+      "PING G425 irons 5-PW reg condition 6.0 Poor",
     ].join("\n"),
   );
   const [endToEndAgenticDemoResult, setEndToEndAgenticDemoResult] =
@@ -194,6 +195,8 @@ function App() {
 
   const [multiSourceIntakeDemoResult, setMultiSourceIntakeDemoResult] =
     useState<ExecuteMultiSourceIntakeDemoResponse | null>(null);
+  const [persistedAiReadyIntakeRecords, setPersistedAiReadyIntakeRecords] =
+    useState<AiReadyIntakeRecord[]>([]);
   const [isRunningMultiSourceIntakeDemo, setIsRunningMultiSourceIntakeDemo] =
     useState(false);
   const [multiSourceIntakeDemoError, setMultiSourceIntakeDemoError] = useState<
@@ -260,7 +263,7 @@ function App() {
     "agent/tool request → policy decision → execution or block → persisted ToolCallLog audit record",
   );
   const [knowledgeSearchQuery, setKnowledgeSearchQuery] = useState(
-    "TM stealth2 drv 10.5 stiff no hc sky mark",
+    "TM stealth2 drv 10.5 stiff condition 8.0 Average",
   );
   const [knowledgeIngestionSummary, setKnowledgeIngestionSummary] =
     useState<KnowledgeIngestionSummary | null>(null);
@@ -758,7 +761,7 @@ function App() {
 
             const details = [
               record.shaftFlex ? "shaft flex " + record.shaftFlex : null,
-              record.condition ? "condition " + record.condition : null,
+              record.conditionGrade ? "condition " + record.conditionGrade : null,
               record.tradeInValue === null ? null : "trade value $" + record.tradeInValue,
               record.storeId ? "store " + record.storeId : null,
               record.reviewNeeded ? "review needed" : "review clear",
@@ -819,8 +822,13 @@ function App() {
       setMultiSourceIntakeDemoSuccess(null);
 
       const result = await executeMultiSourceIntakeDemo(request);
+      const persistedRecordsResponse = await listAiReadyIntakeRecords({
+        workflowRunId: result.persistedIds.workflowRunId,
+        limit: result.recordsExtracted,
+      });
 
       setMultiSourceIntakeDemoResult(result);
+      setPersistedAiReadyIntakeRecords(persistedRecordsResponse.records);
 
       const generatedTradeInRawInput = result.cleanedDatasetPreview
         .map((record, index) => {
@@ -830,7 +838,7 @@ function App() {
 
           const details = [
             record.shaftFlex ? "shaft flex " + record.shaftFlex : null,
-            record.condition ? "condition " + record.condition : null,
+            record.conditionGrade ? "condition " + record.conditionGrade : null,
             record.tradeInValue === null ? null : "trade value $" + record.tradeInValue,
             record.storeId ? "store " + record.storeId : null,
             record.reviewNeeded ? "review needed" : "review clear",
@@ -854,7 +862,9 @@ function App() {
       setEndToEndAgenticDemoError(null);
 
       setMultiSourceIntakeDemoSuccess(
-        "Processed " +
+        "Persisted " +
+          persistedRecordsResponse.count +
+          " AI-ready records from " +
           result.sourcesProcessed +
           " source types into " +
           result.recordsExtracted +
@@ -870,6 +880,7 @@ function App() {
       await loadGlobalReviewQueueItems();
       await loadMcpInvocationHistory();
     } catch (error) {
+      setPersistedAiReadyIntakeRecords([]);
       setMultiSourceIntakeDemoError(
         error instanceof Error
           ? error.message
@@ -960,10 +971,28 @@ function App() {
       setReviewQueueActionSuccess(null);
       setWorkflowRunDetailError(null);
 
-      await resolveReviewQueueItemWithCorrections(
+      const response = await resolveReviewQueueItemWithCorrections(
         input.reviewQueueItemId,
         input.request,
       );
+
+      if (response.aiReadyIntakeRecord) {
+        setPersistedAiReadyIntakeRecords((current) => {
+          const exists = current.some(
+            (record) => record.id === response.aiReadyIntakeRecord?.id,
+          );
+
+          if (!exists) {
+            return [...current, response.aiReadyIntakeRecord!];
+          }
+
+          return current.map((record) =>
+            record.id === response.aiReadyIntakeRecord?.id
+              ? response.aiReadyIntakeRecord!
+              : record,
+          );
+        });
+      }
 
       await loadGlobalWorkflowRuns();
       await loadGlobalReviewQueueItems();
@@ -1253,6 +1282,7 @@ function App() {
           sourceIntakeResult={multiSourceIntakeDemoResult}
           sourceIntakeError={multiSourceIntakeDemoError}
           sourceIntakeSuccess={multiSourceIntakeDemoSuccess}
+          sourceIntakePersistedRecords={persistedAiReadyIntakeRecords}
           isRunningSourceIntake={isRunningMultiSourceIntakeDemo}
           tradeInRawInput={endToEndAgenticDemoRawInput}
           tradeInResult={endToEndAgenticDemoResult}
@@ -1300,16 +1330,6 @@ function App() {
           rawInput={endToEndAgenticDemoRawInput}
           result={endToEndAgenticDemoResult}
           success={endToEndAgenticDemoSuccess}
-        />
-      ) : null}
-
-      {activeView === "MULTI_SOURCE_INTAKE_DEMO" ? (
-        <MultiSourceIntakeDemoPage
-          error={multiSourceIntakeDemoError}
-          isRunning={isRunningMultiSourceIntakeDemo}
-          onRunDemo={handleRunMultiSourceIntakeDemo}
-          result={multiSourceIntakeDemoResult}
-          success={multiSourceIntakeDemoSuccess}
         />
       ) : null}
 

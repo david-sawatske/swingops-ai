@@ -6,7 +6,7 @@ export function getReadOnlyMcpToolInput(
 ): unknown {
   if (toolName === "swingops.knowledgeBase.search") {
     return {
-      query: "TM stealth2 drv 10.5 stiff no hc sky mark",
+      query: "TM stealth2 drv 10.5 stiff condition 8.0 Average",
       maxResults: 5,
     };
   }
