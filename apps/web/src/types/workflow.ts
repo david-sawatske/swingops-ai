@@ -146,7 +146,6 @@ export type ReviewedTradeInRecord = {
   correctedCategory: string | null;
   correctedShaftFlex: string | null;
   correctedConditionGrade: string | null;
-  conditionEvidenceText: string | null;
   correctedDemoValue: number | null;
   demoValuationNote: string | null;
   reviewerNotes: string | null;
@@ -290,11 +289,12 @@ export type ReviewCorrectionCategory =
   | "PUTTER";
 
 export type ReviewCorrectionShaftFlex =
-  | "LADIES"
-  | "SENIOR"
-  | "REGULAR"
   | "STIFF"
-  | "X_STIFF";
+  | "REGULAR"
+  | "SENIOR"
+  | "X_STIFF"
+  | "LADIES"
+  | "TOUR_X_STIFF";
 
 export type StructuredReviewCorrectedRecord = {
   brand?: string;
@@ -302,7 +302,6 @@ export type StructuredReviewCorrectedRecord = {
   category?: ReviewCorrectionCategory;
   shaftFlex?: ReviewCorrectionShaftFlex;
   conditionGrade?: ReviewConditionGrade;
-  conditionEvidenceText?: string;
   demoValue?: number;
   demoValuationNote?: string;
 };
@@ -326,6 +325,7 @@ export type ResolveReviewQueueItemWithCorrectionsResponse = {
   reviewQueueItem: ReviewQueueItem;
   workflowRun: WorkflowRunSummary | null;
   reviewedTradeInRecord: ReviewedTradeInRecord;
+  aiReadyIntakeRecord: AiReadyIntakeRecord | null;
   learningEvents: HumanReviewLearningEvent[];
 };
 
@@ -740,7 +740,7 @@ export type MultiSourceIntakeRecord = {
   productLine: string | null;
   category: string | null;
   shaftFlex: string | null;
-  condition: string | null;
+  conditionGrade: string | null;
   tradeInValue: number | null;
   customerName: string | null;
   customerEmail: string | null;
@@ -799,6 +799,42 @@ export type MultiSourceIntakeSourceResult = {
   };
 };
 
+export type AiReadyIntakeRecordStatus =
+  | "READY_FOR_REVIEW"
+  | "READY_FOR_RAG"
+  | "NEEDS_REVIEW";
+
+export type AiReadyIntakeRecord = {
+  id: string;
+  intakeBatchId: string | null;
+  intakeItemId: string | null;
+  workflowRunId: string | null;
+  sourceRecordId: string | null;
+  sourceType: MultiSourceIntakeSourceType;
+  sourceName: string;
+  rawText: string;
+  cleanedText: string;
+  normalizedJson: MultiSourceIntakeRecord;
+  inferredSchemaJson: MultiSourceIntakeSchemaField[] | null;
+  metadataJson: MultiSourceIntakeSourceResult["metadata"] | null;
+  qualitySignalsJson: MultiSourceIntakeSourceResult["qualitySignals"] | null;
+  status: AiReadyIntakeRecordStatus;
+  reviewNeeded: boolean;
+  embeddingReady: boolean;
+  ragReady: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ListAiReadyIntakeRecordsResponse = {
+  records: AiReadyIntakeRecord[];
+  count: number;
+};
+
+export type GetAiReadyIntakeRecordResponse = {
+  record: AiReadyIntakeRecord;
+};
+
 export type ExecuteMultiSourceIntakeDemoRequest = {
   sourceTypes?: MultiSourceIntakeSourceType[];
   sources?: MultiSourceIntakeSourceInput[];
@@ -845,5 +881,6 @@ export type ExecuteMultiSourceIntakeDemoResponse = {
     workflowRunId: string;
     reviewQueueItemIds: string[];
     toolCallLogIds: string[];
+    aiReadyIntakeRecordIds: string[];
   };
 };

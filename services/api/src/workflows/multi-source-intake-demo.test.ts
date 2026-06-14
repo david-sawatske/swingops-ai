@@ -187,6 +187,29 @@ describe("executeMultiSourceIntakeDemo", () => {
     expect(result.reviewNeeded).toBeGreaterThanOrEqual(1);
     expect(result.cleanedDatasetPreview.some((record) => record.reviewNeeded)).toBe(true);
     expect(result.persistedIds.reviewQueueItemIds.length).toBe(result.reviewNeeded);
+    expect(result.persistedIds.aiReadyIntakeRecordIds.length).toBe(result.recordsExtracted);
+
+    const persistedRecords = await prisma.aiReadyIntakeRecord.findMany({
+      where: {
+        workflowRunId: result.persistedIds.workflowRunId
+      },
+      orderBy: {
+        createdAt: "asc"
+      }
+    });
+
+    expect(persistedRecords).toHaveLength(result.recordsExtracted);
+    expect(persistedRecords[0]).toMatchObject({
+      intakeBatchId: result.persistedIds.intakeBatchId,
+      workflowRunId: result.persistedIds.workflowRunId,
+      sourceType: expect.any(String),
+      reviewNeeded: expect.any(Boolean)
+    });
+    expect(persistedRecords[0]?.normalizedJson).toEqual(
+      expect.objectContaining({
+        conditionGrade: expect.anything()
+      })
+    );
 
     await prisma.intakeBatch.delete({
       where: {

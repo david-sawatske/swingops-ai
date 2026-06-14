@@ -3,6 +3,7 @@ import Fastify from "fastify";
 
 import { env } from "./config/env.js";
 import { aiRoutes } from "./routes/ai.routes.js";
+import { aiReadyIntakeRecordRoutes } from "./routes/ai-ready-intake-records.routes.js";
 import { healthRoutes } from "./routes/health.routes.js";
 import { intakeBatchRoutes } from "./routes/intake-batches.routes.js";
 import { knowledgeRoutes } from "./routes/knowledge.routes.js";
@@ -23,6 +24,7 @@ export function buildApp() {
 
   app.register(healthRoutes);
   app.register(aiRoutes);
+  app.register(aiReadyIntakeRecordRoutes);
   app.register(intakeBatchRoutes);
   app.register(knowledgeRoutes);
   app.register(reviewQueueItemRoutes);

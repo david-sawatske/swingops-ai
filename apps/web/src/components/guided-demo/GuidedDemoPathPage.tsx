@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import type { AppView } from "../../constants/appNav";
 import type {
+  AiReadyIntakeRecord,
   ExecuteEndToEndAgenticTradeInDemoResponse,
   ExecuteMultiSourceIntakeDemoRequest,
   ExecuteMultiSourceIntakeDemoResponse,
@@ -11,6 +12,7 @@ import type {
   ResolveReviewQueueItemWithCorrectionsRequest,
   ReviewConditionGrade,
   ReviewCorrectionCategory,
+  ReviewCorrectionShaftFlex,
   ReviewedTradeInRecord,
 } from "../../types/workflow";
 import { EmptyState } from "../EmptyState";
@@ -142,6 +144,18 @@ function getInventoryMatchDecisionLabel(
   );
 }
 
+const REVIEW_SHAFT_FLEX_OPTIONS: Array<{
+  value: ReviewCorrectionShaftFlex;
+  label: string;
+}> = [
+  { value: "STIFF", label: "Stiff" },
+  { value: "REGULAR", label: "Regular" },
+  { value: "SENIOR", label: "Senior" },
+  { value: "X_STIFF", label: "X-Stiff" },
+  { value: "LADIES", label: "Ladies" },
+  { value: "TOUR_X_STIFF", label: "Tour X-Stiff" },
+];
+
 const REVIEW_DEMO_VALUATION_DECISION_OPTIONS: {
   label: string;
   value: GuidedDemoValuationDecision;
@@ -270,7 +284,7 @@ function formatGeneratedWorkflowInput(
 
       const details = [
         record.shaftFlex ? "shaft flex " + record.shaftFlex : null,
-        record.condition ? "condition " + record.condition : null,
+        record.conditionGrade ? "condition " + record.conditionGrade : null,
         record.tradeInValue === null ? null : "trade value $" + record.tradeInValue,
         record.storeId ? "store " + record.storeId : null,
         record.reviewNeeded ? "review needed" : "review clear",
@@ -290,6 +304,7 @@ export function GuidedDemoPathPage({
   sourceIntakeResult,
   sourceIntakeError,
   sourceIntakeSuccess,
+  sourceIntakePersistedRecords,
   isRunningSourceIntake,
   tradeInRawInput,
   tradeInResult,
@@ -315,6 +330,7 @@ export function GuidedDemoPathPage({
   sourceIntakeResult: ExecuteMultiSourceIntakeDemoResponse | null;
   sourceIntakeError: string | null;
   sourceIntakeSuccess: string | null;
+  sourceIntakePersistedRecords: AiReadyIntakeRecord[];
   isRunningSourceIntake: boolean;
   tradeInRawInput: string;
   tradeInResult: ExecuteEndToEndAgenticTradeInDemoResponse | null;
@@ -357,6 +373,8 @@ export function GuidedDemoPathPage({
     useState<Record<string, string>>({});
   const [guidedReviewConditionGradeSelections, setGuidedReviewConditionGradeSelections] =
     useState<Record<string, ReviewConditionGrade | "">>({});
+  const [guidedReviewShaftFlexSelections, setGuidedReviewShaftFlexSelections] =
+    useState<Record<string, ReviewCorrectionShaftFlex | "">>({});
   const [guidedReviewInventoryMatchDecisions, setGuidedReviewInventoryMatchDecisions] =
     useState<Record<string, GuidedInventoryMatchDecision | "">>({});
   const [guidedReviewDemoValuationDecisions, setGuidedReviewDemoValuationDecisions] =
@@ -457,6 +475,16 @@ export function GuidedDemoPathPage({
     }));
   }
 
+  function handleGuidedReviewShaftFlexChange(
+    issueKey: string,
+    value: ReviewCorrectionShaftFlex | "",
+  ) {
+    setGuidedReviewShaftFlexSelections((current) => ({
+      ...current,
+      [issueKey]: value,
+    }));
+  }
+
   function handleGuidedReviewInventoryMatchDecisionChange(
     issueKey: string,
     value: GuidedInventoryMatchDecision | "",
@@ -524,6 +552,10 @@ export function GuidedDemoPathPage({
     return issueId.toLowerCase().includes("condition");
   }
 
+  function isShaftFlexReviewIssue(issueId: string) {
+    return issueId.toLowerCase().includes("shaft");
+  }
+
   function isInventoryMatchConfidenceIssue(issueLabel: string) {
     return issueLabel === "Review inventory match confidence";
   }
@@ -576,21 +608,39 @@ export function GuidedDemoPathPage({
       if (isConditionReviewIssue(issue.id)) {
         const selectedConditionGrade =
           guidedReviewConditionGradeSelections[issueKey] || undefined;
-        const conditionEvidence =
-          guidedReviewIssueCorrections[issueKey]?.trim() || undefined;
-
         if (selectedConditionGrade) {
           correctedRecord.conditionGrade = selectedConditionGrade;
-          correctedRecord.conditionEvidenceText = conditionEvidence;
 
           learningEvents.push({
             fieldName: "conditionGrade",
-            rawTextMatch: conditionEvidence ?? input.evidence.rawText,
+            rawTextMatch: input.evidence.rawText,
             proposedValue: issue.detail,
             correctedValue: selectedConditionGrade,
-            evidenceText: conditionEvidence,
+            evidenceText: input.evidence.rawText,
             confidenceImpact:
               "Human-approved condition grade can improve future condition handling.",
+          });
+        }
+
+        continue;
+      }
+
+      if (isShaftFlexReviewIssue(issue.id)) {
+        const selectedShaftFlex =
+          guidedReviewShaftFlexSelections[issueKey] || undefined;
+
+        if (selectedShaftFlex) {
+          correctedRecord.shaftFlex = selectedShaftFlex;
+
+          learningEvents.push({
+            fieldName: "shaftFlex",
+            rawTextMatch:
+              guidedReviewRawTextMatches[issueKey]?.trim() || undefined,
+            proposedValue: issue.detail,
+            correctedValue: selectedShaftFlex,
+            evidenceText: input.evidence.rawText,
+            confidenceImpact:
+              "Human-approved raw text to shaft flex mapping can improve future shaft flex handling.",
           });
         }
 
@@ -676,8 +726,6 @@ export function GuidedDemoPathPage({
 
     if (Object.keys(correctedRecord).length === 0) {
       correctedRecord.conditionGrade = "8.0 Average";
-      correctedRecord.conditionEvidenceText =
-        "No fixed condition correction was selected in the guided review. Defaulted to Average for demo review persistence.";
     }
 
     return {
@@ -909,7 +957,7 @@ export function GuidedDemoPathPage({
                           <th>Product</th>
                           <th>Category</th>
                           <th>Flex</th>
-                          <th>Condition</th>
+                          <th>Condition grade</th>
                           <th>Value</th>
                           <th>Store</th>
                           <th>Review</th>
@@ -923,7 +971,7 @@ export function GuidedDemoPathPage({
                             <td>{record.productLine ?? "—"}</td>
                             <td>{record.category ?? "—"}</td>
                             <td>{record.shaftFlex ?? "—"}</td>
-                            <td>{record.condition ?? "—"}</td>
+                            <td>{record.conditionGrade ?? "—"}</td>
                             <td>{record.tradeInValue === null ? "—" : `${record.tradeInValue}`}</td>
                             <td>{record.storeId ?? "—"}</td>
                             <td>{record.reviewNeeded ? "Needed" : "Clear"}</td>
@@ -933,9 +981,91 @@ export function GuidedDemoPathPage({
                     </table>
                   </div>
 
+                  <section className="guided-workflow-details guided-workflow-details--ai-ready">
+                    <div className="guided-workflow-section-heading">
+                      <div>
+                        <span className="model-route-card__eyebrow">Durable handoff</span>
+                        <h4>Persisted AI-ready records</h4>
+                        <p>
+                          These are normalized operational records persisted by the intake workflow.
+                          They are ready for downstream review and RAG preparation, but they are not final inventory writes.
+                        </p>
+                      </div>
+                      <span className="agentic-demo-pill agentic-demo-pill--success">
+                        {sourceIntakePersistedRecords.length} persisted
+                      </span>
+                    </div>
+
+                    {sourceIntakePersistedRecords.length > 0 ? (
+                      <div className="guided-ai-ready-evidence-grid">
+                        {sourceIntakePersistedRecords.map((persistedRecord) => (
+                          <article className="guided-ai-ready-evidence-card" key={persistedRecord.id}>
+                            <div className="guided-ai-ready-evidence-card__header">
+                              <div>
+                                <span className="model-route-card__eyebrow">
+                                  {persistedRecord.sourceType.replace(/_/g, " ")} · {persistedRecord.status}
+                                </span>
+                                <h4>
+                                  {persistedRecord.normalizedJson.brand ?? "Unknown brand"}{" "}
+                                  {persistedRecord.normalizedJson.productLine ?? "Unknown product"}
+                                </h4>
+                              </div>
+                              <span
+                                className={
+                                  persistedRecord.reviewNeeded
+                                    ? "agentic-demo-pill agentic-demo-pill--warning"
+                                    : "agentic-demo-pill agentic-demo-pill--success"
+                                }
+                              >
+                                {persistedRecord.reviewNeeded ? "Needs review" : "Ready"}
+                              </span>
+                            </div>
+
+                            <dl className="agentic-demo-metadata">
+                              <div>
+                                <dt>Record ID</dt>
+                                <dd>{persistedRecord.id}</dd>
+                              </div>
+                              <div>
+                                <dt>Source</dt>
+                                <dd>{persistedRecord.sourceName}</dd>
+                              </div>
+                              <div>
+                                <dt>Workflow run</dt>
+                                <dd>{persistedRecord.workflowRunId ?? "—"}</dd>
+                              </div>
+                              <div>
+                                <dt>Intake item</dt>
+                                <dd>{persistedRecord.intakeItemId ?? "—"}</dd>
+                              </div>
+                              <div>
+                                <dt>Condition grade</dt>
+                                <dd>{persistedRecord.normalizedJson.conditionGrade ?? "—"}</dd>
+                              </div>
+                              <div>
+                                <dt>RAG ready</dt>
+                                <dd>{persistedRecord.ragReady ? "Yes" : "Not yet"}</dd>
+                              </div>
+                            </dl>
+
+                            <details className="multi-source-intake-details">
+                              <summary>Normalized record JSON</summary>
+                              <pre>{JSON.stringify(persistedRecord.normalizedJson, null, 2)}</pre>
+                            </details>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <EmptyState
+                        title="No persisted AI-ready records loaded"
+                        message="Normalize sources to create durable AI-ready records."
+                      />
+                    )}
+                  </section>
+
                   <details className="guided-workflow-details guided-workflow-details--ai-ready">
                     <summary>
-                      <span>Cleaned source evidence</span>
+                      <span>Cleaned source text</span>
                     </summary>
                     <div className="guided-ai-ready-evidence-grid">
                       {sourceIntakeResult.sourceResults.map((sourceResult) => (
@@ -1559,6 +1689,13 @@ export function GuidedDemoPathPage({
                         );
                         const isClosed =
                           item.status === "RESOLVED" || item.status === "DISMISSED";
+                        const aiReadyRecord = sourceIntakePersistedRecords.find(
+                          (record) =>
+                            (item.intakeItemId &&
+                              record.intakeItemId === item.intakeItemId) ||
+                            (item.workflowRunId &&
+                              record.workflowRunId === item.workflowRunId),
+                        );
 
                         return (
                           <article className="agentic-demo-card" key={item.id}>
@@ -1737,27 +1874,51 @@ export function GuidedDemoPathPage({
                                                   </select>
                                                 </label>
 
+                                                <p className="review-queue-card__meta">
+                                                  Choose one fixed condition grade supplied by the intake source.
+                                                </p>
+                                              </div>
+                                            ) : isShaftFlexReviewIssue(issue.id) ? (
+                                              <div className="guided-review-category-correction">
                                                 <label>
-                                                  Condition evidence
-                                                  <textarea
+                                                  Shaft flex
+                                                  <select
                                                     onChange={(event) =>
-                                                      handleGuidedReviewIssueCorrectionChange(
+                                                      handleGuidedReviewShaftFlexChange(
+                                                        issueKey,
+                                                        event.target.value as ReviewCorrectionShaftFlex | "",
+                                                      )
+                                                    }
+                                                    value={guidedReviewShaftFlexSelections[issueKey] ?? ""}
+                                                  >
+                                                    <option value="">Select shaft flex…</option>
+                                                    {REVIEW_SHAFT_FLEX_OPTIONS.map((option) => (
+                                                      <option key={option.value} value={option.value}>
+                                                        {option.label}
+                                                      </option>
+                                                    ))}
+                                                  </select>
+                                                </label>
+
+                                                <label>
+                                                  Matching raw text from original input
+                                                  <input
+                                                    onChange={(event) =>
+                                                      handleGuidedReviewRawTextMatchChange(
                                                         issueKey,
                                                         event.target.value,
                                                       )
                                                     }
-                                                    placeholder="Example: worn grips"
-                                                    rows={3}
-                                                    value={
-                                                      guidedReviewIssueCorrections[issueKey] ?? ""
-                                                    }
+                                                    placeholder="Copy the phrase from Original raw text, for example X-Stiff"
+                                                    type="text"
+                                                    value={guidedReviewRawTextMatches[issueKey] ?? ""}
                                                   />
                                                 </label>
 
                                                 <p className="review-queue-card__meta">
-                                                  Choose one fixed condition grade. Keep descriptive
-                                                  evidence such as worn grips, sky marks, or face wear
-                                                  in the evidence field.
+                                                  Choose one fixed shaft flex value, then map the
+                                                  exact raw text phrase that should improve future
+                                                  shaft flex matching.
                                                 </p>
                                               </div>
                                             ) : isDemoValuationRangeIssue(issue.label) ? (
@@ -1874,7 +2035,7 @@ export function GuidedDemoPathPage({
                                               </div>
                                             ) : (
                                               <label>
-                                                Condition evidence or correction
+                                                Correction note
                                                 <textarea
                                                   onChange={(event) =>
                                                     handleGuidedReviewIssueCorrectionChange(
@@ -1882,7 +2043,7 @@ export function GuidedDemoPathPage({
                                                       event.target.value,
                                                     )
                                                   }
-                                                  placeholder="Example: condition evidence is worn grips. Select a fixed condition grade when resolving."
+                                                  placeholder="Add a short correction note for this review issue."
                                                   rows={3}
                                                   value={
                                                     guidedReviewIssueCorrections[issueKey] ?? ""
@@ -1898,6 +2059,8 @@ export function GuidedDemoPathPage({
                                                     !guidedReviewCategorySelections[issueKey]) ||
                                                   (isConditionReviewIssue(issue.id) &&
                                                     !guidedReviewConditionGradeSelections[issueKey]) ||
+                                                  (isShaftFlexReviewIssue(issue.id) &&
+                                                    !guidedReviewShaftFlexSelections[issueKey]) ||
                                                   (isInventoryMatchConfidenceIssue(issue.label) &&
                                                     !guidedReviewInventoryMatchDecisions[issueKey]) ||
                                                   (isDemoValuationRangeIssue(issue.label) &&
@@ -1914,7 +2077,9 @@ export function GuidedDemoPathPage({
                                                     guidedReviewRawTextMatches[issueKey]?.trim();
                                                   const selectedConditionGrade =
                                                     guidedReviewConditionGradeSelections[issueKey];
-                                                  const conditionEvidence =
+                                                  const selectedShaftFlex =
+                                                    guidedReviewShaftFlexSelections[issueKey];
+                                                  const correctionNote =
                                                     guidedReviewIssueCorrections[issueKey]?.trim();
                                                   const inventoryDecision =
                                                     guidedReviewInventoryMatchDecisions[issueKey];
@@ -1943,18 +2108,25 @@ export function GuidedDemoPathPage({
                                                             selectedConditionGrade
                                                           ? "conditionGrade=" +
                                                             selectedConditionGrade +
-                                                            (conditionEvidence
-                                                              ? '. Condition evidence: "' +
-                                                                conditionEvidence +
-                                                                '".'
-                                                              : ".")
-                                                          : isInventoryMatchConfidenceIssue(issue.label) &&
+                                                            "."
+                                                          : isShaftFlexReviewIssue(issue.id) &&
+                                                              selectedShaftFlex
+                                                            ? "shaftFlex=" +
+                                                              selectedShaftFlex +
+                                                              (rawTextMatch
+                                                                ? '. Review learning candidate: raw text "' +
+                                                                  rawTextMatch +
+                                                                  '" maps to shaft flex ' +
+                                                                  selectedShaftFlex +
+                                                                  "."
+                                                                : ".")
+                                                            : isInventoryMatchConfidenceIssue(issue.label) &&
                                                               inventoryDecision
                                                             ? "inventoryMatchDecision=" +
                                                               getInventoryMatchDecisionLabel(inventoryDecision) +
-                                                              (conditionEvidence
+                                                              (correctionNote
                                                                 ? '. Evidence: "' +
-                                                                  conditionEvidence +
+                                                                  correctionNote +
                                                                   '".'
                                                                 : ".")
                                                             : isDemoValuationRangeIssue(issue.label) &&
@@ -2067,21 +2239,24 @@ export function GuidedDemoPathPage({
 
                                   <article>
                                     <span className="model-route-card__eyebrow">
-                                      Condition evidence
-                                    </span>
-                                    <p>
-                                      {getReviewedTradeInRecord(item)?.conditionEvidenceText ??
-                                        "No condition evidence captured."}
-                                    </p>
-                                  </article>
-
-                                  <article>
-                                    <span className="model-route-card__eyebrow">
                                       Demo value
                                     </span>
                                     <p>
                                       {getReviewedTradeInRecord(item)?.correctedDemoValue ??
                                         "No reviewed demo value captured."}
+                                    </p>
+                                  </article>
+
+                                  <article>
+                                    <span className="model-route-card__eyebrow">
+                                      AI-ready record status
+                                    </span>
+                                    <p>
+                                      {aiReadyRecord
+                                        ? aiReadyRecord.status +
+                                          " · RAG ready: " +
+                                          (aiReadyRecord.ragReady ? "Yes" : "Not yet")
+                                        : "No linked AI-ready record found."}
                                     </p>
                                   </article>
                                 </div>
@@ -2124,10 +2299,14 @@ export function GuidedDemoPathPage({
                               </span>
                               <strong>
                                 {isClosed
-                                  ? "After: human review action recorded"
+                                  ? "After: human review updated the AI-ready record"
                                   : "Before: workflow paused for human review"}
                               </strong>
-                              <p>{evidence.suggestedNextAction}</p>
+                              <p>
+                                {isClosed && aiReadyRecord
+                                  ? "The durable AI-ready record now reflects reviewed fields and can be used for downstream RAG preparation."
+                                  : evidence.suggestedNextAction}
+                              </p>
                             </article>
 
                             {!isClosed ? (

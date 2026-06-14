@@ -159,6 +159,12 @@ enum KnowledgeIngestionRunStatus {
   FAILED
 }
 
+enum AiReadyIntakeRecordStatus {
+  READY_FOR_REVIEW
+  READY_FOR_RAG
+  NEEDS_REVIEW
+}
+
 model IntakeBatch {
   id          String            @id @default(cuid())
   name        String
@@ -167,8 +173,9 @@ model IntakeBatch {
   status      IntakeBatchStatus @default(DRAFT)
   itemCount   Int               @default(0) @map("item_count")
 
-  items        IntakeItem[]
-  workflowRuns WorkflowRun[]
+  items                IntakeItem[]
+  workflowRuns         WorkflowRun[]
+  aiReadyIntakeRecords AiReadyIntakeRecord[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -191,6 +198,7 @@ model IntakeItem {
   reviewQueueItems          ReviewQueueItem[]
   reviewedTradeInRecords    ReviewedTradeInRecord[]
   humanReviewLearningEvents HumanReviewLearningEvent[]
+  aiReadyIntakeRecords      AiReadyIntakeRecord[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -246,12 +254,13 @@ model WorkflowRun {
   completedAt  DateTime? @map("completed_at")
   errorMessage String?   @map("error_message")
 
-  intakeBatch      IntakeBatch?      @relation(fields: [intakeBatchId], references: [id], onDelete: SetNull)
-  intakeItem       IntakeItem?       @relation(fields: [intakeItemId], references: [id], onDelete: SetNull)
-  steps            WorkflowStep[]
-  toolCallLogs     ToolCallLog[]
-  modelCallLogs    ModelCallLog[]
-  reviewQueueItems ReviewQueueItem[]
+  intakeBatch          IntakeBatch?          @relation(fields: [intakeBatchId], references: [id], onDelete: SetNull)
+  intakeItem           IntakeItem?           @relation(fields: [intakeItemId], references: [id], onDelete: SetNull)
+  steps                WorkflowStep[]
+  toolCallLogs         ToolCallLog[]
+  modelCallLogs        ModelCallLog[]
+  reviewQueueItems     ReviewQueueItem[]
+  aiReadyIntakeRecords AiReadyIntakeRecord[]
 
   createdAt                 DateTime                   @default(now()) @map("created_at")
   updatedAt                 DateTime                   @updatedAt @map("updated_at")
@@ -418,6 +427,47 @@ model ReviewQueueItem {
   @@index([reason])
   @@index([status])
   @@map("review_queue_items")
+}
+
+model AiReadyIntakeRecord {
+  id String @id @default(cuid())
+
+  intakeBatchId String? @map("intake_batch_id")
+  intakeItemId  String? @map("intake_item_id")
+  workflowRunId String? @map("workflow_run_id")
+
+  sourceRecordId String? @map("source_record_id")
+  sourceType     String  @map("source_type")
+  sourceName     String  @map("source_name")
+
+  rawText     String @map("raw_text")
+  cleanedText String @map("cleaned_text")
+
+  normalizedJson     Json  @map("normalized_json")
+  inferredSchemaJson Json? @map("inferred_schema_json")
+  metadataJson       Json? @map("metadata_json")
+  qualitySignalsJson Json? @map("quality_signals_json")
+
+  status       AiReadyIntakeRecordStatus @default(READY_FOR_REVIEW)
+  reviewNeeded Boolean                   @default(false) @map("review_needed")
+
+  embeddingReady Boolean @default(false) @map("embedding_ready")
+  ragReady       Boolean @default(false) @map("rag_ready")
+
+  intakeBatch IntakeBatch? @relation(fields: [intakeBatchId], references: [id], onDelete: SetNull)
+  intakeItem  IntakeItem?  @relation(fields: [intakeItemId], references: [id], onDelete: SetNull)
+  workflowRun WorkflowRun? @relation(fields: [workflowRunId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([intakeBatchId])
+  @@index([intakeItemId])
+  @@index([workflowRunId])
+  @@index([sourceType])
+  @@index([status])
+  @@index([reviewNeeded])
+  @@map("ai_ready_intake_records")
 }
 
 model KnowledgeDocument {

@@ -5,10 +5,10 @@ import { DashboardSection } from "../DashboardSection";
 import { EmptyState } from "../EmptyState";
 
 const DEFAULT_DEMO_INPUT = [
-  "TM stealth2 drv 10.5 Ventus stiff, no hc, sky mark on crown",
-  "Titleist TSR maybe TS2 3w 15 deg Tensei s flex, face wear, hc included",
-  "Cally Rogue ST Max driver 9 Project X HZRDUS x-stiff, paint wear, no wrench",
-  "PING G425 irons 5-PW reg, worn grips, condition unclear",
+  "TM stealth2 drv 10.5 Ventus stiff condition 8.0 Average",
+  "Titleist TSR maybe TS2 3w 15 deg Tensei s flex condition 8.0 Average",
+  "Cally Rogue ST Max driver 9 Project X HZRDUS x-stiff condition 7.0 Below Average",
+  "PING G425 irons 5-PW reg condition 6.0 Poor",
 ].join("\n");
 
 function formatScore(score: number | null | undefined) {
