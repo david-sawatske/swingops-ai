@@ -379,6 +379,228 @@ describe("review queue item routes", () => {
     });
   });
 
+  describe("POST /review-queue-items/:id/resolve-with-corrections", () => {
+    it("creates a reviewed trade-in record and learning events", async () => {
+      const app = buildApp();
+      const reviewQueueItem = await createReviewQueueItem();
+
+      const response = await app.inject({
+        method: "POST",
+        url: `/review-queue-items/${reviewQueueItem.id}/resolve-with-corrections`,
+        payload: {
+          reviewerNotes: "Human approved final trade-in record.",
+          correctedRecord: {
+            brand: "TaylorMade",
+            productLine: "Stealth 2",
+            category: "DRIVER",
+            shaftFlex: "STIFF",
+            conditionGrade: "8.0 Average",
+            conditionEvidenceText: "worn grips",
+            demoValue: 185,
+            demoValuationNote: "Demo valuation range reviewed by human."
+          },
+          learningEvents: [
+            {
+              fieldName: "category",
+              rawTextMatch: "TM driver",
+              proposedValue: "UNKNOWN",
+              correctedValue: "DRIVER",
+              evidenceText: "Original raw text used driver wording.",
+              confidenceImpact: "Boost future category normalization."
+            },
+            {
+              fieldName: "conditionGrade",
+              rawTextMatch: "worn grips",
+              proposedValue: "condition unclear",
+              correctedValue: "8.0 Average",
+              evidenceText: "worn grips"
+            }
+          ]
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.reviewQueueItem).toMatchObject({
+        id: reviewQueueItem.id,
+        status: "RESOLVED",
+        reviewerNotes: "Human approved final trade-in record."
+      });
+      expect(body.workflowRun).toMatchObject({
+        id: reviewQueueItem.workflowRunId,
+        status: "COMPLETED"
+      });
+      expect(body.reviewedTradeInRecord).toMatchObject({
+        reviewQueueItemId: reviewQueueItem.id,
+        workflowRunId: reviewQueueItem.workflowRunId,
+        originalText: "TM driver maybe 10.5, shaft unknown 1",
+        correctedBrand: "TaylorMade",
+        correctedProductLine: "Stealth 2",
+        correctedCategory: "DRIVER",
+        correctedShaftFlex: "STIFF",
+        correctedConditionGrade: "8.0 Average",
+        conditionEvidenceText: "worn grips",
+        correctedDemoValue: 185,
+        demoValuationNote: "Demo valuation range reviewed by human.",
+        reviewerNotes: "Human approved final trade-in record."
+      });
+      expect(body.reviewedTradeInRecord.approvedAt).not.toBeNull();
+
+      expect(body.learningEvents).toHaveLength(2);
+      expect(body.learningEvents[0]).toMatchObject({
+        reviewedTradeInRecordId: body.reviewedTradeInRecord.id,
+        reviewQueueItemId: reviewQueueItem.id,
+        workflowRunId: reviewQueueItem.workflowRunId,
+        fieldName: "category",
+        rawTextMatch: "TM driver",
+        proposedValue: "UNKNOWN",
+        correctedValue: "DRIVER",
+        evidenceText: "Original raw text used driver wording.",
+        confidenceImpact: "Boost future category normalization.",
+        reviewerNotes: "Human approved final trade-in record."
+      });
+      expect(body.learningEvents[1]).toMatchObject({
+        fieldName: "conditionGrade",
+        rawTextMatch: "worn grips",
+        proposedValue: "condition unclear",
+        correctedValue: "8.0 Average",
+        evidenceText: "worn grips"
+      });
+
+      const persistedRecord = await prisma.reviewedTradeInRecord.findUniqueOrThrow({
+        where: {
+          reviewQueueItemId: reviewQueueItem.id
+        }
+      });
+
+      expect(persistedRecord.correctedConditionGrade).toBe("8.0 Average");
+      expect(persistedRecord.conditionEvidenceText).toBe("worn grips");
+
+      const persistedLearningEvents = await prisma.humanReviewLearningEvent.findMany({
+        where: {
+          reviewedTradeInRecordId: persistedRecord.id
+        },
+        orderBy: {
+          createdAt: "asc"
+        }
+      });
+
+      expect(persistedLearningEvents).toHaveLength(2);
+      expect(persistedLearningEvents[0]).toMatchObject({
+        fieldName: "category",
+        rawTextMatch: "TM driver",
+        correctedValue: "DRIVER"
+      });
+      expect(persistedLearningEvents[1]).toMatchObject({
+        fieldName: "conditionGrade",
+        rawTextMatch: "worn grips",
+        correctedValue: "8.0 Average",
+        evidenceText: "worn grips"
+      });
+
+      await deleteWorkflowRun(reviewQueueItem.workflowRunId!);
+
+      await app.close();
+    });
+
+    it("rejects condition values outside the fixed review grade list", async () => {
+      const app = buildApp();
+      const reviewQueueItem = await createReviewQueueItem();
+
+      const response = await app.inject({
+        method: "POST",
+        url: `/review-queue-items/${reviewQueueItem.id}/resolve-with-corrections`,
+        payload: {
+          reviewerNotes: "Invalid condition test.",
+          correctedRecord: {
+            brand: "TaylorMade",
+            conditionGrade: "worn grips",
+            conditionEvidenceText: "worn grips"
+          },
+          learningEvents: []
+        }
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().error).toBe(
+        "Invalid structured review queue item resolution request"
+      );
+
+      const persistedRecord = await prisma.reviewedTradeInRecord.findUnique({
+        where: {
+          reviewQueueItemId: reviewQueueItem.id
+        }
+      });
+
+      expect(persistedRecord).toBeNull();
+
+      await deleteWorkflowRun(reviewQueueItem.workflowRunId!);
+
+      await app.close();
+    });
+
+    it("returns reviewed records and learning events in the review queue list", async () => {
+      const app = buildApp();
+      const reviewQueueItem = await createReviewQueueItem();
+
+      await app.inject({
+        method: "POST",
+        url: `/review-queue-items/${reviewQueueItem.id}/resolve-with-corrections`,
+        payload: {
+          reviewerNotes: "Approved category mapping.",
+          correctedRecord: {
+            category: "IRON_SET",
+            conditionGrade: "9.0 Above Average"
+          },
+          learningEvents: [
+            {
+              fieldName: "category",
+              rawTextMatch: "IRON_SET",
+              proposedValue: "UNKNOWN",
+              correctedValue: "IRON_SET",
+              evidenceText: "Raw source included IRON_SET."
+            }
+          ]
+        }
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/review-queue-items?status=RESOLVED"
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+      const listedItem = body.reviewQueueItems.find(
+        (item: { id: string }) => item.id === reviewQueueItem.id
+      );
+
+      expect(listedItem).toMatchObject({
+        id: reviewQueueItem.id,
+        status: "RESOLVED",
+        reviewedTradeInRecord: {
+          correctedCategory: "IRON_SET",
+          correctedConditionGrade: "9.0 Above Average"
+        },
+        humanReviewLearningEvents: [
+          {
+            fieldName: "category",
+            rawTextMatch: "IRON_SET",
+            correctedValue: "IRON_SET",
+            evidenceText: "Raw source included IRON_SET."
+          }
+        ]
+      });
+
+      await deleteWorkflowRun(reviewQueueItem.workflowRunId!);
+
+      await app.close();
+    });
+  });
+
   describe("POST /review-queue-items/:id/dismiss", () => {
     it("dismisses an open review queue item and completes its workflow run", async () => {
       const app = buildApp();

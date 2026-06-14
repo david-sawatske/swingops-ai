@@ -7,6 +7,11 @@ import type {
   ExecuteMultiSourceIntakeDemoResponse,
   GlobalReviewQueueItem,
   GlobalWorkflowRunSummary,
+  HumanReviewLearningEvent,
+  ResolveReviewQueueItemWithCorrectionsRequest,
+  ReviewConditionGrade,
+  ReviewCorrectionCategory,
+  ReviewedTradeInRecord,
 } from "../../types/workflow";
 import { EmptyState } from "../EmptyState";
 import { getReviewQueueEvidenceSummary } from "../../utils/reviewQueueDisplay";
@@ -87,10 +92,116 @@ const REVIEW_CATEGORY_OPTIONS = [
   { label: "Fairway Wood", value: "FAIRWAY_WOOD" },
   { label: "Hybrid", value: "HYBRID" },
   { label: "Iron Set", value: "IRON_SET" },
-  { label: "Single Iron", value: "SINGLE_IRON" },
   { label: "Wedge", value: "WEDGE" },
   { label: "Putter", value: "PUTTER" },
 ];
+
+const REVIEW_CONDITION_GRADE_OPTIONS: { label: string; value: ReviewConditionGrade }[] = [
+  { label: "9.5 Mint", value: "9.5 Mint" },
+  { label: "9.0 Above Average", value: "9.0 Above Average" },
+  { label: "8.0 Average", value: "8.0 Average" },
+  { label: "7.0 Below Average", value: "7.0 Below Average" },
+  { label: "6.0 Poor", value: "6.0 Poor" },
+];
+
+type GuidedInventoryMatchDecision =
+  | "CONFIRM_CURRENT_MATCH"
+  | "CORRECT_MATCHED_PRODUCT"
+  | "NO_RELIABLE_MATCH";
+
+type GuidedDemoValuationDecision =
+  | "CONFIRM_CURRENT_RANGE"
+  | "ENTER_REVIEWED_VALUE"
+  | "VALUATION_NOT_READY";
+
+const REVIEW_INVENTORY_MATCH_DECISION_OPTIONS: {
+  label: string;
+  value: GuidedInventoryMatchDecision;
+}[] = [
+  {
+    label: "Confirm current match",
+    value: "CONFIRM_CURRENT_MATCH",
+  },
+  {
+    label: "Correct matched product",
+    value: "CORRECT_MATCHED_PRODUCT",
+  },
+  {
+    label: "No reliable match",
+    value: "NO_RELIABLE_MATCH",
+  },
+];
+
+function getInventoryMatchDecisionLabel(
+  value: GuidedInventoryMatchDecision | "",
+) {
+  return (
+    REVIEW_INVENTORY_MATCH_DECISION_OPTIONS.find(
+      (option) => option.value === value,
+    )?.label ?? ""
+  );
+}
+
+const REVIEW_DEMO_VALUATION_DECISION_OPTIONS: {
+  label: string;
+  value: GuidedDemoValuationDecision;
+}[] = [
+  {
+    label: "Confirm current demo range",
+    value: "CONFIRM_CURRENT_RANGE",
+  },
+  {
+    label: "Enter reviewed demo value",
+    value: "ENTER_REVIEWED_VALUE",
+  },
+  {
+    label: "Valuation not ready",
+    value: "VALUATION_NOT_READY",
+  },
+];
+
+function getDemoValuationDecisionLabel(
+  value: GuidedDemoValuationDecision | "",
+) {
+  return (
+    REVIEW_DEMO_VALUATION_DECISION_OPTIONS.find(
+      (option) => option.value === value,
+    )?.label ?? ""
+  );
+}
+
+function formatLearningEventFieldName(fieldName: string) {
+  const knownLabels: Record<string, string> = {
+    category: "Category",
+    conditionGrade: "Condition grade",
+    demoValuationRange: "Demo valuation range",
+    inventoryMatchConfidence: "Inventory match confidence",
+  };
+
+  return (
+    knownLabels[fieldName] ??
+    fieldName
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .replace(/[_-]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/^./, (first) => first.toUpperCase())
+  );
+}
+
+function formatLearningEventSummary(input: {
+  rawTextMatch: string | null;
+  correctedValue: string | null;
+  confidenceImpact: string | null;
+}) {
+  return [
+    input.rawTextMatch ? "Raw text: " + input.rawTextMatch : null,
+    input.correctedValue ? "Decision: " + input.correctedValue : null,
+    input.confidenceImpact,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
 
 function formatScore(value: number | null | undefined) {
   return value === null || value === undefined ? "—" : value.toFixed(2);
@@ -112,6 +223,35 @@ function getInitialCurrentRunReviewItems(
   tradeInResult: ExecuteEndToEndAgenticTradeInDemoResponse | null,
 ) {
   return tradeInResult?.reviewQueueItemsCreated ?? [];
+}
+
+function getReviewedTradeInRecord(
+  item: unknown,
+): ReviewedTradeInRecord | null {
+  if (
+    item &&
+    typeof item === "object" &&
+    "reviewedTradeInRecord" in item
+  ) {
+    return item.reviewedTradeInRecord as ReviewedTradeInRecord | null;
+  }
+
+  return null;
+}
+
+function getHumanReviewLearningEvents(
+  item: unknown,
+): HumanReviewLearningEvent[] {
+  if (
+    item &&
+    typeof item === "object" &&
+    "humanReviewLearningEvents" in item &&
+    Array.isArray(item.humanReviewLearningEvents)
+  ) {
+    return item.humanReviewLearningEvents as HumanReviewLearningEvent[];
+  }
+
+  return [];
 }
 
 
@@ -168,6 +308,7 @@ export function GuidedDemoPathPage({
   reviewQueueNotesById,
   onReviewQueueNotesChange,
   onReviewQueueItemAction,
+  onResolveReviewQueueItemWithCorrections,
 }: {
   activeStep: GuidedStep;
   onActiveStepChange: (step: GuidedStep) => void;
@@ -197,6 +338,12 @@ export function GuidedDemoPathPage({
     workflowRunId?: string | null;
     intakeBatchId?: string | null;
   }) => void;
+  onResolveReviewQueueItemWithCorrections: (input: {
+    reviewQueueItemId: string;
+    request: ResolveReviewQueueItemWithCorrectionsRequest;
+    workflowRunId?: string | null;
+    intakeBatchId?: string | null;
+  }) => void;
 }) {
   const setActiveStep = onActiveStepChange;
   const [workflowInputBaseline, setWorkflowInputBaseline] = useState("");
@@ -207,6 +354,14 @@ export function GuidedDemoPathPage({
   const [guidedReviewCategorySelections, setGuidedReviewCategorySelections] =
     useState<Record<string, string>>({});
   const [guidedReviewRawTextMatches, setGuidedReviewRawTextMatches] =
+    useState<Record<string, string>>({});
+  const [guidedReviewConditionGradeSelections, setGuidedReviewConditionGradeSelections] =
+    useState<Record<string, ReviewConditionGrade | "">>({});
+  const [guidedReviewInventoryMatchDecisions, setGuidedReviewInventoryMatchDecisions] =
+    useState<Record<string, GuidedInventoryMatchDecision | "">>({});
+  const [guidedReviewDemoValuationDecisions, setGuidedReviewDemoValuationDecisions] =
+    useState<Record<string, GuidedDemoValuationDecision | "">>({});
+  const [guidedReviewDemoValues, setGuidedReviewDemoValues] =
     useState<Record<string, string>>({});
   const [resolvedGuidedReviewIssueKeys, setResolvedGuidedReviewIssueKeys] =
     useState<Record<string, boolean>>({});
@@ -292,6 +447,46 @@ export function GuidedDemoPathPage({
     }));
   }
 
+  function handleGuidedReviewConditionGradeChange(
+    issueKey: string,
+    value: ReviewConditionGrade | "",
+  ) {
+    setGuidedReviewConditionGradeSelections((current) => ({
+      ...current,
+      [issueKey]: value,
+    }));
+  }
+
+  function handleGuidedReviewInventoryMatchDecisionChange(
+    issueKey: string,
+    value: GuidedInventoryMatchDecision | "",
+  ) {
+    setGuidedReviewInventoryMatchDecisions((current) => ({
+      ...current,
+      [issueKey]: value,
+    }));
+  }
+
+  function handleGuidedReviewDemoValuationDecisionChange(
+    issueKey: string,
+    value: GuidedDemoValuationDecision | "",
+  ) {
+    setGuidedReviewDemoValuationDecisions((current) => ({
+      ...current,
+      [issueKey]: value,
+    }));
+  }
+
+  function handleGuidedReviewDemoValueChange(
+    issueKey: string,
+    value: string,
+  ) {
+    setGuidedReviewDemoValues((current) => ({
+      ...current,
+      [issueKey]: value,
+    }));
+  }
+
   function handleApplyGuidedReviewIssueCorrection(input: {
     reviewQueueItemId: string;
     issueKey: string;
@@ -318,6 +513,181 @@ export function GuidedDemoPathPage({
     }));
     setActiveGuidedReviewIssueKey(null);
   }
+
+  function isReviewCorrectionCategory(
+    value: string | undefined,
+  ): value is ReviewCorrectionCategory {
+    return REVIEW_CATEGORY_OPTIONS.some((option) => option.value === value);
+  }
+
+  function isConditionReviewIssue(issueId: string) {
+    return issueId.toLowerCase().includes("condition");
+  }
+
+  function isInventoryMatchConfidenceIssue(issueLabel: string) {
+    return issueLabel === "Review inventory match confidence";
+  }
+
+  function isDemoValuationRangeIssue(issueLabel: string) {
+    return issueLabel === "Review demo valuation range";
+  }
+
+  function buildGuidedStructuredReviewRequest(input: {
+    item: { id: string; };
+    evidence: ReturnType<typeof getReviewQueueEvidenceSummary>;
+  }): ResolveReviewQueueItemWithCorrectionsRequest {
+    const reviewerNotes =
+      reviewQueueNotesById[input.item.id]?.trim() ||
+      "Human approved guided review corrections.";
+    const correctedRecord: ResolveReviewQueueItemWithCorrectionsRequest["correctedRecord"] =
+      {};
+    const learningEvents: ResolveReviewQueueItemWithCorrectionsRequest["learningEvents"] =
+      [];
+
+    for (const issue of input.evidence.reviewIssues) {
+      const issueKey = getGuidedReviewIssueKey(input.item.id, issue.id);
+      const isIssueResolved =
+        resolvedGuidedReviewIssueKeys[issueKey] === true;
+
+      if (!isIssueResolved) {
+        continue;
+      }
+
+      if (issue.id === "missing-category") {
+        const selectedCategory = guidedReviewCategorySelections[issueKey];
+
+        if (isReviewCorrectionCategory(selectedCategory)) {
+          correctedRecord.category = selectedCategory;
+          learningEvents.push({
+            fieldName: "category",
+            rawTextMatch:
+              guidedReviewRawTextMatches[issueKey]?.trim() || undefined,
+            proposedValue: "UNKNOWN",
+            correctedValue: selectedCategory,
+            evidenceText: input.evidence.rawText,
+            confidenceImpact:
+              "Human-approved category mapping can improve future matching.",
+          });
+        }
+
+        continue;
+      }
+
+      if (isConditionReviewIssue(issue.id)) {
+        const selectedConditionGrade =
+          guidedReviewConditionGradeSelections[issueKey] || undefined;
+        const conditionEvidence =
+          guidedReviewIssueCorrections[issueKey]?.trim() || undefined;
+
+        if (selectedConditionGrade) {
+          correctedRecord.conditionGrade = selectedConditionGrade;
+          correctedRecord.conditionEvidenceText = conditionEvidence;
+
+          learningEvents.push({
+            fieldName: "conditionGrade",
+            rawTextMatch: conditionEvidence ?? input.evidence.rawText,
+            proposedValue: issue.detail,
+            correctedValue: selectedConditionGrade,
+            evidenceText: conditionEvidence,
+            confidenceImpact:
+              "Human-approved condition grade can improve future condition handling.",
+          });
+        }
+
+        continue;
+      }
+
+      if (isInventoryMatchConfidenceIssue(issue.label)) {
+        const decision = guidedReviewInventoryMatchDecisions[issueKey] || "";
+        const correction =
+          guidedReviewIssueCorrections[issueKey]?.trim() || undefined;
+        const decisionLabel = getInventoryMatchDecisionLabel(decision);
+
+        if (decision || correction) {
+          learningEvents.push({
+            fieldName: "inventoryMatchConfidence",
+            rawTextMatch: input.evidence.rawText,
+            proposedValue: issue.detail,
+            correctedValue: [decisionLabel, correction].filter(Boolean).join(": "),
+            evidenceText: correction,
+            confidenceImpact:
+              "Human-approved inventory match decision can improve future product matching.",
+          });
+        }
+
+        continue;
+      }
+
+      if (isDemoValuationRangeIssue(issue.label)) {
+        const decision = guidedReviewDemoValuationDecisions[issueKey] || "";
+        const reviewedDemoValueText = guidedReviewDemoValues[issueKey]?.trim();
+        const reviewedDemoValue = reviewedDemoValueText
+          ? Number(reviewedDemoValueText)
+          : Number.NaN;
+        const valuationNote =
+          guidedReviewIssueCorrections[issueKey]?.trim() || undefined;
+        const decisionLabel = getDemoValuationDecisionLabel(decision);
+
+        if (
+          decision === "ENTER_REVIEWED_VALUE" &&
+          Number.isFinite(reviewedDemoValue)
+        ) {
+          correctedRecord.demoValue = reviewedDemoValue;
+        }
+
+        if (decision || valuationNote) {
+          learningEvents.push({
+            fieldName: "demoValuationRange",
+            rawTextMatch: input.evidence.demoValuationRangeSummary ?? undefined,
+            proposedValue: issue.detail,
+            correctedValue: [
+              decisionLabel,
+              Number.isFinite(reviewedDemoValue)
+                ? "reviewed demo value " + reviewedDemoValue
+                : null,
+              valuationNote,
+            ]
+              .filter(Boolean)
+              .join(": "),
+            evidenceText: valuationNote,
+            confidenceImpact:
+              "Human-approved valuation decision can improve future demo valuation handling.",
+          });
+        }
+
+        continue;
+      }
+
+      const correction =
+        guidedReviewIssueCorrections[issueKey]?.trim() || undefined;
+
+      if (correction) {
+        learningEvents.push({
+          fieldName: issue.id,
+          rawTextMatch: input.evidence.rawText,
+          proposedValue: issue.detail,
+          correctedValue: correction,
+          evidenceText: correction,
+          confidenceImpact:
+            "Human review captured an approved correction for future matching.",
+        });
+      }
+    }
+
+    if (Object.keys(correctedRecord).length === 0) {
+      correctedRecord.conditionGrade = "8.0 Average";
+      correctedRecord.conditionEvidenceText =
+        "No fixed condition correction was selected in the guided review. Defaulted to Average for demo review persistence.";
+    }
+
+    return {
+      reviewerNotes,
+      correctedRecord,
+      learningEvents,
+    };
+  }
+
+
 
   function isStepComplete(step: GuidedStep) {
     const stepIndex = getStepIndex(step);
@@ -1230,6 +1600,25 @@ export function GuidedDemoPathPage({
 
                               <div className="guided-review-walkthrough__header">
                                 <span className="model-route-card__eyebrow">
+                                  What to do in this step
+                                </span>
+                                <strong>
+                                  Turn uncertain AI output into a human-approved record.
+                                </strong>
+                              </div>
+
+                              <div className="guided-review-context">
+                                <p>
+                                  For each issue, make a specific review decision. Confirm or
+                                  correct the category, choose one fixed condition grade, and
+                                  decide whether the low-confidence inventory match should be
+                                  accepted, corrected, or rejected. These choices are saved as
+                                  reviewed record fields and learning events.
+                                </p>
+                              </div>
+
+                              <div className="guided-review-walkthrough__header">
+                                <span className="model-route-card__eyebrow">
                                   Issue checklist
                                 </span>
                                 <strong>
@@ -1248,6 +1637,7 @@ export function GuidedDemoPathPage({
                                     const isIssueActive =
                                       activeGuidedReviewIssueKey === issueKey;
                                     const isIssueResolved =
+                                      isClosed ||
                                       resolvedGuidedReviewIssueKeys[issueKey] === true;
 
                                     return (
@@ -1321,14 +1711,170 @@ export function GuidedDemoPathPage({
 
                                                 <p className="review-queue-card__meta">
                                                   Reference the Original raw text evidence below. This
-                                                  records a human-approved learning candidate in
-                                                  reviewer notes. It does not update shared knowledge
-                                                  automatically.
+                                                  records a structured human-approved learning event
+                                                  when this review item is resolved.
+                                                </p>
+                                              </div>
+                                            ) : isConditionReviewIssue(issue.id) ? (
+                                              <div className="guided-review-category-correction">
+                                                <label>
+                                                  Condition grade
+                                                  <select
+                                                    onChange={(event) =>
+                                                      handleGuidedReviewConditionGradeChange(
+                                                        issueKey,
+                                                        event.target.value as ReviewConditionGrade | "",
+                                                      )
+                                                    }
+                                                    value={guidedReviewConditionGradeSelections[issueKey] ?? ""}
+                                                  >
+                                                    <option value="">Select condition grade…</option>
+                                                    {REVIEW_CONDITION_GRADE_OPTIONS.map((option) => (
+                                                      <option key={option.value} value={option.value}>
+                                                        {option.label}
+                                                      </option>
+                                                    ))}
+                                                  </select>
+                                                </label>
+
+                                                <label>
+                                                  Condition evidence
+                                                  <textarea
+                                                    onChange={(event) =>
+                                                      handleGuidedReviewIssueCorrectionChange(
+                                                        issueKey,
+                                                        event.target.value,
+                                                      )
+                                                    }
+                                                    placeholder="Example: worn grips"
+                                                    rows={3}
+                                                    value={
+                                                      guidedReviewIssueCorrections[issueKey] ?? ""
+                                                    }
+                                                  />
+                                                </label>
+
+                                                <p className="review-queue-card__meta">
+                                                  Choose one fixed condition grade. Keep descriptive
+                                                  evidence such as worn grips, sky marks, or face wear
+                                                  in the evidence field.
+                                                </p>
+                                              </div>
+                                            ) : isDemoValuationRangeIssue(issue.label) ? (
+                                              <div className="guided-review-category-correction">
+                                                <label>
+                                                  Demo valuation decision
+                                                  <select
+                                                    onChange={(event) =>
+                                                      handleGuidedReviewDemoValuationDecisionChange(
+                                                        issueKey,
+                                                        event.target.value as GuidedDemoValuationDecision | "",
+                                                      )
+                                                    }
+                                                    value={guidedReviewDemoValuationDecisions[issueKey] ?? ""}
+                                                  >
+                                                    <option value="">Select valuation decision…</option>
+                                                    {REVIEW_DEMO_VALUATION_DECISION_OPTIONS.map((option) => (
+                                                      <option key={option.value} value={option.value}>
+                                                        {option.label}
+                                                      </option>
+                                                    ))}
+                                                  </select>
+                                                </label>
+
+                                                <label>
+                                                  Reviewed demo value
+                                                  <input
+                                                    disabled={
+                                                      guidedReviewDemoValuationDecisions[issueKey] !==
+                                                      "ENTER_REVIEWED_VALUE"
+                                                    }
+                                                    min="0"
+                                                    onChange={(event) =>
+                                                      handleGuidedReviewDemoValueChange(
+                                                        issueKey,
+                                                        event.target.value,
+                                                      )
+                                                    }
+                                                    placeholder="Example: 250"
+                                                    type="number"
+                                                    value={guidedReviewDemoValues[issueKey] ?? ""}
+                                                  />
+                                                </label>
+
+                                                <label>
+                                                  Valuation note
+                                                  <textarea
+                                                    onChange={(event) =>
+                                                      handleGuidedReviewIssueCorrectionChange(
+                                                        issueKey,
+                                                        event.target.value,
+                                                      )
+                                                    }
+                                                    placeholder="Example: current range is acceptable after condition grade review."
+                                                    rows={3}
+                                                    value={
+                                                      guidedReviewIssueCorrections[issueKey] ?? ""
+                                                    }
+                                                  />
+                                                </label>
+
+                                                <p className="review-queue-card__meta">
+                                                  Confirm the current demo range, enter a reviewed
+                                                  demo value, or mark valuation as not ready. This
+                                                  keeps valuation review explicit whenever confidence
+                                                  is low or review is required.
+                                                </p>
+                                              </div>
+                                            ) : isInventoryMatchConfidenceIssue(issue.label) ? (
+                                              <div className="guided-review-category-correction">
+                                                <label>
+                                                  Inventory match decision
+                                                  <select
+                                                    onChange={(event) =>
+                                                      handleGuidedReviewInventoryMatchDecisionChange(
+                                                        issueKey,
+                                                        event.target.value as GuidedInventoryMatchDecision | "",
+                                                      )
+                                                    }
+                                                    value={guidedReviewInventoryMatchDecisions[issueKey] ?? ""}
+                                                  >
+                                                    <option value="">Select match decision…</option>
+                                                    {REVIEW_INVENTORY_MATCH_DECISION_OPTIONS.map((option) => (
+                                                      <option key={option.value} value={option.value}>
+                                                        {option.label}
+                                                      </option>
+                                                    ))}
+                                                  </select>
+                                                </label>
+
+                                                <label>
+                                                  Match evidence or corrected product
+                                                  <textarea
+                                                    onChange={(event) =>
+                                                      handleGuidedReviewIssueCorrectionChange(
+                                                        issueKey,
+                                                        event.target.value,
+                                                      )
+                                                    }
+                                                    placeholder="Example: raw text PING G425 irons confirms PING G425 iron set, even though confidence was low."
+                                                    rows={3}
+                                                    value={
+                                                      guidedReviewIssueCorrections[issueKey] ?? ""
+                                                    }
+                                                  />
+                                                </label>
+
+                                                <p className="review-queue-card__meta">
+                                                  Use this to approve the proposed inventory match,
+                                                  correct the matched product, or say no reliable
+                                                  product match exists. The decision becomes a
+                                                  structured learning event for future matching.
                                                 </p>
                                               </div>
                                             ) : (
                                               <label>
-                                                Correction or confirmation
+                                                Condition evidence or correction
                                                 <textarea
                                                   onChange={(event) =>
                                                     handleGuidedReviewIssueCorrectionChange(
@@ -1336,7 +1882,7 @@ export function GuidedDemoPathPage({
                                                       event.target.value,
                                                     )
                                                   }
-                                                  placeholder="Example: condition notes updated to worn grips."
+                                                  placeholder="Example: condition evidence is worn grips. Select a fixed condition grade when resolving."
                                                   rows={3}
                                                   value={
                                                     guidedReviewIssueCorrections[issueKey] ?? ""
@@ -1348,14 +1894,34 @@ export function GuidedDemoPathPage({
                                             <div className="workflow-run-card__actions">
                                               <button
                                                 disabled={
-                                                  issue.id === "missing-category" &&
-                                                  !guidedReviewCategorySelections[issueKey]
+                                                  (issue.id === "missing-category" &&
+                                                    !guidedReviewCategorySelections[issueKey]) ||
+                                                  (isConditionReviewIssue(issue.id) &&
+                                                    !guidedReviewConditionGradeSelections[issueKey]) ||
+                                                  (isInventoryMatchConfidenceIssue(issue.label) &&
+                                                    !guidedReviewInventoryMatchDecisions[issueKey]) ||
+                                                  (isDemoValuationRangeIssue(issue.label) &&
+                                                    !guidedReviewDemoValuationDecisions[issueKey]) ||
+                                                  (isDemoValuationRangeIssue(issue.label) &&
+                                                    guidedReviewDemoValuationDecisions[issueKey] ===
+                                                      "ENTER_REVIEWED_VALUE" &&
+                                                    !guidedReviewDemoValues[issueKey])
                                                 }
                                                 onClick={() => {
                                                   const selectedCategory =
                                                     guidedReviewCategorySelections[issueKey];
                                                   const rawTextMatch =
                                                     guidedReviewRawTextMatches[issueKey]?.trim();
+                                                  const selectedConditionGrade =
+                                                    guidedReviewConditionGradeSelections[issueKey];
+                                                  const conditionEvidence =
+                                                    guidedReviewIssueCorrections[issueKey]?.trim();
+                                                  const inventoryDecision =
+                                                    guidedReviewInventoryMatchDecisions[issueKey];
+                                                  const demoValuationDecision =
+                                                    guidedReviewDemoValuationDecisions[issueKey];
+                                                  const reviewedDemoValue =
+                                                    guidedReviewDemoValues[issueKey]?.trim();
 
                                                   handleApplyGuidedReviewIssueCorrection({
                                                     reviewQueueItemId: item.id,
@@ -1373,7 +1939,36 @@ export function GuidedDemoPathPage({
                                                               selectedCategory +
                                                               "."
                                                             : ".")
-                                                        : undefined,
+                                                        : isConditionReviewIssue(issue.id) &&
+                                                            selectedConditionGrade
+                                                          ? "conditionGrade=" +
+                                                            selectedConditionGrade +
+                                                            (conditionEvidence
+                                                              ? '. Condition evidence: "' +
+                                                                conditionEvidence +
+                                                                '".'
+                                                              : ".")
+                                                          : isInventoryMatchConfidenceIssue(issue.label) &&
+                                                              inventoryDecision
+                                                            ? "inventoryMatchDecision=" +
+                                                              getInventoryMatchDecisionLabel(inventoryDecision) +
+                                                              (conditionEvidence
+                                                                ? '. Evidence: "' +
+                                                                  conditionEvidence +
+                                                                  '".'
+                                                                : ".")
+                                                            : isDemoValuationRangeIssue(issue.label) &&
+                                                                demoValuationDecision
+                                                              ? "demoValuationDecision=" +
+                                                                getDemoValuationDecisionLabel(
+                                                                  demoValuationDecision,
+                                                                ) +
+                                                                (reviewedDemoValue
+                                                                  ? ". Reviewed demo value: " +
+                                                                    reviewedDemoValue +
+                                                                    "."
+                                                                  : ".")
+                                                              : undefined,
                                                   });
                                                 }}
                                                 type="button"
@@ -1440,13 +2035,87 @@ export function GuidedDemoPathPage({
                                   </p>
                                 </article>
 
-                                <article>
-                                  <span className="model-route-card__eyebrow">
-                                    Reviewer notes
-                                  </span>
-                                  <p>{item.reviewerNotes ?? "Not recorded yet."}</p>
-                                </article>
                               </div>
+
+                              {getReviewedTradeInRecord(item) ? (
+                                <div className="guided-review-evidence-grid">
+                                  <article>
+                                    <span className="model-route-card__eyebrow">
+                                      Reviewed record
+                                    </span>
+                                    <p>
+                                      {[
+                                        getReviewedTradeInRecord(item)?.correctedBrand,
+                                        getReviewedTradeInRecord(item)?.correctedProductLine,
+                                        getReviewedTradeInRecord(item)?.correctedCategory,
+                                        getReviewedTradeInRecord(item)?.correctedShaftFlex,
+                                      ]
+                                        .filter(Boolean)
+                                        .join(" · ") || "No corrected fields captured."}
+                                    </p>
+                                  </article>
+
+                                  <article>
+                                    <span className="model-route-card__eyebrow">
+                                      Condition grade
+                                    </span>
+                                    <p>
+                                      {getReviewedTradeInRecord(item)?.correctedConditionGrade ??
+                                        "No fixed condition grade captured."}
+                                    </p>
+                                  </article>
+
+                                  <article>
+                                    <span className="model-route-card__eyebrow">
+                                      Condition evidence
+                                    </span>
+                                    <p>
+                                      {getReviewedTradeInRecord(item)?.conditionEvidenceText ??
+                                        "No condition evidence captured."}
+                                    </p>
+                                  </article>
+
+                                  <article>
+                                    <span className="model-route-card__eyebrow">
+                                      Demo value
+                                    </span>
+                                    <p>
+                                      {getReviewedTradeInRecord(item)?.correctedDemoValue ??
+                                        "No reviewed demo value captured."}
+                                    </p>
+                                  </article>
+                                </div>
+                              ) : null}
+
+                              {getHumanReviewLearningEvents(item).length > 0 ? (
+                                <article className="guided-execution-evidence-card guided-execution-evidence-card--wide">
+                                  <span className="model-route-card__eyebrow">
+                                    Learning events
+                                  </span>
+                                  <strong>
+                                    {getHumanReviewLearningEvents(item).length} human-approved{" "}
+                                    {getHumanReviewLearningEvents(item).length === 1
+                                      ? "signal"
+                                      : "signals"} captured
+                                  </strong>
+                                  <div className="guided-review-evidence-grid">
+                                    {getHumanReviewLearningEvents(item).map((event) => (
+                                      <article key={event.id}>
+                                        <span className="model-route-card__eyebrow">
+                                          {formatLearningEventFieldName(event.fieldName)}
+                                        </span>
+                                        <p>
+                                          {formatLearningEventSummary({
+                                            rawTextMatch: event.rawTextMatch,
+                                            correctedValue: event.correctedValue,
+                                            confidenceImpact: event.confidenceImpact,
+                                          })}
+                                        </p>
+                                      </article>
+                                    ))}
+                                  </div>
+                                </article>
+                              ) : null}
                             </section>
 
                             <article className="guided-execution-evidence-card guided-execution-evidence-card--wide">
@@ -1464,8 +2133,9 @@ export function GuidedDemoPathPage({
                             {!isClosed ? (
                               <div className="review-queue-card__review-actions">
                                 <p className="review-queue-card__meta">
-                                  Controlled human action. Reviewer notes are recorded before
-                                  this workflow review item is resolved.
+                                  Controlled human action. Address every checklist issue, then
+                                  resolve to save reviewer notes, final reviewed fields and
+                                  learning events.
                                 </p>
 
                                 <label>
@@ -1482,11 +2152,40 @@ export function GuidedDemoPathPage({
 
                                 <div className="workflow-run-card__actions">
                                   <button
-                                    disabled={activeReviewQueueItemId === item.id}
+                                    title={
+                                      evidence.reviewIssues.some((issue) => {
+                                        const issueKey = getGuidedReviewIssueKey(
+                                          item.id,
+                                          issue.id,
+                                        );
+
+                                        return (
+                                          resolvedGuidedReviewIssueKeys[issueKey] !== true
+                                        );
+                                      })
+                                        ? "Address every checklist issue before resolving."
+                                        : undefined
+                                    }
+                                    disabled={
+                                      activeReviewQueueItemId === item.id ||
+                                      evidence.reviewIssues.some((issue) => {
+                                        const issueKey = getGuidedReviewIssueKey(
+                                          item.id,
+                                          issue.id,
+                                        );
+
+                                        return (
+                                          resolvedGuidedReviewIssueKeys[issueKey] !== true
+                                        );
+                                      })
+                                    }
                                     onClick={() =>
-                                      onReviewQueueItemAction({
+                                      onResolveReviewQueueItemWithCorrections({
                                         reviewQueueItemId: item.id,
-                                        action: "resolve",
+                                        request: buildGuidedStructuredReviewRequest({
+                                          item,
+                                          evidence,
+                                        }),
                                         workflowRunId: item.workflowRunId,
                                       })
                                     }
@@ -1494,7 +2193,7 @@ export function GuidedDemoPathPage({
                                   >
                                     {activeReviewQueueItemId === item.id
                                       ? "Updating…"
-                                      : "Resolve as human-approved"}
+                                      : "Resolve with reviewed record"}
                                   </button>
 
                                   <button
@@ -1509,6 +2208,15 @@ export function GuidedDemoPathPage({
 
                             <details className="guided-workflow-details">
                               <summary>View more: validation warnings and extracted fields</summary>
+                              <div className="guided-review-evidence-grid">
+                                <article>
+                                  <span className="model-route-card__eyebrow">
+                                    Reviewer notes
+                                  </span>
+                                  <p>{item.reviewerNotes ?? "Not recorded yet."}</p>
+                                </article>
+                              </div>
+
                               <pre>
                                 {JSON.stringify(
                                   {

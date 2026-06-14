@@ -3,6 +3,31 @@ import { z } from "zod";
 
 import { prisma } from "../lib/prisma.js";
 
+const REVIEW_CONDITION_GRADES = [
+  "9.5 Mint",
+  "9.0 Above Average",
+  "8.0 Average",
+  "7.0 Below Average",
+  "6.0 Poor"
+] as const;
+
+const REVIEW_CATEGORY_VALUES = [
+  "DRIVER",
+  "FAIRWAY_WOOD",
+  "HYBRID",
+  "IRON_SET",
+  "WEDGE",
+  "PUTTER"
+] as const;
+
+const REVIEW_SHAFT_FLEX_VALUES = [
+  "LADIES",
+  "SENIOR",
+  "REGULAR",
+  "STIFF",
+  "X_STIFF"
+] as const;
+
 const reviewQueueItemParamsSchema = z.object({
   id: z.string().min(1)
 });
@@ -20,6 +45,32 @@ const listReviewQueueItemsQuerySchema = z.object({
 
 const reviewQueueActionBodySchema = z.object({
   reviewerNotes: z.string().min(1).optional()
+});
+
+const correctedTradeInRecordSchema = z.object({
+  brand: z.string().min(1).optional(),
+  productLine: z.string().min(1).optional(),
+  category: z.enum(REVIEW_CATEGORY_VALUES).optional(),
+  shaftFlex: z.enum(REVIEW_SHAFT_FLEX_VALUES).optional(),
+  conditionGrade: z.enum(REVIEW_CONDITION_GRADES).optional(),
+  conditionEvidenceText: z.string().min(1).optional(),
+  demoValue: z.number().int().nonnegative().optional(),
+  demoValuationNote: z.string().min(1).optional()
+});
+
+const humanReviewLearningEventSchema = z.object({
+  fieldName: z.string().min(1),
+  rawTextMatch: z.string().min(1).optional(),
+  proposedValue: z.string().min(1).optional(),
+  correctedValue: z.string().min(1).optional(),
+  evidenceText: z.string().min(1).optional(),
+  confidenceImpact: z.string().min(1).optional()
+});
+
+const resolveWithCorrectionsBodySchema = z.object({
+  reviewerNotes: z.string().min(1).optional(),
+  correctedRecord: correctedTradeInRecordSchema,
+  learningEvents: z.array(humanReviewLearningEventSchema).default([])
 });
 
 function serializeWorkflowRun(run: {
@@ -120,6 +171,78 @@ function serializeReviewQueueItem(item: {
   };
 }
 
+function serializeReviewedTradeInRecord(record: {
+  id: string;
+  reviewQueueItemId: string;
+  workflowRunId: string | null;
+  intakeItemId: string | null;
+  originalText: string | null;
+  correctedBrand: string | null;
+  correctedProductLine: string | null;
+  correctedCategory: string | null;
+  correctedShaftFlex: string | null;
+  correctedConditionGrade: string | null;
+  conditionEvidenceText: string | null;
+  correctedDemoValue: number | null;
+  demoValuationNote: string | null;
+  reviewerNotes: string | null;
+  approvedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}) {
+  return {
+    id: record.id,
+    reviewQueueItemId: record.reviewQueueItemId,
+    workflowRunId: record.workflowRunId,
+    intakeItemId: record.intakeItemId,
+    originalText: record.originalText,
+    correctedBrand: record.correctedBrand,
+    correctedProductLine: record.correctedProductLine,
+    correctedCategory: record.correctedCategory,
+    correctedShaftFlex: record.correctedShaftFlex,
+    correctedConditionGrade: record.correctedConditionGrade,
+    conditionEvidenceText: record.conditionEvidenceText,
+    correctedDemoValue: record.correctedDemoValue,
+    demoValuationNote: record.demoValuationNote,
+    reviewerNotes: record.reviewerNotes,
+    approvedAt: record.approvedAt.toISOString(),
+    createdAt: record.createdAt.toISOString(),
+    updatedAt: record.updatedAt.toISOString()
+  };
+}
+
+function serializeHumanReviewLearningEvent(event: {
+  id: string;
+  reviewedTradeInRecordId: string;
+  reviewQueueItemId: string;
+  workflowRunId: string | null;
+  intakeItemId: string | null;
+  fieldName: string;
+  rawTextMatch: string | null;
+  proposedValue: string | null;
+  correctedValue: string | null;
+  evidenceText: string | null;
+  confidenceImpact: string | null;
+  reviewerNotes: string | null;
+  createdAt: Date;
+}) {
+  return {
+    id: event.id,
+    reviewedTradeInRecordId: event.reviewedTradeInRecordId,
+    reviewQueueItemId: event.reviewQueueItemId,
+    workflowRunId: event.workflowRunId,
+    intakeItemId: event.intakeItemId,
+    fieldName: event.fieldName,
+    rawTextMatch: event.rawTextMatch ?? null,
+    proposedValue: event.proposedValue ?? null,
+    correctedValue: event.correctedValue ?? null,
+    evidenceText: event.evidenceText ?? null,
+    confidenceImpact: event.confidenceImpact ?? null,
+    reviewerNotes: event.reviewerNotes,
+    createdAt: event.createdAt.toISOString()
+  };
+}
+
 function serializeReviewQueueItemWithContext(item: {
   id: string;
   intakeItemId: string | null;
@@ -164,6 +287,40 @@ function serializeReviewQueueItemWithContext(item: {
       updatedAt: Date;
     };
   } | null;
+  reviewedTradeInRecord: {
+    id: string;
+    reviewQueueItemId: string;
+    workflowRunId: string | null;
+    intakeItemId: string | null;
+    originalText: string | null;
+    correctedBrand: string | null;
+    correctedProductLine: string | null;
+    correctedCategory: string | null;
+    correctedShaftFlex: string | null;
+    correctedConditionGrade: string | null;
+    conditionEvidenceText: string | null;
+    correctedDemoValue: number | null;
+    demoValuationNote: string | null;
+    reviewerNotes: string | null;
+    approvedAt: Date;
+    createdAt: Date;
+    updatedAt: Date;
+  } | null;
+  humanReviewLearningEvents: {
+    id: string;
+    reviewedTradeInRecordId: string;
+    reviewQueueItemId: string;
+    workflowRunId: string | null;
+    intakeItemId: string | null;
+    fieldName: string;
+    rawTextMatch: string | null;
+    proposedValue: string | null;
+    correctedValue: string | null;
+    evidenceText: string | null;
+    confidenceImpact: string | null;
+    reviewerNotes: string | null;
+    createdAt: Date;
+  }[];
 }) {
   return {
     ...serializeReviewQueueItem(item),
@@ -171,7 +328,13 @@ function serializeReviewQueueItemWithContext(item: {
     intakeItem: item.intakeItem ? serializeIntakeItem(item.intakeItem) : null,
     intakeBatch: item.intakeItem
       ? serializeIntakeBatch(item.intakeItem.intakeBatch)
-      : null
+      : null,
+    reviewedTradeInRecord: item.reviewedTradeInRecord
+      ? serializeReviewedTradeInRecord(item.reviewedTradeInRecord)
+      : null,
+    humanReviewLearningEvents: item.humanReviewLearningEvents.map(
+      serializeHumanReviewLearningEvent
+    )
   };
 }
 
@@ -248,6 +411,131 @@ async function updateReviewQueueItemStatus(input: {
   };
 }
 
+async function resolveReviewQueueItemWithCorrections(input: {
+  reviewQueueItemId: string;
+  reviewerNotes?: string;
+  correctedRecord: z.infer<typeof correctedTradeInRecordSchema>;
+  learningEvents: z.infer<typeof humanReviewLearningEventSchema>[];
+}) {
+  const existingItem = await prisma.reviewQueueItem.findUnique({
+    where: {
+      id: input.reviewQueueItemId
+    }
+  });
+
+  if (!existingItem) {
+    return null;
+  }
+
+  const correctedBrand = input.correctedRecord.brand ?? null;
+  const correctedProductLine = input.correctedRecord.productLine ?? null;
+  const correctedCategory = input.correctedRecord.category ?? null;
+  const correctedShaftFlex = input.correctedRecord.shaftFlex ?? null;
+  const correctedConditionGrade = input.correctedRecord.conditionGrade ?? null;
+  const conditionEvidenceText =
+    input.correctedRecord.conditionEvidenceText ?? null;
+  const correctedDemoValue = input.correctedRecord.demoValue ?? null;
+  const demoValuationNote = input.correctedRecord.demoValuationNote ?? null;
+  const reviewerNotes = input.reviewerNotes ?? null;
+
+  const correctionResult = await prisma.$transaction(async (tx) => {
+    const reviewQueueItem = await tx.reviewQueueItem.update({
+      where: {
+        id: input.reviewQueueItemId
+      },
+      data: {
+        status: "RESOLVED",
+        reviewerNotes,
+        resolvedAt: new Date()
+      }
+    });
+
+    const reviewedTradeInRecord = await tx.reviewedTradeInRecord.upsert({
+      where: {
+        reviewQueueItemId: reviewQueueItem.id
+      },
+      create: {
+        reviewQueueItemId: reviewQueueItem.id,
+        workflowRunId: reviewQueueItem.workflowRunId,
+        intakeItemId: reviewQueueItem.intakeItemId,
+        originalText: reviewQueueItem.originalText,
+        correctedBrand,
+        correctedProductLine,
+        correctedCategory,
+        correctedShaftFlex,
+        correctedConditionGrade,
+        conditionEvidenceText,
+        correctedDemoValue,
+        demoValuationNote,
+        reviewerNotes
+      },
+      update: {
+        workflowRunId: reviewQueueItem.workflowRunId,
+        intakeItemId: reviewQueueItem.intakeItemId,
+        originalText: reviewQueueItem.originalText,
+        correctedBrand,
+        correctedProductLine,
+        correctedCategory,
+        correctedShaftFlex,
+        correctedConditionGrade,
+        conditionEvidenceText,
+        correctedDemoValue,
+        demoValuationNote,
+        reviewerNotes,
+        approvedAt: new Date()
+      }
+    });
+
+    await tx.humanReviewLearningEvent.deleteMany({
+      where: {
+        reviewedTradeInRecordId: reviewedTradeInRecord.id
+      }
+    });
+
+    if (input.learningEvents.length > 0) {
+      await tx.humanReviewLearningEvent.createMany({
+        data: input.learningEvents.map((event) => ({
+          reviewedTradeInRecordId: reviewedTradeInRecord.id,
+          reviewQueueItemId: reviewQueueItem.id,
+          workflowRunId: reviewQueueItem.workflowRunId,
+          intakeItemId: reviewQueueItem.intakeItemId,
+          fieldName: event.fieldName,
+          rawTextMatch: event.rawTextMatch ?? null,
+          proposedValue: event.proposedValue ?? null,
+          correctedValue: event.correctedValue ?? null,
+          evidenceText: event.evidenceText ?? null,
+          confidenceImpact: event.confidenceImpact ?? null,
+          reviewerNotes
+        }))
+      });
+    }
+
+    const learningEvents = await tx.humanReviewLearningEvent.findMany({
+      where: {
+        reviewedTradeInRecordId: reviewedTradeInRecord.id
+      },
+      orderBy: {
+        createdAt: "asc"
+      }
+    });
+
+    return {
+      reviewQueueItem,
+      reviewedTradeInRecord,
+      learningEvents
+    };
+  });
+
+  const workflowRun = await maybeCompleteWorkflowRunAfterReview({
+    workflowRunId: correctionResult.reviewQueueItem.workflowRunId
+  });
+
+  return {
+    ...correctionResult,
+    workflowRun
+  };
+}
+
 export async function reviewQueueItemRoutes(
   app: FastifyInstance
 ): Promise<void> {
@@ -272,6 +560,12 @@ export async function reviewQueueItemRoutes(
         intakeItem: {
           include: {
             intakeBatch: true
+          }
+        },
+        reviewedTradeInRecord: true,
+        humanReviewLearningEvents: {
+          orderBy: {
+            createdAt: "asc"
           }
         }
       },
@@ -324,6 +618,58 @@ export async function reviewQueueItemRoutes(
         : null
     };
   });
+
+  app.post(
+    "/review-queue-items/:id/resolve-with-corrections",
+    async (request, reply) => {
+      const parsedParams = reviewQueueItemParamsSchema.safeParse(request.params);
+      const parsedBody = resolveWithCorrectionsBodySchema.safeParse(
+        request.body ?? {}
+      );
+
+      if (!parsedParams.success) {
+        return reply.status(400).send({
+          error: "Invalid review queue item id",
+          details: parsedParams.error.flatten()
+        });
+      }
+
+      if (!parsedBody.success) {
+        return reply.status(400).send({
+          error: "Invalid structured review queue item resolution request",
+          details: parsedBody.error.flatten()
+        });
+      }
+
+      const result = await resolveReviewQueueItemWithCorrections({
+        reviewQueueItemId: parsedParams.data.id,
+        ...(parsedBody.data.reviewerNotes === undefined
+          ? {}
+          : { reviewerNotes: parsedBody.data.reviewerNotes }),
+        correctedRecord: parsedBody.data.correctedRecord,
+        learningEvents: parsedBody.data.learningEvents
+      });
+
+      if (!result) {
+        return reply.status(404).send({
+          error: "Review queue item not found"
+        });
+      }
+
+      return {
+        reviewQueueItem: serializeReviewQueueItem(result.reviewQueueItem),
+        workflowRun: result.workflowRun
+          ? serializeWorkflowRun(result.workflowRun)
+          : null,
+        reviewedTradeInRecord: serializeReviewedTradeInRecord(
+          result.reviewedTradeInRecord
+        ),
+        learningEvents: result.learningEvents.map(
+          serializeHumanReviewLearningEvent
+        )
+      };
+    }
+  );
 
   app.post("/review-queue-items/:id/dismiss", async (request, reply) => {
     const parsedParams = reviewQueueItemParamsSchema.safeParse(request.params);

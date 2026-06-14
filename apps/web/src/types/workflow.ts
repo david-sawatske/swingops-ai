@@ -135,6 +135,42 @@ export type ToolCallLog = {
   createdAt: string;
 };
 
+export type ReviewedTradeInRecord = {
+  id: string;
+  reviewQueueItemId: string;
+  workflowRunId: string | null;
+  intakeItemId: string | null;
+  originalText: string | null;
+  correctedBrand: string | null;
+  correctedProductLine: string | null;
+  correctedCategory: string | null;
+  correctedShaftFlex: string | null;
+  correctedConditionGrade: string | null;
+  conditionEvidenceText: string | null;
+  correctedDemoValue: number | null;
+  demoValuationNote: string | null;
+  reviewerNotes: string | null;
+  approvedAt: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type HumanReviewLearningEvent = {
+  id: string;
+  reviewedTradeInRecordId: string;
+  reviewQueueItemId: string;
+  workflowRunId: string | null;
+  intakeItemId: string | null;
+  fieldName: string;
+  rawTextMatch: string | null;
+  proposedValue: string | null;
+  correctedValue: string | null;
+  evidenceText: string | null;
+  confidenceImpact: string | null;
+  reviewerNotes: string | null;
+  createdAt: string;
+};
+
 export type ReviewQueueItem = {
   id: string;
   intakeItemId: string | null;
@@ -186,6 +222,8 @@ export type GlobalReviewQueueItem = ReviewQueueItem & {
   workflowRun: WorkflowRunSummary | null;
   intakeItem: ReviewQueueIntakeItemSummary | null;
   intakeBatch: ReviewQueueIntakeBatchSummary | null;
+  reviewedTradeInRecord: ReviewedTradeInRecord | null;
+  humanReviewLearningEvents: HumanReviewLearningEvent[];
 };
 
 export type WorkflowRunDetail = {
@@ -234,6 +272,61 @@ export type ReviewQueueItemActionRequest = {
 export type ReviewQueueItemActionResponse = {
   reviewQueueItem: ReviewQueueItem;
   workflowRun: WorkflowRunSummary | null;
+};
+
+export type ReviewConditionGrade =
+  | "9.5 Mint"
+  | "9.0 Above Average"
+  | "8.0 Average"
+  | "7.0 Below Average"
+  | "6.0 Poor";
+
+export type ReviewCorrectionCategory =
+  | "DRIVER"
+  | "FAIRWAY_WOOD"
+  | "HYBRID"
+  | "IRON_SET"
+  | "WEDGE"
+  | "PUTTER";
+
+export type ReviewCorrectionShaftFlex =
+  | "LADIES"
+  | "SENIOR"
+  | "REGULAR"
+  | "STIFF"
+  | "X_STIFF";
+
+export type StructuredReviewCorrectedRecord = {
+  brand?: string;
+  productLine?: string;
+  category?: ReviewCorrectionCategory;
+  shaftFlex?: ReviewCorrectionShaftFlex;
+  conditionGrade?: ReviewConditionGrade;
+  conditionEvidenceText?: string;
+  demoValue?: number;
+  demoValuationNote?: string;
+};
+
+export type StructuredReviewLearningEventInput = {
+  fieldName: string;
+  rawTextMatch?: string;
+  proposedValue?: string;
+  correctedValue?: string;
+  evidenceText?: string;
+  confidenceImpact?: string;
+};
+
+export type ResolveReviewQueueItemWithCorrectionsRequest = {
+  reviewerNotes?: string;
+  correctedRecord: StructuredReviewCorrectedRecord;
+  learningEvents: StructuredReviewLearningEventInput[];
+};
+
+export type ResolveReviewQueueItemWithCorrectionsResponse = {
+  reviewQueueItem: ReviewQueueItem;
+  workflowRun: WorkflowRunSummary | null;
+  reviewedTradeInRecord: ReviewedTradeInRecord;
+  learningEvents: HumanReviewLearningEvent[];
 };
 
 

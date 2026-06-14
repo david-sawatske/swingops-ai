@@ -11,6 +11,8 @@ import type {
   ExecuteWorkflowToolCallingPlanResponse,
   ListReviewQueueItemsResponse,
   ListWorkflowRunsResponse,
+  ResolveReviewQueueItemWithCorrectionsRequest,
+  ResolveReviewQueueItemWithCorrectionsResponse,
   ReviewQueueItemActionRequest,
   ReviewQueueItemActionResponse,
   StartWorkflowResponse,
@@ -86,6 +88,16 @@ export async function dismissReviewQueueItem(
     `/review-queue-items/${reviewQueueItemId}/dismiss`,
     request,
   );
+}
+
+export async function resolveReviewQueueItemWithCorrections(
+  reviewQueueItemId: string,
+  request: ResolveReviewQueueItemWithCorrectionsRequest,
+): Promise<ResolveReviewQueueItemWithCorrectionsResponse> {
+  return apiPost<
+    ResolveReviewQueueItemWithCorrectionsResponse,
+    ResolveReviewQueueItemWithCorrectionsRequest
+  >(`/review-queue-items/${reviewQueueItemId}/resolve-with-corrections`, request);
 }
 
 export async function executeAgenticTradeInRun(
