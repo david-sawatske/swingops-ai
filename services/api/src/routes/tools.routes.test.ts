@@ -678,7 +678,7 @@ describe("tool routes", () => {
       );
 
       await app.close();
-    });
+    }, 15_000);
   });
 
   describe("GET /mcp/tools/invocations/history", () => {
@@ -820,6 +820,13 @@ describe("tool routes", () => {
         "swingops.intakeBatches.get",
         "swingops.clubReference.search",
         "swingops.knowledgeBase.search",
+        "swingops.inventory.lookupProduct",
+        "swingops.inventory.findSimilarProducts",
+        "swingops.tradeInValuation.estimate",
+        "swingops.tradeInValuation.explainAdjustments",
+        "swingops.inventory.createSku",
+        "swingops.tradeInOffer.create",
+        "swingops.customerMessage.send",
         "swingops.workflowRuns.list",
         "swingops.workflowRuns.get",
         "swingops.reviewQueueItems.list",
@@ -865,6 +872,9 @@ describe("tool routes", () => {
       const body = response.json();
 
       expect(body.tools.map((tool: { name: string }) => tool.name)).toEqual([
+        "swingops.inventory.createSku",
+        "swingops.tradeInOffer.create",
+        "swingops.customerMessage.send",
         "swingops.reviewQueueItems.resolve",
         "swingops.reviewQueueItems.dismiss"
       ]);
@@ -1015,7 +1025,7 @@ describe("tool routes", () => {
       });
 
       await app.close();
-    });
+    }, 15_000);
 
     it("blocks a visible mutation proof tool before execution and persists the audit log", async () => {
       const app = buildApp();

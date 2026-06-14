@@ -27,6 +27,7 @@ import {
   listWorkflowRuns,
   listReviewQueueItems,
   resolveReviewQueueItem,
+  resolveReviewQueueItemWithCorrections,
   startWorkflowForIntakeBatch,
 } from "./api/workflows";
 import type {
@@ -56,6 +57,7 @@ import type {
   ExecuteMultiSourceIntakeDemoRequest,
   ExecuteMultiSourceIntakeDemoResponse,
   GlobalReviewQueueItem,
+  ResolveReviewQueueItemWithCorrectionsRequest,
   ExecuteWorkflowToolCallingPlanResponse,
   GlobalWorkflowRunSummary,
   ModelCallLog,
@@ -946,6 +948,63 @@ function App() {
     }
   }
 
+  async function handleResolveReviewQueueItemWithCorrections(input: {
+    reviewQueueItemId: string;
+    request: ResolveReviewQueueItemWithCorrectionsRequest;
+    workflowRunId?: string | null;
+    intakeBatchId?: string | null;
+  }) {
+    try {
+      setActiveReviewQueueItemId(input.reviewQueueItemId);
+      setReviewQueueActionError(null);
+      setReviewQueueActionSuccess(null);
+      setWorkflowRunDetailError(null);
+
+      await resolveReviewQueueItemWithCorrections(
+        input.reviewQueueItemId,
+        input.request,
+      );
+
+      await loadGlobalWorkflowRuns();
+      await loadGlobalReviewQueueItems();
+      await loadMcpConnectorCatalog();
+      await loadMcpInvocationHistory();
+
+      if (
+        input.workflowRunId &&
+        selectedWorkflowRunDetail?.workflowRun.id === input.workflowRunId
+      ) {
+        await refreshSelectedWorkflowRunDetail(input.workflowRunId);
+      }
+
+      if (
+        selectedBatchDetail &&
+        (!input.intakeBatchId ||
+          selectedBatchDetail.intakeBatch.id === input.intakeBatchId)
+      ) {
+        await refreshSelectedBatchDetail();
+      }
+
+      setReviewQueueNotesById((current) => {
+        const next = { ...current };
+        delete next[input.reviewQueueItemId];
+
+        return next;
+      });
+      setReviewQueueActionSuccess(
+        "Review queue item resolved with structured corrections.",
+      );
+    } catch (error) {
+      setReviewQueueActionError(
+        error instanceof Error
+          ? error.message
+          : "Unable to resolve review queue item with structured corrections.",
+      );
+    } finally {
+      setActiveReviewQueueItemId(null);
+    }
+  }
+
   async function handleCreateBatch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -1213,6 +1272,9 @@ function App() {
           onReviewQueueNotesChange={handleReviewQueueNotesChange}
           onReviewQueueItemAction={(input) =>
             void handleReviewQueueItemAction(input)
+          }
+          onResolveReviewQueueItemWithCorrections={(input) =>
+            void handleResolveReviewQueueItemWithCorrections(input)
           }
           activeStep={guidedActiveStep}
           onActiveStepChange={setGuidedActiveStep}

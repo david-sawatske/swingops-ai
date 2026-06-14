@@ -67,6 +67,36 @@ function getConfidenceIssue(proposed: Record<string, unknown>): ReviewQueueRevie
   };
 }
 
+function getDemoValuationIssue(
+  proposed: Record<string, unknown>,
+): ReviewQueueReviewIssue | null {
+  const demoValuationRange = proposed.demoValuationRange;
+
+  if (!isRecord(demoValuationRange)) {
+    return null;
+  }
+
+  const confidence = asString(demoValuationRange.confidence);
+  const reviewRequired = demoValuationRange.reviewRequired === true;
+  const lowValue = asNumber(demoValuationRange.lowValue);
+  const highValue = asNumber(demoValuationRange.highValue);
+  const rangeLabel =
+    lowValue !== null && highValue !== null
+      ? `${lowValue.toLocaleString()}–${highValue.toLocaleString()}`
+      : "the demo valuation range";
+
+  if (!reviewRequired && confidence !== "LOW") {
+    return null;
+  }
+
+  return {
+    id: "valuation-demo-range",
+    label: "Review demo valuation range",
+    detail: `${rangeLabel} is ${confidence ?? "unknown"} confidence or requires review.`,
+    severity: "Review",
+  };
+}
+
 function buildReviewIssues(input: {
   proposed: Record<string, unknown>;
   missingFields: string[];
@@ -110,6 +140,15 @@ function buildReviewIssues(input: {
       detail: reason,
       severity: "Review",
     });
+  }
+
+  const demoValuationIssue = getDemoValuationIssue(input.proposed);
+
+  if (
+    demoValuationIssue &&
+    !issues.some((issue) => issue.id === demoValuationIssue.id)
+  ) {
+    issues.push(demoValuationIssue);
   }
 
   for (const note of input.uncertaintyNotes) {

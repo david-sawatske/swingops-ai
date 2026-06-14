@@ -185,10 +185,12 @@ model IntakeItem {
   sourceRowNumber Int?             @map("source_row_number")
   status          IntakeItemStatus @default(PENDING)
 
-  intakeBatch      IntakeBatch       @relation(fields: [intakeBatchId], references: [id], onDelete: Cascade)
-  golfClubs        GolfClub[]
-  workflowRuns     WorkflowRun[]
-  reviewQueueItems ReviewQueueItem[]
+  intakeBatch               IntakeBatch                @relation(fields: [intakeBatchId], references: [id], onDelete: Cascade)
+  golfClubs                 GolfClub[]
+  workflowRuns              WorkflowRun[]
+  reviewQueueItems          ReviewQueueItem[]
+  reviewedTradeInRecords    ReviewedTradeInRecord[]
+  humanReviewLearningEvents HumanReviewLearningEvent[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -251,8 +253,10 @@ model WorkflowRun {
   modelCallLogs    ModelCallLog[]
   reviewQueueItems ReviewQueueItem[]
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt                 DateTime                   @default(now()) @map("created_at")
+  updatedAt                 DateTime                   @updatedAt @map("updated_at")
+  reviewedTradeInRecords    ReviewedTradeInRecord[]
+  humanReviewLearningEvents HumanReviewLearningEvent[]
 
   @@index([intakeBatchId])
   @@index([intakeItemId])
@@ -403,8 +407,10 @@ model ReviewQueueItem {
   golfClub    GolfClub?    @relation(fields: [golfClubId], references: [id], onDelete: SetNull)
   workflowRun WorkflowRun? @relation(fields: [workflowRunId], references: [id], onDelete: SetNull)
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt                 DateTime                   @default(now()) @map("created_at")
+  updatedAt                 DateTime                   @updatedAt @map("updated_at")
+  reviewedTradeInRecord     ReviewedTradeInRecord?
+  humanReviewLearningEvents HumanReviewLearningEvent[]
 
   @@index([intakeItemId])
   @@index([golfClubId])
@@ -487,4 +493,74 @@ model KnowledgeIngestionRun {
   @@index([status])
   @@index([sourceName])
   @@map("knowledge_ingestion_runs")
+}
+
+model ReviewedTradeInRecord {
+  id String @id @default(cuid())
+
+  reviewQueueItemId String  @unique @map("review_queue_item_id")
+  workflowRunId     String? @map("workflow_run_id")
+  intakeItemId      String? @map("intake_item_id")
+
+  originalText String? @map("original_text")
+
+  correctedBrand          String? @map("corrected_brand")
+  correctedProductLine    String? @map("corrected_product_line")
+  correctedCategory       String? @map("corrected_category")
+  correctedShaftFlex      String? @map("corrected_shaft_flex")
+  correctedConditionGrade String? @map("corrected_condition_grade")
+  conditionEvidenceText   String? @map("condition_evidence_text")
+  correctedDemoValue      Int?    @map("corrected_demo_value")
+  demoValuationNote       String? @map("demo_valuation_note")
+
+  reviewerNotes String?  @map("reviewer_notes")
+  approvedAt    DateTime @default(now()) @map("approved_at")
+
+  reviewQueueItem ReviewQueueItem @relation(fields: [reviewQueueItemId], references: [id], onDelete: Cascade)
+  workflowRun     WorkflowRun?    @relation(fields: [workflowRunId], references: [id], onDelete: SetNull)
+  intakeItem      IntakeItem?     @relation(fields: [intakeItemId], references: [id], onDelete: SetNull)
+
+  learningEvents HumanReviewLearningEvent[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([workflowRunId])
+  @@index([intakeItemId])
+  @@index([correctedBrand])
+  @@index([correctedCategory])
+  @@index([correctedConditionGrade])
+  @@map("reviewed_trade_in_records")
+}
+
+model HumanReviewLearningEvent {
+  id String @id @default(cuid())
+
+  reviewedTradeInRecordId String  @map("reviewed_trade_in_record_id")
+  reviewQueueItemId       String  @map("review_queue_item_id")
+  workflowRunId           String? @map("workflow_run_id")
+  intakeItemId            String? @map("intake_item_id")
+
+  fieldName        String  @map("field_name")
+  rawTextMatch     String? @map("raw_text_match")
+  proposedValue    String? @map("proposed_value")
+  correctedValue   String? @map("corrected_value")
+  evidenceText     String? @map("evidence_text")
+  confidenceImpact String? @map("confidence_impact")
+  reviewerNotes    String? @map("reviewer_notes")
+
+  reviewedTradeInRecord ReviewedTradeInRecord @relation(fields: [reviewedTradeInRecordId], references: [id], onDelete: Cascade)
+  reviewQueueItem       ReviewQueueItem       @relation(fields: [reviewQueueItemId], references: [id], onDelete: Cascade)
+  workflowRun           WorkflowRun?          @relation(fields: [workflowRunId], references: [id], onDelete: SetNull)
+  intakeItem            IntakeItem?           @relation(fields: [intakeItemId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([reviewedTradeInRecordId])
+  @@index([reviewQueueItemId])
+  @@index([workflowRunId])
+  @@index([intakeItemId])
+  @@index([fieldName])
+  @@index([rawTextMatch])
+  @@map("human_review_learning_events")
 }
