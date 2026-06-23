@@ -11,7 +11,7 @@ import type {
   ResolveReviewQueueItemWithCorrectionsRequest,
 } from "../../types/workflow";
 import { GuidedSourceIntakeBuilder } from "./GuidedSourceIntakeBuilder";
-import { GuidedRunSetupStep } from "./GuidedRunSetupStep";
+import { GuidedRunSetupStep } from "./steps/GuidedRunSetupStep";
 import { GuidedWorkflowStepper } from "./GuidedWorkflowStepper";
 
 export type GuidedStep =
