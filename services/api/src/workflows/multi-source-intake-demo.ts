@@ -466,7 +466,7 @@ function buildRecord(source: MultiSourceInput, fragment: string, index: number):
   const productLine = detectProductLine(fragment);
   const category = detectCategory(fragment);
   const shaftFlex = detectShaftFlex(fragment);
-  const conditionGrade = detectConditionGrade(sourceContext);
+  const conditionGrade = detectConditionGrade(fragment);
   const tradeInValue = detectTradeInValue(fragment);
   const customerName = detectCustomerName(sourceContext);
   const customerEmail = detectCustomerEmail(sourceContext);
