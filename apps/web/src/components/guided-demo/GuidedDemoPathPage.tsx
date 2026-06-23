@@ -11,6 +11,7 @@ import type {
   ResolveReviewQueueItemWithCorrectionsRequest,
 } from "../../types/workflow";
 import { GuidedAiReadyRecordsStep } from "./steps/GuidedAiReadyRecordsStep";
+import { GuidedGuardedAgentExecutionStep } from "./steps/GuidedGuardedAgentExecutionStep";
 import { GuidedMessySourceIntakeStep } from "./steps/GuidedMessySourceIntakeStep";
 import { GuidedRunSetupStep } from "./steps/GuidedRunSetupStep";
 import { GuidedWorkflowStepper } from "./GuidedWorkflowStepper";
@@ -302,45 +303,17 @@ export function GuidedDemoPathPage({
           ) : null}
 
           {activeStep === "GUARDED_AGENT_EXECUTION" ? (
-            <article className="guided-workflow-card">
-              <span className="model-route-card__eyebrow">Step 4 · Guarded Agent Execution</span>
-              <h3>What happens after records are AI-ready?</h3>
-              <p>
-                The structured records become input for the guarded trade-in workflow. This
-                workflow can use model routing, knowledge search, internal read-only tools,
-                validation, review routing, and audit logging.
-              </p>
-
-              <h4>Generated workflow input</h4>
-              <p>
-                This is generated from the records created in Step 3. For now, we only show
-                the handoff text and a run button.
-              </p>
-
-              <form className="agentic-demo-form guided-workflow-run-form" onSubmit={onRunTradeInWorkflow}>
-                <textarea
-                  onChange={(event) => onTradeInRawInputChange(event.target.value)}
-                  rows={7}
-                  value={tradeInRawInput || generatedWorkflowInput}
-                />
-
-                <button
-                  disabled={isRunningTradeInWorkflow || !(tradeInRawInput || generatedWorkflowInput).trim()}
-                  type="submit"
-                >
-                  {isRunningTradeInWorkflow ? "Running…" : "Run Guarded Workflow"}
-                </button>
-              </form>
-
-              {tradeInError ? <p>{tradeInError}</p> : null}
-              {tradeInSuccess ? <p>{tradeInSuccess}</p> : null}
-
-              {tradeInResult ? (
-                <button onClick={() => setActiveStep("VALIDATION_REVIEW")} type="button">
-                  Continue to Step 5
-                </button>
-              ) : null}
-            </article>
+            <GuidedGuardedAgentExecutionStep
+              error={tradeInError}
+              generatedWorkflowInput={generatedWorkflowInput}
+              isRunning={isRunningTradeInWorkflow}
+              onContinue={() => setActiveStep("VALIDATION_REVIEW")}
+              onRawInputChange={onTradeInRawInputChange}
+              onRunWorkflow={onRunTradeInWorkflow}
+              rawInput={tradeInRawInput}
+              result={tradeInResult}
+              success={tradeInSuccess}
+            />
           ) : null}
 
           {activeStep === "VALIDATION_REVIEW" ? (
