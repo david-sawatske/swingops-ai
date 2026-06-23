@@ -6090,8 +6090,178 @@ h1 {
   margin: 1rem;
 }
 
+.guided-step-orientation {
+  border-bottom: 1px solid rgba(39, 57, 44, 0.12);
+  margin-bottom: 1.25rem;
+  padding-bottom: 1.15rem;
+}
+
+.guided-step-orientation > h3 {
+  margin-bottom: 0.75rem;
+}
+
+.guided-step-orientation > p {
+  color: rgba(20, 36, 23, 0.72);
+  font-size: 0.94rem;
+  line-height: 1.55;
+  margin: 0;
+  max-width: 76ch;
+}
+
+.guided-step-mini-list {
+  border-top: 1px solid rgba(39, 57, 44, 0.12);
+  display: grid;
+  gap: 0;
+  margin-top: 1rem;
+}
+
+.guided-step-mini-list article {
+  align-items: start;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid rgba(39, 57, 44, 0.12);
+  border-radius: 0;
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: minmax(92px, 0.2fr) minmax(0, 1fr);
+  padding: 0.7rem 0;
+}
+
+.guided-step-mini-list strong {
+  color: #142417;
+  font-size: 0.82rem;
+}
+
+.guided-step-mini-list p {
+  color: rgba(20, 36, 23, 0.72);
+  font-size: 0.88rem;
+  line-height: 1.42;
+  margin: 0;
+}
+
+.guided-step-workspace {
+  background: rgba(247, 250, 246, 0.52);
+  border: 1px solid rgba(39, 57, 44, 0.12);
+  border-radius: 22px;
+  padding: 1rem;
+}
+
+.guided-step-workspace__header {
+  align-items: start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.guided-step-workspace__header h4 {
+  color: #142417;
+  margin: 0.2rem 0 0.35rem;
+}
+
+.guided-step-workspace__header p {
+  color: rgba(20, 36, 23, 0.68);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0;
+  max-width: 72ch;
+}
+
+.guided-workflow-details--compact {
+  margin-top: 1rem;
+}
+
+.guided-workflow-details--compact summary {
+  font-size: 0.92rem;
+}
+
+.guided-workflow-page {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.app-main:has(.guided-workflow-page),
+.app-content:has(.guided-workflow-page),
+.dashboard-main:has(.guided-workflow-page),
+.page-shell:has(.guided-workflow-page) {
+  padding-left: clamp(1rem, 3vw, 3rem);
+  padding-right: clamp(1rem, 3vw, 3rem);
+}
+
+.guided-source-builder__name-field {
+  margin-bottom: 0.85rem;
+}
+
+.guided-source-builder .multi-source-intake-progressive-section + .multi-source-intake-progressive-section {
+  margin-top: 0.85rem;
+}
+
+.guided-source-builder .multi-source-intake-progressive-section:has(.multi-source-intake-field--inline) {
+  padding: 0.45rem 0.7rem;
+}
+
+.guided-source-builder .multi-source-intake-progressive-section:has(.multi-source-intake-field--inline) .multi-source-intake-step-label {
+  align-items: center;
+  margin-bottom: 0.15rem;
+}
+
+.guided-source-builder .multi-source-intake-progressive-section:has(.multi-source-intake-field--inline) .multi-source-intake-step-label span {
+  font-size: 0.68rem;
+}
+
+.guided-source-builder .multi-source-intake-progressive-section:has(.multi-source-intake-field--inline) .multi-source-intake-step-label strong {
+  font-size: 0.9rem;
+}
+
+.guided-source-builder .multi-source-intake-control-panel--inline {
+  margin-top: 0.2rem;
+  padding: 0;
+}
+
+.guided-source-builder .multi-source-intake-field--inline {
+  align-items: center;
+  gap: 0.6rem;
+  grid-template-columns: minmax(120px, 0.32fr) minmax(0, 1fr);
+  min-height: 0;
+  padding: 0;
+}
+
+.guided-source-builder .multi-source-intake-field--inline span {
+  font-size: 0.68rem;
+  line-height: 1.1;
+}
+
+.guided-source-builder .multi-source-intake-field--inline select {
+  border-radius: 14px;
+  font-size: 0.88rem;
+  min-height: 2.05rem;
+  padding: 0.25rem 2rem 0.25rem 0.25rem;
+}
+
+.guided-source-builder__list-actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: flex-end;
+  margin: 0.85rem 0 1rem;
+}
+
 @media (max-width: 720px) {
-  .guided-explainer-list article {
+  .guided-explainer-list article,
+  .guided-step-mini-list article {
     grid-template-columns: 1fr;
+  }
+
+  .guided-step-mini-list article {
+    gap: 0.25rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .guided-source-builder__list-actions {
+    flex-direction: column;
+  }
+
+  .guided-source-builder__list-actions button {
+    width: 100%;
   }
 }

@@ -10,7 +10,7 @@ import type {
   GlobalWorkflowRunSummary,
   ResolveReviewQueueItemWithCorrectionsRequest,
 } from "../../types/workflow";
-import { GuidedSourceIntakeBuilder } from "./GuidedSourceIntakeBuilder";
+import { GuidedMessySourceIntakeStep } from "./steps/GuidedMessySourceIntakeStep";
 import { GuidedRunSetupStep } from "./steps/GuidedRunSetupStep";
 import { GuidedWorkflowStepper } from "./GuidedWorkflowStepper";
 
@@ -283,28 +283,13 @@ export function GuidedDemoPathPage({
           ) : null}
 
           {activeStep === "MESSY_SOURCE_INTAKE" ? (
-            <article className="guided-workflow-card">
-              <span className="model-route-card__eyebrow">Step 2 · Messy Source Intake</span>
-              <h3>What happens in this step?</h3>
-              <p>
-                We provide messy source text. The intake workflow extracts candidate golf
-                trade-in records and identifies missing or uncertain fields.
-              </p>
-
-              <h4>Live part of this step</h4>
-              <p>
-                Use the source intake builder below. After it runs, the next step will show
-                the structured records it produced.
-              </p>
-
-              <GuidedSourceIntakeBuilder
-                error={sourceIntakeError}
-                isRunning={isRunningSourceIntake}
-                onRunSources={handleRunSourceIntake}
-                result={sourceIntakeResult}
-                success={sourceIntakeSuccess}
-              />
-            </article>
+            <GuidedMessySourceIntakeStep
+              error={sourceIntakeError}
+              isRunning={isRunningSourceIntake}
+              onRunSources={handleRunSourceIntake}
+              result={sourceIntakeResult}
+              success={sourceIntakeSuccess}
+            />
           ) : null}
 
           {activeStep === "AI_READY_RECORDS" ? (
