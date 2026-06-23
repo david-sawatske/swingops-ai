@@ -6014,3 +6014,84 @@ h1 {
     max-width: 16ch;
   }
 }
+
+.guided-flow-overview {
+  margin: 1.25rem 0 1.4rem;
+}
+
+.guided-flow-overview__header {
+  margin-bottom: 0.7rem;
+  max-width: 68ch;
+}
+
+.guided-flow-overview__header h4 {
+  margin: 0 0 0.25rem;
+}
+
+.guided-flow-overview__header p {
+  color: rgba(20, 36, 23, 0.72);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.guided-next-step-note {
+  margin-top: 1.4rem;
+  max-width: 68ch;
+}
+
+.guided-next-step-note h4 {
+  margin: 0 0 0.35rem;
+}
+
+.guided-next-step-note p {
+  color: rgba(20, 36, 23, 0.72);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.guided-workflow-details__intro {
+  color: rgba(20, 36, 23, 0.72);
+  line-height: 1.55;
+  margin: 1rem 1rem 0;
+  max-width: 72ch;
+}
+
+.guided-explainer-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+}
+
+.guided-explainer-list article {
+  align-items: start;
+  background: rgba(247, 250, 246, 0.78);
+  border: 1px solid rgba(39, 57, 44, 0.14);
+  border-radius: 18px;
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: minmax(150px, 0.32fr) minmax(0, 1fr);
+  padding: 0.9rem 1rem;
+}
+
+.guided-explainer-list strong {
+  color: #142417;
+  font-size: 0.96rem;
+  line-height: 1.25;
+}
+
+.guided-explainer-list p {
+  color: rgba(20, 36, 23, 0.72);
+  line-height: 1.5;
+  margin: 0;
+  max-width: 74ch;
+}
+
+.guided-workflow-details > .guided-explainer-list {
+  margin: 1rem;
+}
+
+@media (max-width: 720px) {
+  .guided-explainer-list article {
+    grid-template-columns: 1fr;
+  }
+}
