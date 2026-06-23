@@ -10,6 +10,7 @@ import type {
   GlobalWorkflowRunSummary,
   ResolveReviewQueueItemWithCorrectionsRequest,
 } from "../../types/workflow";
+import { GuidedAiReadyRecordsStep } from "./steps/GuidedAiReadyRecordsStep";
 import { GuidedMessySourceIntakeStep } from "./steps/GuidedMessySourceIntakeStep";
 import { GuidedRunSetupStep } from "./steps/GuidedRunSetupStep";
 import { GuidedWorkflowStepper } from "./GuidedWorkflowStepper";
@@ -293,62 +294,11 @@ export function GuidedDemoPathPage({
           ) : null}
 
           {activeStep === "AI_READY_RECORDS" ? (
-            <article className="guided-workflow-card">
-              <span className="model-route-card__eyebrow">Step 3 · AI-Ready Record Creation</span>
-              <h3>What did intake create?</h3>
-              <p>
-                The messy source text becomes normalized records with fields like brand,
-                product, category, shaft flex, condition grade, value, store, and review
-                status.
-              </p>
-
-              {sourceIntakeResult ? (
-                <>
-                  <h4>Cleaned record preview</h4>
-                  <div className="multi-source-intake-table-wrap">
-                    <table className="multi-source-intake-table">
-                      <thead>
-                        <tr>
-                          <th>Source</th>
-                          <th>Brand</th>
-                          <th>Product</th>
-                          <th>Category</th>
-                          <th>Flex</th>
-                          <th>Condition grade</th>
-                          <th>Value</th>
-                          <th>Review</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sourceIntakeResult.cleanedDatasetPreview.slice(0, 6).map((record) => (
-                          <tr key={record.id}>
-                            <td>{record.sourceType.replace(/_/g, " ")}</td>
-                            <td>{record.brand ?? "—"}</td>
-                            <td>{record.productLine ?? "—"}</td>
-                            <td>{record.category ?? "—"}</td>
-                            <td>{record.shaftFlex ?? "—"}</td>
-                            <td>{record.conditionGrade ?? "—"}</td>
-                            <td>{record.tradeInValue === null ? "—" : record.tradeInValue}</td>
-                            <td>{record.reviewNeeded ? "Needed" : "Clear"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <p>
-                    Persisted AI-ready records loaded: {sourceIntakePersistedRecords.length}.
-                    We will expand this later after the basic story is clear.
-                  </p>
-
-                  <button onClick={() => setActiveStep("GUARDED_AGENT_EXECUTION")} type="button">
-                    Continue to Step 4
-                  </button>
-                </>
-              ) : (
-                <p>Run Step 2 first so this step has records to show.</p>
-              )}
-            </article>
+            <GuidedAiReadyRecordsStep
+              onContinue={() => setActiveStep("GUARDED_AGENT_EXECUTION")}
+              persistedRecords={sourceIntakePersistedRecords}
+              result={sourceIntakeResult}
+            />
           ) : null}
 
           {activeStep === "GUARDED_AGENT_EXECUTION" ? (
