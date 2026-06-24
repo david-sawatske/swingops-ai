@@ -41,7 +41,8 @@ const reviewQueueItemStatusSchema = z.enum([
 ]);
 
 const listReviewQueueItemsQuerySchema = z.object({
-  status: reviewQueueItemStatusSchema.optional()
+  status: reviewQueueItemStatusSchema.optional(),
+  workflowRunId: z.string().min(1).optional()
 });
 
 const reviewQueueActionBodySchema = z.object({
@@ -700,11 +701,18 @@ export async function reviewQueueItemRoutes(
     }
 
     const reviewQueueItems = await prisma.reviewQueueItem.findMany({
-      where: parsedQuery.data.status
-        ? {
-            status: parsedQuery.data.status
-          }
-        : {},
+      where: {
+        ...(parsedQuery.data.status
+          ? {
+              status: parsedQuery.data.status
+            }
+          : {}),
+        ...(parsedQuery.data.workflowRunId
+          ? {
+              workflowRunId: parsedQuery.data.workflowRunId
+            }
+          : {})
+      },
       include: {
         workflowRun: true,
         intakeItem: {

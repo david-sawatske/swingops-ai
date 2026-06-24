@@ -225,6 +225,32 @@ describe("review queue item routes", () => {
       await app.close();
     });
 
+    it("filters review queue items by workflow run id", async () => {
+      const app = buildApp();
+      const intakeBatch = await createWorkflowRunWithIntakeReviewItem();
+      const workflowRunId = intakeBatch.items[0]!.workflowRuns[0]!.id;
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/review-queue-items?workflowRunId=${workflowRunId}`
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.reviewQueueItems.length).toBeGreaterThanOrEqual(1);
+      expect(
+        body.reviewQueueItems.every(
+          (item: { workflowRunId: string | null }) =>
+            item.workflowRunId === workflowRunId
+        )
+      ).toBe(true);
+
+      await deleteIntakeBatch(intakeBatch.id);
+      await app.close();
+    });
+
     it("returns 400 for an invalid status query", async () => {
       const app = buildApp();
 
