@@ -36,6 +36,18 @@ const BRAND_PATTERNS: {
   {
     brand: "PING",
     aliases: [/\bping\b/i]
+  },
+  {
+    brand: "Cleveland",
+    aliases: [/\bcleveland\b/i]
+  },
+  {
+    brand: "Odyssey",
+    aliases: [/\bodyssey\b/i]
+  },
+  {
+    brand: "Mizuno",
+    aliases: [/\bmizuno\b/i]
   }
 ];
 
@@ -98,8 +110,24 @@ const PRODUCT_PATTERNS: {
     aliases: [/\bg425\b/i]
   },
   {
+    productLine: "G430 Max",
+    aliases: [/\bg430\s*max\b/i]
+  },
+  {
     productLine: "G430",
     aliases: [/\bg430\b/i]
+  },
+  {
+    productLine: "RTX 6 ZipCore",
+    aliases: [/\brtx\s*6(?:\s*zip\s*core|\s*zipcore)?\b/i, /\brtx6\b/i, /\brtx\s*zip\s*core\b/i]
+  },
+  {
+    productLine: "White Hot OG",
+    aliases: [/\bwhite\s*hot\s*og\b/i, /\bwh\s*og\b/i]
+  },
+  {
+    productLine: "JPX 923 Hot Metal",
+    aliases: [/\bjpx\s*923(?:\s*hot\s*metal)?\b/i, /\bhot\s*metal\b/i]
   }
 ];
 
@@ -126,6 +154,14 @@ const SHAFT_BRAND_PATTERNS: {
   {
     shaftBrand: "True Temper",
     aliases: [/\btrue\s*temper\b/i, /\bdynamic\s*gold\b/i]
+  },
+  {
+    shaftBrand: "Nippon",
+    aliases: [/\bnippon\b/i, /\bmodus\b/i]
+  },
+  {
+    shaftBrand: "Odyssey",
+    aliases: [/\bstroke\s*lab\b/i]
   }
 ];
 
@@ -152,6 +188,14 @@ const SHAFT_MODEL_PATTERNS: {
   {
     shaftModel: "Dynamic Gold",
     aliases: [/\bdynamic\s*gold\b/i]
+  },
+  {
+    shaftModel: "Modus",
+    aliases: [/\bmodus\b/i]
+  },
+  {
+    shaftModel: "Stroke Lab",
+    aliases: [/\bstroke\s*lab\b/i]
   }
 ];
 
@@ -159,6 +203,26 @@ const CONDITION_NOTE_PATTERNS: {
   note: string;
   aliases: RegExp[];
 }[] = [
+  {
+    note: "9.5 Mint",
+    aliases: [/\b9\.5\s*Mint\b/i]
+  },
+  {
+    note: "9.0 Above Average",
+    aliases: [/\b9\.0\s*Above\s*Average\b/i]
+  },
+  {
+    note: "8.0 Average",
+    aliases: [/\b8\.0\s*Average\b/i]
+  },
+  {
+    note: "7.0 Below Average",
+    aliases: [/\b7\.0\s*Below\s*Average\b/i]
+  },
+  {
+    note: "6.0 Poor",
+    aliases: [/\b6\.0\s*Poor\b/i]
+  },
   {
     note: "sky mark",
     aliases: [/\bsky\s*mark\b/i, /\bcrown\s*mark\b/i]
@@ -294,6 +358,10 @@ function detectShaftModel(line: string): string | null {
 }
 
 function detectShaftFlex(line: string): string | null {
+  if (/\btour\s*x\s*-?\s*stiff\b/i.test(line) || /\btx\s*flex\b/i.test(line) || /\btour\s*x\b/i.test(line)) {
+    return "TOUR_X_STIFF";
+  }
+
   if (/\bx\s*-?\s*stiff\b/i.test(line) || /\bx\s*flex\b/i.test(line)) {
     return "X_STIFF";
   }
@@ -318,7 +386,9 @@ function detectShaftFlex(line: string): string | null {
 }
 
 function detectLoft(line: string): string | null {
-  const loftMatch = line.match(/\b(\d{1,2}(?:\.\d)?)\s*(?:deg|degree|°)?\b/i);
+  const explicitLoftMatch = line.match(/\b(\d{1,2}(?:\.\d)?)\s*(?:deg|degree|°)\b/i);
+  const shorthandLoftMatch = line.match(/\b(?:driver|drv|fairway|wood|3w|5w)\s+(\d{1,2}(?:\.\d)?)\b/i);
+  const loftMatch = explicitLoftMatch ?? shorthandLoftMatch;
 
   if (!loftMatch) {
     return null;

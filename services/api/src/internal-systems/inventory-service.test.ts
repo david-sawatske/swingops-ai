@@ -52,4 +52,61 @@ describe("inventory-service", () => {
       true
     );
   });
+  it("matches expanded QA fixture products to seeded internal SKUs", () => {
+    const cases = [
+      {
+        input: {
+          brand: "PING",
+          productLine: "G430 Max",
+          category: "driver",
+          shaftBrand: "PING Alta",
+          rawText: "PING G430 Max driver Tour X-Stiff condition 9.5 Mint"
+        },
+        productId: "prod_ping_g430_max_driver_2023",
+        sku: "PING-G430MAX-DRV-2023"
+      },
+      {
+        input: {
+          brand: "Cleveland",
+          productLine: "RTX 6 ZipCore",
+          category: "wedge",
+          shaftBrand: "True Temper",
+          rawText: "Cleveland RTX 6 ZipCore wedge Senior flex condition 9.0 Above Average"
+        },
+        productId: "prod_cleveland_rtx6_zipcore_wedge_2023",
+        sku: "CLEVELAND-RTX6ZIPCORE-WEDGE-2023"
+      },
+      {
+        input: {
+          brand: "Odyssey",
+          productLine: "White Hot OG",
+          category: "putter",
+          shaftBrand: "Odyssey Stroke Lab",
+          rawText: "Odyssey White Hot OG putter Ladies flex condition 8.0 Average"
+        },
+        productId: "prod_odyssey_white_hot_og_putter_2021",
+        sku: "ODYSSEY-WHITEHOTOG-PUTTER-2021"
+      },
+      {
+        input: {
+          brand: "Mizuno",
+          productLine: "JPX 923 Hot Metal",
+          category: "irons",
+          shaftBrand: "Nippon",
+          rawText: "Mizuno JPX 923 Hot Metal irons Tour X-Stiff condition 9.0 Above Average"
+        },
+        productId: "prod_mizuno_jpx923_hot_metal_iron_set_2023",
+        sku: "MIZUNO-JPX923HOTMETAL-IRONSET-2023"
+      }
+    ];
+
+    for (const testCase of cases) {
+      const result = lookupInventoryProduct(testCase.input);
+
+      expect(result.productId).toBe(testCase.productId);
+      expect(result.sku).toBe(testCase.sku);
+      expect(result.confidence).toBeGreaterThanOrEqual(0.86);
+    }
+  });
+
 });

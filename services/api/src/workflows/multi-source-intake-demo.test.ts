@@ -268,4 +268,105 @@ describe("executeMultiSourceIntakeDemo", () => {
       }
     });
   });
+  it("normalizes equivalent QA fixture records across source formats", async () => {
+    const result = await executeMultiSourceIntakeDemo({
+      sources: [
+        {
+          sourceType: "FREE_TEXT",
+          sourceName: "QA free text fixture",
+          rawContent:
+            "Counter note: Cleveland RTX 6 ZipCore wedge Senior flex condition 9.0 Above Average value $72 store 104 serial CLV-001 worn grip note only."
+        },
+        {
+          sourceType: "POORLY_FORMED_CSV",
+          sourceName: "QA CSV fixture",
+          rawContent:
+            "brand|model|cat|shaft|condition_grade|value|store|serial\nOdyssey|White Hot OG putter|putter|Ladies|8.0 Average|$95|104|ODS-002"
+        },
+        {
+          sourceType: "EMAIL",
+          sourceName: "QA email fixture",
+          rawContent:
+            "From: Casey Park <casey.park@example.com>\nSubject: Trade value\nI have a Mizuno JPX 923 Hot Metal iron set with Tour X-Stiff shaft, condition 9.0 Above Average, estimated value 390, store 104, serial MIZ-003."
+        },
+        {
+          sourceType: "LOG",
+          sourceName: "QA log fixture",
+          rawContent:
+            "2026-06-24T10:12:44Z INFO normalized payload brand=PING model=G430 Max cat=driver shaft='Tour X-Stiff' condition='9.5 Mint' value=240 store=207 serial=PNG-004"
+        }
+      ]
+    });
+
+    expect(result.sourcesProcessed).toBe(4);
+    expect(result.cleanedDatasetPreview).toHaveLength(4);
+
+    const expectedRecords = [
+      {
+        sourceType: "FREE_TEXT",
+        brand: "Cleveland",
+        productLine: "RTX 6 ZipCore",
+        category: "WEDGE",
+        shaftFlex: "SENIOR",
+        conditionGrade: "9.0 Above Average",
+        tradeInValue: 72
+      },
+      {
+        sourceType: "POORLY_FORMED_CSV",
+        brand: "Odyssey",
+        productLine: "White Hot OG",
+        category: "PUTTER",
+        shaftFlex: "LADIES",
+        conditionGrade: "8.0 Average",
+        tradeInValue: 95
+      },
+      {
+        sourceType: "EMAIL",
+        brand: "Mizuno",
+        productLine: "JPX 923 Hot Metal",
+        category: "IRON_SET",
+        shaftFlex: "TOUR_X_STIFF",
+        conditionGrade: "9.0 Above Average",
+        tradeInValue: 390
+      },
+      {
+        sourceType: "LOG",
+        brand: "PING",
+        productLine: "G430 Max",
+        category: "DRIVER",
+        shaftFlex: "TOUR_X_STIFF",
+        conditionGrade: "9.5 Mint",
+        tradeInValue: 240
+      }
+    ];
+
+    for (const expectedRecord of expectedRecords) {
+      expect(result.cleanedDatasetPreview).toContainEqual(
+        expect.objectContaining({
+          ...expectedRecord,
+          reviewNeeded: false,
+          missingFields: []
+        })
+      );
+    }
+
+    expect(result.cleanedDatasetPreview.map((record) => record.normalizedText).join(" ")).not.toMatch(
+      /CLV-001|ODS-002|MIZ-003|PNG-004|serial/i
+    );
+    expect(result.cleanedDatasetPreview.map((record) => record.conditionGrade)).not.toContain(
+      "worn grip"
+    );
+
+    await prisma.intakeBatch.delete({
+      where: {
+        id: result.persistedIds.intakeBatchId
+      }
+    });
+    await prisma.workflowRun.delete({
+      where: {
+        id: result.persistedIds.workflowRunId
+      }
+    });
+  });
+
 });

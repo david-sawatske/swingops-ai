@@ -62,4 +62,51 @@ describe("parseTradeInDemoText", () => {
     );
     expect(thirdItem!.confidence).toBeLessThan(0.72);
   });
+  it("parses expanded QA fixture families and fixed condition grades", () => {
+    const parsedItems = parseTradeInDemoText([
+      "Cleveland RTX 6 ZipCore wedge Senior flex condition 9.0 Above Average",
+      "Odyssey White Hot OG putter Ladies flex condition 8.0 Average",
+      "Mizuno JPX 923 Hot Metal irons Tour X-Stiff condition 9.0 Above Average",
+      "PING G430 Max driver Tour X-Stiff condition 9.5 Mint"
+    ].join("\n"));
+
+    expect(parsedItems).toHaveLength(4);
+
+    expect(parsedItems[0]).toMatchObject({
+      brand: "Cleveland",
+      productLine: "RTX 6 ZipCore",
+      category: "WEDGE",
+      shaftFlex: "SENIOR",
+      conditionNotes: ["9.0 Above Average"],
+      missingFields: []
+    });
+
+    expect(parsedItems[1]).toMatchObject({
+      brand: "Odyssey",
+      productLine: "White Hot OG",
+      category: "PUTTER",
+      shaftFlex: "LADIES",
+      conditionNotes: ["8.0 Average"],
+      missingFields: []
+    });
+
+    expect(parsedItems[2]).toMatchObject({
+      brand: "Mizuno",
+      productLine: "JPX 923 Hot Metal",
+      category: "IRON_SET",
+      shaftFlex: "TOUR_X_STIFF",
+      conditionNotes: ["9.0 Above Average"],
+      missingFields: []
+    });
+
+    expect(parsedItems[3]).toMatchObject({
+      brand: "PING",
+      productLine: "G430 Max",
+      category: "DRIVER",
+      shaftFlex: "TOUR_X_STIFF",
+      conditionNotes: ["9.5 Mint"],
+      missingFields: []
+    });
+  });
+
 });

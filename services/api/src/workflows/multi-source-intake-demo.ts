@@ -142,6 +142,8 @@ const DEFAULT_MULTI_SOURCE_INPUTS: MultiSourceInput[] = [
       "Sat counter notes - trade pile",
       "1) TM stealth2 drv 10.5 ventus stiff condition 8.0 Average cust: Mark R.",
       "2) Ping g425 irons 5-pw reg flex condition 7.0 Below Average needs manager look.",
+      "3) Cleveland RTX 6 ZipCore wedge senior flex condition 9.0 Above Average value $72 serial CLV-001.",
+      "4) Odyssey White Hot OG putter ladies flex condition 8.0 Average value $95 serial ODS-002.",
       "Store 104 / associate jules"
     ].join("\n")
   },
@@ -153,7 +155,11 @@ const DEFAULT_MULTI_SOURCE_INPUTS: MultiSourceInput[] = [
       "brand|model,cat,shaft,condition_grade,value,store",
       "Titleist; TSR2; 3w ; Tensei S ; 8.0 Average ; $145 ; 104",
       "Cally,Rogue ST Max driver,HZRDUS X,7.0 Below Average,190,STORE-207",
-      "PING|G425 irons|reg|6.0 Poor||104"
+      "PING|G425 irons|reg|6.0 Poor||104",
+      "Cleveland|RTX 6 ZipCore wedge|Senior|9.0 Above Average|$72|104",
+      "Odyssey|White Hot OG putter|Ladies|8.0 Average|$95|104",
+      "Mizuno|JPX 923 Hot Metal irons|Tour X-Stiff|9.0 Above Average|$390|STORE-104",
+      "PING|G430 Max driver|Tour X-Stiff|9.5 Mint|$240|STORE-207"
     ].join("\n")
   },
   {
@@ -168,6 +174,8 @@ const DEFAULT_MULTI_SOURCE_INPUTS: MultiSourceInput[] = [
       "Hi team, I am bringing in a Callaway Rogue ST Max 9 degree driver with HZRDUS x-stiff.",
       "Condition grade is 7.0 Below Average.",
       "Also a TaylorMade Stealth 2 10.5 driver with Ventus stiff and condition 8.0 Average.",
+      "One more: Cleveland RTX 6 ZipCore wedge with Senior flex, condition 9.0 Above Average, estimated value 72.",
+      "Also Odyssey White Hot OG putter with Ladies flex, condition 8.0 Average, value 95.",
       "Attached: trade_sheet_8821.pdf, driver_photos.zip",
       "Preferred store: 207"
     ].join("\n")
@@ -180,7 +188,9 @@ const DEFAULT_MULTI_SOURCE_INPUTS: MultiSourceInput[] = [
       "2026-05-18T14:33:02Z INFO import start store=104 batch=nightly_tradeins",
       "2026-05-18T14:33:04Z WARN malformed payload brand=Titleist model=TSR cat=3w shaft='Tensei S' condition='8.0 Average' value=145",
       "2026-05-18T14:33:07Z ERROR row=18 missing category payload={brand:'PING', model:'G425', condition:'6.0 Poor', notes:'irons 5-PW reg'}",
-      "2026-05-18T14:33:11Z INFO normalized sku match Callaway Rogue ST Max driver store=207"
+      "2026-05-18T14:33:11Z INFO normalized sku match Callaway Rogue ST Max driver store=207",
+      "2026-05-18T14:33:14Z INFO normalized payload brand=Cleveland model=RTX 6 ZipCore cat=wedge shaft='Senior' condition='9.0 Above Average' value=72",
+      "2026-05-18T14:33:18Z INFO normalized payload brand=Mizuno model=JPX 923 Hot Metal cat=irons shaft='Tour X-Stiff' condition='9.0 Above Average' value=390"
     ].join("\n")
   },
 ];
@@ -191,28 +201,28 @@ const SHARED_SCHEMA: MultiSourceIntakeSourceResult["inferredSchema"] = [
     type: "string",
     nullable: true,
     description: "Normalized equipment brand.",
-    examples: ["TaylorMade", "Titleist", "Callaway", "PING"]
+    examples: ["TaylorMade", "Titleist", "Callaway", "PING", "Cleveland", "Odyssey", "Mizuno"]
   },
   {
     fieldName: "productLine",
     type: "string",
     nullable: true,
     description: "Normalized product family or model line.",
-    examples: ["Stealth 2", "TSR", "Rogue ST Max", "G425"]
+    examples: ["Stealth 2", "TSR", "Rogue ST Max", "G425", "G430 Max", "RTX 6 ZipCore", "White Hot OG", "JPX 923 Hot Metal"]
   },
   {
     fieldName: "category",
     type: "string",
     nullable: true,
     description: "Normalized equipment category.",
-    examples: ["DRIVER", "FAIRWAY_WOOD", "IRON_SET"]
+    examples: ["DRIVER", "FAIRWAY_WOOD", "IRON_SET", "WEDGE", "PUTTER"]
   },
   {
     fieldName: "shaftFlex",
     type: "string",
     nullable: true,
     description: "Normalized shaft flex when present.",
-    examples: ["STIFF", "X_STIFF", "REGULAR"]
+    examples: ["STIFF", "X_STIFF", "REGULAR", "SENIOR", "LADIES", "TOUR_X_STIFF"]
   },
   {
     fieldName: "conditionGrade",
@@ -292,6 +302,18 @@ function detectBrand(text: string): string | null {
     return "PING";
   }
 
+  if (/\bcleveland\b/i.test(text)) {
+    return "Cleveland";
+  }
+
+  if (/\bodyssey\b/i.test(text)) {
+    return "Odyssey";
+  }
+
+  if (/\bmizuno\b/i.test(text)) {
+    return "Mizuno";
+  }
+
   return null;
 }
 
@@ -312,6 +334,26 @@ function detectProductLine(text: string): string | null {
     return "G425";
   }
 
+  if (/\bg430\s*max\b/i.test(text)) {
+    return "G430 Max";
+  }
+
+  if (/\bg430\b/i.test(text)) {
+    return "G430";
+  }
+
+  if (/\brtx\s*6(?:\s*zip\s*core|\s*zipcore)?\b|\brtx6\b|\brtx\s*zip\s*core\b/i.test(text)) {
+    return "RTX 6 ZipCore";
+  }
+
+  if (/\bwhite\s*hot\s*og\b|\bwh\s*og\b/i.test(text)) {
+    return "White Hot OG";
+  }
+
+  if (/\bjpx\s*923(?:\s*hot\s*metal)?\b|\bhot\s*metal\b/i.test(text)) {
+    return "JPX 923 Hot Metal";
+  }
+
   return null;
 }
 
@@ -324,6 +366,14 @@ function detectCategory(text: string): string | null {
     return "FAIRWAY_WOOD";
   }
 
+  if (/\bwedge\b|\b(?:46|48|50|52|54|56|58|60)\s*(?:deg|degree|°)?\b/i.test(text)) {
+    return "WEDGE";
+  }
+
+  if (/\bputter\b/i.test(text)) {
+    return "PUTTER";
+  }
+
   if (/\birons?\b|\b[4-9]-pw\b/i.test(text)) {
     return "IRON_SET";
   }
@@ -332,12 +382,24 @@ function detectCategory(text: string): string | null {
 }
 
 function detectShaftFlex(text: string): string | null {
+  if (/\btour\s*x\s*-?\s*stiff\b|\btx\s*flex\b|\btour\s*x\b/i.test(text)) {
+    return "TOUR_X_STIFF";
+  }
+
   if (/\bx\s*-?\s*stiff\b|\bx\s*flex\b/i.test(text)) {
     return "X_STIFF";
   }
 
   if (/\bstiff\b|\bs flex\b|\btensei s\b/i.test(text)) {
     return "STIFF";
+  }
+
+  if (/\bsenior\b|\bsr\s*flex\b|\ba\s*flex\b/i.test(text)) {
+    return "SENIOR";
+  }
+
+  if (/\blad(y|ies)\b|\bl\s*flex\b/i.test(text)) {
+    return "LADIES";
   }
 
   if (/\breg\b|\bregular\b/i.test(text)) {
@@ -437,13 +499,13 @@ function splitSourceIntoRecordFragments(source: MultiSourceInput): string[] {
 
   if (source.sourceType === "EMAIL") {
     return lines.filter((line) =>
-      /\b(callaway|taylormade|titleist|ping|rogue|stealth|tsr|g425)\b/i.test(line)
+      /\b(callaway|taylormade|titleist|ping|cleveland|odyssey|mizuno|rogue|stealth|tsr|g425|g430|rtx|white hot|jpx|hot metal)\b/i.test(line)
     );
   }
 
   if (source.sourceType === "LOG") {
     return lines.filter((line) =>
-      /\b(brand=|payload=|candidate|callaway|titleist|ping|taylormade)\b/i.test(line)
+      /\b(brand=|payload=|candidate|callaway|titleist|ping|taylormade|cleveland|odyssey|mizuno|rtx|white hot|jpx|hot metal|g430)\b/i.test(line)
     );
   }
 
@@ -451,12 +513,12 @@ function splitSourceIntoRecordFragments(source: MultiSourceInput): string[] {
 
   if (source.sourceType === "POORLY_FORMED_CSV") {
     return lines.filter((line) =>
-      /\b(titleist|cally|callaway|ping|taylormade|rogue|tsr|g425)\b/i.test(line)
+      /\b(titleist|cally|callaway|ping|taylormade|cleveland|odyssey|mizuno|rogue|tsr|g425|g430|rtx|white hot|jpx|hot metal)\b/i.test(line)
     );
   }
 
   return lines.filter((line) =>
-    /\b(tm|taylormade|titleist|cally|callaway|ping|stealth|rogue|tsr|g425)\b/i.test(line)
+    /\b(tm|taylormade|titleist|cally|callaway|ping|cleveland|odyssey|mizuno|stealth|rogue|tsr|g425|g430|rtx|white hot|jpx|hot metal)\b/i.test(line)
   );
 }
 
