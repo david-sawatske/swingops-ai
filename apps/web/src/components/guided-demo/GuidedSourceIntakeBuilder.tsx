@@ -192,12 +192,12 @@ export function GuidedSourceIntakeBuilder({
   }
 
   function addSource() {
-    setSources((currentSources) => [createBlankSource(), ...currentSources]);
-    setSourceInputModes((currentModes) => [null, ...currentModes]);
-    setUploadedFileNames((currentFileNames) => [null, ...currentFileNames]);
+    setSources((currentSources) => [...currentSources, createBlankSource()]);
+    setSourceInputModes((currentModes) => [...currentModes, null]);
+    setUploadedFileNames((currentFileNames) => [...currentFileNames, null]);
     setSelectedSourceTypes((currentSourceTypes) => [
-      null,
       ...currentSourceTypes,
+      null,
     ]);
   }
 
@@ -350,14 +350,6 @@ export function GuidedSourceIntakeBuilder({
           </article>
         </div>
 
-        <div className="guided-workflow-intake-toolbar__actions">
-          <button disabled={isRunning} onClick={addSource} type="button">
-            Add Source
-          </button>
-          <button disabled={isRunning} onClick={clearSources} type="button">
-            Clear
-          </button>
-        </div>
       </div>
 
       {error ? (
@@ -594,7 +586,17 @@ export function GuidedSourceIntakeBuilder({
       </div>
 
       {hasVisibleContentStep ? (
-        <div className="guided-source-builder__final-action">
+        <>
+          <div className="guided-source-builder__list-actions">
+            <button disabled={isRunning} onClick={addSource} type="button">
+              Add Source
+            </button>
+            <button disabled={isRunning} onClick={clearSources} type="button">
+              Clear
+            </button>
+          </div>
+
+          <div className="guided-source-builder__final-action">
           <div>
             <span className="model-route-card__eyebrow">Final action for this step</span>
             <strong>Normalize the staged sources into AI-ready assets.</strong>
@@ -611,6 +613,7 @@ export function GuidedSourceIntakeBuilder({
             {isRunning ? "Normalizing Sources…" : "Normalize Sources"}
           </button>
         </div>
+        </>
       ) : null}
     </div>
   );

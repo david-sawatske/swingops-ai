@@ -93,7 +93,7 @@ import { AppHeroNav } from "./components/layout/AppHeroNav";
 
 function App() {
   const [activeView, setActiveView] = useState<AppView>("GUIDED_DEMO");
-  const [guidedActiveStep, setGuidedActiveStep] = useState<GuidedStep>("SCENARIO");
+  const [guidedActiveStep, setGuidedActiveStep] = useState<GuidedStep>("RUN_SETUP");
   const [intakeBatches, setIntakeBatches] = useState<IntakeBatchSummary[]>([]);
   const [isLoadingIntakeBatches, setIsLoadingIntakeBatches] = useState(true);
   const [intakeBatchesError, setIntakeBatchesError] = useState<string | null>(

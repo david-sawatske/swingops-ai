@@ -181,6 +181,52 @@ describe("executeMultiSourceIntakeDemo", () => {
 
 
 
+  it("keeps condition grades tied to each source record fragment", async () => {
+    const result = await executeMultiSourceIntakeDemo();
+
+    const pingRecord = result.cleanedDatasetPreview.find((record) =>
+      record.brand === "PING" &&
+      record.productLine?.includes("G425") &&
+      record.normalizedText.toLowerCase().includes("below average")
+    );
+
+    expect(pingRecord).toBeDefined();
+    expect(pingRecord?.conditionGrade).toBe("7.0 Below Average");
+
+    const persistedRecords = await prisma.aiReadyIntakeRecord.findMany({
+      where: {
+        workflowRunId: result.persistedIds.workflowRunId
+      }
+    });
+
+    const persistedPingRecord = persistedRecords.find((record) => {
+      const normalizedJson = record.normalizedJson as {
+        brand?: string | null;
+        productLine?: string | null;
+        conditionGrade?: string | null;
+      };
+
+      return (
+        normalizedJson.brand === "PING" &&
+        normalizedJson.productLine?.includes("G425") &&
+        normalizedJson.conditionGrade === "7.0 Below Average"
+      );
+    });
+
+    expect(persistedPingRecord).toBeDefined();
+
+    await prisma.intakeBatch.delete({
+      where: {
+        id: result.persistedIds.intakeBatchId
+      }
+    });
+    await prisma.workflowRun.delete({
+      where: {
+        id: result.persistedIds.workflowRunId
+      }
+    });
+  });
+
   it("flags incomplete or low-confidence records for review", async () => {
     const result = await executeMultiSourceIntakeDemo();
 
