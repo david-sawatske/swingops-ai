@@ -12,6 +12,7 @@ import type {
 } from "../../types/workflow";
 import { GuidedAiReadyRecordsStep } from "./steps/GuidedAiReadyRecordsStep";
 import { GuidedGuardedAgentExecutionStep } from "./steps/GuidedGuardedAgentExecutionStep";
+import { GuidedValidationReviewStep } from "./steps/GuidedValidationReviewStep";
 import { GuidedMessySourceIntakeStep } from "./steps/GuidedMessySourceIntakeStep";
 import { GuidedRunSetupStep } from "./steps/GuidedRunSetupStep";
 import { GuidedWorkflowStepper } from "./GuidedWorkflowStepper";
@@ -317,34 +318,11 @@ export function GuidedDemoPathPage({
           ) : null}
 
           {activeStep === "VALIDATION_REVIEW" ? (
-            <article className="guided-workflow-card">
-              <span className="model-route-card__eyebrow">Step 5 · Validation and Review</span>
-              <h3>What did the workflow trust, retry, or escalate?</h3>
-              <p>
-                This step will eventually show validation checks, retry behavior, review
-                items, and correction controls. For now, it only confirms that the guarded
-                workflow produced evidence.
-              </p>
-
-              {tradeInResult ? (
-                <>
-                  <p>
-                    Workflow created {tradeInResult.reviewQueueItemsCreated.length} review
-                    item(s). We will build this section carefully in a later pass.
-                  </p>
-
-                  <button onClick={() => onViewChange("REVIEW_QUEUE")} type="button">
-                    Open Review Queue
-                  </button>
-
-                  <button onClick={() => setActiveStep("FINAL_RUN_REPORT")} type="button">
-                    Continue to Step 6
-                  </button>
-                </>
-              ) : (
-                <p>Run Step 4 first so this step has workflow evidence to explain.</p>
-              )}
-            </article>
+            <GuidedValidationReviewStep
+              onContinue={() => setActiveStep("FINAL_RUN_REPORT")}
+              onOpenReviewQueue={() => onViewChange("REVIEW_QUEUE")}
+              result={tradeInResult}
+            />
           ) : null}
 
           {activeStep === "FINAL_RUN_REPORT" ? (
