@@ -11,6 +11,7 @@ import type {
   ResolveReviewQueueItemWithCorrectionsRequest,
 } from "../../types/workflow";
 import { GuidedAiReadyRecordsStep } from "./steps/GuidedAiReadyRecordsStep";
+import { GuidedFinalRunReportStep } from "./steps/GuidedFinalRunReportStep";
 import { GuidedGuardedAgentExecutionStep } from "./steps/GuidedGuardedAgentExecutionStep";
 import { GuidedValidationReviewStep } from "./steps/GuidedValidationReviewStep";
 import { GuidedMessySourceIntakeStep } from "./steps/GuidedMessySourceIntakeStep";
@@ -326,34 +327,12 @@ export function GuidedDemoPathPage({
           ) : null}
 
           {activeStep === "FINAL_RUN_REPORT" ? (
-            <article className="guided-workflow-card">
-              <span className="model-route-card__eyebrow">Step 6 · Final Run Report</span>
-              <h3>What happened in this run?</h3>
-              <p>
-                The final report should translate technical workflow evidence into a clear
-                business outcome. For now, we keep it plain and minimal.
-              </p>
-
-              {tradeInResult ? (
-                <>
-                  <p>
-                    The run parsed {tradeInResult.finalSummary.parsedItemCount} item(s),
-                    found {tradeInResult.finalSummary.knowledgeMatchCount} knowledge
-                    match(es), created {tradeInResult.reviewQueueItemsCreated.length} review
-                    item(s), and blocked{" "}
-                    {tradeInResult.finalSummary.blockedMutationToolCallCount} unsafe
-                    mutation request(s).
-                  </p>
-
-                  <button onClick={handleResetGuidedDemo} type="button">
-                    Start over
-                  </button>
-                </>
-              ) : (
-                <p>Run Step 4 first so this report has a workflow result.</p>
-              )}
-            </article>
+            <GuidedFinalRunReportStep
+              onReset={handleResetGuidedDemo}
+              result={tradeInResult}
+            />
           ) : null}
+
         </section>
       </div>
     </div>
