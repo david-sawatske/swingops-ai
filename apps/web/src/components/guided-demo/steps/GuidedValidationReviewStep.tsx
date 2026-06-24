@@ -1,9 +1,31 @@
-import type { ExecuteEndToEndAgenticTradeInDemoResponse } from "../../../types/workflow";
+import { useState } from "react";
+import type {
+  ExecuteEndToEndAgenticTradeInDemoResponse,
+  GlobalReviewQueueItem,
+  ResolveReviewQueueItemWithCorrectionsRequest,
+  ReviewConditionGrade,
+  ReviewCorrectionCategory,
+  ReviewCorrectionShaftFlex,
+  StructuredReviewCorrectedRecord,
+  StructuredReviewLearningEventInput,
+} from "../../../types/workflow";
 
 type GuidedValidationReviewStepProps = {
+  actionError: string | null;
+  actionSuccess: string | null;
+  activeReviewQueueItemId: string | null;
+  currentRunReviewQueueItems: GlobalReviewQueueItem[];
   onContinue: () => void;
   onOpenReviewQueue: () => void;
+  onReviewQueueNotesChange: (reviewQueueItemId: string, reviewerNotes: string) => void;
+  onResolveReviewQueueItemWithCorrections: (input: {
+    reviewQueueItemId: string;
+    request: ResolveReviewQueueItemWithCorrectionsRequest;
+    workflowRunId?: string | null;
+    intakeBatchId?: string | null;
+  }) => void;
   result: ExecuteEndToEndAgenticTradeInDemoResponse | null;
+  reviewQueueNotesById: Record<string, string>;
 };
 
 type DemoResult = NonNullable<GuidedValidationReviewStepProps["result"]>;
@@ -11,13 +33,25 @@ type ParsedItem = DemoResult["parsedItems"][number];
 type ValidationCheck = DemoResult["validationChecks"][number];
 type RetryEvent = DemoResult["retryEvents"][number];
 type ReviewOutcome = DemoResult["reviewOutcomes"][number];
-type ReviewQueueItem = DemoResult["reviewQueueItemsCreated"][number];
+type DemoReviewQueueItem = DemoResult["reviewQueueItemsCreated"][number];
+type ReviewQueueItem = DemoReviewQueueItem | GlobalReviewQueueItem;
+
+type ReviewCorrectionDraft = {
+  brand: string;
+  productLine: string;
+  category: ReviewCorrectionCategory | "";
+  shaftFlex: ReviewCorrectionShaftFlex | "";
+  conditionGrade: ReviewConditionGrade | "";
+  demoValue: string;
+  demoValuationNote: string;
+  reviewerNotes: string;
+};
 
 type RecordReviewCard = {
   id: string;
   index: number;
   label: string;
-  status: "ready" | "needs-review";
+  status: "ready" | "needs-review" | "resolved";
   statusLabel: string;
   parsedRecord: Record<string, unknown>;
   reviewItem: ReviewQueueItem | null;
@@ -31,6 +65,38 @@ type RecordReviewCard = {
   retryEvents: RetryEvent[];
   suggestedAction: string;
 };
+
+const CATEGORY_OPTIONS: Array<{
+  label: string;
+  value: ReviewCorrectionCategory;
+}> = [
+  { label: "Driver", value: "DRIVER" },
+  { label: "Fairway Wood", value: "FAIRWAY_WOOD" },
+  { label: "Hybrid", value: "HYBRID" },
+  { label: "Iron Set", value: "IRON_SET" },
+  { label: "Wedge", value: "WEDGE" },
+  { label: "Putter", value: "PUTTER" },
+];
+
+const SHAFT_FLEX_OPTIONS: Array<{
+  label: string;
+  value: ReviewCorrectionShaftFlex;
+}> = [
+  { label: "Stiff", value: "STIFF" },
+  { label: "Regular", value: "REGULAR" },
+  { label: "Senior", value: "SENIOR" },
+  { label: "X-Stiff", value: "X_STIFF" },
+  { label: "Ladies", value: "LADIES" },
+  { label: "Tour X-Stiff", value: "TOUR_X_STIFF" },
+];
+
+const CONDITION_GRADE_OPTIONS: ReviewConditionGrade[] = [
+  "9.5 Mint",
+  "9.0 Above Average",
+  "8.0 Average",
+  "7.0 Below Average",
+  "6.0 Poor",
+];
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -93,6 +159,54 @@ function formatEnumLabel(value: string) {
   };
 
   return flexLabels[normalized] ?? categoryLabels[normalized] ?? value;
+}
+
+function normalizeCategoryValue(value: unknown): ReviewCorrectionCategory | "" {
+  const normalized = normalizeComparable(value);
+
+  const match = CATEGORY_OPTIONS.find((option) => {
+    return normalizeComparable(option.value) === normalized || normalizeComparable(option.label) === normalized;
+  });
+
+  return match?.value ?? "";
+}
+
+function normalizeShaftFlexValue(value: unknown): ReviewCorrectionShaftFlex | "" {
+  const normalized = normalizeComparable(value);
+
+  const match = SHAFT_FLEX_OPTIONS.find((option) => {
+    return normalizeComparable(option.value) === normalized || normalizeComparable(option.label) === normalized;
+  });
+
+  return match?.value ?? "";
+}
+
+function normalizeConditionGradeValue(value: unknown): ReviewConditionGrade | "" {
+  const stringValue = asString(value);
+
+  if (!stringValue) {
+    return "";
+  }
+
+  const match = CONDITION_GRADE_OPTIONS.find((option) => option === stringValue);
+
+  return match ?? "";
+}
+
+function inferConditionGradeFromText(value: string): ReviewConditionGrade | "" {
+  const match = value.match(/\b(9\.5 Mint|9\.0 Above Average|8\.0 Average|7\.0 Below Average|6\.0 Poor)\b/i);
+
+  if (!match) {
+    return "";
+  }
+
+  const normalized = match[1]!.toLowerCase();
+
+  return (
+    CONDITION_GRADE_OPTIONS.find(
+      (conditionGrade) => conditionGrade.toLowerCase() === normalized,
+    ) ?? ""
+  );
 }
 
 function formatDisplayValue(value: unknown, options: { currency?: boolean } = {}) {
@@ -494,8 +608,14 @@ function shouldRetryEventBelongToCard(input: {
   return fieldMatches(input.event.targetField, input.card.missingFields);
 }
 
-function buildRecordReviewCards(result: DemoResult) {
-  const reviewItems = result.reviewQueueItemsCreated;
+function buildRecordReviewCards(
+  result: DemoResult,
+  currentRunReviewQueueItems: ReviewQueueItem[] = result.reviewQueueItemsCreated,
+) {
+  const reviewItems =
+    currentRunReviewQueueItems.length > 0
+      ? currentRunReviewQueueItems
+      : result.reviewQueueItemsCreated;
   const usedReviewItemIds = new Set<string>();
 
   const cards: RecordReviewCard[] = result.parsedItems.map((parsedItem: ParsedItem, index) => {
@@ -527,12 +647,20 @@ function buildRecordReviewCards(result: DemoResult) {
       id: recordIdentity ?? reviewItem?.id ?? `record-${index + 1}`,
       index,
       label: getRecordLabel({ parsedRecord, reviewItem, fallbackIndex: index }),
-      status: reviewItem || missingFields.length > 0 || reviewReasons.length > 0
-        ? "needs-review"
-        : "ready",
-      statusLabel: reviewItem || missingFields.length > 0 || reviewReasons.length > 0
-        ? "Needs review"
-        : "Passed gates",
+      status:
+        reviewItem?.status === "RESOLVED" || reviewItem?.status === "DISMISSED"
+          ? "resolved"
+          : reviewItem || missingFields.length > 0 || reviewReasons.length > 0
+            ? "needs-review"
+            : "ready",
+      statusLabel:
+        reviewItem?.status === "RESOLVED"
+          ? "Resolved"
+          : reviewItem?.status === "DISMISSED"
+            ? "Dismissed"
+            : reviewItem || missingFields.length > 0 || reviewReasons.length > 0
+              ? "Needs review"
+              : "Passed gates",
       parsedRecord,
       reviewItem,
       reviewOutcome,
@@ -563,8 +691,16 @@ function buildRecordReviewCards(result: DemoResult) {
       id: reviewItem.id,
       index,
       label: getRecordLabel({ parsedRecord, reviewItem, fallbackIndex: index }),
-      status: "needs-review",
-      statusLabel: "Needs review",
+      status:
+        reviewItem.status === "RESOLVED" || reviewItem.status === "DISMISSED"
+          ? "resolved"
+          : "needs-review",
+      statusLabel:
+        reviewItem.status === "RESOLVED"
+          ? "Resolved"
+          : reviewItem.status === "DISMISSED"
+            ? "Dismissed"
+            : "Needs review",
       parsedRecord,
       reviewItem,
       reviewOutcome,
@@ -607,6 +743,24 @@ function buildRecordReviewCards(result: DemoResult) {
     ) {
       card.status = "needs-review";
       card.statusLabel = "Needs review";
+    }
+
+    if (
+      card.reviewItem?.status === "RESOLVED" ||
+      card.reviewItem?.status === "DISMISSED"
+    ) {
+      card.status = "resolved";
+      card.statusLabel =
+        card.reviewItem.status === "RESOLVED" ? "Resolved" : "Dismissed";
+    }
+
+    if (
+      card.reviewItem?.status === "RESOLVED" ||
+      card.reviewItem?.status === "DISMISSED"
+    ) {
+      card.status = "resolved";
+      card.statusLabel =
+        card.reviewItem.status === "RESOLVED" ? "Resolved" : "Dismissed";
     }
 
     card.suggestedAction = getSuggestedAction({
@@ -758,6 +912,485 @@ function RecordAttentionList({ card }: { card: RecordReviewCard }) {
   );
 }
 
+function getReviewItemStatusLabel(reviewItem: ReviewQueueItem | null) {
+  if (!reviewItem) {
+    return "No review item";
+  }
+
+  return formatStatusLabel(reviewItem.status);
+}
+
+function canResolveReviewItem(reviewItem: ReviewQueueItem | null) {
+  return reviewItem?.status === "OPEN" || reviewItem?.status === "IN_REVIEW";
+}
+
+function buildCorrectionDraft(card: RecordReviewCard): ReviewCorrectionDraft {
+  const proposedRecord = getProposedRecord(card.reviewItem);
+  const brand =
+    getFirstString(card.parsedRecord, ["brand"]) ??
+    getFirstString(proposedRecord, ["brand"]) ??
+    "";
+  const productLine =
+    getFirstString(card.parsedRecord, ["productLine", "model", "title"]) ??
+    getFirstString(proposedRecord, ["productLine", "model", "title"]) ??
+    "";
+  const category =
+    getFirstValue(card.parsedRecord, ["category"]) ??
+    getFirstValue(proposedRecord, ["category"]);
+  const shaftFlex =
+    getFirstValue(card.parsedRecord, ["shaftFlex", "flex"]) ??
+    getFirstValue(proposedRecord, ["shaftFlex", "flex"]);
+  const conditionGrade =
+    getFirstValue(card.parsedRecord, ["conditionGrade"]) ??
+    getFirstValue(proposedRecord, ["conditionGrade"]);
+  const demoValue =
+    getFirstValue(card.parsedRecord, ["tradeInValue", "demoValue", "value"]) ??
+    getFirstValue(proposedRecord, ["tradeInValue", "demoValue", "value"]);
+
+  return {
+    brand,
+    productLine,
+    category: normalizeCategoryValue(category),
+    shaftFlex: normalizeShaftFlexValue(shaftFlex),
+    conditionGrade:
+      normalizeConditionGradeValue(conditionGrade) ||
+      inferConditionGradeFromText(card.sourceEvidence) ||
+      "8.0 Average",
+    demoValue: demoValue === null || demoValue === undefined ? "" : String(demoValue),
+    demoValuationNote: "",
+    reviewerNotes: "Confirmed current run review item from the guided validation checkpoint.",
+  };
+}
+
+function getCurrentValueForField(card: RecordReviewCard, fieldName: string) {
+  const proposedRecord = getProposedRecord(card.reviewItem);
+
+  if (fieldName === "brand") {
+    return getFirstString(card.parsedRecord, ["brand"]) ?? getFirstString(proposedRecord, ["brand"]) ?? "";
+  }
+
+  if (fieldName === "productLine") {
+    return (
+      getFirstString(card.parsedRecord, ["productLine", "model", "title"]) ??
+      getFirstString(proposedRecord, ["productLine", "model", "title"]) ??
+      ""
+    );
+  }
+
+  if (fieldName === "category") {
+    return formatDisplayValue(
+      getFirstValue(card.parsedRecord, ["category"]) ?? getFirstValue(proposedRecord, ["category"]),
+    );
+  }
+
+  if (fieldName === "shaftFlex") {
+    return formatDisplayValue(
+      getFirstValue(card.parsedRecord, ["shaftFlex", "flex"]) ??
+        getFirstValue(proposedRecord, ["shaftFlex", "flex"]),
+    );
+  }
+
+  if (fieldName === "conditionGrade") {
+    return formatDisplayValue(
+      getFirstValue(card.parsedRecord, ["conditionGrade"]) ??
+        getFirstValue(proposedRecord, ["conditionGrade"]),
+    );
+  }
+
+  if (fieldName === "demoValue") {
+    return formatDisplayValue(
+      getFirstValue(card.parsedRecord, ["tradeInValue", "demoValue", "value"]) ??
+        getFirstValue(proposedRecord, ["tradeInValue", "demoValue", "value"]),
+    );
+  }
+
+  return "";
+}
+
+function getCorrectedValueForField(draft: ReviewCorrectionDraft, fieldName: string) {
+  if (fieldName === "category") {
+    return draft.category ? formatEnumLabel(draft.category) : "";
+  }
+
+  if (fieldName === "shaftFlex") {
+    return draft.shaftFlex ? formatEnumLabel(draft.shaftFlex) : "";
+  }
+
+  if (fieldName === "conditionGrade") {
+    return draft.conditionGrade;
+  }
+
+  if (fieldName === "demoValue") {
+    return draft.demoValue;
+  }
+
+  return draft[fieldName as "brand" | "productLine"] ?? "";
+}
+
+function buildCorrectedRecord(draft: ReviewCorrectionDraft): StructuredReviewCorrectedRecord {
+  const demoValue = draft.demoValue.trim().length > 0 ? Number(draft.demoValue) : null;
+
+  return {
+    ...(draft.brand.trim() ? { brand: draft.brand.trim() } : {}),
+    ...(draft.productLine.trim() ? { productLine: draft.productLine.trim() } : {}),
+    ...(draft.category ? { category: draft.category } : {}),
+    ...(draft.shaftFlex ? { shaftFlex: draft.shaftFlex } : {}),
+    ...(draft.conditionGrade ? { conditionGrade: draft.conditionGrade } : {}),
+    ...(demoValue !== null && Number.isFinite(demoValue)
+      ? { demoValue: Math.round(demoValue) }
+      : {}),
+    ...(draft.demoValuationNote.trim()
+      ? { demoValuationNote: draft.demoValuationNote.trim() }
+      : {}),
+  };
+}
+
+function buildLearningEvents(
+  card: RecordReviewCard,
+  draft: ReviewCorrectionDraft,
+): StructuredReviewLearningEventInput[] {
+  const fieldNames = [
+    "brand",
+    "productLine",
+    "category",
+    "shaftFlex",
+    "conditionGrade",
+    "demoValue",
+  ];
+  const events: StructuredReviewLearningEventInput[] = [];
+
+  for (const fieldName of fieldNames) {
+    const correctedValue = getCorrectedValueForField(draft, fieldName).trim();
+
+    if (!correctedValue) {
+      continue;
+    }
+
+    const proposedValue = getCurrentValueForField(card, fieldName);
+    const changed =
+      normalizeComparable(proposedValue) !== normalizeComparable(correctedValue);
+    const wasMissing = card.missingFields.some(
+      (field) => normalizeComparable(field) === normalizeComparable(fieldName),
+    );
+
+    if (!changed && !wasMissing) {
+      continue;
+    }
+
+    events.push({
+      fieldName,
+      rawTextMatch: card.sourceEvidence.slice(0, 240),
+      proposedValue: proposedValue || undefined,
+      correctedValue,
+      evidenceText: card.sourceEvidence.slice(0, 240),
+      confidenceImpact: wasMissing
+        ? "Human review supplied a missing field."
+        : "Human review corrected the normalized field.",
+    });
+  }
+
+  return events;
+}
+
+function getCorrectionFieldFromSignal(value: string) {
+  const normalized = normalizeComparable(value);
+
+  if (normalized.includes("serial")) {
+    return null;
+  }
+
+  if (normalized.includes("brand")) {
+    return "brand";
+  }
+
+  if (
+    normalized.includes("product") ||
+    normalized.includes("model") ||
+    normalized.includes("line")
+  ) {
+    return "productLine";
+  }
+
+  if (
+    normalized.includes("category") ||
+    normalized.includes("equipment") ||
+    normalized.includes("clubtype")
+  ) {
+    return "category";
+  }
+
+  if (normalized.includes("shaft") || normalized.includes("flex")) {
+    return "shaftFlex";
+  }
+
+  if (normalized.includes("condition")) {
+    return "conditionGrade";
+  }
+
+  if (
+    normalized.includes("tradein") ||
+    normalized.includes("tradevalue") ||
+    normalized.includes("value") ||
+    normalized.includes("valuation")
+  ) {
+    return "demoValue";
+  }
+
+  if (normalized.includes("store")) {
+    return "storeId";
+  }
+
+  return null;
+}
+
+function getCorrectionFieldLabel(fieldName: string) {
+  const labels: Record<string, string> = {
+    brand: "Brand",
+    productLine: "Product line",
+    category: "Category",
+    shaftFlex: "Shaft flex",
+    conditionGrade: "Condition grade",
+    demoValue: "Trade-in value",
+    storeId: "Store",
+  };
+
+  return labels[fieldName] ?? formatFieldLabel(fieldName);
+}
+
+function addSourceMissingFieldSignals(card: RecordReviewCard, fields: Set<string>) {
+  const sourceText = card.sourceEvidence.toLowerCase();
+
+  if (/missing\s+(?:trade\s*-?\s*in\s*)?value|missing\s+tradeinvalue|value\s+pending|trade\s*-?\s*in\s+value\s+(?:missing|unclear|pending)/i.test(sourceText)) {
+    fields.add("demoValue");
+  }
+
+  if (/missing\s+condition|condition\s+(?:missing|unclear|pending)|conditionnotes/i.test(sourceText)) {
+    fields.add("conditionGrade");
+  }
+
+  if (/missing\s+category|category\s+(?:missing|unclear|pending|could not be classified)/i.test(sourceText)) {
+    fields.add("category");
+  }
+
+  if (/missing\s+(?:shaft\s*)?flex|shaft\s*flex\s+(?:missing|unclear|pending)/i.test(sourceText)) {
+    fields.add("shaftFlex");
+  }
+
+  if (/missing\s+product|product\s+(?:line\s+)?(?:missing|unclear|pending)/i.test(sourceText)) {
+    fields.add("productLine");
+  }
+
+  if (/missing\s+brand|brand\s+(?:missing|unclear|pending)/i.test(sourceText)) {
+    fields.add("brand");
+  }
+}
+
+function addBlankCorrectableFieldSignals(card: RecordReviewCard, fields: Set<string>) {
+  const proposedRecord = getProposedRecord(card.reviewItem);
+
+  const demoValue =
+    getFirstValue(card.parsedRecord, ["tradeInValue", "demoValue", "value"]) ??
+    getFirstValue(proposedRecord, ["tradeInValue", "demoValue", "value"]);
+  const conditionGrade =
+    getFirstValue(card.parsedRecord, ["conditionGrade"]) ??
+    getFirstValue(proposedRecord, ["conditionGrade"]);
+  const category =
+    getFirstValue(card.parsedRecord, ["category"]) ??
+    getFirstValue(proposedRecord, ["category"]);
+
+  if ((demoValue === null || demoValue === undefined || demoValue === "") && fields.has("demoValue")) {
+    fields.add("demoValue");
+  }
+
+  if ((conditionGrade === null || conditionGrade === undefined || conditionGrade === "") && fields.has("conditionGrade")) {
+    fields.add("conditionGrade");
+  }
+
+  if ((category === null || category === undefined || category === "") && fields.has("category")) {
+    fields.add("category");
+  }
+}
+
+function getCorrectionFocusFields(card: RecordReviewCard) {
+  const fields = new Set<string>();
+
+  addSourceMissingFieldSignals(card, fields);
+
+  for (const field of card.missingFields) {
+    const correctionField = getCorrectionFieldFromSignal(field);
+
+    if (correctionField) {
+      fields.add(correctionField);
+    }
+  }
+
+  for (const check of card.validationChecks) {
+    if (!check.reviewRequired && check.status === "PASS") {
+      continue;
+    }
+
+    const correctionField =
+      getCorrectionFieldFromSignal(check.field ?? "") ??
+      getCorrectionFieldFromSignal(check.label) ??
+      getCorrectionFieldFromSignal(check.message);
+
+    if (correctionField) {
+      fields.add(correctionField);
+    }
+  }
+
+  for (const event of card.retryEvents) {
+    if (event.status === "RESOLVED") {
+      continue;
+    }
+
+    const correctionField =
+      getCorrectionFieldFromSignal(event.targetField ?? "") ??
+      getCorrectionFieldFromSignal(event.reason) ??
+      getCorrectionFieldFromSignal(event.message);
+
+    if (correctionField) {
+      fields.add(correctionField);
+    }
+  }
+
+  for (const reason of card.reviewReasons) {
+    const correctionField = getCorrectionFieldFromSignal(reason);
+
+    if (correctionField) {
+      fields.add(correctionField);
+    }
+  }
+
+  addBlankCorrectableFieldSignals(card, fields);
+
+  return Array.from(fields);
+}
+
+function getRecordCardSummary(card: RecordReviewCard) {
+  const focusFields = getCorrectionFocusFields(card);
+
+  if (focusFields.length > 0) {
+    return `Needs attention: ${focusFields.map(getCorrectionFieldLabel).join(", ")}`;
+  }
+
+  if (card.reviewReasons.length > 0) {
+    return card.reviewReasons[0]!;
+  }
+
+  if (card.validationChecks.length > 0) {
+    const warningCount = card.validationChecks.filter(
+      (check) => check.status === "WARNING" || check.status === "FAIL",
+    ).length;
+
+    return warningCount > 0
+      ? `${warningCount} validation warning(s)`
+      : "Validation checks available";
+  }
+
+  return card.suggestedAction;
+}
+
+function CorrectionFocusCallout({ card }: { card: RecordReviewCard }) {
+  const focusFields = getCorrectionFocusFields(card);
+
+  if (focusFields.length === 0) {
+    return (
+      <div className="guided-correction-focus">
+        <strong>Fields needing attention</strong>
+        <p>Review the source evidence and confirm the corrected record values.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="guided-correction-focus">
+      <strong>Fields needing attention</strong>
+      <ul>
+        {focusFields.map((field) => (
+          <li key={field}>{getCorrectionFieldLabel(field)}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+const CORRECTION_FORM_FIELD_NAMES = [
+  "brand",
+  "productLine",
+  "category",
+  "shaftFlex",
+  "conditionGrade",
+  "demoValue",
+] as const;
+
+type CorrectionFormFieldName = (typeof CORRECTION_FORM_FIELD_NAMES)[number];
+
+function isCorrectionFormFieldName(value: string): value is CorrectionFormFieldName {
+  return CORRECTION_FORM_FIELD_NAMES.includes(value as CorrectionFormFieldName);
+}
+
+function getVisibleCorrectionFields(card: RecordReviewCard): CorrectionFormFieldName[] {
+  const focusFields = getCorrectionFocusFields(card).filter(isCorrectionFormFieldName);
+
+  if (focusFields.length > 0) {
+    return focusFields;
+  }
+
+  return ["brand", "productLine", "category", "shaftFlex", "conditionGrade", "demoValue"];
+}
+
+function getSecondaryCorrectionFields(
+  visibleFields: CorrectionFormFieldName[],
+): CorrectionFormFieldName[] {
+  return CORRECTION_FORM_FIELD_NAMES.filter(
+    (field) => !visibleFields.includes(field),
+  );
+}
+
+function RecordEvidenceDetails({ card }: { card: RecordReviewCard }) {
+  return (
+    <details className="guided-record-supporting-details">
+      <summary>Source and system evidence</summary>
+
+      <div className="guided-record-evidence-grid">
+        <article className="guided-record-evidence-grid__source">
+          <strong>Source evidence</strong>
+          <p>{card.sourceEvidence}</p>
+        </article>
+        <article>
+          <strong>Inventory evidence</strong>
+          <p>{getInventorySummary(card.inventoryEvidence)}</p>
+        </article>
+        <article>
+          <strong>Valuation evidence</strong>
+          <p>{getValuationSummary(card.valuationEvidence)}</p>
+        </article>
+      </div>
+    </details>
+  );
+}
+
+function RecordReviewSignalDetails({ card }: { card: RecordReviewCard }) {
+  return (
+    <details className="guided-record-supporting-details">
+      <summary>Review signals and suggested action</summary>
+
+      <div className="guided-record-review-card__body-grid">
+        <section>
+          <h5>What needs attention</h5>
+          <RecordAttentionList card={card} />
+        </section>
+
+        <section>
+          <h5>Suggested next action</h5>
+          <p>{card.suggestedAction}</p>
+        </section>
+      </div>
+    </details>
+  );
+}
+
 function RecordValidationDetails({ card }: { card: RecordReviewCard }) {
   return (
     <details className="guided-record-review-details">
@@ -808,56 +1441,298 @@ function RecordValidationDetails({ card }: { card: RecordReviewCard }) {
   );
 }
 
-function RecordReviewCardView({ card }: { card: RecordReviewCard }) {
+function RecordCorrectionPanel({
+  activeReviewQueueItemId,
+  card,
+  draft,
+  isEditing,
+  onDraftChange,
+  onStartEditing,
+  onCancelEditing,
+  onSubmit,
+}: {
+  activeReviewQueueItemId: string | null;
+  card: RecordReviewCard;
+  draft: ReviewCorrectionDraft;
+  isEditing: boolean;
+  onDraftChange: (draft: ReviewCorrectionDraft) => void;
+  onStartEditing: () => void;
+  onCancelEditing: () => void;
+  onSubmit: () => void;
+}) {
+  if (!card.reviewItem) {
+    return (
+      <div className="guided-record-correction-panel guided-record-correction-panel--muted">
+        <strong>No review queue item</strong>
+        <p>This record has no persisted review item to resolve from this checkpoint.</p>
+      </div>
+    );
+  }
+
+  if (!canResolveReviewItem(card.reviewItem)) {
+    return (
+      <div className="guided-record-correction-panel guided-record-correction-panel--resolved">
+        <strong>Review status: {getReviewItemStatusLabel(card.reviewItem)}</strong>
+        <p>This review item has already been handled.</p>
+      </div>
+    );
+  }
+
+  const visibleFields = getVisibleCorrectionFields(card);
+  const secondaryFields = getSecondaryCorrectionFields(visibleFields);
+
+  if (!isEditing) {
+    return (
+      <div className="guided-record-correction-panel">
+        <div>
+          <strong>Ready for human correction</strong>
+          <p>Focus on {visibleFields.map(getCorrectionFieldLabel).join(", ")}.</p>
+        </div>
+        <CorrectionFocusCallout card={card} />
+        <button className="guided-step-primary-action" onClick={onStartEditing} type="button">
+          Review and correct
+        </button>
+      </div>
+    );
+  }
+
+  const isSaving = activeReviewQueueItemId === card.reviewItem.id;
+
   return (
-    <article className="guided-record-review-card">
-      <div className="guided-record-review-card__header">
+    <div className="guided-record-correction-form">
+      <div className="guided-record-correction-form__header">
+        <div>
+          <strong>Resolve current run review item</strong>
+          <p>
+            These controlled fields are saved through the review queue correction flow.
+          </p>
+        </div>
+        <button disabled={isSaving} onClick={onCancelEditing} type="button">
+          Cancel
+        </button>
+      </div>
+
+      <CorrectionFocusCallout card={card} />
+
+      <div className="guided-record-correction-grid guided-record-correction-grid--focused">
+        {visibleFields.includes("brand") ? (
+          <label>
+            Brand
+            <input
+              onChange={(event) => onDraftChange({ ...draft, brand: event.target.value })}
+              value={draft.brand}
+            />
+          </label>
+        ) : null}
+
+        {visibleFields.includes("productLine") ? (
+          <label>
+            Product line
+            <input
+              onChange={(event) =>
+                onDraftChange({ ...draft, productLine: event.target.value })
+              }
+              value={draft.productLine}
+            />
+          </label>
+        ) : null}
+
+        {visibleFields.includes("category") ? (
+          <label>
+            Category
+            <select
+              onChange={(event) =>
+                onDraftChange({
+                  ...draft,
+                  category: event.target.value as ReviewCorrectionCategory | "",
+                })
+              }
+              value={draft.category}
+            >
+              <option value="">Select category</option>
+              {CATEGORY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+
+        {visibleFields.includes("shaftFlex") ? (
+          <label>
+            Shaft flex
+            <select
+              onChange={(event) =>
+                onDraftChange({
+                  ...draft,
+                  shaftFlex: event.target.value as ReviewCorrectionShaftFlex | "",
+                })
+              }
+              value={draft.shaftFlex}
+            >
+              <option value="">Select shaft flex</option>
+              {SHAFT_FLEX_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+
+        {visibleFields.includes("conditionGrade") ? (
+          <label>
+            Condition grade
+            <select
+              onChange={(event) =>
+                onDraftChange({
+                  ...draft,
+                  conditionGrade: event.target.value as ReviewConditionGrade | "",
+                })
+              }
+              value={draft.conditionGrade}
+            >
+              <option value="">Select condition</option>
+              {CONDITION_GRADE_OPTIONS.map((conditionGrade) => (
+                <option key={conditionGrade} value={conditionGrade}>
+                  {conditionGrade}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+
+        {visibleFields.includes("demoValue") ? (
+          <label>
+            Trade-in value
+            <input
+              min="0"
+              onChange={(event) => onDraftChange({ ...draft, demoValue: event.target.value })}
+              type="number"
+              value={draft.demoValue}
+            />
+          </label>
+        ) : null}
+      </div>
+
+      {secondaryFields.length > 0 ? (
+        <details className="guided-record-secondary-fields">
+          <summary>Other normalized fields</summary>
+          <dl>
+            {secondaryFields.map((field) => (
+              <div key={field}>
+                <dt>{getCorrectionFieldLabel(field)}</dt>
+                <dd>{getCorrectedValueForField(draft, field) || "—"}</dd>
+              </div>
+            ))}
+          </dl>
+        </details>
+      ) : null}
+
+      <label>
+        Valuation note
+        <input
+          onChange={(event) =>
+            onDraftChange({ ...draft, demoValuationNote: event.target.value })
+          }
+          placeholder="Optional note about the corrected value."
+          value={draft.demoValuationNote}
+        />
+      </label>
+
+      <label>
+        Reviewer notes
+        <textarea
+          onChange={(event) =>
+            onDraftChange({ ...draft, reviewerNotes: event.target.value })
+          }
+          rows={3}
+          value={draft.reviewerNotes}
+        />
+      </label>
+
+      <div className="guided-record-correction-form__actions">
+        <button
+          className="guided-step-primary-action"
+          disabled={isSaving}
+          onClick={onSubmit}
+          type="button"
+        >
+          {isSaving ? "Saving correction…" : "Save correction and resolve"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function RecordReviewCardView({
+  activeReviewQueueItemId,
+  card,
+  correctionDraft,
+  isEditing,
+  onCancelEditing,
+  onDraftChange,
+  onStartEditing,
+  onSubmitCorrection,
+}: {
+  activeReviewQueueItemId: string | null;
+  card: RecordReviewCard;
+  correctionDraft: ReviewCorrectionDraft;
+  isEditing: boolean;
+  onCancelEditing: () => void;
+  onDraftChange: (draft: ReviewCorrectionDraft) => void;
+  onStartEditing: () => void;
+  onSubmitCorrection: () => void;
+}) {
+  return (
+    <details className="guided-record-review-card" open={isEditing}>
+      <summary className="guided-record-review-card__header">
         <div>
           <span className="model-route-card__eyebrow">Record {card.index + 1}</span>
           <h4>{card.label}</h4>
+          <p className="guided-record-review-card__summary-line">
+            {getRecordCardSummary(card)}
+          </p>
         </div>
         <span className={getRecordStatusClassName(card.status)}>{card.statusLabel}</span>
+      </summary>
+
+      <div className="guided-record-review-card__content">
+        <RecordCorrectionPanel
+        activeReviewQueueItemId={activeReviewQueueItemId}
+        card={card}
+        draft={correctionDraft}
+        isEditing={isEditing}
+        onCancelEditing={onCancelEditing}
+        onDraftChange={onDraftChange}
+        onStartEditing={onStartEditing}
+        onSubmit={onSubmitCorrection}
+      />
+
+        <RecordEvidenceDetails card={card} />
+        <RecordReviewSignalDetails card={card} />
+        <RecordValidationDetails card={card} />
       </div>
-
-      <RecordFieldGrid card={card} />
-
-      <div className="guided-record-review-card__body-grid">
-        <section>
-          <h5>What needs attention</h5>
-          <RecordAttentionList card={card} />
-        </section>
-
-        <section>
-          <h5>Suggested next action</h5>
-          <p>{card.suggestedAction}</p>
-        </section>
-      </div>
-
-      <div className="guided-record-evidence-grid">
-        <article>
-          <strong>Source evidence</strong>
-          <p>{card.sourceEvidence}</p>
-        </article>
-        <article>
-          <strong>Inventory evidence</strong>
-          <p>{getInventorySummary(card.inventoryEvidence)}</p>
-        </article>
-        <article>
-          <strong>Valuation evidence</strong>
-          <p>{getValuationSummary(card.valuationEvidence)}</p>
-        </article>
-      </div>
-
-      <RecordValidationDetails card={card} />
-    </article>
+    </details>
   );
 }
 
 export function GuidedValidationReviewStep({
+  actionError,
+  actionSuccess,
+  activeReviewQueueItemId,
+  currentRunReviewQueueItems,
   onContinue,
   onOpenReviewQueue,
+  onReviewQueueNotesChange,
+  onResolveReviewQueueItemWithCorrections,
   result,
+  reviewQueueNotesById,
 }: GuidedValidationReviewStepProps) {
+  const [editingReviewQueueItemId, setEditingReviewQueueItemId] = useState<string | null>(null);
+  const [correctionDraftsByReviewQueueItemId, setCorrectionDraftsByReviewQueueItemId] =
+    useState<Record<string, ReviewCorrectionDraft>>({});
   const validationChecks = result?.validationChecks ?? [];
   const retryEvents = result?.retryEvents ?? [];
   const qualitySummary = result?.workflowQualitySummary ?? null;
@@ -866,11 +1741,85 @@ export function GuidedValidationReviewStep({
   const failedChecks = validationChecks.filter((check) => check.status === "FAIL");
   const reviewRequiredChecks = validationChecks.filter((check) => check.reviewRequired);
   const unresolvedRetries = retryEvents.filter((event) => event.status === "UNRESOLVED");
-  const recordReviewData = result ? buildRecordReviewCards(result) : null;
+  const recordReviewData = result
+    ? buildRecordReviewCards(result, currentRunReviewQueueItems)
+    : null;
   const recordCards = recordReviewData?.cards ?? [];
-  const recordsNeedingAttention = recordCards.filter((card) => card.status === "needs-review");
-  const recordsPassed = recordCards.length - recordsNeedingAttention.length;
-  const fixableHereCount = result?.reviewQueueItemsCreated.length ?? 0;
+  const recordsStillNeedingAttention = recordCards.filter(
+    (card) => card.status === "needs-review",
+  );
+  const recordsResolvedByReview = recordCards.filter(
+    (card) => card.status === "resolved",
+  );
+  const recordsAutoPassed = recordCards.filter((card) => card.status === "ready");
+  const reviewItemsCreatedCount = result?.reviewQueueItemsCreated.length ?? 0;
+
+  function getDraftForCard(card: RecordReviewCard) {
+    if (!card.reviewItem) {
+      return buildCorrectionDraft(card);
+    }
+
+    return (
+      correctionDraftsByReviewQueueItemId[card.reviewItem.id] ??
+      buildCorrectionDraft(card)
+    );
+  }
+
+  function setDraftForCard(card: RecordReviewCard, draft: ReviewCorrectionDraft) {
+    if (!card.reviewItem) {
+      return;
+    }
+
+    setCorrectionDraftsByReviewQueueItemId((current) => ({
+      ...current,
+      [card.reviewItem!.id]: draft,
+    }));
+
+    onReviewQueueNotesChange(card.reviewItem.id, draft.reviewerNotes);
+  }
+
+  function startEditingCard(card: RecordReviewCard) {
+    if (!card.reviewItem) {
+      return;
+    }
+
+    setCorrectionDraftsByReviewQueueItemId((current) => ({
+      ...current,
+      [card.reviewItem!.id]:
+        current[card.reviewItem!.id] ?? {
+          ...buildCorrectionDraft(card),
+          reviewerNotes:
+            reviewQueueNotesById[card.reviewItem!.id] ??
+            buildCorrectionDraft(card).reviewerNotes,
+        },
+    }));
+    setEditingReviewQueueItemId(card.reviewItem.id);
+  }
+
+  function submitCorrectionForCard(card: RecordReviewCard) {
+    const reviewItem = card.reviewItem;
+
+    if (!result || !reviewItem) {
+      return;
+    }
+
+    const draft = getDraftForCard(card);
+    const correctedRecord = buildCorrectedRecord(draft);
+    const learningEvents = buildLearningEvents(card, draft);
+
+    onResolveReviewQueueItemWithCorrections({
+      reviewQueueItemId: reviewItem.id,
+      request: {
+        reviewerNotes: draft.reviewerNotes.trim() || undefined,
+        correctedRecord,
+        learningEvents,
+      },
+      workflowRunId: reviewItem.workflowRunId ?? result.persisted.workflowRunId,
+      intakeBatchId: result.persisted.intakeBatchId,
+    });
+
+    setEditingReviewQueueItemId(null);
+  }
 
   return (
     <article className="guided-workflow-card guided-workflow-card--validation-review">
@@ -931,68 +1880,116 @@ export function GuidedValidationReviewStep({
                 <span>quality status</span>
               </article>
               <article>
-                <strong>{recordsPassed}</strong>
-                <span>records passed</span>
+                <strong>{recordsStillNeedingAttention.length}</strong>
+                <span>still needs attention</span>
               </article>
               <article>
-                <strong>{recordsNeedingAttention.length}</strong>
-                <span>need attention</span>
+                <strong>{recordsResolvedByReview.length}</strong>
+                <span>resolved by review</span>
               </article>
               <article>
-                <strong>{fixableHereCount}</strong>
-                <span>review items</span>
+                <strong>{reviewItemsCreatedCount}</strong>
+                <span>review items created</span>
               </article>
             </div>
+
+            {actionSuccess ? (
+              <p className="form-message form-message--success">{actionSuccess}</p>
+            ) : null}
+
+            {actionError ? (
+              <p className="form-message form-message--error">{actionError}</p>
+            ) : null}
 
             <section className="guided-review-checkpoint">
               <div>
                 <span className="model-route-card__eyebrow">Review checkpoint</span>
                 <h4>
-                  {recordsNeedingAttention.length === 0
-                    ? "All records passed the current gates"
-                    : `${recordsNeedingAttention.length} record(s) need review before final reporting`}
+                  {recordsStillNeedingAttention.length === 0
+                    ? "All current review work has been handled"
+                    : `${recordsStillNeedingAttention.length} record(s) still need review before final reporting`}
                 </h4>
-                <p>{qualitySummary.summary}</p>
+                <p>
+                  {recordsStillNeedingAttention.length === 0
+                    ? "Human review has resolved the current run's review items. The original validation trace remains available for audit context."
+                    : `Workflow completed with ${reviewItemsCreatedCount} review item(s). ${recordsResolvedByReview.length} have been resolved and ${recordsStillNeedingAttention.length} still need attention.`}
+                </p>
               </div>
 
               <dl className="guided-review-checkpoint__facts">
                 <div>
-                  <dt>Passed checks</dt>
-                  <dd>{qualitySummary.validationPassed}</dd>
+                  <dt>Still needs attention</dt>
+                  <dd>{recordsStillNeedingAttention.length}</dd>
                 </div>
                 <div>
-                  <dt>Warnings</dt>
-                  <dd>{qualitySummary.validationWarnings}</dd>
+                  <dt>Resolved by review</dt>
+                  <dd>{recordsResolvedByReview.length}</dd>
                 </div>
                 <div>
-                  <dt>Review-required checks</dt>
-                  <dd>{reviewRequiredChecks.length}</dd>
+                  <dt>Auto-passed records</dt>
+                  <dd>{recordsAutoPassed.length}</dd>
                 </div>
                 <div>
-                  <dt>Unresolved retries</dt>
-                  <dd>{unresolvedRetries.length}</dd>
+                  <dt>Review items created</dt>
+                  <dd>{reviewItemsCreatedCount}</dd>
                 </div>
               </dl>
 
-              <small>Evidence coverage: {qualitySummary.evidenceCoverage}</small>
+              <div className="guided-original-validation-trace">
+                <span className="model-route-card__eyebrow">Original validation trace</span>
+                <dl className="guided-review-checkpoint__facts">
+                  <div>
+                    <dt>Passed checks</dt>
+                    <dd>{qualitySummary.validationPassed}</dd>
+                  </div>
+                  <div>
+                    <dt>Warnings</dt>
+                    <dd>{qualitySummary.validationWarnings}</dd>
+                  </div>
+                  <div>
+                    <dt>Review-required checks</dt>
+                    <dd>{reviewRequiredChecks.length}</dd>
+                  </div>
+                  <div>
+                    <dt>Unresolved retries</dt>
+                    <dd>{unresolvedRetries.length}</dd>
+                  </div>
+                </dl>
+
+                <small>Evidence coverage: {qualitySummary.evidenceCoverage}</small>
+              </div>
             </section>
 
             <section className="guided-validation-section">
               <div className="guided-validation-section__header">
                 <div>
-                  <h4>Records needing attention</h4>
+                  <h4>Current run review records</h4>
                   <p>
-                    Each card shows the normalized record, source evidence, warning signals,
-                    retry outcome, and suggested next action.
+                    Each card shows the normalized record, current review state, source
+                    evidence, warning signals, retry outcome, and suggested next action.
                   </p>
                 </div>
-                <span>{recordsNeedingAttention.length} active</span>
+                <span>{recordsStillNeedingAttention.length} active</span>
               </div>
 
               <div className="guided-record-review-list">
-                {(recordsNeedingAttention.length > 0 ? recordsNeedingAttention : recordCards).map(
+                {recordCards.map(
                   (card) => (
-                    <RecordReviewCardView card={card} key={card.id} />
+                    <RecordReviewCardView
+                      activeReviewQueueItemId={activeReviewQueueItemId}
+                      card={card}
+                      correctionDraft={getDraftForCard(card)}
+                      isEditing={
+                        card.reviewItem
+                          ? editingReviewQueueItemId === card.reviewItem.id
+                          : false
+                      }
+                      key={card.id}
+                      onCancelEditing={() => setEditingReviewQueueItemId(null)}
+                      onDraftChange={(draft) => setDraftForCard(card, draft)}
+                      onStartEditing={() => startEditingCard(card)}
+                      onSubmitCorrection={() => submitCorrectionForCard(card)}
+                    />
                   ),
                 )}
               </div>
@@ -1072,7 +2069,10 @@ export function GuidedValidationReviewStep({
                     The record cards make the review work visible before final reporting. Records that require human approval can be opened in the review queue and resolved through the controlled correction flow.
                   </p>
                 </div>
-                <span>{result.reviewQueueItemsCreated.length} created</span>
+                <span>
+                  {recordsStillNeedingAttention.length} open ·{" "}
+                  {recordsResolvedByReview.length} resolved
+                </span>
               </div>
 
               <div className="guided-review-action-row">

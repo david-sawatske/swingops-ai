@@ -67,8 +67,23 @@ export async function getWorkflowRun(
   return apiGet<WorkflowRunDetail>(`/workflow-runs/${workflowRunId}`);
 }
 
-export async function listReviewQueueItems(): Promise<ListReviewQueueItemsResponse> {
-  return apiGet<ListReviewQueueItemsResponse>("/review-queue-items");
+export async function listReviewQueueItems(filters: {
+  status?: string;
+  workflowRunId?: string;
+} = {}): Promise<ListReviewQueueItemsResponse> {
+  const searchParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined && value !== null && String(value).length > 0) {
+      searchParams.set(key, String(value));
+    }
+  }
+
+  const queryString = searchParams.toString();
+
+  return apiGet<ListReviewQueueItemsResponse>(
+    queryString ? `/review-queue-items?${queryString}` : "/review-queue-items",
+  );
 }
 
 export async function resolveReviewQueueItem(

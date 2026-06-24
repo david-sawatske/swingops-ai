@@ -1297,6 +1297,8 @@ function App() {
           onRunSourceIntake={handleRunMultiSourceIntakeDemo}
           onRunTradeInWorkflow={handleExecuteEndToEndAgenticDemo}
           onViewChange={setActiveView}
+          reviewQueueActionSuccess={reviewQueueActionSuccess}
+          reviewQueueActionError={reviewQueueActionError}
           activeReviewQueueItemId={activeReviewQueueItemId}
           reviewQueueNotesById={reviewQueueNotesById}
           onReviewQueueNotesChange={handleReviewQueueNotesChange}

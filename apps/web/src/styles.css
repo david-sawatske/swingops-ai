@@ -7911,3 +7911,422 @@ h1 {
     display: grid;
   }
 }
+
+.guided-record-correction-panel,
+.guided-record-correction-form {
+  display: grid;
+  gap: 0.85rem;
+  padding: 0.9rem;
+  border: 1px solid rgba(22, 101, 52, 0.16);
+  border-radius: 0.9rem;
+  background: rgba(240, 253, 244, 0.74);
+}
+
+.guided-record-correction-panel {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.guided-record-correction-panel p,
+.guided-record-correction-form p {
+  margin: 0.2rem 0 0;
+  color: rgba(20, 33, 22, 0.68);
+}
+
+.guided-record-correction-panel--muted {
+  border-color: rgba(100, 116, 139, 0.16);
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.guided-record-correction-panel--resolved {
+  border-color: rgba(59, 130, 246, 0.16);
+  background: rgba(239, 246, 255, 0.74);
+}
+
+.guided-record-correction-form__header,
+.guided-record-correction-form__actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.guided-record-correction-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.guided-record-correction-form label {
+  display: grid;
+  gap: 0.35rem;
+  color: rgba(20, 33, 22, 0.78);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.guided-record-correction-form input,
+.guided-record-correction-form select,
+.guided-record-correction-form textarea {
+  width: 100%;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 0.65rem;
+  padding: 0.62rem 0.7rem;
+  background: rgba(255, 255, 255, 0.92);
+  color: #142116;
+  font: inherit;
+}
+
+.guided-record-correction-form textarea {
+  resize: vertical;
+}
+
+@media (max-width: 640px) {
+  .guided-record-correction-panel,
+  .guided-record-correction-grid,
+  .guided-record-correction-form__header,
+  .guided-record-correction-form__actions {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+}
+
+/* guided-step5-collapsed-review-cards */
+.guided-record-review-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.guided-record-review-card__header {
+  cursor: pointer;
+  list-style: none;
+  padding: 0.95rem 1rem;
+}
+
+.guided-record-review-card__header::-webkit-details-marker {
+  display: none;
+}
+
+.guided-record-review-card__header::before {
+  content: "▸";
+  flex: 0 0 auto;
+  margin-top: 1.25rem;
+  color: rgba(20, 33, 22, 0.58);
+  transition: transform 0.16s ease;
+}
+
+.guided-record-review-card[open] .guided-record-review-card__header::before {
+  transform: rotate(90deg);
+}
+
+.guided-record-review-card__header > div {
+  min-width: 0;
+}
+
+.guided-record-review-card__summary-line {
+  margin: 0.25rem 0 0;
+  color: rgba(20, 33, 22, 0.66);
+  font-size: 0.83rem;
+}
+
+.guided-record-review-card__content {
+  display: grid;
+  gap: 1rem;
+  padding: 0 1rem 1rem;
+}
+
+.guided-record-evidence-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.guided-record-evidence-grid__source {
+  grid-column: 1 / -1;
+}
+
+.guided-record-evidence-grid article,
+.guided-record-evidence-grid p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.guided-correction-focus {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(180, 83, 9, 0.18);
+  border-radius: 0.75rem;
+  background: rgba(255, 251, 235, 0.75);
+}
+
+.guided-correction-focus p {
+  margin: 0;
+}
+
+.guided-correction-focus ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.guided-correction-focus li {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid rgba(180, 83, 9, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #78350f;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+@media (max-width: 640px) {
+  .guided-record-review-card__header {
+    grid-template-columns: auto 1fr;
+  }
+
+  .guided-record-review-card__header .guided-record-review-card__status {
+    justify-self: start;
+  }
+
+  .guided-record-evidence-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.guided-record-review-card__status--resolved {
+  color: #1e3a8a;
+  background: rgba(219, 234, 254, 0.95);
+  border-color: rgba(59, 130, 246, 0.18);
+}
+
+/* guided-step5-card-header-spacing-fix */
+.guided-record-review-card__header {
+  display: grid;
+  grid-template-columns: 1rem minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 0.75rem;
+}
+
+.guided-record-review-card__header::before {
+  margin-top: 0;
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.guided-record-review-card__header > div {
+  grid-column: 2;
+}
+
+.guided-record-review-card__header > .guided-record-review-card__status {
+  grid-column: 3;
+}
+
+.guided-record-review-card__header::marker {
+  content: "";
+}
+
+.guided-record-review-card__header::-webkit-details-marker {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .guided-record-review-card__header {
+    grid-template-columns: 1rem minmax(0, 1fr);
+  }
+
+  .guided-record-review-card__header > .guided-record-review-card__status {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+/* guided-step5-review-state-metrics */
+.guided-original-validation-trace {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.1);
+}
+
+.guided-record-review-card__status--resolved {
+  color: #1e3a8a;
+  background: rgba(219, 234, 254, 0.95);
+  border-color: rgba(59, 130, 246, 0.18);
+}
+
+/* guided-step5-compact-review-checkpoint */
+.guided-workflow-card--validation-review .guided-review-checkpoint {
+  gap: 0.85rem;
+  padding: 1rem;
+}
+
+.guided-workflow-card--validation-review .guided-review-checkpoint > div:first-child h4 {
+  margin-bottom: 0.25rem;
+}
+
+.guided-workflow-card--validation-review .guided-review-checkpoint > div:first-child p {
+  max-width: 60rem;
+}
+
+.guided-workflow-card--validation-review .guided-review-checkpoint__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.guided-workflow-card--validation-review .guided-review-checkpoint__facts div {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.65rem;
+  min-width: 0;
+  width: auto;
+  padding: 0.45rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(244, 247, 241, 0.92);
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+.guided-workflow-card--validation-review .guided-review-checkpoint__facts dt {
+  margin: 0;
+  font-size: 0.67rem;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+}
+
+.guided-workflow-card--validation-review .guided-review-checkpoint__facts dd {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.guided-workflow-card--validation-review .guided-original-validation-trace {
+  gap: 0.55rem;
+  padding: 0.85rem 0 0;
+}
+
+.guided-workflow-card--validation-review .guided-original-validation-trace > .model-route-card__eyebrow {
+  margin-bottom: -0.15rem;
+}
+
+.guided-workflow-card--validation-review .guided-original-validation-trace small {
+  display: inline-flex;
+  width: fit-content;
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(244, 247, 241, 0.92);
+  color: rgba(20, 33, 22, 0.72);
+}
+
+@media (max-width: 640px) {
+  .guided-workflow-card--validation-review .guided-review-checkpoint__facts {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .guided-workflow-card--validation-review .guided-review-checkpoint__facts div {
+    justify-content: space-between;
+    border-radius: 0.75rem;
+  }
+}
+
+/* guided-step5-correction-first-record-ui */
+.guided-record-review-card__content {
+  gap: 0.7rem;
+}
+
+.guided-record-correction-panel {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.65rem 1rem;
+}
+
+.guided-record-correction-panel .guided-correction-focus {
+  grid-column: 1 / -1;
+  padding: 0.65rem;
+}
+
+.guided-record-correction-form {
+  border-color: rgba(22, 101, 52, 0.22);
+  background: rgba(240, 253, 244, 0.9);
+}
+
+.guided-record-correction-grid--focused {
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+}
+
+.guided-record-secondary-fields {
+  padding: 0.65rem;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.guided-record-secondary-fields summary,
+.guided-record-supporting-details summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.guided-record-secondary-fields dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.55rem;
+  margin: 0.65rem 0 0;
+}
+
+.guided-record-secondary-fields div {
+  min-width: 0;
+}
+
+.guided-record-secondary-fields dt {
+  color: rgba(20, 33, 22, 0.58);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.guided-record-secondary-fields dd {
+  margin: 0.15rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.guided-record-supporting-details {
+  padding: 0.75rem;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 0.85rem;
+  background: rgba(250, 251, 247, 0.82);
+}
+
+.guided-record-supporting-details[open] {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.guided-record-supporting-details .guided-record-evidence-grid,
+.guided-record-supporting-details .guided-record-review-card__body-grid {
+  margin-top: 0.7rem;
+}
+
+.guided-record-supporting-details .guided-record-review-card__body-grid {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.guided-record-supporting-details .guided-record-review-card__body-grid section {
+  background: rgba(255, 255, 255, 0.68);
+}
+
+@media (max-width: 640px) {
+  .guided-record-correction-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .guided-record-correction-panel .guided-step-primary-action {
+    justify-self: start;
+  }
+}

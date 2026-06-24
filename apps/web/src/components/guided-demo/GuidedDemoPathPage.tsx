@@ -91,6 +91,8 @@ type GuidedDemoPathPageProps = {
   onRunSourceIntake: (request?: ExecuteMultiSourceIntakeDemoRequest) => void;
   onRunTradeInWorkflow: (event: FormEvent<HTMLFormElement>) => void;
   onViewChange: (view: AppView) => void;
+  reviewQueueActionSuccess: string | null;
+  reviewQueueActionError: string | null;
   activeReviewQueueItemId: string | null;
   reviewQueueNotesById: Record<string, string>;
   onReviewQueueNotesChange: (reviewQueueItemId: string, reviewerNotes: string) => void;
@@ -160,6 +162,8 @@ export function GuidedDemoPathPage({
   onRunSourceIntake,
   onRunTradeInWorkflow,
   onViewChange,
+  reviewQueueActionSuccess,
+  reviewQueueActionError,
   activeReviewQueueItemId,
   reviewQueueNotesById,
   onReviewQueueNotesChange,
@@ -169,14 +173,16 @@ export function GuidedDemoPathPage({
   const [generatedWorkflowInput, setGeneratedWorkflowInput] = useState("");
 
   void workflowRuns;
-  void reviewQueueItems;
   void openReviewQueueItemCount;
   void toolCallLogCount;
-  void activeReviewQueueItemId;
-  void reviewQueueNotesById;
-  void onReviewQueueNotesChange;
   void onReviewQueueItemAction;
-  void onResolveReviewQueueItemWithCorrections;
+
+  const currentTradeInWorkflowRunId = tradeInResult?.persisted.workflowRunId ?? null;
+  const currentRunReviewQueueItems = currentTradeInWorkflowRunId
+    ? reviewQueueItems.filter(
+        (item) => item.workflowRunId === currentTradeInWorkflowRunId,
+      )
+    : [];
 
   useEffect(() => {
     if (!sourceIntakeResult) {
@@ -320,9 +326,18 @@ export function GuidedDemoPathPage({
 
           {activeStep === "VALIDATION_REVIEW" ? (
             <GuidedValidationReviewStep
+              actionError={reviewQueueActionError}
+              actionSuccess={reviewQueueActionSuccess}
+              activeReviewQueueItemId={activeReviewQueueItemId}
+              currentRunReviewQueueItems={currentRunReviewQueueItems}
               onContinue={() => setActiveStep("FINAL_RUN_REPORT")}
               onOpenReviewQueue={() => onViewChange("REVIEW_QUEUE")}
+              onReviewQueueNotesChange={onReviewQueueNotesChange}
+              onResolveReviewQueueItemWithCorrections={
+                onResolveReviewQueueItemWithCorrections
+              }
               result={tradeInResult}
+              reviewQueueNotesById={reviewQueueNotesById}
             />
           ) : null}
 
