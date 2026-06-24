@@ -93,4 +93,62 @@ describe("trade-in-valuation-service", () => {
     );
     expect(explanation.valueFactors.length).toBeGreaterThan(0);
   });
+  it("estimates seeded ranges for expanded QA fixture products", () => {
+    const cases = [
+      {
+        input: {
+          brand: "PING",
+          productLine: "G430 Max",
+          category: "driver",
+          rawText: "PING G430 Max driver Tour X-Stiff condition 9.5 Mint"
+        },
+        expectedLowValue: 190,
+        expectedHighValue: 250
+      },
+      {
+        input: {
+          brand: "Cleveland",
+          productLine: "RTX 6 ZipCore",
+          category: "wedge",
+          rawText: "Cleveland RTX 6 ZipCore wedge Senior flex condition 9.0 Above Average"
+        },
+        expectedLowValue: 55,
+        expectedHighValue: 85
+      },
+      {
+        input: {
+          brand: "Odyssey",
+          productLine: "White Hot OG",
+          category: "putter",
+          rawText: "Odyssey White Hot OG putter Ladies flex condition 8.0 Average"
+        },
+        expectedLowValue: 80,
+        expectedHighValue: 120
+      },
+      {
+        input: {
+          brand: "Mizuno",
+          productLine: "JPX 923 Hot Metal",
+          category: "irons",
+          rawText: "Mizuno JPX 923 Hot Metal irons Tour X-Stiff condition 9.0 Above Average"
+        },
+        expectedLowValue: 315,
+        expectedHighValue: 425
+      }
+    ];
+
+    for (const testCase of cases) {
+      const inventoryMatch = lookupInventoryProduct(testCase.input);
+      const estimate = estimateTradeInValuation({
+        inventoryMatch,
+        conditionNotes: ["8.0 Average"],
+        accessoriesNotes: []
+      });
+
+      expect(estimate.lowValue).toBe(testCase.expectedLowValue);
+      expect(estimate.highValue).toBe(testCase.expectedHighValue);
+      expect(estimate.reviewRequired).toBe(false);
+    }
+  });
+
 });

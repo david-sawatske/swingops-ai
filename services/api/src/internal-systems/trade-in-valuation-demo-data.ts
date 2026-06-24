@@ -59,5 +59,41 @@ export const demoValuationRanges: DemoValuationRange[] = [
       "Seeded demo range for PING G425 iron set.",
       "Iron set value is sensitive to set composition and grip condition."
     ]
+  },
+  {
+    productId: "prod_ping_g430_max_driver_2023",
+    lowValue: 190,
+    highValue: 250,
+    evidence: [
+      "Seeded demo range for PING G430 Max driver.",
+      "Current-generation driver range is sensitive to loft, shaft and condition grade."
+    ]
+  },
+  {
+    productId: "prod_cleveland_rtx6_zipcore_wedge_2023",
+    lowValue: 55,
+    highValue: 85,
+    evidence: [
+      "Seeded demo range for Cleveland RTX 6 ZipCore wedge.",
+      "Wedge range is sensitive to groove wear and loft details."
+    ]
+  },
+  {
+    productId: "prod_odyssey_white_hot_og_putter_2021",
+    lowValue: 80,
+    highValue: 120,
+    evidence: [
+      "Seeded demo range for Odyssey White Hot OG putter.",
+      "Putter range is sensitive to finish, head shape and grip condition."
+    ]
+  },
+  {
+    productId: "prod_mizuno_jpx923_hot_metal_iron_set_2023",
+    lowValue: 315,
+    highValue: 425,
+    evidence: [
+      "Seeded demo range for Mizuno JPX 923 Hot Metal iron set.",
+      "Iron set value is sensitive to set composition and shaft configuration."
+    ]
   }
 ];

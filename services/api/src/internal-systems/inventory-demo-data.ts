@@ -87,5 +87,45 @@ export const demoInventoryProducts: DemoInventoryProduct[] = [
     year: 2023,
     aliases: ["ping g430 irons", "g430 iron set", "g430 5-pw"],
     shaftFamilies: ["PING Alta", "Nippon", "True Temper"]
+  },
+  {
+    productId: "prod_ping_g430_max_driver_2023",
+    sku: "PING-G430MAX-DRV-2023",
+    brand: "PING",
+    productLine: "G430 Max",
+    category: "DRIVER",
+    year: 2023,
+    aliases: ["ping g430 max", "g430 max driver", "ping g430 max driver"],
+    shaftFamilies: ["PING Alta", "Tour 2.0", "Project X HZRDUS"]
+  },
+  {
+    productId: "prod_cleveland_rtx6_zipcore_wedge_2023",
+    sku: "CLEVELAND-RTX6ZIPCORE-WEDGE-2023",
+    brand: "Cleveland",
+    productLine: "RTX 6 ZipCore",
+    category: "WEDGE",
+    year: 2023,
+    aliases: ["cleveland rtx 6 zipcore", "rtx 6 zipcore", "rtx6 zipcore", "rtx zipcore wedge"],
+    shaftFamilies: ["True Temper", "Dynamic Gold", "KBS"]
+  },
+  {
+    productId: "prod_odyssey_white_hot_og_putter_2021",
+    sku: "ODYSSEY-WHITEHOTOG-PUTTER-2021",
+    brand: "Odyssey",
+    productLine: "White Hot OG",
+    category: "PUTTER",
+    year: 2021,
+    aliases: ["odyssey white hot og", "white hot og putter", "odyssey wh og"],
+    shaftFamilies: ["Odyssey Stroke Lab", "Steel"]
+  },
+  {
+    productId: "prod_mizuno_jpx923_hot_metal_iron_set_2023",
+    sku: "MIZUNO-JPX923HOTMETAL-IRONSET-2023",
+    brand: "Mizuno",
+    productLine: "JPX 923 Hot Metal",
+    category: "IRON_SET",
+    year: 2023,
+    aliases: ["mizuno jpx 923 hot metal", "jpx 923 hot metal", "hot metal irons"],
+    shaftFamilies: ["Nippon", "True Temper", "Mitsubishi MMT"]
   }
 ];
