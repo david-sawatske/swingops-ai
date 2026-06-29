@@ -109,4 +109,39 @@ describe("parseTradeInDemoText", () => {
     });
   });
 
+  it("preserves canonical AI-ready category and shaft flex values from generated handoff text", () => {
+    const parsedItems = parseTradeInDemoText([
+      "1. PING G425 IRON_SET — shaft flex REGULAR; condition 7.0 Below Average; store 104; review needed; missing tradeInValue",
+      "2. Titleist TSR FAIRWAY_WOOD — shaft flex STIFF; condition 8.0 Average; trade value $145; store 104; review clear",
+      "3. PING G430 Max DRIVER — shaft flex TOUR_X_STIFF; condition 9.5 Mint; trade value $240; store 207; review clear"
+    ].join("\n"));
+
+    expect(parsedItems).toHaveLength(3);
+
+    expect(parsedItems[0]).toMatchObject({
+      brand: "PING",
+      productLine: "G425",
+      category: "IRON_SET",
+      shaftFlex: "REGULAR"
+    });
+    expect(parsedItems[0]?.missingFields).not.toContain("category");
+    expect(parsedItems[0]?.missingFields).not.toContain("shaftFlex");
+
+    expect(parsedItems[1]).toMatchObject({
+      brand: "Titleist",
+      productLine: "TSR",
+      category: "FAIRWAY_WOOD",
+      shaftFlex: "STIFF"
+    });
+    expect(parsedItems[1]?.missingFields).not.toContain("category");
+
+    expect(parsedItems[2]).toMatchObject({
+      brand: "PING",
+      productLine: "G430 Max",
+      category: "DRIVER",
+      shaftFlex: "TOUR_X_STIFF"
+    });
+    expect(parsedItems[2]?.missingFields).not.toContain("shaftFlex");
+  });
+
 });

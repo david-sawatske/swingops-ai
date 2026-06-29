@@ -57,27 +57,34 @@ const CATEGORY_PATTERNS: {
 }[] = [
   {
     category: "DRIVER",
-    aliases: [/\bdriver\b/i, /\bdrv\b/i, /\bdr\b/i]
+    aliases: [/\bdriver\b/i, /\bdrv\b/i, /\bdr\b/i, /\bDRIVER\b/]
   },
   {
     category: "FAIRWAY_WOOD",
-    aliases: [/\bfairway\b/i, /\bfw\b/i, /\b3w\b/i, /\b5w\b/i, /\bwood\b/i]
+    aliases: [
+      /\bfairway\b/i,
+      /\bfw\b/i,
+      /\b3w\b/i,
+      /\b5w\b/i,
+      /\bwood\b/i,
+      /\bFAIRWAY_WOOD\b/
+    ]
   },
   {
     category: "IRON_SET",
-    aliases: [/\birons?\b/i, /\b[4-9]-pw\b/i, /\b[5-9]-gw\b/i]
+    aliases: [/\birons?\b/i, /\b[4-9]-pw\b/i, /\b[5-9]-gw\b/i, /\bIRON_SET\b/]
   },
   {
     category: "HYBRID",
-    aliases: [/\bhy\b/i, /\bhybrid\b/i]
+    aliases: [/\bhy\b/i, /\bhybrid\b/i, /\bHYBRID\b/]
   },
   {
     category: "WEDGE",
-    aliases: [/\bwedge\b/i, /\b\d{2}\s*deg\b/i]
+    aliases: [/\bwedge\b/i, /\b\d{2}\s*deg\b/i, /\bWEDGE\b/]
   },
   {
     category: "PUTTER",
-    aliases: [/\bputter\b/i]
+    aliases: [/\bputter\b/i, /\bPUTTER\b/]
   }
 ];
 
@@ -358,27 +365,32 @@ function detectShaftModel(line: string): string | null {
 }
 
 function detectShaftFlex(line: string): string | null {
-  if (/\btour\s*x\s*-?\s*stiff\b/i.test(line) || /\btx\s*flex\b/i.test(line) || /\btour\s*x\b/i.test(line)) {
+  if (
+    /\btour\s*x\s*-?\s*stiff\b/i.test(line) ||
+    /\btx\s*flex\b/i.test(line) ||
+    /\btour\s*x\b/i.test(line) ||
+    /\bTOUR_X_STIFF\b/.test(line)
+  ) {
     return "TOUR_X_STIFF";
   }
 
-  if (/\bx\s*-?\s*stiff\b/i.test(line) || /\bx\s*flex\b/i.test(line)) {
+  if (/\bx\s*-?\s*stiff\b/i.test(line) || /\bx\s*flex\b/i.test(line) || /\bX_STIFF\b/.test(line)) {
     return "X_STIFF";
   }
 
-  if (/\bstiff\b/i.test(line) || /\bs\s*flex\b/i.test(line)) {
+  if (/\bstiff\b/i.test(line) || /\bs\s*flex\b/i.test(line) || /\bSTIFF\b/.test(line)) {
     return "STIFF";
   }
 
-  if (/\bregular\b/i.test(line) || /\breg\b/i.test(line) || /\br\s*flex\b/i.test(line)) {
+  if (/\bregular\b/i.test(line) || /\breg\b/i.test(line) || /\br\s*flex\b/i.test(line) || /\bREGULAR\b/.test(line)) {
     return "REGULAR";
   }
 
-  if (/\bsenior\b/i.test(line) || /\bsr\b/i.test(line) || /\ba\s*flex\b/i.test(line)) {
+  if (/\bsenior\b/i.test(line) || /\bsr\b/i.test(line) || /\ba\s*flex\b/i.test(line) || /\bSENIOR\b/.test(line)) {
     return "SENIOR";
   }
 
-  if (/\blad(y|ies)\b/i.test(line) || /\bl\s*flex\b/i.test(line)) {
+  if (/\blad(y|ies)\b/i.test(line) || /\bl\s*flex\b/i.test(line) || /\bLADIES\b/.test(line)) {
     return "LADIES";
   }
 
