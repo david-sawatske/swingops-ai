@@ -125,6 +125,9 @@ const TRADE_IN_SCORE_WEIGHTS = {
 
 const BRAND_ALIASES: Record<string, string[]> = {
   Callaway: ["callaway", "cally"],
+  Cleveland: ["cleveland", "cleve"],
+  Mizuno: ["mizuno"],
+  Odyssey: ["odyssey", "ody"],
   PING: ["ping"],
   TaylorMade: ["taylormade", "tm"],
   Titleist: ["titleist"]
@@ -132,13 +135,17 @@ const BRAND_ALIASES: Record<string, string[]> = {
 
 const CATEGORY_ALIASES: Record<string, string[]> = {
   DRIVER: ["driver", "drv", "dr"],
-  FAIRWAY_WOOD: ["fairway wood", "fairway", "fw", "wood", "3w", "3 wood", "5w", "5 wood"]
+  FAIRWAY_WOOD: ["fairway wood", "fairway", "fw", "wood", "3w", "3 wood", "5w", "5 wood"],
+  HYBRID: ["hybrid", "hy", "rescue"],
+  IRON_SET: ["iron set", "irons", "iron", "set", "4-pw", "5-pw", "4 pw", "5 pw"],
+  PUTTER: ["putter", "putters", "pt"],
+  WEDGE: ["wedge", "wedges", "gw", "sw", "lw"]
 };
 
 const SHAFT_FLEX_ALIASES: Record<string, string[]> = {
   regular: ["regular", "reg", "r flex", "r-flex"],
   stiff: ["stiff", "s flex", "s-flex", "stf"],
-  "x-stiff": ["x-stiff", "xstiff", "x flex", "x-flex", "extra stiff", "x"],
+  "x-stiff": ["x-stiff", "xstiff", "x flex", "x-flex", "extra stiff", "tour x-stiff", "tour x stiff", "tourxstiff", "x"],
   senior: ["senior", "sr", "a flex", "lite flex", "lite"],
   ladies: ["ladies", "lady", "l flex", "women"]
 };

@@ -27,6 +27,74 @@ export type KnowledgeIngestionSummary = {
   errorMessage: string | null;
 };
 
+export type DemoKnowledgeBaseReadinessSummary = {
+  status: "READY" | "FAILED";
+  sourceName: string;
+  documentsAvailable: number;
+  chunksAvailable: number;
+  expectedDemoChunks: number;
+  ingested: boolean;
+  ingestionRunId: string | null;
+  errorMessage: string | null;
+};
+
+function countExpectedDemoKnowledgeChunks(): number {
+  return DEMO_KNOWLEDGE_DOCUMENTS.reduce(
+    (count, document) => count + document.chunks.length,
+    0
+  );
+}
+
+export async function ensureDemoKnowledgeBaseReady(input: {
+  sourceName?: string;
+} = {}): Promise<DemoKnowledgeBaseReadinessSummary> {
+  const sourceName = input.sourceName ?? DEMO_KNOWLEDGE_SOURCE_NAME;
+  const expectedDemoChunks = countExpectedDemoKnowledgeChunks();
+
+  const [documentsAvailable, chunksAvailable] = await Promise.all([
+    prisma.knowledgeDocument.count({
+      where: {
+        sourceName
+      }
+    }),
+    prisma.knowledgeChunk.count({
+      where: {
+        document: {
+          sourceName
+        }
+      }
+    })
+  ]);
+
+  if (documentsAvailable > 0 && chunksAvailable >= expectedDemoChunks) {
+    return {
+      status: "READY",
+      sourceName,
+      documentsAvailable,
+      chunksAvailable,
+      expectedDemoChunks,
+      ingested: false,
+      ingestionRunId: null,
+      errorMessage: null
+    };
+  }
+
+  const ingestionSummary = await ingestDemoKnowledgeBase({
+    sourceName
+  });
+
+  return {
+    status: ingestionSummary.status === "SUCCEEDED" ? "READY" : "FAILED",
+    sourceName,
+    documentsAvailable: ingestionSummary.documentsCreated,
+    chunksAvailable: ingestionSummary.chunksCreated,
+    expectedDemoChunks,
+    ingested: true,
+    ingestionRunId: ingestionSummary.ingestionRunId,
+    errorMessage: ingestionSummary.errorMessage
+  };
+}
+
 export function cleanKnowledgeText(value: string): string {
   return value
     .replace(/\r\n/g, "\n")

@@ -38,7 +38,7 @@ describe("knowledge routes", () => {
       status: "SUCCEEDED",
       sourceName: DEMO_KNOWLEDGE_SOURCE_NAME,
       documentsCreated: 3,
-      chunksCreated: 45
+      chunksCreated: 53
     });
 
     const searchResponse = await app.inject({
@@ -78,6 +78,39 @@ describe("knowledge routes", () => {
         }
       }
     });
+
+    await app.close();
+  });
+
+  it("searches expanded guided fixture products through the direct API route", async () => {
+    const app = buildApp();
+
+    await app.inject({
+      method: "POST",
+      url: "/knowledge/ingest-demo"
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/knowledge/search",
+      payload: {
+        query: "Mizuno JPX 923 Hot Metal iron set Regular 5-PW",
+        brand: "Mizuno",
+        category: "IRON_SET",
+        maxResults: 3
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          brand: "Mizuno",
+          productLine: "JPX 923 Hot Metal",
+          category: "IRON_SET"
+        })
+      ])
+    );
 
     await app.close();
   });
