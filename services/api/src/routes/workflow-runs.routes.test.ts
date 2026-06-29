@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { buildApp } from "../app.js";
 import { prisma } from "../lib/prisma.js";
+import { DEMO_KNOWLEDGE_SOURCE_NAME } from "../knowledge/knowledge-seed-data.js";
 import { createMockModelCallLogForWorkflowRun } from "../workflows/workflow-model-logging.js";
 
 describe("workflow run routes", () => {
@@ -622,6 +623,78 @@ describe("workflow run routes", () => {
       await prisma.workflowRun.delete({
         where: {
           id: body.persisted.workflowRunId
+        }
+      });
+
+      await app.close();
+    });
+
+    it("self-prepares demo RAG and returns evidence for guided populated input", async () => {
+      const app = buildApp();
+
+      await prisma.knowledgeDocument.deleteMany({
+        where: {
+          sourceName: DEMO_KNOWLEDGE_SOURCE_NAME
+        }
+      });
+      await prisma.knowledgeIngestionRun.deleteMany({
+        where: {
+          sourceName: DEMO_KNOWLEDGE_SOURCE_NAME
+        }
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/workflow-runs/agentic-trade-in-demo",
+        payload: {
+          rawInput: [
+            "Store associate pasted trade-in notes:",
+            "PING G430 Max driver, Stiff, 9.0 Above Average, clean crown, normal face wear.",
+            "TaylorMade Stealth 2 driver, Regular, 8.0 Average, stock shaft, playable condition.",
+            "Callaway Rogue ST Max driver, Senior, 8.0 Average, light bag chatter.",
+            "Titleist TSR2 fairway wood, Stiff, 8.0 Average, standard length.",
+            "Cleveland RTX 6 ZipCore wedge, Tour X-Stiff, 7.0 Below Average, groove wear noted.",
+            "Odyssey White Hot OG putter, Regular, 8.0 Average, headcover included.",
+            "Mizuno JPX 923 Hot Metal iron set, Regular, 9.0 Above Average, 5-PW set."
+          ].join("\n")
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.parsedItems).toHaveLength(7);
+      expect(body.finalSummary).toMatchObject({
+        parsedItemCount: 7,
+        inventoryMatchCount: 7,
+        valuationRangeCount: 7
+      });
+      expect(body.finalSummary.knowledgeMatchCount).toBeGreaterThan(0);
+      expect(body.workflowQualitySummary.evidenceCoverage).toMatch(/\/7 records$/);
+      expect(body.workflowQualitySummary.evidenceCoverage).not.toBe("0/7 records");
+      expect(body.knowledgeMatchesByItem.every(
+        (match: { search: { results: unknown[] } }) => match.search.results.length > 0
+      )).toBe(true);
+
+      await prisma.intakeBatch.delete({
+        where: {
+          id: body.persisted.intakeBatchId
+        }
+      });
+      await prisma.workflowRun.delete({
+        where: {
+          id: body.persisted.workflowRunId
+        }
+      });
+      await prisma.knowledgeDocument.deleteMany({
+        where: {
+          sourceName: DEMO_KNOWLEDGE_SOURCE_NAME
+        }
+      });
+      await prisma.knowledgeIngestionRun.deleteMany({
+        where: {
+          sourceName: DEMO_KNOWLEDGE_SOURCE_NAME
         }
       });
 

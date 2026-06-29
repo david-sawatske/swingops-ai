@@ -28,7 +28,7 @@ describe("knowledge base ingestion and search", () => {
       status: "SUCCEEDED",
       sourceName: TEST_KNOWLEDGE_SOURCE_NAME,
       documentsCreated: 3,
-      chunksCreated: 45,
+      chunksCreated: 53,
       errorMessage: null
     });
 
@@ -143,6 +143,58 @@ describe("knowledge base ingestion and search", () => {
     });
     expect(result.results[0]?.score).toBeGreaterThan(0);
     expect(result.results[0]?.scoreBreakdown.components.vector.weight).toBe(0.05);
+  });
+
+  it("returns expanded guided fixture grounding for wedge, putter, and iron set inputs", async () => {
+    await ingestDemoKnowledgeBase({ sourceName: TEST_KNOWLEDGE_SOURCE_NAME });
+
+    const cases = [
+      {
+        query: "Cleveland RTX 6 ZipCore wedge Tour X-Stiff groove wear",
+        brand: "Cleveland",
+        productLine: "RTX 6 ZipCore",
+        category: "WEDGE"
+      },
+      {
+        query: "Odyssey White Hot OG putter Regular headcover included",
+        brand: "Odyssey",
+        productLine: "White Hot OG",
+        category: "PUTTER"
+      },
+      {
+        query: "Mizuno JPX 923 Hot Metal iron set Regular 5-PW",
+        brand: "Mizuno",
+        productLine: "JPX 923 Hot Metal",
+        category: "IRON_SET"
+      },
+      {
+        query: "PING G425 irons 5-PW Regular",
+        brand: "PING",
+        productLine: "G425",
+        category: "IRON_SET"
+      }
+    ];
+
+    for (const testCase of cases) {
+      const result = await searchKnowledgeBase({
+        query: testCase.query,
+        brand: testCase.brand,
+        category: testCase.category,
+        maxResults: 3,
+        sourceName: TEST_KNOWLEDGE_SOURCE_NAME
+      });
+
+      expect(result.results).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            brand: testCase.brand,
+            productLine: testCase.productLine,
+            category: testCase.category
+          })
+        ])
+      );
+      expect(result.results[0]?.score).toBeGreaterThan(0);
+    }
   });
 
   it("passes deterministic retrieval evals", async () => {

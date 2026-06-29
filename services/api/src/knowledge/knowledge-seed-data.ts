@@ -151,6 +151,46 @@ export const DEMO_KNOWLEDGE_DOCUMENTS: KnowledgeSeedDocument[] = [
       },
       {
         chunkType: "BRAND_ALIAS",
+        brand: "PING",
+        productLine: "G425",
+        category: "IRON_SET",
+        aliases: ["PING G425 irons", "G425 iron set", "G425 irons", "Ping g425 5-PW", "PING G425 5-PW set"],
+        conditionFlags: ["regular", "worn grip"],
+        text:
+          "PING G425 iron set notes may appear as PING G425 irons, G425 iron set, G425 5-PW, or Ping g425 5-PW set. Treat G425 iron set separately from G425 Max driver records."
+      },
+      {
+        chunkType: "BRAND_ALIAS",
+        brand: "Cleveland",
+        productLine: "RTX 6 ZipCore",
+        category: "WEDGE",
+        aliases: ["Cleveland RTX 6 ZipCore", "RTX 6 ZipCore", "RTX6 ZipCore", "RTX ZipCore", "Cleveland RTX6 wedge"],
+        conditionFlags: ["tour x-stiff", "groove wear", "wedge"],
+        text:
+          "Cleveland RTX 6 ZipCore wedge may appear as RTX 6 ZipCore, RTX6 ZipCore, RTX ZipCore, or Cleveland RTX6 wedge. Groove wear should be preserved as a condition note while the normalized grade stays in the fixed condition-grade scale."
+      },
+      {
+        chunkType: "BRAND_ALIAS",
+        brand: "Odyssey",
+        productLine: "White Hot OG",
+        category: "PUTTER",
+        aliases: ["Odyssey White Hot OG", "White Hot OG", "WH OG", "Odyssey WH OG", "White Hot OG putter"],
+        conditionFlags: ["regular", "headcover included"],
+        text:
+          "Odyssey White Hot OG putter may appear as Odyssey White Hot OG, White Hot OG, WH OG, or Odyssey WH OG. Putter records may include headcover status as accessory evidence."
+      },
+      {
+        chunkType: "BRAND_ALIAS",
+        brand: "Mizuno",
+        productLine: "JPX 923 Hot Metal",
+        category: "IRON_SET",
+        aliases: ["Mizuno JPX 923 Hot Metal", "JPX 923 Hot Metal", "JPX923 Hot Metal", "Hot Metal", "JPX 923 irons"],
+        conditionFlags: ["regular", "5-PW", "iron set"],
+        text:
+          "Mizuno JPX 923 Hot Metal iron set may appear as JPX 923 Hot Metal, JPX923 Hot Metal, Hot Metal, or JPX 923 irons. Set makeup such as 5-PW should be preserved as structured evidence."
+      },
+      {
+        chunkType: "BRAND_ALIAS",
         brand: "Titleist",
         productLine: "TSR2",
         category: "DRIVER",
@@ -435,6 +475,46 @@ export const DEMO_KNOWLEDGE_DOCUMENTS: KnowledgeSeedDocument[] = [
         conditionFlags: ["Project X", "HZRDUS", "x-stiff", "paint wear", "missing wrench"],
         text:
           "Agentic demo example: Cally Rogue ST Max driver 9 Project X HZRDUS x-stiff, paint wear, no wrench maps to Callaway Rogue ST Max driver, 9 degree loft, Project X HZRDUS x-stiff shaft, paint wear condition note, and missing wrench accessory note."
+      },
+      {
+        chunkType: "CLUB_REFERENCE",
+        brand: "PING",
+        productLine: "G425",
+        category: "IRON_SET",
+        aliases: ["PING G425 irons 5-PW reg", "G425 iron set regular", "Ping g425 5-PW worn grips"],
+        conditionFlags: ["regular", "worn grip", "iron set"],
+        text:
+          "Guided demo example: PING G425 irons 5-PW reg maps to a PING G425 iron set with regular shaft flex and set makeup evidence."
+      },
+      {
+        chunkType: "CLUB_REFERENCE",
+        brand: "Cleveland",
+        productLine: "RTX 6 ZipCore",
+        category: "WEDGE",
+        aliases: ["Cleveland RTX 6 ZipCore wedge Tour X-Stiff", "RTX6 ZipCore wedge tour x", "RTX ZipCore groove wear"],
+        conditionFlags: ["tour x-stiff", "groove wear", "7.0 Below Average"],
+        text:
+          "Guided demo example: Cleveland RTX 6 ZipCore wedge, Tour X-Stiff, 7.0 Below Average, groove wear noted maps to Cleveland RTX 6 ZipCore wedge with Tour X-Stiff shaft flex and groove wear evidence."
+      },
+      {
+        chunkType: "CLUB_REFERENCE",
+        brand: "Odyssey",
+        productLine: "White Hot OG",
+        category: "PUTTER",
+        aliases: ["Odyssey White Hot OG putter regular", "White Hot OG putter headcover included", "WH OG putter"],
+        conditionFlags: ["regular", "headcover included", "8.0 Average"],
+        text:
+          "Guided demo example: Odyssey White Hot OG putter, Regular, 8.0 Average, headcover included maps to Odyssey White Hot OG putter with regular shaft flex and headcover accessory evidence."
+      },
+      {
+        chunkType: "CLUB_REFERENCE",
+        brand: "Mizuno",
+        productLine: "JPX 923 Hot Metal",
+        category: "IRON_SET",
+        aliases: ["Mizuno JPX 923 Hot Metal iron set regular", "JPX923 Hot Metal 5-PW", "Hot Metal iron set"],
+        conditionFlags: ["regular", "5-PW", "9.0 Above Average"],
+        text:
+          "Guided demo example: Mizuno JPX 923 Hot Metal iron set, Regular, 9.0 Above Average, 5-PW set maps to Mizuno JPX 923 Hot Metal iron set with regular shaft flex and set makeup evidence."
       }
     ]
   }

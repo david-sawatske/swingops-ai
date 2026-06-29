@@ -9,6 +9,7 @@ import {
   estimateTradeInValuation,
   type TradeInValuationResult
 } from "../internal-systems/trade-in-valuation-service.js";
+import { ensureDemoKnowledgeBaseReady } from "../knowledge/knowledge-ingestion.js";
 import { searchKnowledgeBase, type KnowledgeSearchResult } from "../knowledge/knowledge-search.js";
 import { prisma } from "../lib/prisma.js";
 import {
@@ -122,6 +123,26 @@ export const DEFAULT_AGENTIC_TRADE_IN_DEMO_INPUT = [
   "Cally Rogue ST Max driver 9 Project X HZRDUS x-stiff, paint wear, no wrench",
   "PING G425 irons 5-PW reg, worn grips, condition unclear"
 ].join("\n");
+
+const NON_RECORD_DEMO_HEADER_PATTERNS = [
+  /^store associate pasted trade-in notes:?$/i,
+  /^store associate trade-in notes:?$/i,
+  /^pasted trade-in notes:?$/i,
+  /^trade-in notes:?$/i
+];
+
+function stripNonRecordDemoHeaderLines(rawInput: string): string {
+  const recordLines = rawInput
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter(
+      (line) =>
+        !NON_RECORD_DEMO_HEADER_PATTERNS.some((pattern) => pattern.test(line))
+    );
+
+  return recordLines.join("\n") || rawInput.trim();
+}
 
 type DemoToolResult = EndToEndAgenticTradeInDemoResult["toolCallResults"][number];
 
@@ -338,7 +359,11 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
   rawInput: string;
 }): Promise<EndToEndAgenticTradeInDemoResult> {
   const rawInput = input.rawInput.trim() || DEFAULT_AGENTIC_TRADE_IN_DEMO_INPUT;
-  const parsedItems = parseTradeInDemoText(rawInput);
+  const parseReadyInput = stripNonRecordDemoHeaderLines(rawInput);
+
+  await ensureDemoKnowledgeBaseReady();
+
+  const parsedItems = parseTradeInDemoText(parseReadyInput);
 
   const intakeBatch = await prisma.intakeBatch.create({
     data: {
