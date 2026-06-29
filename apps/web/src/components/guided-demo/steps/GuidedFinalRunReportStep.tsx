@@ -1,6 +1,10 @@
-import type { ExecuteEndToEndAgenticTradeInDemoResponse } from "../../../types/workflow";
+import type {
+  ExecuteEndToEndAgenticTradeInDemoResponse,
+  GlobalReviewQueueItem,
+} from "../../../types/workflow";
 
 type GuidedFinalRunReportStepProps = {
+  currentRunReviewQueueItems: GlobalReviewQueueItem[];
   onReset: () => void;
   result: ExecuteEndToEndAgenticTradeInDemoResponse | null;
 };
@@ -14,11 +18,55 @@ function formatQualityStatus(status: string) {
 }
 
 export function GuidedFinalRunReportStep({
+  currentRunReviewQueueItems,
   onReset,
   result,
 }: GuidedFinalRunReportStepProps) {
   const finalSummary = result?.finalSummary ?? null;
   const qualitySummary = result?.workflowQualitySummary ?? null;
+  const createdReviewItemCount = finalSummary?.reviewQueueItemCount ?? 0;
+  const liveReviewItemCount =
+    currentRunReviewQueueItems.length > 0
+      ? currentRunReviewQueueItems.length
+      : createdReviewItemCount;
+  const openReviewItemCount =
+    currentRunReviewQueueItems.length > 0
+      ? currentRunReviewQueueItems.filter((item) => item.status === "OPEN").length
+      : createdReviewItemCount;
+  const resolvedReviewItemCount = currentRunReviewQueueItems.filter(
+    (item) => item.status === "RESOLVED",
+  ).length;
+  const dismissedReviewItemCount = currentRunReviewQueueItems.filter(
+    (item) => item.status === "DISMISSED",
+  ).length;
+  const hasLiveReviewState = currentRunReviewQueueItems.length > 0;
+  const reviewStatusSummary =
+    liveReviewItemCount === 0
+      ? "No review items created."
+      : [
+          `${createdReviewItemCount} created`,
+          hasLiveReviewState ? `${openReviewItemCount} open` : null,
+          hasLiveReviewState ? `${resolvedReviewItemCount} resolved` : null,
+          hasLiveReviewState && dismissedReviewItemCount > 0
+            ? `${dismissedReviewItemCount} dismissed`
+            : null,
+        ]
+          .filter(Boolean)
+          .join("; ");
+  const outcomeTitle =
+    hasLiveReviewState && createdReviewItemCount > 0 && openReviewItemCount === 0
+      ? "Workflow completed with all current-run review items resolved."
+      : qualitySummary?.summary ?? "";
+  const outcomeDescription =
+    hasLiveReviewState && createdReviewItemCount > 0 && openReviewItemCount === 0
+      ? `${finalSummary?.productStory ?? ""} Human review resolved the current run's review item(s), so no review items remain open.`
+      : finalSummary?.productStory ?? "";
+  const qualityStatusLabel =
+    hasLiveReviewState && createdReviewItemCount > 0 && openReviewItemCount === 0
+      ? "review resolved"
+      : qualitySummary
+        ? formatQualityStatus(qualitySummary.status)
+        : "";
 
   return (
     <article className="guided-workflow-card">
@@ -76,8 +124,8 @@ export function GuidedFinalRunReportStep({
           <>
             <section className="guided-final-outcome-card">
               <span className="model-route-card__eyebrow">Run outcome</span>
-              <h4>{qualitySummary.summary}</h4>
-              <p>{finalSummary.productStory}</p>
+              <h4>{outcomeTitle}</h4>
+              <p>{outcomeDescription}</p>
             </section>
 
             <div className="guided-final-summary-grid">
@@ -94,15 +142,15 @@ export function GuidedFinalRunReportStep({
                 <span>read-only calls</span>
               </article>
               <article>
-                <strong>{finalSummary.reviewQueueItemCount}</strong>
-                <span>review items</span>
+                <strong>{openReviewItemCount}</strong>
+                <span>open review items</span>
               </article>
               <article>
                 <strong>{finalSummary.blockedMutationToolCallCount}</strong>
                 <span>blocked mutations</span>
               </article>
               <article>
-                <strong>{formatQualityStatus(qualitySummary.status)}</strong>
+                <strong>{qualityStatusLabel}</strong>
                 <span>quality status</span>
               </article>
             </div>
@@ -135,7 +183,7 @@ export function GuidedFinalRunReportStep({
                 </article>
                 <article>
                   <strong>Review queue</strong>
-                  <p>{finalSummary.reviewQueueItemCount} review item(s) created.</p>
+                  <p>{reviewStatusSummary}</p>
                 </article>
                 <article>
                   <strong>Safety policy</strong>
@@ -148,20 +196,22 @@ export function GuidedFinalRunReportStep({
               <div className="guided-final-section__header">
                 <h4>What still needs attention?</h4>
                 <p>
-                  The run completed, but review items remain when validation found
-                  unresolved uncertainty or missing fields.
+                  The report separates review items created during validation from review
+                  items that still remain open after Step 5.
                 </p>
               </div>
 
               <div className="guided-final-review-callout">
                 <strong>
-                  {finalSummary.reviewQueueItemCount === 0
-                    ? "No human review required"
-                    : `${finalSummary.reviewQueueItemCount} item(s) need human review`}
+                  {openReviewItemCount === 0
+                    ? "No current-run review items remain open"
+                    : `${openReviewItemCount} item(s) need human review`}
                 </strong>
                 <p>
-                  {finalSummary.reviewQueueItemCount === 0
-                    ? "All records passed the current review gates for this demo run."
+                  {openReviewItemCount === 0
+                    ? createdReviewItemCount === 0
+                      ? "All records passed the current review gates for this demo run."
+                      : "Step 5 resolved the current run's review item(s), so the final report has no open human-review work remaining."
                     : "A reviewer should inspect the original evidence, confirm unresolved fields, and approve or correct the proposed structured records."}
                 </p>
               </div>
