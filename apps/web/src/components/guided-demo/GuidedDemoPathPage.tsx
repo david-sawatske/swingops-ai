@@ -343,6 +343,7 @@ export function GuidedDemoPathPage({
 
           {activeStep === "FINAL_RUN_REPORT" ? (
             <GuidedFinalRunReportStep
+              currentRunReviewQueueItems={currentRunReviewQueueItems}
               onReset={handleResetGuidedDemo}
               result={tradeInResult}
             />
