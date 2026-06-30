@@ -77,6 +77,7 @@ type GuidedDemoPathPageProps = {
   sourceIntakeError: string | null;
   sourceIntakeSuccess: string | null;
   sourceIntakePersistedRecords: AiReadyIntakeRecord[];
+  currentRunAiReadyRecords: AiReadyIntakeRecord[];
   isRunningSourceIntake: boolean;
   tradeInRawInput: string;
   tradeInResult: ExecuteEndToEndAgenticTradeInDemoResponse | null;
@@ -148,6 +149,7 @@ export function GuidedDemoPathPage({
   sourceIntakeError,
   sourceIntakeSuccess,
   sourceIntakePersistedRecords,
+  currentRunAiReadyRecords,
   isRunningSourceIntake,
   tradeInRawInput,
   tradeInResult,
@@ -343,9 +345,11 @@ export function GuidedDemoPathPage({
 
           {activeStep === "FINAL_RUN_REPORT" ? (
             <GuidedFinalRunReportStep
+              currentRunAiReadyRecords={currentRunAiReadyRecords}
               currentRunReviewQueueItems={currentRunReviewQueueItems}
               onReset={handleResetGuidedDemo}
               result={tradeInResult}
+              sourceIntakePersistedRecords={sourceIntakePersistedRecords}
             />
           ) : null}
 

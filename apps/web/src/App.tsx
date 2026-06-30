@@ -197,6 +197,8 @@ function App() {
     useState<ExecuteMultiSourceIntakeDemoResponse | null>(null);
   const [persistedAiReadyIntakeRecords, setPersistedAiReadyIntakeRecords] =
     useState<AiReadyIntakeRecord[]>([]);
+  const [currentRunAiReadyIntakeRecords, setCurrentRunAiReadyIntakeRecords] =
+    useState<AiReadyIntakeRecord[]>([]);
   const [isRunningMultiSourceIntakeDemo, setIsRunningMultiSourceIntakeDemo] =
     useState(false);
   const [multiSourceIntakeDemoError, setMultiSourceIntakeDemoError] = useState<
@@ -389,6 +391,22 @@ function App() {
     } finally {
       setIsLoadingGlobalReviewQueue(false);
     }
+  }
+
+  async function loadCurrentRunAiReadyIntakeRecords(
+    workflowRunId: string | null | undefined,
+  ) {
+    if (!workflowRunId) {
+      setCurrentRunAiReadyIntakeRecords([]);
+      return;
+    }
+
+    const response = await listAiReadyIntakeRecords({
+      workflowRunId,
+      limit: 100,
+    });
+
+    setCurrentRunAiReadyIntakeRecords(response.records);
   }
 
   async function loadMcpConnectorCatalog() {
@@ -751,6 +769,7 @@ function App() {
       setIsRunningEndToEndAgenticDemo(true);
       setEndToEndAgenticDemoError(null);
       setEndToEndAgenticDemoSuccess(null);
+      setCurrentRunAiReadyIntakeRecords([]);
 
       const generatedTradeInRawInput =
         multiSourceIntakeDemoResult?.cleanedDatasetPreview
@@ -784,6 +803,7 @@ function App() {
       });
 
       setEndToEndAgenticDemoResult(result);
+      await loadCurrentRunAiReadyIntakeRecords(result.persisted.workflowRunId);
       setEndToEndAgenticDemoSuccess(
         "Demo created workflow " +
           result.persisted.workflowRunId +
@@ -858,6 +878,7 @@ function App() {
 
       setEndToEndAgenticDemoRawInput(generatedTradeInRawInput);
       setEndToEndAgenticDemoResult(null);
+      setCurrentRunAiReadyIntakeRecords([]);
       setEndToEndAgenticDemoSuccess(null);
       setEndToEndAgenticDemoError(null);
 
@@ -992,7 +1013,27 @@ function App() {
               : record,
           );
         });
+
+        setCurrentRunAiReadyIntakeRecords((current) => {
+          const exists = current.some(
+            (record) => record.id === response.aiReadyIntakeRecord?.id,
+          );
+
+          if (!exists) {
+            return [...current, response.aiReadyIntakeRecord!];
+          }
+
+          return current.map((record) =>
+            record.id === response.aiReadyIntakeRecord?.id
+              ? response.aiReadyIntakeRecord!
+              : record,
+          );
+        });
       }
+
+      await loadCurrentRunAiReadyIntakeRecords(
+        input.workflowRunId ?? response.reviewQueueItem.workflowRunId,
+      );
 
       await loadGlobalWorkflowRuns();
       await loadGlobalReviewQueueItems();
@@ -1283,6 +1324,7 @@ function App() {
           sourceIntakeError={multiSourceIntakeDemoError}
           sourceIntakeSuccess={multiSourceIntakeDemoSuccess}
           sourceIntakePersistedRecords={persistedAiReadyIntakeRecords}
+          currentRunAiReadyRecords={currentRunAiReadyIntakeRecords}
           isRunningSourceIntake={isRunningMultiSourceIntakeDemo}
           tradeInRawInput={endToEndAgenticDemoRawInput}
           tradeInResult={endToEndAgenticDemoResult}
