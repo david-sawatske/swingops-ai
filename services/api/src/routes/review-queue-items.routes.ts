@@ -202,6 +202,29 @@ function getProposedClubField(
     : null;
 }
 
+function getJsonStringField(
+  record: Record<string, unknown>,
+  fieldName: string,
+): string | null {
+  const value = record[fieldName];
+
+  if (typeof value === "string" && value.trim().length > 0) {
+    return value.trim();
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  return null;
+}
+
+function normalizeLearningEventComparable(value: unknown) {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
 function serializeReviewedTradeInRecord(record: {
   id: string;
   reviewQueueItemId: string;
@@ -517,30 +540,6 @@ async function resolveReviewQueueItemWithCorrections(input: {
       }
     });
 
-    await tx.humanReviewLearningEvent.deleteMany({
-      where: {
-        reviewedTradeInRecordId: reviewedTradeInRecord.id
-      }
-    });
-
-    if (input.learningEvents.length > 0) {
-      await tx.humanReviewLearningEvent.createMany({
-        data: input.learningEvents.map((event) => ({
-          reviewedTradeInRecordId: reviewedTradeInRecord.id,
-          reviewQueueItemId: reviewQueueItem.id,
-          workflowRunId: reviewQueueItem.workflowRunId,
-          intakeItemId: reviewQueueItem.intakeItemId,
-          fieldName: event.fieldName,
-          rawTextMatch: event.rawTextMatch ?? null,
-          proposedValue: event.proposedValue ?? null,
-          correctedValue: event.correctedValue ?? null,
-          evidenceText: event.evidenceText ?? null,
-          confidenceImpact: event.confidenceImpact ?? null,
-          reviewerNotes
-        }))
-      });
-    }
-
     const existingAiReadyRecord = reviewQueueItem.workflowRunId
       ? await tx.aiReadyIntakeRecord.findFirst({
           where: {
@@ -577,6 +576,61 @@ async function resolveReviewQueueItemWithCorrections(input: {
       getProposedClubField(reviewQueueItem.proposedGolfClubJson, "shaftFlex");
     const proposedConditionGrade =
       getProposedClubField(reviewQueueItem.proposedGolfClubJson, "conditionGrade");
+
+    const currentLearningEventValues: Record<string, string | null> = {
+      brand: getJsonStringField(existingAiReadyJson, "brand") ?? proposedBrand,
+      productLine:
+        getJsonStringField(existingAiReadyJson, "productLine") ?? proposedProductLine,
+      category: getJsonStringField(existingAiReadyJson, "category") ?? proposedCategory,
+      shaftFlex:
+        getJsonStringField(existingAiReadyJson, "shaftFlex") ?? proposedShaftFlex,
+      conditionGrade:
+        getJsonStringField(existingAiReadyJson, "conditionGrade") ??
+        proposedConditionGrade,
+      demoValue:
+        getJsonStringField(existingAiReadyJson, "tradeInValue") ??
+        getJsonStringField(existingAiReadyJson, "demoValue")
+    };
+
+    const filteredLearningEvents = input.learningEvents.filter((event) => {
+      const correctedValue = event.correctedValue ?? null;
+
+      if (!correctedValue) {
+        return true;
+      }
+
+      const currentValue =
+        currentLearningEventValues[event.fieldName] ?? event.proposedValue ?? null;
+
+      return (
+        normalizeLearningEventComparable(currentValue) !==
+        normalizeLearningEventComparable(correctedValue)
+      );
+    });
+
+    await tx.humanReviewLearningEvent.deleteMany({
+      where: {
+        reviewedTradeInRecordId: reviewedTradeInRecord.id
+      }
+    });
+
+    if (filteredLearningEvents.length > 0) {
+      await tx.humanReviewLearningEvent.createMany({
+        data: filteredLearningEvents.map((event) => ({
+          reviewedTradeInRecordId: reviewedTradeInRecord.id,
+          reviewQueueItemId: reviewQueueItem.id,
+          workflowRunId: reviewQueueItem.workflowRunId,
+          intakeItemId: reviewQueueItem.intakeItemId,
+          fieldName: event.fieldName,
+          rawTextMatch: event.rawTextMatch ?? null,
+          proposedValue: event.proposedValue ?? null,
+          correctedValue: event.correctedValue ?? null,
+          evidenceText: event.evidenceText ?? null,
+          confidenceImpact: event.confidenceImpact ?? null,
+          reviewerNotes
+        }))
+      });
+    }
 
     const reviewedAiReadyJson = {
       ...existingAiReadyJson,
@@ -650,7 +704,7 @@ async function resolveReviewQueueItemWithCorrections(input: {
               reviewQueueItemId: reviewQueueItem.id,
               reviewedTradeInRecordId: reviewedTradeInRecord.id
             },
-            qualitySignalsJson: input.learningEvents,
+            qualitySignalsJson: filteredLearningEvents,
             status: reviewedAiReadyShapeIsRagReady
               ? "READY_FOR_RAG"
               : "READY_FOR_REVIEW",

@@ -1057,6 +1057,7 @@ function buildLearningEvents(
     "conditionGrade",
     "demoValue",
   ];
+  const focusFieldNames = getCorrectionFocusFields(card).filter(isCorrectionFormFieldName);
   const events: StructuredReviewLearningEventInput[] = [];
 
   for (const fieldName of fieldNames) {
@@ -1072,8 +1073,17 @@ function buildLearningEvents(
     const wasMissing = card.missingFields.some(
       (field) => normalizeComparable(field) === normalizeComparable(fieldName),
     );
+    const isFocusedReviewField =
+      focusFieldNames.length === 0 ||
+      focusFieldNames.includes(fieldName as CorrectionFormFieldName);
+    const hasKnownCurrentValue =
+      proposedValue.trim().length > 0 && proposedValue !== "—";
 
-    if (!changed && !wasMissing) {
+    if (!isFocusedReviewField && (!changed || !hasKnownCurrentValue)) {
+      continue;
+    }
+
+    if (!changed && !(isFocusedReviewField && wasMissing)) {
       continue;
     }
 
