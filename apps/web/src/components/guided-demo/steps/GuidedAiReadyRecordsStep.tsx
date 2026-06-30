@@ -234,7 +234,7 @@ export function GuidedAiReadyRecordsStep({
                         </tr>
                       </thead>
                       <tbody>
-                        {visiblePreviewRecords.map((record) => (
+                        {previewRecords.map((record) => (
                           <tr key={record.id}>
                             <td>{formatSourceType(record.sourceType)}</td>
                             <td>{record.brand ?? "—"}</td>
