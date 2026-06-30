@@ -409,6 +409,23 @@ function App() {
     setCurrentRunAiReadyIntakeRecords(response.records);
   }
 
+  function resetGuidedRunState() {
+    setGuidedActiveStep("RUN_SETUP");
+    setMultiSourceIntakeDemoResult(null);
+    setPersistedAiReadyIntakeRecords([]);
+    setCurrentRunAiReadyIntakeRecords([]);
+    setEndToEndAgenticDemoResult(null);
+    setEndToEndAgenticDemoRawInput("");
+    setMultiSourceIntakeDemoError(null);
+    setMultiSourceIntakeDemoSuccess(null);
+    setEndToEndAgenticDemoError(null);
+    setEndToEndAgenticDemoSuccess(null);
+    setReviewQueueActionError(null);
+    setReviewQueueActionSuccess(null);
+    setActiveReviewQueueItemId(null);
+    setReviewQueueNotesById({});
+  }
+
   async function loadMcpConnectorCatalog() {
     try {
       setIsLoadingMcpConnectorCatalog(true);
@@ -767,9 +784,14 @@ function App() {
 
     try {
       setIsRunningEndToEndAgenticDemo(true);
+      setEndToEndAgenticDemoResult(null);
       setEndToEndAgenticDemoError(null);
       setEndToEndAgenticDemoSuccess(null);
       setCurrentRunAiReadyIntakeRecords([]);
+      setReviewQueueActionError(null);
+      setReviewQueueActionSuccess(null);
+      setActiveReviewQueueItemId(null);
+      setReviewQueueNotesById({});
 
       const generatedTradeInRawInput =
         multiSourceIntakeDemoResult?.cleanedDatasetPreview
@@ -838,8 +860,18 @@ function App() {
   ) {
     try {
       setIsRunningMultiSourceIntakeDemo(true);
+      setMultiSourceIntakeDemoResult(null);
+      setPersistedAiReadyIntakeRecords([]);
+      setCurrentRunAiReadyIntakeRecords([]);
+      setEndToEndAgenticDemoResult(null);
       setMultiSourceIntakeDemoError(null);
       setMultiSourceIntakeDemoSuccess(null);
+      setEndToEndAgenticDemoError(null);
+      setEndToEndAgenticDemoSuccess(null);
+      setReviewQueueActionError(null);
+      setReviewQueueActionSuccess(null);
+      setActiveReviewQueueItemId(null);
+      setReviewQueueNotesById({});
 
       const result = await executeMultiSourceIntakeDemo(request);
       const persistedRecordsResponse = await listAiReadyIntakeRecords({
@@ -901,7 +933,10 @@ function App() {
       await loadGlobalReviewQueueItems();
       await loadMcpInvocationHistory();
     } catch (error) {
+      setMultiSourceIntakeDemoResult(null);
       setPersistedAiReadyIntakeRecords([]);
+      setCurrentRunAiReadyIntakeRecords([]);
+      setEndToEndAgenticDemoResult(null);
       setMultiSourceIntakeDemoError(
         error instanceof Error
           ? error.message
@@ -1350,6 +1385,7 @@ function App() {
           onResolveReviewQueueItemWithCorrections={(input) =>
             void handleResolveReviewQueueItemWithCorrections(input)
           }
+          onResetGuidedRun={resetGuidedRunState}
           activeStep={guidedActiveStep}
           onActiveStepChange={setGuidedActiveStep}
         />

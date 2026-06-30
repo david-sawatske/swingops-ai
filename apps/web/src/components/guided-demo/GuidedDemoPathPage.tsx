@@ -109,6 +109,7 @@ type GuidedDemoPathPageProps = {
     workflowRunId?: string | null;
     intakeBatchId?: string | null;
   }) => void;
+  onResetGuidedRun: () => void;
 };
 
 function getStepIndex(step: GuidedStep) {
@@ -171,6 +172,7 @@ export function GuidedDemoPathPage({
   onReviewQueueNotesChange,
   onReviewQueueItemAction,
   onResolveReviewQueueItemWithCorrections,
+  onResetGuidedRun,
 }: GuidedDemoPathPageProps) {
   const [generatedWorkflowInput, setGeneratedWorkflowInput] = useState("");
 
@@ -257,8 +259,7 @@ export function GuidedDemoPathPage({
 
   function handleResetGuidedDemo() {
     setGeneratedWorkflowInput("");
-    onTradeInRawInputChange("");
-    setActiveStep("RUN_SETUP");
+    onResetGuidedRun();
   }
 
   return (

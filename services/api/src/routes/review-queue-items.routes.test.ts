@@ -638,6 +638,133 @@ describe("review queue item routes", () => {
       await app.close();
     });
 
+    it("filters learning events for fields that were already present on the AI-ready record", async () => {
+      const app = buildApp();
+      const reviewQueueItem = await createReviewQueueItem();
+      const intakeBatch = await prisma.intakeBatch.create({
+        data: {
+          name: "Existing condition learning-event filter",
+          sourceType: "MANUAL_ENTRY",
+          status: "COMPLETED",
+          itemCount: 1
+        }
+      });
+
+      const existingAiReadyRecord = await prisma.aiReadyIntakeRecord.create({
+        data: {
+          intakeBatchId: intakeBatch.id,
+          intakeItemId: reviewQueueItem.intakeItemId,
+          workflowRunId: reviewQueueItem.workflowRunId,
+          sourceRecordId: "review-lifecycle-existing-condition",
+          sourceType: "FREE_TEXT",
+          sourceName: "Free text",
+          rawText: reviewQueueItem.originalText ?? "",
+          cleanedText: reviewQueueItem.originalText ?? "",
+          normalizedJson: {
+            id: "review-lifecycle-existing-condition",
+            sourceId: "review-source",
+            sourceType: "FREE_TEXT",
+            normalizedText: reviewQueueItem.originalText,
+            brand: "Callaway",
+            productLine: "Rogue ST Max",
+            category: "DRIVER",
+            shaftFlex: null,
+            conditionGrade: "7.0 Below Average",
+            tradeInValue: null,
+            customerName: null,
+            customerEmail: null,
+            storeId: null,
+            reviewNeeded: true,
+            missingFields: ["shaftFlex"]
+          },
+          status: "NEEDS_REVIEW",
+          reviewNeeded: true,
+          embeddingReady: false,
+          ragReady: false
+        }
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: `/review-queue-items/${reviewQueueItem.id}/resolve-with-corrections`,
+        payload: {
+          reviewerNotes: "Only shaft flex was corrected.",
+          correctedRecord: {
+            brand: "Callaway",
+            productLine: "Rogue ST Max",
+            category: "DRIVER",
+            shaftFlex: "X_STIFF",
+            conditionGrade: "7.0 Below Average"
+          },
+          learningEvents: [
+            {
+              fieldName: "shaftFlex",
+              rawTextMatch: "x-stiff",
+              proposedValue: "Missing",
+              correctedValue: "X-Stiff",
+              evidenceText: "Reviewer supplied shaft flex."
+            },
+            {
+              fieldName: "conditionGrade",
+              rawTextMatch: "condition 7.0 Below Average",
+              proposedValue: "Missing",
+              correctedValue: "7.0 Below Average",
+              evidenceText: "Condition was already present in the intake record."
+            }
+          ]
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.learningEvents).toHaveLength(1);
+      expect(body.learningEvents[0]).toMatchObject({
+        fieldName: "shaftFlex",
+        correctedValue: "X-Stiff"
+      });
+
+      const persistedLearningEvents = await prisma.humanReviewLearningEvent.findMany({
+        where: {
+          reviewQueueItemId: reviewQueueItem.id
+        }
+      });
+
+      expect(persistedLearningEvents).toHaveLength(1);
+      expect(persistedLearningEvents[0]).toMatchObject({
+        fieldName: "shaftFlex",
+        correctedValue: "X-Stiff"
+      });
+
+      const updatedAiReadyRecord = await prisma.aiReadyIntakeRecord.findUniqueOrThrow({
+        where: {
+          id: existingAiReadyRecord.id
+        }
+      });
+
+      expect(updatedAiReadyRecord.normalizedJson).toEqual(
+        expect.objectContaining({
+          shaftFlex: "X_STIFF",
+          conditionGrade: "7.0 Below Average"
+        })
+      );
+
+      await deleteWorkflowRun(reviewQueueItem.workflowRunId!);
+      await prisma.aiReadyIntakeRecord.deleteMany({
+        where: {
+          intakeBatchId: intakeBatch.id
+        }
+      });
+      await prisma.intakeBatch.delete({
+        where: {
+          id: intakeBatch.id
+        }
+      });
+
+      await app.close();
+    });
+
     it("creates an AI-ready intake record when human review has no existing record", async () => {
       const app = buildApp();
       const reviewQueueItem = await createReviewQueueItem();
