@@ -71,7 +71,6 @@ import {
 } from "./constants/mcpDemoTools";
 import { getReviewActionFallbackNote } from "./utils/reviewQueueDisplay";
 import { getReadOnlyMcpToolInput } from "./utils/readOnlyMcpToolInput";
-import { McpConnectorsPage } from "./components/mcp/McpConnectorsPage";
 import { ReviewQueuePage } from "./components/review-queue/ReviewQueuePage";
 import {
   GuidedDemoPathPage,
@@ -1342,45 +1341,6 @@ function App() {
           onReviewQueueItemAction={(input) =>
             void handleReviewQueueItemAction(input)
           }
-        />
-      ) : null}
-
-      {activeView === "MCP_CONNECTORS" ? (
-        <McpConnectorsPage
-          connectorCatalog={mcpConnectorCatalog}
-          externalMcpReadiness={externalMcpReadiness}
-          isLoadingConnectorCatalog={isLoadingMcpConnectorCatalog}
-          connectorCatalogError={mcpConnectorCatalogError}
-          invocationHistory={mcpInvocationHistory}
-          isLoadingInvocationHistory={isLoadingMcpInvocationHistory}
-          invocationHistoryError={mcpInvocationHistoryError}
-          auditStory={mcpAuditStory}
-          readOnlyMcpToolOptions={readOnlyMcpToolOptions}
-          selectedToolName={selectedReadOnlyMcpToolName}
-          selectedWorkflowRunId={selectedMcpWorkflowRunId}
-          selectedTool={selectedReadOnlyMcpTool}
-          workflowRuns={globalWorkflowRuns}
-          invocationResult={readOnlyMcpInvocationResult}
-          invocationError={readOnlyMcpInvocationError}
-          isExecutingTool={isExecutingReadOnlyMcpTool}
-          knowledgeSearchQuery={knowledgeSearchQuery}
-          knowledgeIngestionSummary={knowledgeIngestionSummary}
-          knowledgeSearchResult={knowledgeSearchResult}
-          knowledgeEvalSummary={knowledgeEvalSummary}
-          isIngestingKnowledgeBase={isIngestingKnowledgeBase}
-          isSearchingKnowledgeBase={isSearchingKnowledgeBase}
-          isRunningKnowledgeEvals={isRunningKnowledgeEvals}
-          knowledgeBaseError={knowledgeBaseError}
-          knowledgeBaseSuccess={knowledgeBaseSuccess}
-          onRefreshCatalog={() => void loadMcpConnectorCatalog()}
-          onRefreshHistory={() => void loadMcpInvocationHistory()}
-          onSelectedToolNameChange={setSelectedReadOnlyMcpToolName}
-          onSelectedWorkflowRunIdChange={setSelectedReadOnlyMcpWorkflowRunId}
-          onExecuteTool={handleExecuteReadOnlyMcpTool}
-          onKnowledgeSearchQueryChange={setKnowledgeSearchQuery}
-          onIngestDemoKnowledgeBase={() => void handleIngestDemoKnowledgeBase()}
-          onSearchKnowledgeBase={handleSearchKnowledgeBase}
-          onRunKnowledgeRetrievalEvals={() => void handleRunKnowledgeRetrievalEvals()}
         />
       ) : null}
 

@@ -1,7 +1,6 @@
 export type AppView =
   | "GUIDED_DEMO"
-  | "REVIEW_QUEUE"
-  | "MCP_CONNECTORS";
+  | "REVIEW_QUEUE";
 
 export type AppNavItem = {
   view: AppView;
