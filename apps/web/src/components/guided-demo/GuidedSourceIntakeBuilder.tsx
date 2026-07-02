@@ -133,6 +133,38 @@ function getSourceStatusClassName(status: string) {
     : "multi-source-intake-status multi-source-intake-status--ready";
 }
 
+function getRawSourceContentPlaceholder(sourceType: string | null | undefined) {
+  switch (sourceType) {
+    case "FREE_TEXT":
+      return "Paste store notes, counter notes, or customer trade-in details here.";
+    case "POORLY_FORMED_CSV":
+      return "Paste malformed CSV rows, copied spreadsheet exports, or comma-separated trade-in data here.";
+    case "EMAIL":
+      return "Paste the customer email body or forwarded trade-in message here.";
+    case "LOG":
+      return "Paste operations log lines, system notes, or handoff activity here.";
+    default:
+      return "Select a source type first, then paste the matching source content here.";
+  }
+}
+
+
+function getUploadSourceFileHelp(sourceType: string | null | undefined) {
+  switch (sourceType) {
+    case "FREE_TEXT":
+      return "Upload a .txt file with store notes, counter notes, or customer trade-in details.";
+    case "POORLY_FORMED_CSV":
+      return "Upload a .csv or .txt file with copied spreadsheet rows or malformed trade-in data.";
+    case "EMAIL":
+      return "Upload a .eml or .txt file with the customer email body or forwarded trade-in message.";
+    case "LOG":
+      return "Upload a .log or .txt file with operations logs, system notes, or handoff activity.";
+    default:
+      return "{getUploadSourceFileHelp(selectedSourceTypes[index])}";
+  }
+}
+
+
 export function GuidedSourceIntakeBuilder({
   result,
   isRunning,
@@ -341,24 +373,26 @@ export function GuidedSourceIntakeBuilder({
   return (
     <div className="guided-source-builder">
       <div className="guided-workflow-intake-toolbar">
-        <div className="guided-workflow-metrics guided-workflow-metrics--compact">
-          <article>
-            <strong>{sources.length}</strong>
-            <span>Sources staged</span>
-          </article>
-          <article>
-            <strong>{selectedTypeCount}</strong>
-            <span>Source types</span>
-          </article>
-          <article>
-            <strong>{readySourceCount}</strong>
-            <span>Ready sources</span>
-          </article>
-          <article>
-            <strong>{result ? "Complete" : "Not run"}</strong>
-            <span>Normalization</span>
-          </article>
-        </div>
+        <section className="multi-source-intake-status-strip" aria-label="Source intake status">
+          <div className="multi-source-intake-status-strip__header">
+            <span className="model-route-card__eyebrow">Intake status</span>
+          </div>
+
+          <div className="multi-source-intake-status-line">
+            <span>
+              <strong>{sources.length}</strong> source{sources.length === 1 ? "" : "s"} staged
+            </span>
+            <span>
+              <strong>{selectedTypeCount}</strong> source type{selectedTypeCount === 1 ? "" : "s"}
+            </span>
+            <span>
+              <strong>{readySourceCount}</strong> ready source{readySourceCount === 1 ? "" : "s"}
+            </span>
+            <span>
+              Normalization: <strong>{result ? "complete" : "not run"}</strong>
+            </span>
+          </div>
+        </section>
 
       </div>
 
@@ -382,46 +416,49 @@ export function GuidedSourceIntakeBuilder({
 
               return (
                 <>
-                  <div className="multi-source-intake-editor-card__header">
-                    <div className="multi-source-intake-editor-card__title">
-                      <div className="multi-source-intake-editor-card__meta">
-                        <span className="model-route-card__eyebrow">
-                          Source {index + 1}
-                        </span>
-                        <span className={getSourceStatusClassName(sourceStatus)}>
-                          {sourceStatus}
-                        </span>
-                      </div>
-                      <label className="guided-source-builder__name-field">
-                        <span>
-                          {isSourceNamed(source) ? "Source name" : "Start here"}
-                        </span>
-                        <input
-                          aria-label={`Source ${index + 1} name`}
-                          className="multi-source-intake-title-input"
-                          disabled={isRunning}
-                          onChange={(event) =>
-                            updateSourceName(index, event.target.value)
-                          }
-                          placeholder="Create a source name to choose how you want to provide content."
-                          value={source.sourceName ?? ""}
-                        />
-                      </label>
-                    </div>
-
-                    <div className="multi-source-intake-editor-card__actions">
+                  <div className="multi-source-intake-editor-card__header guided-source-card-header">
+                  <div className="guided-source-card-title-row">
+                    <div className="guided-source-card-title-group">
+                      <span className="model-route-card__eyebrow">Source {index + 1}</span>
                       {sources.length > 1 ? (
                         <button
-                          className="multi-source-intake-remove-button"
+                          aria-label={`Remove source ${index + 1}`}
+                          className="guided-remove-source-icon-button"
                           disabled={isRunning}
                           onClick={() => removeSource(index)}
+                          title={`Remove source ${index + 1}`}
                           type="button"
                         >
-                          Remove
+                          <svg
+                            aria-hidden="true"
+                            focusable="false"
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm1 7h2v8h-2v-8Zm4 0h2v8h-2v-8ZM6 8h12l-1 13H7L6 8Z" />
+                          </svg>
                         </button>
                       ) : null}
                     </div>
+
+                    <span className={getSourceStatusClassName(sourceStatus)}>
+                      {sourceStatus}
+                    </span>
                   </div>
+
+                  <label className="multi-source-intake-field guided-source-name-field">
+                    <span>Source name</span>
+                    <input
+                      aria-label={`Source ${index + 1} name`}
+                      className="multi-source-intake-title-input"
+                      disabled={isRunning}
+                      onChange={(event) =>
+                        updateSourceName(index, event.target.value)
+                      }
+                      placeholder="Example: Counter notes"
+                      value={source.sourceName ?? ""}
+                    />
+                  </label>
+                </div>
 
                   <div
                     className={
@@ -431,8 +468,7 @@ export function GuidedSourceIntakeBuilder({
                     }
                   >
                       <div className="multi-source-intake-step-label">
-                        <span>Step 2</span>
-                        <strong>Choose input method</strong>
+                        <strong>Input method</strong>
                       </div>
                       <div
                         aria-label={`Source ${index + 1} input method`}
@@ -480,39 +516,35 @@ export function GuidedSourceIntakeBuilder({
                     }
                   >
                       <div className="multi-source-intake-step-label">
-                        <span>Step 3</span>
-                        <strong>Select source type</strong>
+                        <strong>Source type</strong>
                       </div>
-                      <div className="multi-source-intake-control-panel multi-source-intake-control-panel--inline">
-                        <label className="multi-source-intake-field multi-source-intake-field--inline">
-                          <span>Source type</span>
-                          <select
-                            disabled={isRunning || !canChooseSourceType(index)}
-                            onChange={(event) =>
-                              updateSelectedSourceType(
-                                index,
-                                event.target.value as MultiSourceIntakeSourceType,
-                              )
-                            }
-                            value={selectedSourceTypes[index] ?? ""}
-                          >
-                            <option disabled value="">
-                              Select a source type...
+                      <div className="guided-source-type-select-row">
+                        <select
+                          aria-label={`Source ${index + 1} type`}
+                          disabled={isRunning || !canChooseSourceType(index)}
+                          onChange={(event) =>
+                            updateSelectedSourceType(
+                              index,
+                              event.target.value as MultiSourceIntakeSourceType,
+                            )
+                          }
+                          value={selectedSourceTypes[index] ?? ""}
+                        >
+                          <option disabled value="">
+                            Select source type...
+                          </option>
+                          {SOURCE_TYPE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
                             </option>
-                            {SOURCE_TYPE_OPTIONS.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
+                          ))}
+                        </select>
                       </div>
                     </div>
 
                   {canEnterSourceContent(source, index) ? (
                     <div className="multi-source-intake-progressive-section">
                       <div className="multi-source-intake-step-label">
-                        <span>Step 4</span>
                         <strong>
                           {sourceInputModes[index] === "UPLOAD"
                             ? "Upload source file"
@@ -522,11 +554,18 @@ export function GuidedSourceIntakeBuilder({
 
                       {sourceInputModes[index] === "UPLOAD" ? (
                         <div className="multi-source-intake-upload-panel">
-                          <span className="multi-source-intake-upload-label">
-                            Upload text-like document
-                          </span>
-                          <label className="multi-source-intake-upload-control">
+                          <label className="multi-source-intake-upload-control guided-upload-file-control">
+                            <span className="guided-upload-file-control__button" aria-hidden="true">
+                              <svg
+                                focusable="false"
+                                viewBox="0 0 24 24"
+                              >
+                                <path d="M12 3 7 8h3v6h4V8h3l-5-5ZM5 17h14v2H5v-2Z" />
+                              </svg>
+                              Choose file
+                            </span>
                             <input
+                              className="guided-upload-file-input"
                               accept=".txt,.csv,.log,.eml,text/*"
                               disabled={isRunning}
                               onChange={(event) => {
@@ -538,14 +577,11 @@ export function GuidedSourceIntakeBuilder({
                               }}
                               type="file"
                             />
-                            <span className="multi-source-intake-upload-button">
-                              Choose file
-                            </span>
-                            <span className="multi-source-intake-upload-file-name">
+                            <span className="guided-upload-file-status">
                               {uploadedFileNames[index] ?? "No file loaded"}
                             </span>
                           </label>
-                          <p>Choose a .txt, .csv, .log, or .eml file.</p>
+                          <p>{getUploadSourceFileHelp(selectedSourceTypes[index])}</p>
                         </div>
                       ) : (
                         <>
@@ -579,7 +615,7 @@ export function GuidedSourceIntakeBuilder({
                                   rawContent: event.target.value,
                                 })
                               }
-                              placeholder="Paste messy text, broken CSV rows, email content, or logs here."
+                              placeholder={getRawSourceContentPlaceholder(selectedSourceTypes[index])}
                               rows={6}
                               value={source.rawContent}
                             />
@@ -598,11 +634,12 @@ export function GuidedSourceIntakeBuilder({
       {hasVisibleContentStep ? (
         <>
           <div className="guided-source-builder__list-actions">
-            <button disabled={isRunning} onClick={addSource} type="button">
-              Add Source
-            </button>
-            <button disabled={isRunning} onClick={clearSources} type="button">
-              Clear
+            <button disabled={isRunning} onClick={addSource} type="button"
+              aria-label="Add another source"
+              className="guided-add-source-icon-button"
+              title="Add another source to this intake run"
+            >
+              +
             </button>
           </div>
 

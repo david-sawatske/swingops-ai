@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 import type { AppView } from "../../constants/appNav";
 import type {
@@ -19,7 +19,6 @@ import { GuidedRunSetupStep } from "./steps/GuidedRunSetupStep";
 import { GuidedWorkflowStepper } from "./GuidedWorkflowStepper";
 
 export type GuidedStep =
-  | "RUN_SETUP"
   | "MESSY_SOURCE_INTAKE"
   | "AI_READY_RECORDS"
   | "GUARDED_AGENT_EXECUTION"
@@ -33,39 +32,33 @@ const GUIDED_STEPS: {
   description: string;
 }[] = [
   {
-    id: "RUN_SETUP",
-    label: "Run Setup",
-    eyebrow: "1",
-    description: "Understand the business workflow before running anything.",
-  },
-  {
     id: "MESSY_SOURCE_INTAKE",
     label: "Messy Source Intake",
-    eyebrow: "2",
+    eyebrow: "Step 1",
     description: "Normalize messy operational source text into candidate records.",
   },
   {
     id: "AI_READY_RECORDS",
     label: "AI-Ready Record Creation",
-    eyebrow: "3",
+    eyebrow: "Step 2",
     description: "Inspect the structured records created by intake.",
   },
   {
     id: "GUARDED_AGENT_EXECUTION",
     label: "Guarded Agent Execution",
-    eyebrow: "4",
+    eyebrow: "Step 3",
     description: "Run a controlled workflow from the AI-ready records.",
   },
   {
     id: "VALIDATION_REVIEW",
-    label: "Validation and Review",
-    eyebrow: "5",
+    label: "Validation and Human Review",
+    eyebrow: "Step 4",
     description: "Understand what the workflow trusted and what it escalated.",
   },
   {
     id: "FINAL_RUN_REPORT",
     label: "Final Run Report",
-    eyebrow: "6",
+    eyebrow: "Step 5",
     description: "Summarize what happened in plain business language.",
   },
 ];
@@ -175,11 +168,19 @@ export function GuidedDemoPathPage({
   onResetGuidedRun,
 }: GuidedDemoPathPageProps) {
   const [generatedWorkflowInput, setGeneratedWorkflowInput] = useState("");
+  const [isOverviewActive, setIsOverviewActive] = useState(true);
+  const [shouldAdvanceAfterSourceIntake, setShouldAdvanceAfterSourceIntake] =
+    useState(false);
+  const activeStepPanelRef = useRef<HTMLElement | null>(null);
+  const hasMountedStepScrollRef = useRef(false);
 
   void workflowRuns;
   void openReviewQueueItemCount;
   void toolCallLogCount;
   void onReviewQueueItemAction;
+
+  const activeStepIndex = getStepIndex(activeStep);
+  const currentStep = GUIDED_STEPS[activeStepIndex] ?? GUIDED_STEPS[0];
 
   const currentTradeInWorkflowRunId = tradeInResult?.persisted.workflowRunId ?? null;
   const currentRunReviewQueueItems = currentTradeInWorkflowRunId
@@ -187,6 +188,15 @@ export function GuidedDemoPathPage({
         (item) => item.workflowRunId === currentTradeInWorkflowRunId,
       )
     : [];
+
+  function scrollToStepPanel() {
+    window.requestAnimationFrame(() => {
+      activeStepPanelRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }
 
   useEffect(() => {
     if (!sourceIntakeResult) {
@@ -201,12 +211,46 @@ export function GuidedDemoPathPage({
     }
   }, [onTradeInRawInputChange, sourceIntakeResult, tradeInRawInput]);
 
+  useEffect(() => {
+    if (!hasMountedStepScrollRef.current) {
+      hasMountedStepScrollRef.current = true;
+      return;
+    }
+
+    scrollToStepPanel();
+  }, [activeStep]);
+
+  useEffect(() => {
+    if (!shouldAdvanceAfterSourceIntake || isRunningSourceIntake) {
+      return;
+    }
+
+    if (sourceIntakeResult) {
+      setShouldAdvanceAfterSourceIntake(false);
+      setActiveStep("AI_READY_RECORDS");
+      return;
+    }
+
+    if (sourceIntakeError) {
+      setShouldAdvanceAfterSourceIntake(false);
+    }
+  }, [
+    isRunningSourceIntake,
+    shouldAdvanceAfterSourceIntake,
+    sourceIntakeError,
+    sourceIntakeResult,
+  ]);
+
   function setActiveStep(step: GuidedStep) {
     onActiveStepChange(step);
+
+    if (step === activeStep) {
+      scrollToStepPanel();
+    }
   }
 
   function canOpenStep(step: GuidedStep) {
-    if (step === "RUN_SETUP" || step === "MESSY_SOURCE_INTAKE") {
+    if (step === "MESSY_SOURCE_INTAKE") {
       return true;
     }
 
@@ -223,10 +267,6 @@ export function GuidedDemoPathPage({
 
     if (stepIndex >= currentStepIndex) {
       return false;
-    }
-
-    if (step === "RUN_SETUP") {
-      return true;
     }
 
     if (step === "MESSY_SOURCE_INTAKE" || step === "AI_READY_RECORDS") {
@@ -253,48 +293,42 @@ export function GuidedDemoPathPage({
   }
 
   function handleRunSourceIntake(request?: ExecuteMultiSourceIntakeDemoRequest) {
+    setShouldAdvanceAfterSourceIntake(true);
     onRunSourceIntake(request);
-    setActiveStep("AI_READY_RECORDS");
+  }
+
+  function handleStartGuidedSteps() {
+    setIsOverviewActive(false);
+    setActiveStep("MESSY_SOURCE_INTAKE");
   }
 
   function handleResetGuidedDemo() {
     setGeneratedWorkflowInput("");
+    setIsOverviewActive(true);
+    setShouldAdvanceAfterSourceIntake(false);
     onResetGuidedRun();
   }
 
   return (
     <div className="guided-workflow-page">
-      <header className="guided-workflow-page-hero">
-        <div>
-          <span className="model-route-card__eyebrow">Guided operations run</span>
-          <h2>Build the workflow one step at a time.</h2>
-          <p>
-            This page is intentionally bare. Each step explains what is happening before
-            adding more technical detail.
-          </p>
-        </div>
 
-        <div className="guided-workflow-page-hero__outcome">
-          <span>Current phase</span>
-          <strong>{GUIDED_STEPS[getStepIndex(activeStep)]?.label ?? "Run Setup"}</strong>
-          <p>{GUIDED_STEPS[getStepIndex(activeStep)]?.description}</p>
-        </div>
-      </header>
+      {isOverviewActive ? (
+        <GuidedRunSetupStep onContinue={handleStartGuidedSteps} />
+      ) : (
+        <div className="guided-workflow-shell">
+          <GuidedWorkflowStepper
+            activeStep={activeStep}
+            canOpenStep={canOpenStep}
+            getStepStatus={getStepStatus}
+            onStepChange={setActiveStep}
+            steps={GUIDED_STEPS}
+          />
 
-      <div className="guided-workflow-shell">
-        <GuidedWorkflowStepper
-          activeStep={activeStep}
-          canOpenStep={canOpenStep}
-          getStepStatus={getStepStatus}
-          onStepChange={setActiveStep}
-          steps={GUIDED_STEPS}
-        />
-
-        <section className="guided-workflow-panel">
-          {activeStep === "RUN_SETUP" ? (
-            <GuidedRunSetupStep onContinue={() => setActiveStep("MESSY_SOURCE_INTAKE")} />
-          ) : null}
-
+          <section
+            aria-label="Active guided workflow step"
+            className="guided-workflow-panel"
+            ref={activeStepPanelRef}
+          >
           {activeStep === "MESSY_SOURCE_INTAKE" ? (
             <GuidedMessySourceIntakeStep
               error={sourceIntakeError}
@@ -353,9 +387,9 @@ export function GuidedDemoPathPage({
               sourceIntakePersistedRecords={sourceIntakePersistedRecords}
             />
           ) : null}
-
-        </section>
-      </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

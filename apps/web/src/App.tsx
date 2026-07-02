@@ -93,7 +93,7 @@ import { AppHeroNav } from "./components/layout/AppHeroNav";
 
 function App() {
   const [activeView, setActiveView] = useState<AppView>("GUIDED_DEMO");
-  const [guidedActiveStep, setGuidedActiveStep] = useState<GuidedStep>("RUN_SETUP");
+  const [guidedActiveStep, setGuidedActiveStep] = useState<GuidedStep>("MESSY_SOURCE_INTAKE");
   const [intakeBatches, setIntakeBatches] = useState<IntakeBatchSummary[]>([]);
   const [isLoadingIntakeBatches, setIsLoadingIntakeBatches] = useState(true);
   const [intakeBatchesError, setIntakeBatchesError] = useState<string | null>(
@@ -410,7 +410,7 @@ function App() {
   }
 
   function resetGuidedRunState() {
-    setGuidedActiveStep("RUN_SETUP");
+    setGuidedActiveStep("MESSY_SOURCE_INTAKE");
     setMultiSourceIntakeDemoResult(null);
     setPersistedAiReadyIntakeRecords([]);
     setCurrentRunAiReadyIntakeRecords([]);

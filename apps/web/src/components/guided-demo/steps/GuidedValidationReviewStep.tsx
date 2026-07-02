@@ -552,9 +552,73 @@ function getSuggestedAction(input: {
   return "No action required. This record passed the current review gates.";
 }
 
+function validationCheckMatchesCardIdentity(
+  check: ValidationCheck,
+  card: Pick<
+    RecordReviewCard,
+    "id" | "inventoryEvidence" | "reviewItem" | "valuationEvidence"
+  >,
+) {
+  const checkRecordId = asString(check.recordId);
+
+  if (!checkRecordId) {
+    return false;
+  }
+
+  const proposedRecord = getProposedRecord(card.reviewItem);
+  const reviewRecord = asRecord(card.reviewItem);
+  const inventoryLookup = asRecord(card.inventoryEvidence?.lookup);
+  const valuationEstimate = asRecord(card.valuationEvidence?.estimate);
+
+  const candidateIds = [
+    card.id,
+    getRecordIdentity(proposedRecord ?? {}),
+    getFirstString(reviewRecord, [
+      "recordId",
+      "parsedItemId",
+      "sourceRecordId",
+      "intakeItemId",
+    ]),
+    getFirstString(card.inventoryEvidence, [
+      "recordId",
+      "parsedItemId",
+      "sourceRecordId",
+      "itemId",
+    ]),
+    getFirstString(inventoryLookup, [
+      "recordId",
+      "parsedItemId",
+      "sourceRecordId",
+      "itemId",
+    ]),
+    getFirstString(card.valuationEvidence, [
+      "recordId",
+      "parsedItemId",
+      "sourceRecordId",
+      "itemId",
+    ]),
+    getFirstString(valuationEstimate, [
+      "recordId",
+      "parsedItemId",
+      "sourceRecordId",
+      "itemId",
+    ]),
+  ].filter((value): value is string => Boolean(value));
+
+  return candidateIds.some((candidateId) => candidateId === checkRecordId);
+}
+
 function shouldValidationCheckBelongToCard(input: {
   check: ValidationCheck;
-  card: Pick<RecordReviewCard, "index" | "missingFields" | "reviewItem">;
+  card: Pick<
+    RecordReviewCard,
+    | "id"
+    | "index"
+    | "inventoryEvidence"
+    | "missingFields"
+    | "reviewItem"
+    | "valuationEvidence"
+  >;
   recordCount: number;
 }) {
   const checkRecordIndex = findRecordIndexFromText(
@@ -569,6 +633,10 @@ function shouldValidationCheckBelongToCard(input: {
 
   if (checkRecordIndex !== null) {
     return checkRecordIndex === input.card.index;
+  }
+
+  if (validationCheckMatchesCardIdentity(input.check, input.card)) {
+    return true;
   }
 
   if (input.recordCount === 1) {
@@ -772,6 +840,43 @@ function buildRecordReviewCards(
     });
   }
 
+  const initiallyAssignedValidationCheckIds = new Set(
+    cards.flatMap((card) => card.validationChecks.map((check) => check.id)),
+  );
+  const initiallyAssignedRetryEventIds = new Set(
+    cards.flatMap((card) => card.retryEvents.map((event) => event.id)),
+  );
+  const activeReviewCards = cards.filter((card) => card.status === "needs-review");
+  const singleActiveReviewCard =
+    activeReviewCards.length === 1 ? activeReviewCards[0] : null;
+
+  if (singleActiveReviewCard) {
+    const orphanedActionableValidationChecks = result.validationChecks.filter(
+      (check) =>
+        !initiallyAssignedValidationCheckIds.has(check.id) &&
+        isActionableRunLevelValidationCheck(check),
+    );
+    const orphanedUnresolvedRetryEvents = result.retryEvents.filter(
+      (event) =>
+        !initiallyAssignedRetryEventIds.has(event.id) &&
+        event.status === "UNRESOLVED",
+    );
+
+    if (orphanedActionableValidationChecks.length > 0) {
+      singleActiveReviewCard.validationChecks = [
+        ...singleActiveReviewCard.validationChecks,
+        ...orphanedActionableValidationChecks,
+      ];
+    }
+
+    if (orphanedUnresolvedRetryEvents.length > 0) {
+      singleActiveReviewCard.retryEvents = [
+        ...singleActiveReviewCard.retryEvents,
+        ...orphanedUnresolvedRetryEvents,
+      ];
+    }
+  }
+
   const assignedValidationCheckIds = new Set(
     cards.flatMap((card) => card.validationChecks.map((check) => check.id)),
   );
@@ -788,6 +893,20 @@ function buildRecordReviewCards(
       (event) => !assignedRetryEventIds.has(event.id),
     ),
   };
+}
+
+function isActionableRunLevelValidationCheck(check: ValidationCheck) {
+  const normalizedLabel = normalizeComparable(check.label);
+  const normalizedMessage = normalizeComparable(check.message);
+  const isReviewItemSummary =
+    normalizedLabel.includes("reviewrequirementdetermined") ||
+    normalizedMessage.includes("humanreviewitemwascreated");
+
+  if (isReviewItemSummary) {
+    return false;
+  }
+
+  return check.status === "WARNING" || check.status === "FAIL";
 }
 
 function getStatusClassName(status: string) {
@@ -859,7 +978,7 @@ function RecordFieldGrid({ card }: { card: RecordReviewCard }) {
 
 function RecordAttentionList({ card }: { card: RecordReviewCard }) {
   const warningChecks = card.validationChecks.filter(
-    (check) => check.status === "WARNING" || check.status === "FAIL" || check.reviewRequired,
+    (check) => check.status === "WARNING" || check.status === "FAIL",
   );
   const unresolvedRetries = card.retryEvents.filter((event) => event.status === "UNRESOLVED");
 
@@ -1235,7 +1354,7 @@ function getCorrectionFocusFields(card: RecordReviewCard) {
   }
 
   for (const check of card.validationChecks) {
-    if (!check.reviewRequired && check.status === "PASS") {
+    if (check.status === "PASS") {
       continue;
     }
 
@@ -1676,6 +1795,52 @@ function RecordCorrectionPanel({
   );
 }
 
+function hasUsableSourceEvidence(value: string) {
+  const trimmedValue = value.trim();
+
+  return (
+    trimmedValue.length > 0 &&
+    trimmedValue !== "No source evidence captured for this record."
+  );
+}
+
+function PassedRecordReviewSummary({ card }: { card: RecordReviewCard }) {
+  const inventorySummary = getInventorySummary(card.inventoryEvidence);
+  const valuationSummary = getValuationSummary(card.valuationEvidence);
+  const hasSourceEvidence = hasUsableSourceEvidence(card.sourceEvidence);
+
+  return (
+    <div className="guided-passed-record-summary">
+      <div className="guided-passed-record-summary__status">
+        <strong>Record passed review gates.</strong>
+        <p>
+          This record has no active review item. The available system evidence is
+          summarized below.
+        </p>
+      </div>
+
+      <div className="guided-passed-record-evidence-grid">
+        {hasSourceEvidence ? (
+          <article className="guided-passed-record-evidence-grid__source">
+            <strong>Source evidence</strong>
+            <p>{card.sourceEvidence}</p>
+          </article>
+        ) : null}
+
+        <article>
+          <strong>Inventory evidence</strong>
+          <p>{inventorySummary}</p>
+        </article>
+
+        <article>
+          <strong>Valuation evidence</strong>
+          <p>{valuationSummary}</p>
+        </article>
+      </div>
+    </div>
+  );
+}
+
 function RecordReviewCardView({
   activeReviewQueueItemId,
   card,
@@ -1709,20 +1874,26 @@ function RecordReviewCardView({
       </summary>
 
       <div className="guided-record-review-card__content">
-        <RecordCorrectionPanel
-        activeReviewQueueItemId={activeReviewQueueItemId}
-        card={card}
-        draft={correctionDraft}
-        isEditing={isEditing}
-        onCancelEditing={onCancelEditing}
-        onDraftChange={onDraftChange}
-        onStartEditing={onStartEditing}
-        onSubmit={onSubmitCorrection}
-      />
+        {card.status === "ready" ? (
+          <PassedRecordReviewSummary card={card} />
+        ) : (
+          <>
+            <RecordCorrectionPanel
+              activeReviewQueueItemId={activeReviewQueueItemId}
+              card={card}
+              draft={correctionDraft}
+              isEditing={isEditing}
+              onCancelEditing={onCancelEditing}
+              onDraftChange={onDraftChange}
+              onStartEditing={onStartEditing}
+              onSubmit={onSubmitCorrection}
+            />
 
-        <RecordEvidenceDetails card={card} />
-        <RecordReviewSignalDetails card={card} />
-        <RecordValidationDetails card={card} />
+            <RecordEvidenceDetails card={card} />
+            <RecordReviewSignalDetails card={card} />
+            <RecordValidationDetails card={card} />
+          </>
+        )}
       </div>
     </details>
   );
@@ -1762,6 +1933,19 @@ export function GuidedValidationReviewStep({
     (card) => card.status === "resolved",
   );
   const recordsAutoPassed = recordCards.filter((card) => card.status === "ready");
+  const activeRecordCards = recordsStillNeedingAttention;
+  const reviewedRecordCards = recordsResolvedByReview;
+  const passedGateRecordCards = recordsAutoPassed;
+  const visibleReviewRecordCards = [...activeRecordCards, ...reviewedRecordCards];
+  const shouldOpenPassedGateRecords = activeRecordCards.length === 0;
+  const unmappedActionableValidationChecks =
+    recordReviewData?.unassignedValidationChecks.filter(
+      isActionableRunLevelValidationCheck,
+    ) ?? [];
+  const unmappedActionableRetryEvents =
+    recordReviewData?.unassignedRetryEvents.filter((event) => event.status === "UNRESOLVED") ?? [];
+  const unassignedRunLevelSignalCount =
+    unmappedActionableValidationChecks.length + unmappedActionableRetryEvents.length;
   const reviewItemsCreatedCount = result?.reviewQueueItemsCreated.length ?? 0;
 
   function getDraftForCard(card: RecordReviewCard) {
@@ -1831,11 +2015,31 @@ export function GuidedValidationReviewStep({
     setEditingReviewQueueItemId(null);
   }
 
+  function renderRecordReviewCard(card: RecordReviewCard) {
+    return (
+      <RecordReviewCardView
+        activeReviewQueueItemId={activeReviewQueueItemId}
+        card={card}
+        correctionDraft={getDraftForCard(card)}
+        isEditing={
+          card.reviewItem
+            ? editingReviewQueueItemId === card.reviewItem.id
+            : false
+        }
+        key={card.id}
+        onCancelEditing={() => setEditingReviewQueueItemId(null)}
+        onDraftChange={(draft) => setDraftForCard(card, draft)}
+        onStartEditing={() => startEditingCard(card)}
+        onSubmitCorrection={() => submitCorrectionForCard(card)}
+      />
+    );
+  }
+
   return (
     <article className="guided-workflow-card guided-workflow-card--validation-review">
       <section className="guided-step-orientation">
         <span className="model-route-card__eyebrow">
-          Step 5 · Validation and Review
+          Step 4 · Validation and Human Review
         </span>
         <h3>Which records need attention before the final report?</h3>
         <p>
@@ -1860,14 +2064,6 @@ export function GuidedValidationReviewStep({
             <p>A run-scoped review checkpoint that explains what can move forward and what needs attention.</p>
           </article>
         </div>
-
-        <details className="guided-workflow-details guided-workflow-details--compact">
-          <summary>Why organize review by record?</summary>
-          <p className="guided-workflow-details__intro">
-            Validation checks, retries, and tool evidence are useful only when the reviewer
-            can connect them to the specific club record that needs confirmation.
-          </p>
-        </details>
       </section>
 
       <section className="guided-step-workspace">
@@ -1983,47 +2179,87 @@ export function GuidedValidationReviewStep({
               </div>
 
               <div className="guided-record-review-list">
-                {recordCards.map(
-                  (card) => (
-                    <RecordReviewCardView
-                      activeReviewQueueItemId={activeReviewQueueItemId}
-                      card={card}
-                      correctionDraft={getDraftForCard(card)}
-                      isEditing={
-                        card.reviewItem
-                          ? editingReviewQueueItemId === card.reviewItem.id
-                          : false
-                      }
-                      key={card.id}
-                      onCancelEditing={() => setEditingReviewQueueItemId(null)}
-                      onDraftChange={(draft) => setDraftForCard(card, draft)}
-                      onStartEditing={() => startEditingCard(card)}
-                      onSubmitCorrection={() => submitCorrectionForCard(card)}
-                    />
-                  ),
-                )}
+                {activeRecordCards.length > 0 ? (
+                  <div className="guided-record-review-group-label">
+                    <span>Needs review</span>
+                    <strong>{activeRecordCards.length} active</strong>
+                  </div>
+                ) : null}
+
+                {visibleReviewRecordCards.map(renderRecordReviewCard)}
+                {passedGateRecordCards.length > 0 ? (
+                  <section className="guided-passed-gates-section">
+                    <div className="guided-passed-gates-section__header">
+                      <span>Passed gates</span>
+                    </div>
+
+                    <details
+                      className="guided-passed-gates-records"
+                      open={shouldOpenPassedGateRecords}
+                    >
+                      <summary>
+                        <div>
+                          <strong>
+                            {passedGateRecordCards.length} record
+                            {passedGateRecordCards.length === 1 ? "" : "s"} passed review gates
+                          </strong>
+                        </div>
+
+                      </summary>
+
+                      <div className="guided-record-review-list guided-record-review-list--passed-gates">
+                        {passedGateRecordCards.map(renderRecordReviewCard)}
+                      </div>
+                    </details>
+                  </section>
+                ) : null}
               </div>
             </section>
 
-            <details className="guided-validation-section guided-run-validation-detail">
-              <summary>
-                <div>
-                  <h4>Run-level validation detail</h4>
-                  <p>
-                    Open this for workflow-level checks that did not map cleanly to one
-                    record card.
-                  </p>
-                </div>
-                <span>{warningChecks.length + failedChecks.length} warnings or failures</span>
-              </summary>
+            <section className="guided-run-audit-section">
+              <div className="guided-run-audit-section__header">
+                <span>Run-level audit</span>
+              </div>
 
-              <div className="guided-run-validation-detail__body">
-                {recordReviewData.unassignedValidationChecks.length > 0 ||
-                recordReviewData.unassignedRetryEvents.length > 0 ? (
-                  <>
-                    {recordReviewData.unassignedValidationChecks.length > 0 ? (
-                      <ol className="guided-validation-evidence-list">
-                        {recordReviewData.unassignedValidationChecks.map((check) => (
+              <details className="guided-run-audit-dropdown">
+                <summary>
+                  <div>
+                    <strong>
+                      {unassignedRunLevelSignalCount === 0
+                        ? "All actionable signals grouped into review cards"
+                        : `${unassignedRunLevelSignalCount} unmapped actionable signal${unassignedRunLevelSignalCount === 1 ? "" : "s"}`}
+                    </strong>
+                    <p>
+                      Checks and retries are shown on record cards when they can be tied
+                      to one club. This audit row only reports actionable workflow-level
+                      signals that could not be mapped to a single record.
+                    </p>
+                  </div>
+                </summary>
+
+                <div className="guided-run-validation-detail__body guided-run-validation-detail__body--audit">
+                  <div className="guided-run-audit-summary">
+                    <article>
+                      <strong>{unmappedActionableValidationChecks.length}</strong>
+                      <span>unmapped warnings or failures</span>
+                    </article>
+                    <article>
+                      <strong>{unmappedActionableRetryEvents.length}</strong>
+                      <span>unmapped unresolved retries</span>
+                    </article>
+                  </div>
+
+                  <p className="guided-validation-empty-note">
+                    {unassignedRunLevelSignalCount === 0
+                      ? "All actionable validation and retry signals were grouped into the record cards above."
+                      : "Review the unmapped warnings or failures below. Passing checks and review-item summaries are already represented by the record cards above."}
+                  </p>
+
+                  {unmappedActionableValidationChecks.length > 0 ? (
+                    <div className="guided-run-audit-signal-list">
+                      <h5>Unmapped warnings or failures</h5>
+                      <ol className="guided-validation-evidence-list guided-run-audit-signal-list__items">
+                        {unmappedActionableValidationChecks.map((check) => (
                           <li key={check.id}>
                             <span className={getStatusClassName(check.status)}>{check.status}</span>
                             <div>
@@ -2031,28 +2267,29 @@ export function GuidedValidationReviewStep({
                               <p>{check.message}</p>
                               <small>
                                 Severity {check.severity.toLowerCase()}
-                                {check.field ? ` · field ${check.field}` : ""}
+                                {check.field ? ` · field ${formatFieldLabel(check.field)}` : ""}
                                 {check.reviewRequired ? " · review required" : ""}
                               </small>
                             </div>
                           </li>
                         ))}
                       </ol>
-                    ) : null}
+                    </div>
+                  ) : null}
 
-                    {recordReviewData.unassignedRetryEvents.length > 0 ? (
-                      <ol className="guided-validation-evidence-list">
-                        {recordReviewData.unassignedRetryEvents.map((event) => (
+                  {unmappedActionableRetryEvents.length > 0 ? (
+                    <div className="guided-run-audit-signal-list">
+                      <h5>Unmapped unresolved retries</h5>
+                      <ol className="guided-validation-evidence-list guided-run-audit-signal-list__items">
+                        {unmappedActionableRetryEvents.map((event) => (
                           <li key={event.id}>
-                            <span className={getStatusClassName(event.status)}>
-                              {event.status}
-                            </span>
+                            <span className={getStatusClassName(event.status)}>{event.status}</span>
                             <div>
                               <strong>{event.reason}</strong>
                               <p>{event.message}</p>
                               <small>
                                 {event.targetField
-                                  ? `Target field ${event.targetField}`
+                                  ? `Target field ${formatFieldLabel(event.targetField)}`
                                   : "Workflow-level retry"}
                                 {" · "}
                                 {event.policy}
@@ -2061,15 +2298,11 @@ export function GuidedValidationReviewStep({
                           </li>
                         ))}
                       </ol>
-                    ) : null}
-                  </>
-                ) : (
-                  <p className="guided-validation-empty-note">
-                    All validation and retry signals were grouped into record cards.
-                  </p>
-                )}
-              </div>
-            </details>
+                    </div>
+                  ) : null}
+                </div>
+              </details>
+            </section>
 
             <section className="guided-validation-section">
               <div className="guided-validation-section__header">
@@ -2086,22 +2319,26 @@ export function GuidedValidationReviewStep({
               </div>
 
               <div className="guided-review-action-row">
-                <button onClick={onOpenReviewQueue} type="button">
-                  Open Review Queue
-                </button>
-
                 <button
                   className="guided-step-primary-action"
                   onClick={onContinue}
                   type="button"
                 >
-                  Continue to Step 6
+                  Continue to Final Run Report
+                </button>
+
+                <button
+                  className="guided-review-secondary-action"
+                  onClick={onOpenReviewQueue}
+                  type="button"
+                >
+                  Open Review Queue
                 </button>
               </div>
             </section>
           </>
         ) : (
-          <p>Run Step 4 first so this step has workflow evidence to explain.</p>
+          <p>Run Step 3 first so this step has workflow evidence to explain.</p>
         )}
       </section>
     </article>

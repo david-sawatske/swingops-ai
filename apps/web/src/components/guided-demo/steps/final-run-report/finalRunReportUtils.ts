@@ -462,22 +462,22 @@ export function buildMergedRecord(input: {
 
   const transformationNotes = [
     valuationRange && input.candidateRecord.tradeInValue === null
-      ? `Step 4 added valuation range ${valuationRange}`
+      ? `Step 3 added valuation range ${valuationRange}`
       : null,
     valuationRange && input.candidateRecord.tradeInValue !== null
-      ? `Step 4 checked valuation evidence`
+      ? `Step 3 checked valuation evidence`
       : null,
     reviewedRecord?.correctedShaftFlex &&
     normalizeComparable(reviewedRecord.correctedShaftFlex) !==
       normalizeComparable(input.candidateRecord.shaftFlex)
-      ? `Step 5 corrected flex: ${formatEnumLabel(input.candidateRecord.shaftFlex)} → ${formatEnumLabel(reviewedRecord.correctedShaftFlex)}`
+      ? `Step 4 corrected flex: ${formatEnumLabel(input.candidateRecord.shaftFlex)} → ${formatEnumLabel(reviewedRecord.correctedShaftFlex)}`
       : null,
     reviewedRecord?.correctedConditionGrade &&
     normalizeComparable(reviewedRecord.correctedConditionGrade) !==
       normalizeComparable(input.candidateRecord.conditionGrade)
-      ? `Step 5 corrected condition: ${input.candidateRecord.conditionGrade ?? "—"} → ${reviewedRecord.correctedConditionGrade}`
+      ? `Step 4 corrected condition: ${input.candidateRecord.conditionGrade ?? "—"} → ${reviewedRecord.correctedConditionGrade}`
       : null,
-    reviewedRecord ? "Step 5 resolved review item" : null,
+    reviewedRecord ? "Step 4 resolved review item" : null,
   ].filter((note): note is string => Boolean(note));
 
   const mergedRecord: MergedRecordSummary = {
@@ -497,7 +497,7 @@ export function buildMergedRecord(input: {
     status: finalStatus,
     finalReviewLabel,
     finalReviewDetail,
-    sourceStageLabel: input.candidateRecord.reviewNeeded ? "Needed in Step 3" : "Clear in Step 3",
+    sourceStageLabel: input.candidateRecord.reviewNeeded ? "Needed in Step 2" : "Clear in Step 2",
     transformationNotes:
       transformationNotes.length > 0 ? transformationNotes : ["No field changes; workflow evidence checked"],
   };
@@ -530,12 +530,12 @@ export function getRunSummaryText(input: {
 }) {
   return [
     `This run started with ${pluralize(input.parsedItemCount, "messy source record")}.`,
-    `Step 3 produced ${pluralize(input.candidateRecordCount, "candidate AI-ready record")} from the intake data.`,
-    `Step 4 grounded and enriched those records, then validation routed ${pluralize(input.reviewItemCount, "record")} to human review.`,
+    `Step 2 produced ${pluralize(input.candidateRecordCount, "candidate AI-ready record")} from the intake data.`,
+    `Step 3 grounded and enriched those records, then validation routed ${pluralize(input.reviewItemCount, "record")} to human review.`,
     input.openReviewItemCount === 0
-      ? `Step 5 resolved ${pluralize(input.resolvedReviewItemCount, "review item")}.`
-      : `Step 5 still has ${pluralize(input.openReviewItemCount, "open review item")}.`,
-    `The final merged table now shows Step 3 records with Step 4 evidence and Step 5 corrections applied where available.`,
+      ? `Step 4 resolved ${pluralize(input.resolvedReviewItemCount, "review item")}.`
+      : `Step 4 still has ${pluralize(input.openReviewItemCount, "open review item")}.`,
+    `The final merged table now shows Step 2 records with Step 3 evidence and Step 4 corrections applied where available.`,
     `${pluralize(input.ragReadyRecordCount, "record")} is ready for RAG or downstream use, and ${pluralize(input.learningEventCount, "learning event")} was captured from review.`,
   ].join(" ");
 }

@@ -111,11 +111,11 @@ export function GuidedFinalRunReportStep({
     <article className="guided-workflow-card">
       <section className="guided-step-orientation">
         <span className="model-route-card__eyebrow">
-          Step 6 · Final Run Report
+          Step 5 · Final Run Report
         </span>
-        <h3>What happened across the six-step workflow?</h3>
+        <h3>What happened across the five-step workflow?</h3>
         <p>
-          The final report mirrors the workflow you just walked through: setup, messy
+          The final report mirrors the workflow you just walked through: messy
           intake, AI-ready records, guarded execution, validation review, and final
           written output.
         </p>
@@ -144,7 +144,7 @@ export function GuidedFinalRunReportStep({
             <span className="model-route-card__eyebrow">Do the work</span>
             <h4>Read the workflow from intake to final output</h4>
             <p>
-              This report uses the same six steps as the guided run and shows the merged
+              This report uses the same five actionable steps as the guided run and shows the merged
               final state first.
             </p>
           </div>
@@ -176,7 +176,7 @@ export function GuidedFinalRunReportStep({
                 <p>
                   This table shows the final form of each record after intake cleanup,
                   guarded enrichment, valuation evidence, and human review corrections.
-                  The preview uses the same columns and layout as the Step 3 snapshot.
+                  The preview uses the same columns and layout as the Step 2 snapshot.
                   Open the full table to see value ranges and how each record was finalized.
                 </p>
               </div>
@@ -216,7 +216,7 @@ export function GuidedFinalRunReportStep({
           <div className="guided-final-review-callout">
             <strong>Final report waiting for a workflow result</strong>
             <p>
-              Run Step 4 first. If Step 4 failed before final output, fix the error
+              Run Step 3 first. If Step 3 failed before final output, fix the error
               shown there and rerun the guarded workflow.
             </p>
           </div>

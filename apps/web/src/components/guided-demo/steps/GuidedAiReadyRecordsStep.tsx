@@ -49,7 +49,7 @@ export function GuidedAiReadyRecordsStep({
     <article className="guided-workflow-card">
       <section className="guided-step-orientation">
         <span className="model-route-card__eyebrow">
-          Step 3 · AI-Ready Record Creation
+          Step 2 · AI-Ready Record Creation
         </span>
         <h3>What did intake create?</h3>
         <p>
@@ -62,7 +62,7 @@ export function GuidedAiReadyRecordsStep({
         <div className="guided-step-mini-list" aria-label="AI-ready record explanation">
           <article>
             <strong>Input</strong>
-            <p>Normalized source output from Step 2.</p>
+            <p>Normalized source output from Step 1.</p>
           </article>
 
           <article>
@@ -212,8 +212,14 @@ export function GuidedAiReadyRecordsStep({
                       </p>
                     </div>
 
-                    <button onClick={() => setIsFullTableOpen(false)} type="button">
-                      Close
+                    <button
+                      aria-label="Close expanded record view"
+                      className="guided-expanded-table-close-button"
+                      onClick={() => setIsFullTableOpen(false)}
+                      title="Close"
+                      type="button"
+                    >
+                      ×
                     </button>
                   </div>
 
@@ -262,18 +268,18 @@ export function GuidedAiReadyRecordsStep({
             <div className="guided-next-step-note">
               <h4>Next handoff</h4>
               <p>
-                Step 4 converts these records into guarded workflow input and runs the
+                Step 3 converts these records into guarded workflow input and runs the
                 agent through model routing, grounding, read-only tools, validation, and
                 review routing.
               </p>
             </div>
 
             <button className="guided-step-primary-action" onClick={onContinue} type="button">
-              Continue to Step 4
+              Continue to Guarded Agent Execution
             </button>
           </>
         ) : (
-          <p>Run Step 2 first so this step has records to show.</p>
+          <p>Run Step 1 first so this step has records to show.</p>
         )}
       </section>
     </article>

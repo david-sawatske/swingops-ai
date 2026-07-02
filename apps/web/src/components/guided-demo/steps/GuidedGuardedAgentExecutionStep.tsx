@@ -31,16 +31,17 @@ export function GuidedGuardedAgentExecutionStep({
 }: GuidedGuardedAgentExecutionStepProps) {
   const workflowInput = getWorkflowInput(rawInput, generatedWorkflowInput);
   const canRunWorkflow = workflowInput.trim().length > 0 && !isRunning;
+  const hasCompletedGuardedRun = Boolean(result) && !isRunning;
 
   return (
     <article className="guided-workflow-card">
       <section className="guided-step-orientation">
         <span className="model-route-card__eyebrow">
-          Step 4 · Guarded Agent Execution
+          Step 3 · Guarded Agent Execution
         </span>
         <h3>How do AI-ready records become a guarded workflow run?</h3>
         <p>
-          The structured records from Step 3 are converted into workflow input. The agent
+          The structured records from Step 2 are converted into workflow input. The agent
           can then plan the run, route the model call, ground decisions with knowledge,
           use read-only internal tools, and preserve an audit trail for review.
         </p>
@@ -58,7 +59,7 @@ export function GuidedGuardedAgentExecutionStep({
 
           <article>
             <strong>Output</strong>
-            <p>Workflow evidence for Step 5, including tool activity, review routing, and run trace data.</p>
+            <p>Workflow evidence for Step 4, including tool activity, review routing, and run trace data.</p>
           </article>
         </div>
 
@@ -79,7 +80,7 @@ export function GuidedGuardedAgentExecutionStep({
             <h4>Run the guarded trade-in workflow</h4>
             <p>
               Inspect the generated handoff text, then run the workflow. The result becomes
-              the evidence package used by validation and review in Step 5.
+              the evidence package used by validation and review in Step 4.
             </p>
           </div>
         </div>
@@ -108,7 +109,7 @@ export function GuidedGuardedAgentExecutionStep({
             Generated workflow input
           </label>
           <p className="guided-guarded-input-help">
-            This handoff text is generated from the AI-ready records in Step 3. It
+            This handoff text is generated from the AI-ready records in Step 2. It
             preserves missing-field and review signals so the guarded workflow can route
             them correctly.
           </p>
@@ -120,23 +121,53 @@ export function GuidedGuardedAgentExecutionStep({
             value={workflowInput}
           />
 
-          <button disabled={!canRunWorkflow} type="submit">
-            {isRunning ? "Running…" : "Run Guarded Workflow"}
-          </button>
+          <div className="guided-guarded-action-row">
+            {hasCompletedGuardedRun ? (
+              <button
+                className="guided-step-primary-action guided-guarded-continue-action"
+                onClick={onContinue}
+                type="button"
+              >
+                Continue to Validation and Review
+              </button>
+            ) : null}
+
+            <button
+              className={result ? "guided-guarded-rerun-action" : undefined}
+              disabled={!canRunWorkflow}
+              type="submit"
+            >
+              {isRunning
+                ? "Running…"
+                : result
+                  ? "Rerun Guarded Workflow"
+                  : "Run Guarded Workflow"}
+            </button>
+          </div>
         </form>
 
         {error ? <p className="guided-workflow-message guided-workflow-message--error">{error}</p> : null}
-        {success ? <p className="guided-workflow-message guided-workflow-message--success">{success}</p> : null}
 
-        {result ? (
+        {hasCompletedGuardedRun && result ? (
+          <div className="guided-guarded-completion-strip">
+            <strong>Workflow run completed</strong>
+            <span>{result.finalSummary.parsedItemCount} parsed</span>
+            <span>{result.finalSummary.knowledgeMatchCount} RAG matches</span>
+            <span>{result.reviewQueueItemsCreated.length} review items</span>
+            <span>{result.finalSummary.blockedMutationToolCallCount} blocked mutation(s)</span>
+          </div>
+        ) : success ? (
+          <p className="guided-workflow-message guided-workflow-message--success">{success}</p>
+        ) : null}
+
+        {hasCompletedGuardedRun && result ? (
           <div className="guided-guarded-run-result">
             <div>
-              <span className="model-route-card__eyebrow">Workflow evidence created</span>
-              <h4>Guarded run completed</h4>
+              <span className="model-route-card__eyebrow">Evidence created for Step 4</span>
+              <h4>Guarded workflow evidence is ready</h4>
               <p>
-                The workflow produced execution evidence for the next step: parsed items,
-                model routing, tool calls, review items, validation checks, and an audit
-                trail.
+                The guarded workflow produced the model, grounding, tool, validation, and
+                safety evidence used by Validation and Human Review.
               </p>
             </div>
 
@@ -158,10 +189,6 @@ export function GuidedGuardedAgentExecutionStep({
                 <span>blocked mutations</span>
               </article>
             </div>
-
-            <button className="guided-step-primary-action" onClick={onContinue} type="button">
-              Continue to Step 5
-            </button>
           </div>
         ) : null}
       </section>

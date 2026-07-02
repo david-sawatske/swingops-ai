@@ -16,12 +16,12 @@ export function FinalReadinessSummary({
 
   const detail =
     mergedRecordCount === 0
-      ? "Step 6 has a workflow result, but no Step 3 candidate records were available to merge into final output."
+      ? "Step 5 has a workflow result, but no Step 2 candidate records were available to merge into final output."
       : openReviewItemCount === 0
         ? finalRecordsStillNeedingReviewCount === 0
           ? "The merged final output is ready for RAG or downstream use."
           : `${finalRecordsStillNeedingReviewCount} merged record(s) are still flagged for review.`
-        : "Return to Step 5 to resolve the remaining review items before treating the run as complete.";
+        : "Return to Step 4 to resolve the remaining review items before treating the run as complete.";
 
   return (
     <section className="guided-final-section">

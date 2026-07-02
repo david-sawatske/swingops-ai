@@ -152,7 +152,7 @@ describe("finalRunReportUtils", () => {
     expect(mergedRecord.conditionGrade).toBe("8.0 Average");
     expect(mergedRecord.tradeInValue).toBe(145);
     expect(mergedRecord.valueLabel).toBe("$145");
-    expect(mergedRecord.transformationNotes).toContain("Step 5 resolved review item");
+    expect(mergedRecord.transformationNotes).toContain("Step 4 resolved review item");
   });
 
   it("keeps an open review item marked as needing review", () => {
@@ -203,7 +203,7 @@ describe("finalRunReportUtils", () => {
     expect(mergedRecord.reviewNeeded).toBe(false);
     expect(mergedRecord.finalReviewLabel).toBe("Clear");
     expect(mergedRecord.finalReviewDetail).toBe("Cleared with workflow evidence");
-    expect(mergedRecord.transformationNotes).toContain("Step 4 added valuation range $130–$160");
+    expect(mergedRecord.transformationNotes).toContain("Step 3 added valuation range $130–$160");
   });
 
   it("does not clear review when non-value fields are still missing", () => {

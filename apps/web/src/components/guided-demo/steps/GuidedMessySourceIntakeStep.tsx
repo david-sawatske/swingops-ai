@@ -22,7 +22,7 @@ export function GuidedMessySourceIntakeStep({
   return (
     <article className="guided-workflow-card">
       <section className="guided-step-orientation">
-        <span className="model-route-card__eyebrow">Step 2 · Messy Source Intake</span>
+        <span className="model-route-card__eyebrow">Step 1 · Messy Source Intake</span>
         <h3>What messy information is entering the workflow?</h3>
         <p>
           This step starts with the kind of operational text a store team might actually
@@ -43,7 +43,7 @@ export function GuidedMessySourceIntakeStep({
 
           <article>
             <strong>Output</strong>
-            <p>Structured records for Step 3, plus missing-field and review signals.</p>
+            <p>Structured records for Step 2, plus missing-field and review signals.</p>
           </article>
         </div>
 
@@ -63,7 +63,7 @@ export function GuidedMessySourceIntakeStep({
             <h4>Stage source text and run normalization</h4>
             <p>
               Add source content below, then run normalization. When the workflow
-              finishes, the guided demo moves to Step 3 so you can inspect the AI-ready
+              finishes, the guided demo moves to Step 2 so you can inspect the AI-ready
               records it created.
             </p>
           </div>

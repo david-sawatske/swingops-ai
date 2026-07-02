@@ -37,7 +37,6 @@ export function GuidedWorkflowStepper<TStep extends string>({
             onClick={() => onStepChange(step.id)}
             type="button"
           >
-            <span>{index + 1}</span>
             <div>
               <small>{step.eyebrow}</small>
               <strong>{step.label}</strong>

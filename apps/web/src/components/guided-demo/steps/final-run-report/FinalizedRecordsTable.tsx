@@ -19,8 +19,8 @@ export function FinalizedRecordsTable({
       <div className="guided-final-review-callout">
         <strong>No finalized records loaded for this run</strong>
         <p>
-          Step 6 did not receive any current-run records to merge. Start a new intake run
-          or rerun Step 4 after Step 3 records are available.
+          Step 5 did not receive any current-run records to merge. Start a new intake run
+          or rerun Step 3 after Step 2 records are available.
         </p>
       </div>
     );
@@ -99,7 +99,7 @@ export function FinalizedRecordsTable({
                     <th>Flex</th>
                     <th>Condition</th>
                     <th>Value / range</th>
-                    <th>Step 3 status</th>
+                    <th>Step 2 status</th>
                     <th>Final status</th>
                     <th>How finalized</th>
                   </tr>

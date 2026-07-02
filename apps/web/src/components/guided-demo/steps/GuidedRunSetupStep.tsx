@@ -4,9 +4,9 @@ type GuidedRunSetupStepProps = {
 
 export function GuidedRunSetupStep({ onContinue }: GuidedRunSetupStepProps) {
   return (
-    <article className="guided-workflow-card guided-workflow-card--hero">
+    <article className="guided-workflow-card guided-workflow-card--hero guided-workflow-card--overview">
       <section className="guided-step-orientation">
-        <span className="model-route-card__eyebrow">Step 1 · Run Setup</span>
+        <span className="model-route-card__eyebrow">Workflow overview</span>
         <h3>What operational job is this run supposed to complete?</h3>
         <p>
           A golf retail team receives trade-in details through messy customer messages,
@@ -17,10 +17,10 @@ export function GuidedRunSetupStep({ onContinue }: GuidedRunSetupStepProps) {
 
         <section className="guided-flow-overview">
           <div className="guided-flow-overview__header">
-            <h4>Run overview</h4>
+            <h4>What this workflow will do</h4>
             <p>
-              This is the path the guided demo will follow. Each phase adds one layer of
-              operational context before showing the technical evidence.
+              The overview is not a numbered step. It sets context before the five
+              human-actionable workflow steps begin.
             </p>
           </div>
 
@@ -28,13 +28,12 @@ export function GuidedRunSetupStep({ onContinue }: GuidedRunSetupStepProps) {
             <span>Messy inputs</span>
             <span>Structured records</span>
             <span>Guarded workflow</span>
-            <span>System evidence</span>
             <span>Review gate</span>
             <span>Run report</span>
           </div>
         </section>
 
-        <section className="guided-explainer-list" aria-label="Run setup explanation">
+        <section className="guided-explainer-list" aria-label="Workflow overview explanation">
           <article>
             <strong>Business trigger</strong>
             <p>
@@ -52,10 +51,10 @@ export function GuidedRunSetupStep({ onContinue }: GuidedRunSetupStepProps) {
           </article>
 
           <article>
-            <strong>Why it matters</strong>
+            <strong>Trust model</strong>
             <p>
-              The system should not silently guess. It should show what was extracted, what
-              systems were used, and what still needs review.
+              The workflow should not silently guess. It should show what was extracted,
+              what systems were used, and what still needs review.
             </p>
           </article>
         </section>
@@ -63,8 +62,7 @@ export function GuidedRunSetupStep({ onContinue }: GuidedRunSetupStepProps) {
         <details className="guided-workflow-details guided-workflow-details--compact">
           <summary>View the technical layers this run will demonstrate</summary>
           <p className="guided-workflow-details__intro">
-            These are the layers you will see as the guided demo progresses. They explain how
-            the workflow moves from messy source data to controlled, reviewable output.
+            These technical layers show how the workflow moves from messy source data to controlled, reviewable output: source normalization, system grounding, safe tool use, and review controls.
           </p>
 
           <div className="guided-explainer-list">
@@ -88,8 +86,8 @@ export function GuidedRunSetupStep({ onContinue }: GuidedRunSetupStepProps) {
               <strong>Control layer</strong>
               <p>
                 The workflow should not silently guess or write unsafe changes.
-                Low-confidence output is routed to review, and unsafe mutation requests are
-                blocked.
+                Low-confidence output is routed to review, and unsafe mutation requests
+                are blocked.
               </p>
             </article>
           </div>
@@ -99,11 +97,11 @@ export function GuidedRunSetupStep({ onContinue }: GuidedRunSetupStepProps) {
       <section className="guided-step-workspace">
         <div className="guided-step-workspace__header">
           <div>
-            <span className="model-route-card__eyebrow">Do the work</span>
-            <h4>Start the guided run</h4>
+            <span className="model-route-card__eyebrow">Start here</span>
+            <h4>Move into the first workflow action</h4>
             <p>
-              Move to source intake when you are ready to see the first live workflow
-              action.
+              Source intake is the first operational step. It is where you stage messy
+              source content and run normalization.
             </p>
           </div>
         </div>
@@ -116,8 +114,8 @@ export function GuidedRunSetupStep({ onContinue }: GuidedRunSetupStepProps) {
           </p>
         </section>
 
-        <button onClick={onContinue} type="button">
-          Continue to Step 2
+        <button className="guided-step-primary-action" onClick={onContinue} type="button">
+          Continue to Messy Source Intake
         </button>
       </section>
     </article>

@@ -53,38 +53,32 @@ export function FinalWorkflowRecap({
 
       <div className="guided-final-workflow-recap">
         <WorkflowRecapStep
-          body="Guarded trade-in run with review gates, read-only tools, and audit logging."
-          eyebrow="1 · Run Setup"
-          metric="Ready"
-          title="Configured"
-        />
-        <WorkflowRecapStep
           body="Messy trade-in notes were submitted and prepared for normalization."
-          eyebrow="2 · Messy Source Intake"
+          eyebrow="1 · Messy Source Intake"
           metric={String(finalSummary.parsedItemCount)}
           title="Records processed"
         />
         <WorkflowRecapStep
           body={`${candidateRecordCount} candidate AI-ready record(s) were persisted from intake.`}
-          eyebrow="3 · AI-Ready Record Creation"
+          eyebrow="2 · AI-Ready Record Creation"
           metric={String(candidateRecordCount)}
           title="Candidates created"
         />
         <WorkflowRecapStep
           body={`${finalSummary.knowledgeMatchCount} RAG match(es), ${finalSummary.inventoryMatchCount} inventory match(es), ${finalSummary.valuationRangeCount} valuation range(s), ${finalSummary.blockedMutationToolCallCount} blocked action(s).`}
-          eyebrow="4 · Guarded Agent Execution"
+          eyebrow="3 · Guarded Agent Execution"
           metric={`${finalSummary.successfulReadOnlyToolCallCount}`}
           title="Tool calls"
         />
         <WorkflowRecapStep
           body={`${createdReviewItemCount} review item(s) created. ${resolvedReviewItemCount} resolved and ${openReviewItemCount} open.`}
-          eyebrow="5 · Validation and Review"
+          eyebrow="4 · Validation and Human Review"
           metric={`${openReviewItemCount}`}
           title="Open review"
         />
         <WorkflowRecapStep
           body={`${mergedRecordCount} merged final record(s), ${reviewedRecordCount} reviewed write(s), ${learningEventCount} learning event(s).`}
-          eyebrow="6 · Final Run Report"
+          eyebrow="5 · Final Run Report"
           metric={String(ragReadyRecordCount)}
           title="Ready records"
         />

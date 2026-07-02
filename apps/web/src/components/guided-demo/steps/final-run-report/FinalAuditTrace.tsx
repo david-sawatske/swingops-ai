@@ -24,14 +24,14 @@ export function FinalAuditTrace({
   reviewStatusSummary: string;
 }) {
   return (
-    <details className="guided-final-section guided-run-validation-detail">
-      <summary>
+    <details className="guided-final-section guided-run-validation-detail guided-final-audit-trace">
+      <summary className="guided-final-audit-trace__summary">
         <div className="guided-final-section__header">
           <span className="model-route-card__eyebrow">Audit trace</span>
           <h4>Systems, safety, and identifiers</h4>
           <p>
             Technical trace data is kept for auditability, but it is secondary to
-            the six-step workflow recap above.
+            the five-step workflow recap above.
           </p>
         </div>
       </summary>
