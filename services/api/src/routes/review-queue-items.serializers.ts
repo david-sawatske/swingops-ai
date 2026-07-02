@@ -1,100 +1,16 @@
-export function serializeWorkflowRun(run: {
-  id: string;
-  intakeBatchId: string | null;
-  intakeItemId: string | null;
-  workflowName: string;
-  status: string;
-  startedAt: Date | null;
-  completedAt: Date | null;
-  errorMessage: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-}) {
-  return {
-    id: run.id,
-    intakeBatchId: run.intakeBatchId,
-    intakeItemId: run.intakeItemId,
-    workflowName: run.workflowName,
-    status: run.status,
-    startedAt: run.startedAt?.toISOString() ?? null,
-    completedAt: run.completedAt?.toISOString() ?? null,
-    errorMessage: run.errorMessage,
-    createdAt: run.createdAt.toISOString(),
-    updatedAt: run.updatedAt.toISOString()
-  };
-}
+import {
+  serializeWorkflowRun,
+  serializeIntakeBatch,
+  serializeIntakeItem,
+  serializeReviewQueueItem
+} from "../serializers/shared-workflow-serializers.js";
 
-export function serializeIntakeBatch(batch: {
-  id: string;
-  name: string;
-  description: string | null;
-  sourceType: string;
-  status: string;
-  itemCount: number;
-  createdAt: Date;
-  updatedAt: Date;
-}) {
-  return {
-    id: batch.id,
-    name: batch.name,
-    description: batch.description,
-    sourceType: batch.sourceType,
-    status: batch.status,
-    itemCount: batch.itemCount,
-    createdAt: batch.createdAt.toISOString(),
-    updatedAt: batch.updatedAt.toISOString()
-  };
-}
-
-export function serializeIntakeItem(item: {
-  id: string;
-  intakeBatchId: string;
-  rawText: string;
-  sourceRowNumber: number | null;
-  status: string;
-  createdAt: Date;
-  updatedAt: Date;
-}) {
-  return {
-    id: item.id,
-    intakeBatchId: item.intakeBatchId,
-    rawText: item.rawText,
-    sourceRowNumber: item.sourceRowNumber,
-    status: item.status,
-    createdAt: item.createdAt.toISOString(),
-    updatedAt: item.updatedAt.toISOString()
-  };
-}
-
-export function serializeReviewQueueItem(item: {
-  id: string;
-  intakeItemId: string | null;
-  golfClubId: string | null;
-  workflowRunId: string | null;
-  reason: string;
-  status: string;
-  originalText: string | null;
-  proposedGolfClubJson: unknown;
-  reviewerNotes: string | null;
-  resolvedAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-}) {
-  return {
-    id: item.id,
-    intakeItemId: item.intakeItemId,
-    golfClubId: item.golfClubId,
-    workflowRunId: item.workflowRunId,
-    reason: item.reason,
-    status: item.status,
-    originalText: item.originalText,
-    proposedGolfClubJson: item.proposedGolfClubJson,
-    reviewerNotes: item.reviewerNotes,
-    resolvedAt: item.resolvedAt?.toISOString() ?? null,
-    createdAt: item.createdAt.toISOString(),
-    updatedAt: item.updatedAt.toISOString()
-  };
-}
+export {
+  serializeWorkflowRun,
+  serializeIntakeBatch,
+  serializeIntakeItem,
+  serializeReviewQueueItem
+};
 
 export function serializeReviewedTradeInRecord(record: {
   id: string;
