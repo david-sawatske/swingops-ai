@@ -1,31 +1,18 @@
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  executeEndToEndAgenticTradeInDemo,
-  executeMultiSourceIntakeDemo,
-  listAiReadyIntakeRecords,
-  dismissReviewQueueItem,
   listWorkflowRuns,
   listReviewQueueItems,
-  resolveReviewQueueItem,
-  resolveReviewQueueItemWithCorrections,
 } from "./api/workflows";
 import type {
-  ExecuteEndToEndAgenticTradeInDemoResponse,
-  AiReadyIntakeRecord,
-  ExecuteMultiSourceIntakeDemoRequest,
-  ExecuteMultiSourceIntakeDemoResponse,
   GlobalReviewQueueItem,
-  ResolveReviewQueueItemWithCorrectionsRequest,
   GlobalWorkflowRunSummary,
-  ReviewQueueItem,
 } from "./types/workflow";
 import { type AppView } from "./constants/appNav";
-import { getReviewActionFallbackNote } from "./utils/reviewQueueDisplay";
 import { ReviewQueuePage } from "./components/review-queue/ReviewQueuePage";
-import {
-  GuidedDemoPathPage,
-  type GuidedStep,
-} from "./components/guided-demo/GuidedDemoPathPage";
+import { GuidedDemoPathPage } from "./components/guided-demo/GuidedDemoPathPage";
+import { type GuidedStep } from "./components/guided-demo/guidedWorkflowSteps";
+import { useGuidedWorkflowRun } from "./hooks/useGuidedWorkflowRun";
+import { useReviewQueueActions } from "./hooks/useReviewQueueActions";
 import { AppHeroNav } from "./components/layout/AppHeroNav";
 
 function App() {
@@ -48,46 +35,6 @@ function App() {
     string | null
   >(null);
 
-  const [activeReviewQueueItemId, setActiveReviewQueueItemId] = useState<
-    string | null
-  >(null);
-  const [reviewQueueNotesById, setReviewQueueNotesById] = useState<
-    Record<string, string>
-  >({});
-  const [reviewQueueActionError, setReviewQueueActionError] = useState<
-    string | null
-  >(null);
-  const [reviewQueueActionSuccess, setReviewQueueActionSuccess] = useState<
-    string | null
-  >(null);
-  const [endToEndAgenticDemoRawInput, setEndToEndAgenticDemoRawInput] = useState(
-    "",
-  );
-  const [endToEndAgenticDemoResult, setEndToEndAgenticDemoResult] =
-    useState<ExecuteEndToEndAgenticTradeInDemoResponse | null>(null);
-  const [isRunningEndToEndAgenticDemo, setIsRunningEndToEndAgenticDemo] =
-    useState(false);
-  const [endToEndAgenticDemoError, setEndToEndAgenticDemoError] = useState<
-    string | null
-  >(null);
-  const [endToEndAgenticDemoSuccess, setEndToEndAgenticDemoSuccess] = useState<
-    string | null
-  >(null);
-
-  const [multiSourceIntakeDemoResult, setMultiSourceIntakeDemoResult] =
-    useState<ExecuteMultiSourceIntakeDemoResponse | null>(null);
-  const [persistedAiReadyIntakeRecords, setPersistedAiReadyIntakeRecords] =
-    useState<AiReadyIntakeRecord[]>([]);
-  const [currentRunAiReadyIntakeRecords, setCurrentRunAiReadyIntakeRecords] =
-    useState<AiReadyIntakeRecord[]>([]);
-  const [isRunningMultiSourceIntakeDemo, setIsRunningMultiSourceIntakeDemo] =
-    useState(false);
-  const [multiSourceIntakeDemoError, setMultiSourceIntakeDemoError] = useState<
-    string | null
-  >(null);
-  const [multiSourceIntakeDemoSuccess, setMultiSourceIntakeDemoSuccess] =
-    useState<string | null>(null);
-
   const openReviewQueueItemCount = globalReviewQueueItems.filter(
     (item) => item.status === "OPEN" || item.status === "IN_REVIEW",
   ).length;
@@ -95,6 +42,43 @@ function App() {
     (count, run) => count + run.totalToolCallLogCount,
     0,
   );
+
+  const {
+    endToEndAgenticDemoRawInput,
+    setEndToEndAgenticDemoRawInput,
+    endToEndAgenticDemoResult,
+    isRunningEndToEndAgenticDemo,
+    endToEndAgenticDemoError,
+    endToEndAgenticDemoSuccess,
+    multiSourceIntakeDemoResult,
+    persistedAiReadyIntakeRecords,
+    currentRunAiReadyIntakeRecords,
+    isRunningMultiSourceIntakeDemo,
+    multiSourceIntakeDemoError,
+    multiSourceIntakeDemoSuccess,
+    handleExecuteEndToEndAgenticDemo,
+    handleRunMultiSourceIntakeDemo,
+    refreshCurrentRunAiReadyIntakeRecords,
+    resetGuidedRunState: resetGuidedWorkflowRunState,
+    upsertAiReadyIntakeRecord,
+  } = useGuidedWorkflowRun({
+    refreshWorkflowData,
+  });
+
+  const {
+    activeReviewQueueItemId,
+    reviewQueueNotesById,
+    reviewQueueActionError,
+    reviewQueueActionSuccess,
+    resetReviewQueueActionState,
+    handleReviewQueueNotesChange,
+    handleReviewQueueItemAction,
+    handleResolveReviewQueueItemWithCorrections,
+  } = useReviewQueueActions({
+    refreshWorkflowData,
+    refreshCurrentRunAiReadyIntakeRecords,
+    upsertAiReadyIntakeRecord,
+  });
 
   async function loadGlobalWorkflowRuns() {
     try {
@@ -134,345 +118,35 @@ function App() {
     }
   }
 
-  async function loadCurrentRunAiReadyIntakeRecords(
-    workflowRunId: string | null | undefined,
-  ) {
-    if (!workflowRunId) {
-      setCurrentRunAiReadyIntakeRecords([]);
-      return;
-    }
-
-    const response = await listAiReadyIntakeRecords({
-      workflowRunId,
-      limit: 100,
-    });
-
-    setCurrentRunAiReadyIntakeRecords(response.records);
+  async function refreshWorkflowData() {
+    await loadGlobalWorkflowRuns();
+    await loadGlobalReviewQueueItems();
   }
 
   function resetGuidedRunState() {
     setGuidedActiveStep("MESSY_SOURCE_INTAKE");
-    setMultiSourceIntakeDemoResult(null);
-    setPersistedAiReadyIntakeRecords([]);
-    setCurrentRunAiReadyIntakeRecords([]);
-    setEndToEndAgenticDemoResult(null);
-    setEndToEndAgenticDemoRawInput("");
-    setMultiSourceIntakeDemoError(null);
-    setMultiSourceIntakeDemoSuccess(null);
-    setEndToEndAgenticDemoError(null);
-    setEndToEndAgenticDemoSuccess(null);
-    setReviewQueueActionError(null);
-    setReviewQueueActionSuccess(null);
-    setActiveReviewQueueItemId(null);
-    setReviewQueueNotesById({});
+    resetGuidedWorkflowRunState();
+    resetReviewQueueActionState();
+  }
+
+  function handleRunGuidedSourceIntake(
+    request?: Parameters<typeof handleRunMultiSourceIntakeDemo>[0],
+  ) {
+    resetReviewQueueActionState();
+    void handleRunMultiSourceIntakeDemo(request);
+  }
+
+  function handleRunGuidedTradeInWorkflow(
+    event: Parameters<typeof handleExecuteEndToEndAgenticDemo>[0],
+  ) {
+    resetReviewQueueActionState();
+    void handleExecuteEndToEndAgenticDemo(event);
   }
 
   useEffect(() => {
     void loadGlobalWorkflowRuns();
     void loadGlobalReviewQueueItems();
   }, []);
-
-  function handleReviewQueueNotesChange(
-    reviewQueueItemId: string,
-    reviewerNotes: string,
-  ) {
-    setReviewQueueNotesById((current) => ({
-      ...current,
-      [reviewQueueItemId]: reviewerNotes,
-    }));
-  }
-
-  async function handleExecuteEndToEndAgenticDemo(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    try {
-      setIsRunningEndToEndAgenticDemo(true);
-      setEndToEndAgenticDemoResult(null);
-      setEndToEndAgenticDemoError(null);
-      setEndToEndAgenticDemoSuccess(null);
-      setCurrentRunAiReadyIntakeRecords([]);
-      setReviewQueueActionError(null);
-      setReviewQueueActionSuccess(null);
-      setActiveReviewQueueItemId(null);
-      setReviewQueueNotesById({});
-
-      const generatedTradeInRawInput =
-        multiSourceIntakeDemoResult?.cleanedDatasetPreview
-          .map((record, index) => {
-            const identity = [record.brand, record.productLine, record.category]
-              .filter(Boolean)
-              .join(" ");
-
-            const details = [
-              record.shaftFlex ? "shaft flex " + record.shaftFlex : null,
-              record.conditionGrade ? "condition " + record.conditionGrade : null,
-              record.tradeInValue === null ? null : "trade value $" + record.tradeInValue,
-              record.storeId ? "store " + record.storeId : null,
-              record.reviewNeeded ? "review needed" : "review clear",
-              record.missingFields.length > 0
-                ? "missing " + record.missingFields.join(", ")
-                : null,
-            ].filter(Boolean);
-
-            return (
-              String(index + 1) +
-              ". " +
-              (identity || "Unknown equipment") +
-              (details.length > 0 ? " — " + details.join("; ") : "")
-            );
-          })
-          .join("\n") ?? "";
-
-      const result = await executeEndToEndAgenticTradeInDemo({
-        rawInput: endToEndAgenticDemoRawInput.trim() || generatedTradeInRawInput,
-      });
-
-      setEndToEndAgenticDemoResult(result);
-      await loadCurrentRunAiReadyIntakeRecords(result.persisted.workflowRunId);
-      setEndToEndAgenticDemoSuccess(
-        "Demo created workflow " +
-          result.persisted.workflowRunId +
-          ": " +
-          result.finalSummary.parsedItemCount +
-          " parsed, " +
-          result.finalSummary.knowledgeMatchCount +
-          " RAG matches, " +
-          result.finalSummary.reviewQueueItemCount +
-          " review items, " +
-          result.finalSummary.blockedMutationToolCallCount +
-          " mutation blocked.",
-      );
-
-      await loadGlobalWorkflowRuns();
-      await loadGlobalReviewQueueItems();
-    } catch (error) {
-      setEndToEndAgenticDemoError(
-        error instanceof Error
-          ? error.message
-          : "Unable to run end-to-end agentic trade-in demo.",
-      );
-    } finally {
-      setIsRunningEndToEndAgenticDemo(false);
-    }
-  }
-
-  async function handleRunMultiSourceIntakeDemo(
-    request: ExecuteMultiSourceIntakeDemoRequest = {},
-  ) {
-    try {
-      setIsRunningMultiSourceIntakeDemo(true);
-      setMultiSourceIntakeDemoResult(null);
-      setPersistedAiReadyIntakeRecords([]);
-      setCurrentRunAiReadyIntakeRecords([]);
-      setEndToEndAgenticDemoResult(null);
-      setMultiSourceIntakeDemoError(null);
-      setMultiSourceIntakeDemoSuccess(null);
-      setEndToEndAgenticDemoError(null);
-      setEndToEndAgenticDemoSuccess(null);
-      setReviewQueueActionError(null);
-      setReviewQueueActionSuccess(null);
-      setActiveReviewQueueItemId(null);
-      setReviewQueueNotesById({});
-
-      const result = await executeMultiSourceIntakeDemo(request);
-      const persistedRecordsResponse = await listAiReadyIntakeRecords({
-        workflowRunId: result.persistedIds.workflowRunId,
-        limit: result.recordsExtracted,
-      });
-
-      setMultiSourceIntakeDemoResult(result);
-      setPersistedAiReadyIntakeRecords(persistedRecordsResponse.records);
-
-      const generatedTradeInRawInput = result.cleanedDatasetPreview
-        .map((record, index) => {
-          const identity = [record.brand, record.productLine, record.category]
-            .filter(Boolean)
-            .join(" ");
-
-          const details = [
-            record.shaftFlex ? "shaft flex " + record.shaftFlex : null,
-            record.conditionGrade ? "condition " + record.conditionGrade : null,
-            record.tradeInValue === null ? null : "trade value $" + record.tradeInValue,
-            record.storeId ? "store " + record.storeId : null,
-            record.reviewNeeded ? "review needed" : "review clear",
-            record.missingFields.length > 0
-              ? "missing " + record.missingFields.join(", ")
-              : null,
-          ].filter(Boolean);
-
-          return (
-            String(index + 1) +
-            ". " +
-            (identity || "Unknown equipment") +
-            (details.length > 0 ? " — " + details.join("; ") : "")
-          );
-        })
-        .join("\n");
-
-      setEndToEndAgenticDemoRawInput(generatedTradeInRawInput);
-      setEndToEndAgenticDemoResult(null);
-      setCurrentRunAiReadyIntakeRecords([]);
-      setEndToEndAgenticDemoSuccess(null);
-      setEndToEndAgenticDemoError(null);
-
-      setMultiSourceIntakeDemoSuccess(
-        "Persisted " +
-          persistedRecordsResponse.count +
-          " AI-ready records from " +
-          result.sourcesProcessed +
-          " source types into " +
-          result.recordsExtracted +
-          " normalized records, " +
-          result.assetsCreated +
-          " AI-ready asset summaries, and " +
-          result.reviewNeeded +
-          " review signals.",
-      );
-
-      await loadGlobalWorkflowRuns();
-      await loadGlobalReviewQueueItems();
-    } catch (error) {
-      setMultiSourceIntakeDemoResult(null);
-      setPersistedAiReadyIntakeRecords([]);
-      setCurrentRunAiReadyIntakeRecords([]);
-      setEndToEndAgenticDemoResult(null);
-      setMultiSourceIntakeDemoError(
-        error instanceof Error
-          ? error.message
-          : "Unable to run multi-source intake demo.",
-      );
-    } finally {
-      setIsRunningMultiSourceIntakeDemo(false);
-    }
-  }
-
-  async function handleReviewQueueItemAction(input: {
-    reviewQueueItemId: string;
-    action: "resolve" | "dismiss";
-    workflowRunId?: string | null;
-    intakeBatchId?: string | null;
-  }) {
-    const reviewerNotes =
-      reviewQueueNotesById[input.reviewQueueItemId]?.trim() ||
-      getReviewActionFallbackNote(input.action);
-
-    try {
-      setActiveReviewQueueItemId(input.reviewQueueItemId);
-      setReviewQueueActionError(null);
-      setReviewQueueActionSuccess(null);
-
-      if (input.action === "resolve") {
-        await resolveReviewQueueItem(input.reviewQueueItemId, {
-          reviewerNotes,
-        });
-      } else {
-        await dismissReviewQueueItem(input.reviewQueueItemId, {
-          reviewerNotes,
-        });
-      }
-
-      await loadGlobalWorkflowRuns();
-      await loadGlobalReviewQueueItems();
-
-      setReviewQueueNotesById((current) => {
-        const next = { ...current };
-        delete next[input.reviewQueueItemId];
-
-        return next;
-      });
-      setReviewQueueActionSuccess(
-        input.action === "resolve"
-          ? "Review queue item resolved."
-          : "Review queue item dismissed.",
-      );
-    } catch (error) {
-      setReviewQueueActionError(
-        error instanceof Error
-          ? error.message
-          : "Unable to update review queue item.",
-      );
-    } finally {
-      setActiveReviewQueueItemId(null);
-    }
-  }
-
-  async function handleResolveReviewQueueItemWithCorrections(input: {
-    reviewQueueItemId: string;
-    request: ResolveReviewQueueItemWithCorrectionsRequest;
-    workflowRunId?: string | null;
-    intakeBatchId?: string | null;
-  }) {
-    try {
-      setActiveReviewQueueItemId(input.reviewQueueItemId);
-      setReviewQueueActionError(null);
-      setReviewQueueActionSuccess(null);
-
-      const response = await resolveReviewQueueItemWithCorrections(
-        input.reviewQueueItemId,
-        input.request,
-      );
-
-      if (response.aiReadyIntakeRecord) {
-        setPersistedAiReadyIntakeRecords((current) => {
-          const exists = current.some(
-            (record) => record.id === response.aiReadyIntakeRecord?.id,
-          );
-
-          if (!exists) {
-            return [...current, response.aiReadyIntakeRecord!];
-          }
-
-          return current.map((record) =>
-            record.id === response.aiReadyIntakeRecord?.id
-              ? response.aiReadyIntakeRecord!
-              : record,
-          );
-        });
-
-        setCurrentRunAiReadyIntakeRecords((current) => {
-          const exists = current.some(
-            (record) => record.id === response.aiReadyIntakeRecord?.id,
-          );
-
-          if (!exists) {
-            return [...current, response.aiReadyIntakeRecord!];
-          }
-
-          return current.map((record) =>
-            record.id === response.aiReadyIntakeRecord?.id
-              ? response.aiReadyIntakeRecord!
-              : record,
-          );
-        });
-      }
-
-      await loadCurrentRunAiReadyIntakeRecords(
-        input.workflowRunId ?? response.reviewQueueItem.workflowRunId,
-      );
-
-      await loadGlobalWorkflowRuns();
-      await loadGlobalReviewQueueItems();
-
-
-      setReviewQueueNotesById((current) => {
-        const next = { ...current };
-        delete next[input.reviewQueueItemId];
-
-        return next;
-      });
-      setReviewQueueActionSuccess(
-        "Review queue item resolved with structured corrections.",
-      );
-    } catch (error) {
-      setReviewQueueActionError(
-        error instanceof Error
-          ? error.message
-          : "Unable to resolve review queue item with structured corrections.",
-      );
-    } finally {
-      setActiveReviewQueueItemId(null);
-    }
-  }
 
   return (
     <main className="app-shell">
@@ -504,8 +178,8 @@ function App() {
           openReviewQueueItemCount={openReviewQueueItemCount}
           toolCallLogCount={totalToolCallLogCount}
           onTradeInRawInputChange={setEndToEndAgenticDemoRawInput}
-          onRunSourceIntake={handleRunMultiSourceIntakeDemo}
-          onRunTradeInWorkflow={handleExecuteEndToEndAgenticDemo}
+          onRunSourceIntake={handleRunGuidedSourceIntake}
+          onRunTradeInWorkflow={handleRunGuidedTradeInWorkflow}
           onViewChange={setActiveView}
           reviewQueueActionSuccess={reviewQueueActionSuccess}
           reviewQueueActionError={reviewQueueActionError}

@@ -17,51 +17,12 @@ import { GuidedValidationReviewStep } from "./steps/GuidedValidationReviewStep";
 import { GuidedMessySourceIntakeStep } from "./steps/GuidedMessySourceIntakeStep";
 import { GuidedRunSetupStep } from "./steps/GuidedRunSetupStep";
 import { GuidedWorkflowStepper } from "./GuidedWorkflowStepper";
-
-export type GuidedStep =
-  | "MESSY_SOURCE_INTAKE"
-  | "AI_READY_RECORDS"
-  | "GUARDED_AGENT_EXECUTION"
-  | "VALIDATION_REVIEW"
-  | "FINAL_RUN_REPORT";
-
-const GUIDED_STEPS: {
-  id: GuidedStep;
-  label: string;
-  eyebrow: string;
-  description: string;
-}[] = [
-  {
-    id: "MESSY_SOURCE_INTAKE",
-    label: "Messy Source Intake",
-    eyebrow: "Step 1",
-    description: "Normalize messy operational source text into candidate records.",
-  },
-  {
-    id: "AI_READY_RECORDS",
-    label: "AI-Ready Record Creation",
-    eyebrow: "Step 2",
-    description: "Inspect the structured records created by intake.",
-  },
-  {
-    id: "GUARDED_AGENT_EXECUTION",
-    label: "Guarded Agent Execution",
-    eyebrow: "Step 3",
-    description: "Run a controlled workflow from the AI-ready records.",
-  },
-  {
-    id: "VALIDATION_REVIEW",
-    label: "Validation and Human Review",
-    eyebrow: "Step 4",
-    description: "Understand what the workflow trusted and what it escalated.",
-  },
-  {
-    id: "FINAL_RUN_REPORT",
-    label: "Final Run Report",
-    eyebrow: "Step 5",
-    description: "Summarize what happened in plain business language.",
-  },
-];
+import { formatGuidedWorkflowInputFromSourceResult } from "./formatGuidedWorkflowInput";
+import {
+  GUIDED_STEPS,
+  getGuidedStepIndex,
+  type GuidedStep,
+} from "./guidedWorkflowSteps";
 
 type GuidedDemoPathPageProps = {
   activeStep: GuidedStep;
@@ -104,37 +65,6 @@ type GuidedDemoPathPageProps = {
   }) => void;
   onResetGuidedRun: () => void;
 };
-
-function getStepIndex(step: GuidedStep) {
-  return GUIDED_STEPS.findIndex((item) => item.id === step);
-}
-
-function formatGeneratedWorkflowInput(
-  result: ExecuteMultiSourceIntakeDemoResponse,
-) {
-  return result.cleanedDatasetPreview
-    .map((record, index) => {
-      const identity = [record.brand, record.productLine, record.category]
-        .filter(Boolean)
-        .join(" ");
-
-      const details = [
-        record.shaftFlex ? "shaft flex " + record.shaftFlex : null,
-        record.conditionGrade ? "condition " + record.conditionGrade : null,
-        record.tradeInValue === null ? null : "trade value $" + record.tradeInValue,
-        record.storeId ? "store " + record.storeId : null,
-        record.reviewNeeded ? "review needed" : "review clear",
-      ].filter(Boolean);
-
-      return (
-        String(index + 1) +
-        ". " +
-        (identity || "Unknown equipment") +
-        (details.length > 0 ? " — " + details.join("; ") : "")
-      );
-    })
-    .join("\n");
-}
 
 export function GuidedDemoPathPage({
   activeStep,
@@ -179,7 +109,7 @@ export function GuidedDemoPathPage({
   void toolCallLogCount;
   void onReviewQueueItemAction;
 
-  const activeStepIndex = getStepIndex(activeStep);
+  const activeStepIndex = getGuidedStepIndex(activeStep);
   const currentStep = GUIDED_STEPS[activeStepIndex] ?? GUIDED_STEPS[0];
 
   const currentTradeInWorkflowRunId = tradeInResult?.persisted.workflowRunId ?? null;
@@ -203,7 +133,8 @@ export function GuidedDemoPathPage({
       return;
     }
 
-    const nextGeneratedInput = formatGeneratedWorkflowInput(sourceIntakeResult);
+    const nextGeneratedInput =
+      formatGuidedWorkflowInputFromSourceResult(sourceIntakeResult);
     setGeneratedWorkflowInput(nextGeneratedInput);
 
     if (!tradeInRawInput.trim()) {
@@ -262,8 +193,8 @@ export function GuidedDemoPathPage({
   }
 
   function isStepComplete(step: GuidedStep) {
-    const stepIndex = getStepIndex(step);
-    const currentStepIndex = getStepIndex(activeStep);
+    const stepIndex = getGuidedStepIndex(step);
+    const currentStepIndex = getGuidedStepIndex(activeStep);
 
     if (stepIndex >= currentStepIndex) {
       return false;
@@ -281,7 +212,7 @@ export function GuidedDemoPathPage({
       return "Done";
     }
 
-    if (index === getStepIndex(activeStep)) {
+    if (index === getGuidedStepIndex(activeStep)) {
       return "Current";
     }
 
