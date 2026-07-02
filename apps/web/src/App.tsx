@@ -65,7 +65,6 @@ import type {
 } from "./types/workflow";
 import { buildCreateIntakeBatchRequest } from "./utils/intakeForm";
 import { type AppView } from "./constants/appNav";
-import { type WorkflowRunStatusFilter } from "./constants/workflows";
 import {
   READ_ONLY_MCP_TOOL_OPTIONS,
   type ReadOnlyMcpToolName,
@@ -74,7 +73,6 @@ import { getReviewActionFallbackNote } from "./utils/reviewQueueDisplay";
 import { getReadOnlyMcpToolInput } from "./utils/readOnlyMcpToolInput";
 import { McpConnectorsPage } from "./components/mcp/McpConnectorsPage";
 import { ReviewQueuePage } from "./components/review-queue/ReviewQueuePage";
-import { WorkflowRunsPage } from "./components/workflows/WorkflowRunsPage";
 import {
   GuidedDemoPathPage,
   type GuidedStep,
@@ -98,9 +96,6 @@ function App() {
   const [globalWorkflowRunsError, setGlobalWorkflowRunsError] = useState<
     string | null
   >(null);
-  const [workflowRunStatusFilter, setWorkflowRunStatusFilter] =
-    useState<WorkflowRunStatusFilter>("ALL");
-
   const [globalReviewQueueItems, setGlobalReviewQueueItems] = useState<
     GlobalReviewQueueItem[]
   >([]);
@@ -289,13 +284,6 @@ function App() {
 
     return counts;
   }, {} as Record<WorkflowRunStatus, number>);
-
-  const filteredGlobalWorkflowRuns =
-    workflowRunStatusFilter === "ALL"
-      ? globalWorkflowRuns
-      : globalWorkflowRuns.filter(
-          (run) => run.status === workflowRunStatusFilter,
-        );
 
   const selectedWorkflowRunId =
     selectedWorkflowRunDetail?.workflowRun.id ?? null;
@@ -1337,45 +1325,6 @@ function App() {
           onResetGuidedRun={resetGuidedRunState}
           activeStep={guidedActiveStep}
           onActiveStepChange={setGuidedActiveStep}
-        />
-      ) : null}
-
-      {activeView === "WORKFLOW_RUNS" ? (
-        <WorkflowRunsPage
-          workflowRuns={globalWorkflowRuns}
-          filteredWorkflowRuns={filteredGlobalWorkflowRuns}
-          workflowRunStatusCounts={workflowRunStatusCounts}
-          statusFilter={workflowRunStatusFilter}
-          selectedWorkflowRunId={selectedWorkflowRunId}
-          selectedWorkflowRunDetail={selectedWorkflowRunDetail}
-          selectedBatchItems={selectedBatchDetail?.items}
-          isLoading={isLoadingGlobalWorkflowRuns}
-          error={globalWorkflowRunsError}
-          isLoadingWorkflowRunDetail={isLoadingWorkflowRunDetail}
-          workflowToolCallingPlanResult={workflowToolCallingPlanResult}
-          isExecutingWorkflowToolCallingPlan={isExecutingWorkflowToolCallingPlan}
-          workflowToolCallingPlanError={workflowToolCallingPlanError}
-          workflowToolCallingPlanSuccess={workflowToolCallingPlanSuccess}
-          isCreatingProviderFallbackDemo={isCreatingProviderFallbackDemo}
-          providerFallbackDemoError={providerFallbackDemoError}
-          providerFallbackDemoSuccess={providerFallbackDemoSuccess}
-          agenticTradeInRunResult={agenticTradeInRunResult}
-          isExecutingAgenticTradeInRun={isExecutingAgenticTradeInRun}
-          agenticTradeInRunError={agenticTradeInRunError}
-          agenticTradeInRunSuccess={agenticTradeInRunSuccess}
-          onStatusFilterChange={setWorkflowRunStatusFilter}
-          onSelectWorkflowRun={(workflowRunId) =>
-            void handleSelectWorkflowRun(workflowRunId)
-          }
-          onRunWorkflowToolCallingPlan={(workflowRunId) =>
-            void handleExecuteWorkflowToolCallingPlan(workflowRunId)
-          }
-          onCreateProviderFallbackDemo={(workflowRunId) =>
-            void handleCreateProviderFallbackDemo(workflowRunId)
-          }
-          onExecuteAgenticTradeInRun={(workflowRunId) =>
-            void handleExecuteAgenticTradeInRun(workflowRunId)
-          }
         />
       ) : null}
 

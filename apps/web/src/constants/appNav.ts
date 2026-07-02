@@ -1,6 +1,5 @@
 export type AppView =
   | "GUIDED_DEMO"
-  | "WORKFLOW_RUNS"
   | "REVIEW_QUEUE"
   | "MCP_CONNECTORS";
 
