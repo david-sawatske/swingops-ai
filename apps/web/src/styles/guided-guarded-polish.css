@@ -1,0 +1,352 @@
+/* Guided guarded execution post-run action hierarchy */
+.guided-guarded-action-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 0.85rem;
+}
+
+.guided-guarded-action-row .guided-step-primary-action {
+  order: 1;
+}
+
+.guided-guarded-rerun-action {
+  order: 2;
+  border: 1px solid rgba(42, 62, 41, 0.18) !important;
+  background: rgba(248, 250, 246, 0.85) !important;
+  color: #213522 !important;
+  box-shadow: none !important;
+}
+
+.guided-guarded-rerun-action:hover:not(:disabled) {
+  border-color: rgba(42, 62, 41, 0.32) !important;
+  background: rgba(236, 245, 232, 0.95) !important;
+}
+
+.guided-guarded-completion-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.7rem;
+  margin-top: 0.85rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(42, 62, 41, 0.12);
+  border-radius: 14px;
+  background: rgba(248, 250, 246, 0.82);
+  color: rgba(33, 53, 34, 0.72);
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.guided-guarded-completion-strip strong {
+  color: #213522;
+  font-weight: 900;
+}
+
+.guided-guarded-completion-strip span:not(:last-child)::after {
+  content: "·";
+  margin-left: 0.6rem;
+  color: rgba(33, 53, 34, 0.35);
+}
+
+.guided-guarded-run-result {
+  margin-top: 1rem;
+}
+
+@media (max-width: 720px) {
+  .guided-guarded-action-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .guided-guarded-action-row button {
+    width: 100%;
+  }
+
+  .guided-guarded-completion-strip {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .guided-guarded-completion-strip span:not(:last-child)::after {
+    content: "";
+    margin: 0;
+  }
+}
+
+/* Guided guarded execution button alignment + primary hover */
+.guided-guarded-action-row {
+  align-items: center !important;
+  gap: 0.75rem !important;
+}
+
+.guided-guarded-action-row button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 2.65rem !important;
+  padding: 0.7rem 1.15rem !important;
+  line-height: 1.1 !important;
+}
+
+.guided-guarded-action-row .guided-step-primary-action {
+  border: 1px solid #27452a !important;
+  background: #27452a !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(39, 69, 42, 0.16) !important;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease !important;
+}
+
+.guided-guarded-action-row .guided-step-primary-action:hover:not(:disabled) {
+  border-color: #18301d !important;
+  background: #18301d !important;
+  box-shadow: 0 11px 24px rgba(24, 48, 29, 0.22) !important;
+  transform: translateY(-1px) !important;
+}
+
+.guided-guarded-action-row .guided-step-primary-action:focus-visible {
+  outline: 3px solid rgba(39, 69, 42, 0.24) !important;
+  outline-offset: 3px !important;
+}
+
+.guided-guarded-rerun-action {
+  min-height: 2.65rem !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 720px) {
+  .guided-guarded-action-row button {
+    width: 100% !important;
+  }
+}
+
+/* Guided guarded execution explicit button polish */
+.guided-guarded-action-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.85rem !important;
+  margin-top: 1rem !important;
+}
+
+.guided-guarded-action-row .guided-guarded-continue-action,
+.guided-guarded-action-row .guided-guarded-rerun-action {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 2.75rem !important;
+  padding: 0.72rem 1.3rem !important;
+  border-radius: 999px !important;
+  font-size: 0.95rem !important;
+  font-weight: 900 !important;
+  line-height: 1.1 !important;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease,
+    color 160ms ease !important;
+}
+
+.guided-guarded-action-row .guided-guarded-continue-action {
+  border: 1px solid #27452a !important;
+  background-color: #27452a !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(39, 69, 42, 0.16) !important;
+}
+
+.guided-guarded-action-row .guided-guarded-continue-action:hover:not(:disabled) {
+  border-color: #132817 !important;
+  background-color: #132817 !important;
+  color: #ffffff !important;
+  box-shadow: 0 12px 26px rgba(19, 40, 23, 0.26) !important;
+  transform: translateY(-2px) !important;
+}
+
+.guided-guarded-action-row .guided-guarded-rerun-action {
+  border: 1px solid rgba(42, 62, 41, 0.18) !important;
+  background-color: rgba(255, 255, 255, 0.78) !important;
+  color: #213522 !important;
+  box-shadow: none !important;
+}
+
+.guided-guarded-action-row .guided-guarded-rerun-action:hover:not(:disabled) {
+  border-color: rgba(42, 62, 41, 0.34) !important;
+  background-color: rgba(236, 245, 232, 0.9) !important;
+  color: #102015 !important;
+  transform: none !important;
+}
+
+@media (max-width: 720px) {
+  .guided-guarded-action-row {
+    align-items: stretch !important;
+    flex-direction: column !important;
+  }
+
+  .guided-guarded-action-row .guided-guarded-continue-action,
+  .guided-guarded-action-row .guided-guarded-rerun-action {
+    width: 100% !important;
+  }
+}
+
+/* Guided guarded execution final button alignment */
+.guided-guarded-action-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.85rem !important;
+  margin-top: 1rem !important;
+}
+
+.guided-guarded-action-row .guided-guarded-continue-action,
+.guided-guarded-action-row .guided-guarded-rerun-action {
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 2.75rem !important;
+  height: 2.75rem !important;
+  padding: 0 1.3rem !important;
+  border-radius: 999px !important;
+  font-size: 0.95rem !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  transform: none !important;
+  vertical-align: middle !important;
+}
+
+.guided-guarded-action-row .guided-guarded-continue-action {
+  border: 1px solid #27452a !important;
+  background-color: #27452a !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.guided-guarded-action-row .guided-guarded-continue-action:hover:not(:disabled) {
+  border-color: #27452a !important;
+  background-color: #27452a !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.guided-guarded-action-row .guided-guarded-rerun-action {
+  border: 1px solid rgba(42, 62, 41, 0.22) !important;
+  background-color: rgba(255, 255, 255, 0.78) !important;
+  color: #213522 !important;
+  box-shadow: none !important;
+}
+
+.guided-guarded-action-row .guided-guarded-rerun-action:hover:not(:disabled) {
+  border-color: rgba(42, 62, 41, 0.32) !important;
+  background-color: rgba(248, 250, 246, 0.9) !important;
+  color: #213522 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+@media (max-width: 720px) {
+  .guided-guarded-action-row {
+    align-items: stretch !important;
+    flex-direction: column !important;
+  }
+
+  .guided-guarded-action-row .guided-guarded-continue-action,
+  .guided-guarded-action-row .guided-guarded-rerun-action {
+    width: 100% !important;
+  }
+}
+
+/* Guided guarded execution final action button alignment reset */
+.guided-guarded-run-form .guided-guarded-action-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.85rem !important;
+  margin: 1rem 0 0 !important;
+  padding: 0 !important;
+}
+
+.guided-guarded-run-form .guided-guarded-action-row button,
+.guided-guarded-run-form .guided-guarded-action-row .guided-guarded-continue-action,
+.guided-guarded-run-form .guided-guarded-action-row .guided-guarded-rerun-action {
+  appearance: none !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  align-self: center !important;
+  height: 2.75rem !important;
+  min-height: 2.75rem !important;
+  max-height: 2.75rem !important;
+  margin: 0 !important;
+  padding: 0 1.3rem !important;
+  border-radius: 999px !important;
+  font-size: 0.95rem !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  vertical-align: top !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.guided-guarded-run-form .guided-guarded-action-row .guided-guarded-continue-action {
+  border: 1px solid #27452a !important;
+  background: #27452a !important;
+  color: #ffffff !important;
+}
+
+.guided-guarded-run-form .guided-guarded-action-row .guided-guarded-continue-action:hover:not(:disabled) {
+  border-color: #27452a !important;
+  background: #27452a !important;
+  color: #ffffff !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.guided-guarded-run-form .guided-guarded-action-row .guided-guarded-rerun-action {
+  border: 1px solid rgba(42, 62, 41, 0.22) !important;
+  background: rgba(255, 255, 255, 0.78) !important;
+  color: #213522 !important;
+}
+
+.guided-guarded-run-form .guided-guarded-action-row .guided-guarded-rerun-action:hover:not(:disabled) {
+  border-color: rgba(42, 62, 41, 0.32) !important;
+  background: rgba(248, 250, 246, 0.9) !important;
+  color: #213522 !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 720px) {
+  .guided-guarded-run-form .guided-guarded-action-row {
+    align-items: stretch !important;
+    flex-direction: column !important;
+  }
+
+  .guided-guarded-run-form .guided-guarded-action-row button,
+  .guided-guarded-run-form .guided-guarded-action-row .guided-guarded-continue-action,
+  .guided-guarded-run-form .guided-guarded-action-row .guided-guarded-rerun-action {
+    width: 100% !important;
+  }
+}
+
+/* Guided workflow medium-width sticky stepper spacing */
+@media (max-width: 1100px) and (min-width: 821px) {
+  .guided-workflow-shell {
+    gap: 0.85rem !important;
+    padding-top: 0 !important;
+  }
+
+  .guided-workflow-stepper {
+    margin-top: 0 !important;
+    top: 0 !important;
+  }
+
+  .guided-workflow-panel {
+    margin-top: 0 !important;
+  }
+}
+

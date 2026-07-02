@@ -1,0 +1,803 @@
+/* Guided validation review active-first record grouping */
+.guided-record-review-group-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0.2rem 0 -0.25rem;
+  color: rgba(20, 33, 22, 0.7);
+}
+
+.guided-record-review-group-label span,
+.guided-record-review-group-label strong {
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.guided-passed-gates-records {
+  overflow: hidden;
+  border: 1px solid rgba(42, 62, 41, 0.12);
+  border-radius: 18px;
+  background: rgba(248, 250, 246, 0.72);
+}
+
+.guided-passed-gates-records > summary {
+  display: grid;
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  cursor: pointer;
+  list-style: none;
+  padding: 0.9rem 1rem;
+}
+
+.guided-passed-gates-records > summary::-webkit-details-marker {
+  display: none;
+}
+
+.guided-passed-gates-records > summary::before {
+  content: "▸";
+  grid-column: 1;
+  grid-row: 1;
+  width: 1rem;
+  color: rgba(20, 33, 22, 0.58);
+  transition: transform 0.16s ease;
+}
+
+.guided-passed-gates-records[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.guided-passed-gates-records > summary > div {
+  display: grid;
+  gap: 0.25rem;
+  grid-column: 1;
+  padding-left: 1.5rem;
+}
+
+.guided-passed-gates-records > summary > div strong {
+  color: #102015;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.guided-passed-gates-records > summary > span {
+  justify-self: end;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(227, 239, 222, 0.78);
+  color: rgba(33, 53, 34, 0.78);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.guided-record-review-list--passed-gates {
+  padding: 0 1rem 1rem;
+}
+
+.guided-record-review-list--passed-gates .guided-record-review-card {
+  background: rgba(255, 255, 255, 0.82);
+}
+
+@media (max-width: 640px) {
+  .guided-passed-gates-records > summary {
+    grid-template-columns: 1fr;
+  }
+
+  .guided-passed-gates-records > summary > span {
+    justify-self: start;
+    margin-left: 1.5rem;
+  }
+}
+
+/* Guided validation passed-gates dropdown final layout */
+.guided-passed-gates-records {
+  border-radius: 18px !important;
+  background: rgba(255, 255, 255, 0.78) !important;
+}
+
+.guided-passed-gates-records > summary {
+  display: grid !important;
+  grid-template-columns: 1rem minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  column-gap: 0.75rem !important;
+  min-height: 4.5rem !important;
+  padding: 0.95rem 1rem !important;
+}
+
+.guided-passed-gates-records > summary::before {
+  content: "▸" !important;
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  align-self: center !important;
+  justify-self: center !important;
+  width: auto !important;
+  margin: 0 !important;
+  color: rgba(20, 33, 22, 0.58) !important;
+  line-height: 1 !important;
+}
+
+.guided-passed-gates-records[open] > summary::before {
+  transform: rotate(90deg) !important;
+}
+
+.guided-passed-gates-records > summary > div {
+  grid-column: 2 !important;
+  display: grid !important;
+  gap: 0.3rem !important;
+  min-width: 0 !important;
+  padding-left: 0 !important;
+}
+
+.guided-passed-gates-records > summary > div .model-route-card__eyebrow {
+  margin: 0 !important;
+  color: rgba(20, 33, 22, 0.68) !important;
+  font-size: 0.76rem !important;
+  line-height: 1.1 !important;
+}
+
+.guided-passed-gates-records > summary > div strong {
+  color: #102015 !important;
+  font-size: 1.02rem !important;
+  font-weight: 900 !important;
+  line-height: 1.2 !important;
+}
+
+.guided-passed-gates-records > summary > span {
+  grid-column: 3 !important;
+  align-self: center !important;
+  justify-self: end !important;
+  margin: 0 !important;
+  white-space: nowrap !important;
+}
+
+.guided-record-review-list--passed-gates {
+  padding: 0 1rem 1rem !important;
+}
+
+@media (max-width: 640px) {
+  .guided-passed-gates-records > summary {
+    grid-template-columns: 1rem minmax(0, 1fr) !important;
+  }
+
+  .guided-passed-gates-records > summary > span {
+    grid-column: 2 !important;
+    justify-self: start !important;
+    margin-left: 0 !important;
+  }
+}
+
+/* Guided validation run-level audit compact view */
+.guided-run-validation-detail--audit summary {
+  align-items: center;
+}
+
+.guided-run-validation-detail--audit summary p {
+  max-width: 64rem;
+}
+
+.guided-run-validation-detail__body--audit {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.guided-run-audit-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.guided-run-audit-summary article {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(42, 62, 41, 0.1);
+  border-radius: 14px;
+  background: rgba(248, 250, 246, 0.78);
+}
+
+.guided-run-audit-summary strong {
+  color: #102015;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.guided-run-audit-summary span {
+  color: rgba(20, 33, 22, 0.68);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 640px) {
+  .guided-run-audit-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Guided workflow stepper should scroll naturally with the page */
+.guided-workflow-stepper {
+  position: static !important;
+  top: auto !important;
+  z-index: auto !important;
+}
+
+.guided-workflow-shell {
+  align-items: start !important;
+}
+
+@media (max-width: 1100px) {
+  .guided-workflow-stepper {
+    position: static !important;
+    top: auto !important;
+    margin-top: 0 !important;
+  }
+}
+
+/* Guided validation passed record simplified expanded view */
+.guided-passed-record-summary {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.guided-passed-record-summary__status {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(22, 101, 52, 0.14);
+  border-radius: 14px;
+  background: rgba(240, 253, 244, 0.72);
+}
+
+.guided-passed-record-summary__status strong {
+  color: #14532d;
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+.guided-passed-record-summary__status p {
+  margin: 0;
+  color: rgba(20, 33, 22, 0.68);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.guided-passed-record-evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.guided-passed-record-evidence-grid article {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.8rem;
+  border: 1px solid rgba(42, 62, 41, 0.1);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.guided-passed-record-evidence-grid__source {
+  grid-column: 1 / -1;
+}
+
+.guided-passed-record-evidence-grid strong {
+  color: #102015;
+  font-size: 0.88rem;
+  line-height: 1.2;
+}
+
+.guided-passed-record-evidence-grid p {
+  margin: 0;
+  color: rgba(20, 33, 22, 0.68);
+  font-size: 0.86rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .guided-passed-record-evidence-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Guided validation passed record simplified expanded view */
+.guided-passed-record-summary {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.guided-passed-record-summary__status {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(22, 101, 52, 0.14);
+  border-radius: 14px;
+  background: rgba(240, 253, 244, 0.72);
+}
+
+.guided-passed-record-summary__status strong {
+  color: #14532d;
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+.guided-passed-record-summary__status p {
+  margin: 0;
+  color: rgba(20, 33, 22, 0.68);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.guided-passed-record-evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.guided-passed-record-evidence-grid article {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.8rem;
+  border: 1px solid rgba(42, 62, 41, 0.1);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.guided-passed-record-evidence-grid__source {
+  grid-column: 1 / -1;
+}
+
+.guided-passed-record-evidence-grid strong {
+  color: #102015;
+  font-size: 0.88rem;
+  line-height: 1.2;
+}
+
+.guided-passed-record-evidence-grid p {
+  margin: 0;
+  color: rgba(20, 33, 22, 0.68);
+  font-size: 0.86rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .guided-passed-record-evidence-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Guided validation passed-gates section header alignment */
+.guided-passed-gates-records {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.guided-passed-gates-records > summary {
+  display: grid !important;
+  grid-template-columns: 1rem minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  column-gap: 0.75rem !important;
+  min-height: auto !important;
+  padding: 0.35rem 0 0.55rem !important;
+}
+
+.guided-passed-gates-records > summary::before {
+  grid-column: 1 !important;
+  align-self: center !important;
+  justify-self: start !important;
+  margin: 0 !important;
+}
+
+.guided-passed-gates-records > summary > div {
+  grid-column: 2 !important;
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 0.7rem !important;
+  padding-left: 0 !important;
+}
+
+.guided-passed-gates-records > summary > div .model-route-card__eyebrow {
+  margin: 0 !important;
+  color: rgba(20, 33, 22, 0.68) !important;
+  font-size: 0.78rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.08em !important;
+  line-height: 1.2 !important;
+}
+
+.guided-passed-gates-records > summary > div strong {
+  color: #102015 !important;
+  font-size: 0.95rem !important;
+  font-weight: 900 !important;
+  line-height: 1.2 !important;
+}
+
+.guided-passed-gates-records > summary > span {
+  grid-column: 3 !important;
+  align-self: center !important;
+  justify-self: end !important;
+  margin: 0 !important;
+}
+
+.guided-record-review-list--passed-gates {
+  padding: 0 !important;
+}
+
+.guided-record-review-list--passed-gates .guided-record-review-card {
+  margin-top: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .guided-passed-gates-records > summary {
+    grid-template-columns: 1rem minmax(0, 1fr) !important;
+  }
+
+  .guided-passed-gates-records > summary > div {
+    align-items: flex-start !important;
+    flex-direction: column !important;
+    gap: 0.25rem !important;
+  }
+
+  .guided-passed-gates-records > summary > span {
+    grid-column: 2 !important;
+    justify-self: start !important;
+  }
+}
+
+/* Guided validation passed-gates header plus dropdown */
+.guided-passed-gates-section {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.9rem;
+}
+
+.guided-passed-gates-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: rgba(20, 33, 22, 0.7);
+}
+
+.guided-passed-gates-section__header span {
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.guided-passed-gates-section .guided-passed-gates-records {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.guided-passed-gates-section .guided-passed-gates-records > summary {
+  display: grid !important;
+  grid-template-columns: 1rem minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  column-gap: 0.75rem !important;
+  min-height: auto !important;
+  padding: 0.85rem 1rem !important;
+  border: 1px solid rgba(42, 62, 41, 0.12) !important;
+  border-radius: 18px !important;
+  background: rgba(255, 255, 255, 0.78) !important;
+}
+
+.guided-passed-gates-section .guided-passed-gates-records > summary::before {
+  content: "▸" !important;
+  grid-column: 1 !important;
+  align-self: center !important;
+  justify-self: center !important;
+  margin: 0 !important;
+  color: rgba(20, 33, 22, 0.58) !important;
+  line-height: 1 !important;
+}
+
+.guided-passed-gates-section .guided-passed-gates-records[open] > summary::before {
+  transform: rotate(90deg) !important;
+}
+
+.guided-passed-gates-section .guided-passed-gates-records > summary > div {
+  grid-column: 2 !important;
+  display: block !important;
+  min-width: 0 !important;
+  padding-left: 0 !important;
+}
+
+.guided-passed-gates-section .guided-passed-gates-records > summary > div strong {
+  color: #102015 !important;
+  font-size: 1rem !important;
+  font-weight: 900 !important;
+  line-height: 1.2 !important;
+}
+
+.guided-passed-gates-section .guided-passed-gates-records > summary > span {
+  grid-column: 3 !important;
+  align-self: center !important;
+  justify-self: end !important;
+  margin: 0 !important;
+  white-space: nowrap !important;
+}
+
+.guided-passed-gates-section .guided-record-review-list--passed-gates {
+  padding: 0.75rem 0 0 !important;
+}
+
+@media (max-width: 640px) {
+  .guided-passed-gates-section .guided-passed-gates-records > summary {
+    grid-template-columns: 1rem minmax(0, 1fr) !important;
+  }
+
+  .guided-passed-gates-section .guided-passed-gates-records > summary > span {
+    grid-column: 2 !important;
+    justify-self: start !important;
+  }
+}
+
+/* Guided validation passed-gates simple dropdown row */
+.guided-passed-gates-section {
+  gap: 0.35rem !important;
+}
+
+.guided-passed-gates-section .guided-passed-gates-records > summary {
+  grid-template-columns: 1rem minmax(0, 1fr) !important;
+  column-gap: 0.55rem !important;
+  padding: 0.15rem 0 0.35rem 1.15rem !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.guided-passed-gates-section .guided-passed-gates-records > summary::before {
+  justify-self: center !important;
+}
+
+.guided-passed-gates-section .guided-passed-gates-records > summary > div {
+  grid-column: 2 !important;
+}
+
+.guided-passed-gates-section .guided-passed-gates-records > summary > div strong {
+  font-size: 1rem !important;
+}
+
+.guided-passed-gates-section .guided-passed-gates-records > summary > span {
+  display: none !important;
+}
+
+.guided-passed-gates-section .guided-record-review-list--passed-gates {
+  padding-top: 0.75rem !important;
+}
+
+@media (max-width: 640px) {
+  .guided-passed-gates-section .guided-passed-gates-records > summary {
+    grid-template-columns: 1rem minmax(0, 1fr) !important;
+    padding-left: 0.75rem !important;
+  }
+}
+
+/* Guided validation passed-gates no-indent dropdown row */
+.guided-passed-gates-section .guided-passed-gates-records > summary {
+  padding-left: 0 !important;
+  grid-template-columns: 1rem minmax(0, 1fr) !important;
+  column-gap: 0.55rem !important;
+}
+
+.guided-passed-gates-section .guided-passed-gates-records > summary::before {
+  justify-self: start !important;
+}
+
+@media (max-width: 640px) {
+  .guided-passed-gates-section .guided-passed-gates-records > summary {
+    padding-left: 0 !important;
+  }
+}
+
+/* Guided validation run-level audit as peer section */
+.guided-run-audit-section {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(42, 62, 41, 0.12);
+}
+
+.guided-run-audit-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: rgba(20, 33, 22, 0.7);
+}
+
+.guided-run-audit-section__header span {
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.guided-run-audit-dropdown {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.guided-run-audit-dropdown > summary {
+  display: grid;
+  grid-template-columns: 1rem minmax(0, 1fr);
+  align-items: start;
+  column-gap: 0.55rem;
+  cursor: pointer;
+  list-style: none;
+  padding: 0.15rem 0 0.35rem;
+}
+
+.guided-run-audit-dropdown > summary::-webkit-details-marker {
+  display: none;
+}
+
+.guided-run-audit-dropdown > summary::before {
+  content: "▸";
+  grid-column: 1;
+  align-self: start;
+  justify-self: start;
+  margin-top: 0.18rem;
+  color: rgba(20, 33, 22, 0.58);
+  line-height: 1;
+  transition: transform 0.16s ease;
+}
+
+.guided-run-audit-dropdown[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.guided-run-audit-dropdown > summary > div {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.guided-run-audit-dropdown > summary strong {
+  color: #102015;
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.guided-run-audit-dropdown > summary p {
+  max-width: 62rem;
+  margin: 0;
+  color: rgba(20, 33, 22, 0.68);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.guided-run-audit-dropdown .guided-run-validation-detail__body--audit {
+  padding: 0.75rem 0 0;
+}
+
+.guided-run-audit-dropdown .guided-run-audit-summary {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.guided-run-audit-dropdown .guided-run-audit-summary article {
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .guided-run-audit-dropdown .guided-run-audit-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Guided validation run-level audit signal list */
+.guided-run-audit-signal-list {
+  display: grid;
+  gap: 0.55rem;
+  padding-top: 0.35rem;
+}
+
+.guided-run-audit-signal-list h5 {
+  margin: 0;
+  color: rgba(20, 33, 22, 0.72);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.guided-run-audit-signal-list__items {
+  margin: 0;
+}
+
+.guided-run-audit-signal-list__items li {
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.guided-run-audit-signal-list__items small {
+  color: rgba(20, 33, 22, 0.58);
+}
+
+/* Guided validation handoff primary/secondary actions */
+.guided-review-action-row {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 0.85rem !important;
+}
+
+.guided-review-action-row .guided-step-primary-action,
+.guided-review-action-row .guided-review-secondary-action {
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 2.75rem !important;
+  height: 2.75rem !important;
+  padding: 0 1.3rem !important;
+  border-radius: 999px !important;
+  font-size: 0.95rem !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.guided-review-action-row .guided-step-primary-action {
+  border: 1px solid #27452a !important;
+  background: #27452a !important;
+  color: #ffffff !important;
+}
+
+.guided-review-action-row .guided-step-primary-action:hover:not(:disabled) {
+  border-color: #27452a !important;
+  background: #27452a !important;
+  color: #ffffff !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.guided-review-action-row .guided-review-secondary-action {
+  border: 1px solid rgba(42, 62, 41, 0.22) !important;
+  background: rgba(255, 255, 255, 0.78) !important;
+  color: #213522 !important;
+}
+
+.guided-review-action-row .guided-review-secondary-action:hover:not(:disabled) {
+  border-color: rgba(42, 62, 41, 0.32) !important;
+  background: rgba(248, 250, 246, 0.9) !important;
+  color: #213522 !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 720px) {
+  .guided-review-action-row {
+    align-items: stretch !important;
+    flex-direction: column !important;
+  }
+
+  .guided-review-action-row .guided-step-primary-action,
+  .guided-review-action-row .guided-review-secondary-action {
+    width: 100% !important;
+  }
+}
+
