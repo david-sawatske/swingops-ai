@@ -1,3 +1,4 @@
+import { formatEnumLabel } from "../../../utils/formatting";
 import { useState } from "react";
 
 import type {
@@ -11,19 +12,8 @@ type GuidedAiReadyRecordsStepProps = {
   result: ExecuteMultiSourceIntakeDemoResponse | null;
 };
 
-function formatLabel(value: string | null | undefined) {
-  if (!value) {
-    return "—";
-  }
-
-  return value
-    .replace(/_/g, " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
 function formatSourceType(sourceType: string) {
-  return formatLabel(sourceType);
+  return formatEnumLabel(sourceType);
 }
 
 function formatTradeInValue(value: number | null) {
@@ -174,8 +164,8 @@ export function GuidedAiReadyRecordsStep({
                         <td title={record.productLine ?? undefined}>
                           {record.productLine ?? "—"}
                         </td>
-                        <td>{formatLabel(record.category)}</td>
-                        <td>{formatLabel(record.shaftFlex)}</td>
+                        <td>{formatEnumLabel(record.category)}</td>
+                        <td>{formatEnumLabel(record.shaftFlex)}</td>
                         <td>{record.conditionGrade ?? "—"}</td>
                         <td>{record.reviewNeeded ? "Needed" : "Clear"}</td>
                       </tr>
@@ -245,8 +235,8 @@ export function GuidedAiReadyRecordsStep({
                             <td>{formatSourceType(record.sourceType)}</td>
                             <td>{record.brand ?? "—"}</td>
                             <td>{record.productLine ?? "—"}</td>
-                            <td>{formatLabel(record.category)}</td>
-                            <td>{formatLabel(record.shaftFlex)}</td>
+                            <td>{formatEnumLabel(record.category)}</td>
+                            <td>{formatEnumLabel(record.shaftFlex)}</td>
                             <td>{record.conditionGrade ?? "—"}</td>
                             <td>{formatTradeInValue(record.tradeInValue)}</td>
                             <td>{record.storeId ?? "—"}</td>

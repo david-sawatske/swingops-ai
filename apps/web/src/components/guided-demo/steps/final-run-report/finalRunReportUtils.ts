@@ -1,3 +1,4 @@
+import { formatEnumLabel } from "../../../../utils/formatting";
 import type {
   AiReadyIntakeRecord,
   ExecuteEndToEndAgenticTradeInDemoResponse,
@@ -91,40 +92,6 @@ function normalizeComparable(value: unknown) {
   return String(value ?? "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "");
-}
-
-export function formatEnumLabel(value: string | null | undefined) {
-  if (!value) {
-    return "—";
-  }
-
-  const normalized = value.toUpperCase().replace(/[\s-]+/g, "_");
-
-  const labels: Record<string, string> = {
-    DRIVER: "Driver",
-    FAIRWAY_WOOD: "Fairway Wood",
-    HYBRID: "Hybrid",
-    IRON_SET: "Iron Set",
-    WEDGE: "Wedge",
-    PUTTER: "Putter",
-    LADIES: "Ladies",
-    SENIOR: "Senior",
-    REGULAR: "Regular",
-    STIFF: "Stiff",
-    X_STIFF: "X-Stiff",
-    TOUR_X_STIFF: "Tour X-Stiff",
-    READY_FOR_REVIEW: "Ready for review",
-    READY_FOR_RAG: "Ready for RAG",
-    NEEDS_REVIEW: "Needs review",
-  };
-
-  return (
-    labels[normalized] ??
-    value
-      .replace(/_/g, " ")
-      .toLowerCase()
-      .replace(/\b\w/g, (letter) => letter.toUpperCase())
-  );
 }
 
 function formatFieldLabel(value: string) {

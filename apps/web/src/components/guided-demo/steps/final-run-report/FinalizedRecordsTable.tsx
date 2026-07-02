@@ -1,10 +1,8 @@
+import { formatEnumLabel } from "../../../../utils/formatting";
 import { useState } from "react";
 
 import type { MergedRecordSummary } from "./finalRunReportTypes";
-import {
-  formatEnumLabel,
-  getFinalizedBySummary,
-} from "./finalRunReportUtils";
+import { getFinalizedBySummary } from "./finalRunReportUtils";
 
 export function FinalizedRecordsTable({
   records,

@@ -1,3 +1,4 @@
+import { formatEnumLabel } from "../../../utils/formatting";
 import { useState } from "react";
 import type {
   ExecuteEndToEndAgenticTradeInDemoResponse,
@@ -135,30 +136,6 @@ function formatFieldLabel(value: string) {
     .replace(/\s+/g, " ")
     .trim()
     .replace(/^./, (first) => first.toUpperCase());
-}
-
-function formatEnumLabel(value: string) {
-  const normalized = value.toUpperCase().replace(/[\s-]+/g, "_");
-
-  const flexLabels: Record<string, string> = {
-    LADIES: "Ladies",
-    SENIOR: "Senior",
-    REGULAR: "Regular",
-    STIFF: "Stiff",
-    X_STIFF: "X-Stiff",
-    TOUR_X_STIFF: "Tour X-Stiff",
-  };
-
-  const categoryLabels: Record<string, string> = {
-    DRIVER: "Driver",
-    FAIRWAY_WOOD: "Fairway Wood",
-    HYBRID: "Hybrid",
-    IRON_SET: "Iron Set",
-    WEDGE: "Wedge",
-    PUTTER: "Putter",
-  };
-
-  return flexLabels[normalized] ?? categoryLabels[normalized] ?? value;
 }
 
 function normalizeCategoryValue(value: unknown): ReviewCorrectionCategory | "" {
