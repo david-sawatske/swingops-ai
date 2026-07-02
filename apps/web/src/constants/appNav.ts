@@ -1,12 +1,6 @@
 export type AppView =
   | "GUIDED_DEMO"
-  | "OVERVIEW"
-  | "AGENTIC_DEMO"
-  | "INTAKE"
-  | "WORKFLOW_RUNS"
-  | "REVIEW_QUEUE"
-  | "MODEL_ROUTING"
-  | "MCP_CONNECTORS";
+  | "REVIEW_QUEUE";
 
 export type AppNavItem = {
   view: AppView;
