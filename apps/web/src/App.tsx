@@ -83,7 +83,6 @@ import { ModelRoutingPage } from "./components/model-routing/ModelRoutingPage";
 import { ReviewQueuePage } from "./components/review-queue/ReviewQueuePage";
 import { WorkflowRunsPage } from "./components/workflows/WorkflowRunsPage";
 import { IntakePage } from "./components/intake/IntakePage";
-import { AgenticTradeInDemoPage } from "./components/agentic-demo/AgenticTradeInDemoPage";
 import {
   GuidedDemoPathPage,
   type GuidedStep,
@@ -1387,18 +1386,6 @@ function App() {
           onResetGuidedRun={resetGuidedRunState}
           activeStep={guidedActiveStep}
           onActiveStepChange={setGuidedActiveStep}
-        />
-      ) : null}
-
-      {activeView === "AGENTIC_DEMO" ? (
-        <AgenticTradeInDemoPage
-          error={endToEndAgenticDemoError}
-          isRunning={isRunningEndToEndAgenticDemo}
-          onRawInputChange={setEndToEndAgenticDemoRawInput}
-          onSubmit={handleExecuteEndToEndAgenticDemo}
-          rawInput={endToEndAgenticDemoRawInput}
-          result={endToEndAgenticDemoResult}
-          success={endToEndAgenticDemoSuccess}
         />
       ) : null}
 
