@@ -1,8 +1,5 @@
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  executeEndToEndAgenticTradeInDemo,
-  executeMultiSourceIntakeDemo,
-  listAiReadyIntakeRecords,
   dismissReviewQueueItem,
   listWorkflowRuns,
   listReviewQueueItems,
@@ -10,21 +7,16 @@ import {
   resolveReviewQueueItemWithCorrections,
 } from "./api/workflows";
 import type {
-  ExecuteEndToEndAgenticTradeInDemoResponse,
-  AiReadyIntakeRecord,
-  ExecuteMultiSourceIntakeDemoRequest,
-  ExecuteMultiSourceIntakeDemoResponse,
   GlobalReviewQueueItem,
   ResolveReviewQueueItemWithCorrectionsRequest,
   GlobalWorkflowRunSummary,
-  ReviewQueueItem,
 } from "./types/workflow";
 import { type AppView } from "./constants/appNav";
 import { getReviewActionFallbackNote } from "./utils/reviewQueueDisplay";
 import { ReviewQueuePage } from "./components/review-queue/ReviewQueuePage";
 import { GuidedDemoPathPage } from "./components/guided-demo/GuidedDemoPathPage";
 import { type GuidedStep } from "./components/guided-demo/guidedWorkflowSteps";
-import { formatGuidedWorkflowInputFromSourceResult } from "./components/guided-demo/formatGuidedWorkflowInput";
+import { useGuidedWorkflowRun } from "./hooks/useGuidedWorkflowRun";
 import { AppHeroNav } from "./components/layout/AppHeroNav";
 
 function App() {
@@ -59,34 +51,6 @@ function App() {
   const [reviewQueueActionSuccess, setReviewQueueActionSuccess] = useState<
     string | null
   >(null);
-  const [endToEndAgenticDemoRawInput, setEndToEndAgenticDemoRawInput] = useState(
-    "",
-  );
-  const [endToEndAgenticDemoResult, setEndToEndAgenticDemoResult] =
-    useState<ExecuteEndToEndAgenticTradeInDemoResponse | null>(null);
-  const [isRunningEndToEndAgenticDemo, setIsRunningEndToEndAgenticDemo] =
-    useState(false);
-  const [endToEndAgenticDemoError, setEndToEndAgenticDemoError] = useState<
-    string | null
-  >(null);
-  const [endToEndAgenticDemoSuccess, setEndToEndAgenticDemoSuccess] = useState<
-    string | null
-  >(null);
-
-  const [multiSourceIntakeDemoResult, setMultiSourceIntakeDemoResult] =
-    useState<ExecuteMultiSourceIntakeDemoResponse | null>(null);
-  const [persistedAiReadyIntakeRecords, setPersistedAiReadyIntakeRecords] =
-    useState<AiReadyIntakeRecord[]>([]);
-  const [currentRunAiReadyIntakeRecords, setCurrentRunAiReadyIntakeRecords] =
-    useState<AiReadyIntakeRecord[]>([]);
-  const [isRunningMultiSourceIntakeDemo, setIsRunningMultiSourceIntakeDemo] =
-    useState(false);
-  const [multiSourceIntakeDemoError, setMultiSourceIntakeDemoError] = useState<
-    string | null
-  >(null);
-  const [multiSourceIntakeDemoSuccess, setMultiSourceIntakeDemoSuccess] =
-    useState<string | null>(null);
-
   const openReviewQueueItemCount = globalReviewQueueItems.filter(
     (item) => item.status === "OPEN" || item.status === "IN_REVIEW",
   ).length;
@@ -94,6 +58,29 @@ function App() {
     (count, run) => count + run.totalToolCallLogCount,
     0,
   );
+
+  const {
+    endToEndAgenticDemoRawInput,
+    setEndToEndAgenticDemoRawInput,
+    endToEndAgenticDemoResult,
+    isRunningEndToEndAgenticDemo,
+    endToEndAgenticDemoError,
+    endToEndAgenticDemoSuccess,
+    multiSourceIntakeDemoResult,
+    persistedAiReadyIntakeRecords,
+    currentRunAiReadyIntakeRecords,
+    isRunningMultiSourceIntakeDemo,
+    multiSourceIntakeDemoError,
+    multiSourceIntakeDemoSuccess,
+    handleExecuteEndToEndAgenticDemo,
+    handleRunMultiSourceIntakeDemo,
+    refreshCurrentRunAiReadyIntakeRecords,
+    resetGuidedRunState: resetGuidedWorkflowRunState,
+    upsertAiReadyIntakeRecord,
+  } = useGuidedWorkflowRun({
+    refreshWorkflowData,
+    resetReviewQueueActionState,
+  });
 
   async function loadGlobalWorkflowRuns() {
     try {
@@ -133,37 +120,21 @@ function App() {
     }
   }
 
-  async function loadCurrentRunAiReadyIntakeRecords(
-    workflowRunId: string | null | undefined,
-  ) {
-    if (!workflowRunId) {
-      setCurrentRunAiReadyIntakeRecords([]);
-      return;
-    }
-
-    const response = await listAiReadyIntakeRecords({
-      workflowRunId,
-      limit: 100,
-    });
-
-    setCurrentRunAiReadyIntakeRecords(response.records);
-  }
-
-  function resetGuidedRunState() {
-    setGuidedActiveStep("MESSY_SOURCE_INTAKE");
-    setMultiSourceIntakeDemoResult(null);
-    setPersistedAiReadyIntakeRecords([]);
-    setCurrentRunAiReadyIntakeRecords([]);
-    setEndToEndAgenticDemoResult(null);
-    setEndToEndAgenticDemoRawInput("");
-    setMultiSourceIntakeDemoError(null);
-    setMultiSourceIntakeDemoSuccess(null);
-    setEndToEndAgenticDemoError(null);
-    setEndToEndAgenticDemoSuccess(null);
+  function resetReviewQueueActionState() {
     setReviewQueueActionError(null);
     setReviewQueueActionSuccess(null);
     setActiveReviewQueueItemId(null);
     setReviewQueueNotesById({});
+  }
+
+  async function refreshWorkflowData() {
+    await loadGlobalWorkflowRuns();
+    await loadGlobalReviewQueueItems();
+  }
+
+  function resetGuidedRunState() {
+    setGuidedActiveStep("MESSY_SOURCE_INTAKE");
+    resetGuidedWorkflowRunState();
   }
 
   useEffect(() => {
@@ -179,130 +150,6 @@ function App() {
       ...current,
       [reviewQueueItemId]: reviewerNotes,
     }));
-  }
-
-  async function handleExecuteEndToEndAgenticDemo(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    try {
-      setIsRunningEndToEndAgenticDemo(true);
-      setEndToEndAgenticDemoResult(null);
-      setEndToEndAgenticDemoError(null);
-      setEndToEndAgenticDemoSuccess(null);
-      setCurrentRunAiReadyIntakeRecords([]);
-      setReviewQueueActionError(null);
-      setReviewQueueActionSuccess(null);
-      setActiveReviewQueueItemId(null);
-      setReviewQueueNotesById({});
-
-      const generatedTradeInRawInput = multiSourceIntakeDemoResult
-        ? formatGuidedWorkflowInputFromSourceResult(multiSourceIntakeDemoResult, {
-            includeMissingFields: true,
-          })
-        : "";
-
-      const result = await executeEndToEndAgenticTradeInDemo({
-        rawInput: endToEndAgenticDemoRawInput.trim() || generatedTradeInRawInput,
-      });
-
-      setEndToEndAgenticDemoResult(result);
-      await loadCurrentRunAiReadyIntakeRecords(result.persisted.workflowRunId);
-      setEndToEndAgenticDemoSuccess(
-        "Demo created workflow " +
-          result.persisted.workflowRunId +
-          ": " +
-          result.finalSummary.parsedItemCount +
-          " parsed, " +
-          result.finalSummary.knowledgeMatchCount +
-          " RAG matches, " +
-          result.finalSummary.reviewQueueItemCount +
-          " review items, " +
-          result.finalSummary.blockedMutationToolCallCount +
-          " mutation blocked.",
-      );
-
-      await loadGlobalWorkflowRuns();
-      await loadGlobalReviewQueueItems();
-    } catch (error) {
-      setEndToEndAgenticDemoError(
-        error instanceof Error
-          ? error.message
-          : "Unable to run end-to-end agentic trade-in demo.",
-      );
-    } finally {
-      setIsRunningEndToEndAgenticDemo(false);
-    }
-  }
-
-  async function handleRunMultiSourceIntakeDemo(
-    request: ExecuteMultiSourceIntakeDemoRequest = {},
-  ) {
-    try {
-      setIsRunningMultiSourceIntakeDemo(true);
-      setMultiSourceIntakeDemoResult(null);
-      setPersistedAiReadyIntakeRecords([]);
-      setCurrentRunAiReadyIntakeRecords([]);
-      setEndToEndAgenticDemoResult(null);
-      setMultiSourceIntakeDemoError(null);
-      setMultiSourceIntakeDemoSuccess(null);
-      setEndToEndAgenticDemoError(null);
-      setEndToEndAgenticDemoSuccess(null);
-      setReviewQueueActionError(null);
-      setReviewQueueActionSuccess(null);
-      setActiveReviewQueueItemId(null);
-      setReviewQueueNotesById({});
-
-      const result = await executeMultiSourceIntakeDemo(request);
-      const persistedRecordsResponse = await listAiReadyIntakeRecords({
-        workflowRunId: result.persistedIds.workflowRunId,
-        limit: result.recordsExtracted,
-      });
-
-      setMultiSourceIntakeDemoResult(result);
-      setPersistedAiReadyIntakeRecords(persistedRecordsResponse.records);
-
-      const generatedTradeInRawInput = formatGuidedWorkflowInputFromSourceResult(
-        result,
-        {
-          includeMissingFields: true,
-        },
-      );
-
-      setEndToEndAgenticDemoRawInput(generatedTradeInRawInput);
-      setEndToEndAgenticDemoResult(null);
-      setCurrentRunAiReadyIntakeRecords([]);
-      setEndToEndAgenticDemoSuccess(null);
-      setEndToEndAgenticDemoError(null);
-
-      setMultiSourceIntakeDemoSuccess(
-        "Persisted " +
-          persistedRecordsResponse.count +
-          " AI-ready records from " +
-          result.sourcesProcessed +
-          " source types into " +
-          result.recordsExtracted +
-          " normalized records, " +
-          result.assetsCreated +
-          " AI-ready asset summaries, and " +
-          result.reviewNeeded +
-          " review signals.",
-      );
-
-      await loadGlobalWorkflowRuns();
-      await loadGlobalReviewQueueItems();
-    } catch (error) {
-      setMultiSourceIntakeDemoResult(null);
-      setPersistedAiReadyIntakeRecords([]);
-      setCurrentRunAiReadyIntakeRecords([]);
-      setEndToEndAgenticDemoResult(null);
-      setMultiSourceIntakeDemoError(
-        error instanceof Error
-          ? error.message
-          : "Unable to run multi-source intake demo.",
-      );
-    } finally {
-      setIsRunningMultiSourceIntakeDemo(false);
-    }
   }
 
   async function handleReviewQueueItemAction(input: {
@@ -330,8 +177,7 @@ function App() {
         });
       }
 
-      await loadGlobalWorkflowRuns();
-      await loadGlobalReviewQueueItems();
+      await refreshWorkflowData();
 
       setReviewQueueNotesById((current) => {
         const next = { ...current };
@@ -372,45 +218,14 @@ function App() {
       );
 
       if (response.aiReadyIntakeRecord) {
-        setPersistedAiReadyIntakeRecords((current) => {
-          const exists = current.some(
-            (record) => record.id === response.aiReadyIntakeRecord?.id,
-          );
-
-          if (!exists) {
-            return [...current, response.aiReadyIntakeRecord!];
-          }
-
-          return current.map((record) =>
-            record.id === response.aiReadyIntakeRecord?.id
-              ? response.aiReadyIntakeRecord!
-              : record,
-          );
-        });
-
-        setCurrentRunAiReadyIntakeRecords((current) => {
-          const exists = current.some(
-            (record) => record.id === response.aiReadyIntakeRecord?.id,
-          );
-
-          if (!exists) {
-            return [...current, response.aiReadyIntakeRecord!];
-          }
-
-          return current.map((record) =>
-            record.id === response.aiReadyIntakeRecord?.id
-              ? response.aiReadyIntakeRecord!
-              : record,
-          );
-        });
+        upsertAiReadyIntakeRecord(response.aiReadyIntakeRecord);
       }
 
-      await loadCurrentRunAiReadyIntakeRecords(
+      await refreshCurrentRunAiReadyIntakeRecords(
         input.workflowRunId ?? response.reviewQueueItem.workflowRunId,
       );
 
-      await loadGlobalWorkflowRuns();
-      await loadGlobalReviewQueueItems();
+      await refreshWorkflowData();
 
 
       setReviewQueueNotesById((current) => {
