@@ -82,7 +82,6 @@ import { McpConnectorsPage } from "./components/mcp/McpConnectorsPage";
 import { ModelRoutingPage } from "./components/model-routing/ModelRoutingPage";
 import { ReviewQueuePage } from "./components/review-queue/ReviewQueuePage";
 import { WorkflowRunsPage } from "./components/workflows/WorkflowRunsPage";
-import { IntakePage } from "./components/intake/IntakePage";
 import {
   GuidedDemoPathPage,
   type GuidedStep,
@@ -1386,48 +1385,6 @@ function App() {
           onResetGuidedRun={resetGuidedRunState}
           activeStep={guidedActiveStep}
           onActiveStepChange={setGuidedActiveStep}
-        />
-      ) : null}
-
-      {activeView === "INTAKE" ? (
-        <IntakePage
-          name={name}
-          description={description}
-          sourceType={sourceType}
-          rawText={rawText}
-          createBatchError={createBatchError}
-          createBatchSuccess={createBatchSuccess}
-          isCreatingBatch={isCreatingBatch}
-          intakeBatches={intakeBatches}
-          isLoadingIntakeBatches={isLoadingIntakeBatches}
-          intakeBatchesError={intakeBatchesError}
-          selectedBatchDetail={selectedBatchDetail}
-          isLoadingBatchDetail={isLoadingBatchDetail}
-          batchDetailError={batchDetailError}
-          isStartingWorkflow={isStartingWorkflow}
-          startWorkflowError={startWorkflowError}
-          startWorkflowSuccess={startWorkflowSuccess}
-          latestModelCallLog={latestModelCallLog}
-          isExecutingWorkflowRun={isExecutingWorkflowRun}
-          executeWorkflowRunSuccess={executeWorkflowRunSuccess}
-          executeWorkflowRunError={executeWorkflowRunError}
-          isLoadingWorkflowRunDetail={isLoadingWorkflowRunDetail}
-          workflowRunDetailError={workflowRunDetailError}
-          selectedWorkflowRunDetail={selectedWorkflowRunDetail}
-          onNameChange={setName}
-          onDescriptionChange={setDescription}
-          onSourceTypeChange={setSourceType}
-          onRawTextChange={setRawText}
-          onCreateBatch={handleCreateBatch}
-          onSelectBatch={(intakeBatchId) => void handleSelectBatch(intakeBatchId)}
-          onStartWorkflow={() => void handleStartWorkflow()}
-          onExecuteWorkflowRun={(workflowRunId, scenario) =>
-            void handleExecuteWorkflowRun(workflowRunId, scenario)
-          }
-          onSelectWorkflowRun={(workflowRunId) =>
-            void handleSelectWorkflowRun(workflowRunId)
-          }
-          renderReviewQueueActionControls={renderReviewQueueActionControls}
         />
       ) : null}
 
