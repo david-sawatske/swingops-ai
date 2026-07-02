@@ -1,0 +1,149 @@
+/* Guided final report audit trace compact collapsed row */
+.guided-final-report-step details:has(summary .model-route-card__eyebrow),
+.guided-final-run-report details:has(summary .model-route-card__eyebrow),
+.guided-final-audit-trace,
+.guided-final-audit-trace details {
+  width: 100%;
+}
+
+.guided-final-report-step details summary:has(.model-route-card__eyebrow),
+.guided-final-run-report details summary:has(.model-route-card__eyebrow),
+.guided-final-audit-trace summary {
+  display: grid !important;
+  grid-template-columns: 1rem minmax(0, 1fr) !important;
+  align-items: start !important;
+  column-gap: 0.75rem !important;
+  min-height: auto !important;
+  padding: 0.95rem 0 !important;
+  cursor: pointer !important;
+  list-style: none !important;
+}
+
+.guided-final-report-step details summary:has(.model-route-card__eyebrow)::before,
+.guided-final-run-report details summary:has(.model-route-card__eyebrow)::before,
+.guided-final-audit-trace summary::before {
+  content: "▸" !important;
+  grid-column: 1 !important;
+  align-self: start !important;
+  justify-self: start !important;
+  margin-top: 0.35rem !important;
+  color: rgba(20, 33, 22, 0.68) !important;
+  font-size: 0.75rem !important;
+  line-height: 1 !important;
+  transition: transform 0.16s ease !important;
+}
+
+.guided-final-report-step details[open] summary:has(.model-route-card__eyebrow)::before,
+.guided-final-run-report details[open] summary:has(.model-route-card__eyebrow)::before,
+.guided-final-audit-trace details[open] summary::before,
+.guided-final-audit-trace[open] summary::before {
+  transform: rotate(90deg) !important;
+}
+
+.guided-final-report-step details summary:has(.model-route-card__eyebrow)::-webkit-details-marker,
+.guided-final-run-report details summary:has(.model-route-card__eyebrow)::-webkit-details-marker,
+.guided-final-audit-trace summary::-webkit-details-marker {
+  display: none !important;
+}
+
+.guided-final-report-step details summary:has(.model-route-card__eyebrow) > *,
+.guided-final-run-report details summary:has(.model-route-card__eyebrow) > *,
+.guided-final-audit-trace summary > * {
+  grid-column: 2 !important;
+  min-width: 0 !important;
+}
+
+.guided-final-report-step details summary:has(.model-route-card__eyebrow) h4,
+.guided-final-run-report details summary:has(.model-route-card__eyebrow) h4,
+.guided-final-audit-trace summary h4 {
+  margin: 0.25rem 0 0 !important;
+  color: #102015 !important;
+  font-size: 1.1rem !important;
+  line-height: 1.2 !important;
+}
+
+.guided-final-report-step details summary:has(.model-route-card__eyebrow) p,
+.guided-final-run-report details summary:has(.model-route-card__eyebrow) p,
+.guided-final-audit-trace summary p {
+  max-width: none !important;
+  margin: 0.35rem 0 0 !important;
+  color: rgba(20, 33, 22, 0.68) !important;
+  font-size: 0.95rem !important;
+  line-height: 1.45 !important;
+}
+
+.guided-final-report-step .guided-step-primary-action,
+.guided-final-run-report .guided-step-primary-action {
+  margin-top: 1rem;
+}
+
+/* Guided final report explicit audit trace row */
+.guided-final-audit-trace {
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.guided-final-audit-trace__summary {
+  display: grid !important;
+  grid-template-columns: 1rem minmax(0, 1fr) !important;
+  align-items: start !important;
+  column-gap: 0.75rem !important;
+  width: 100% !important;
+  padding: 0.95rem 0 !important;
+  cursor: pointer !important;
+  list-style: none !important;
+}
+
+.guided-final-audit-trace__summary::-webkit-details-marker {
+  display: none !important;
+}
+
+.guided-final-audit-trace__summary::before {
+  content: "▸" !important;
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  align-self: start !important;
+  justify-self: start !important;
+  margin-top: 0.38rem !important;
+  color: rgba(20, 33, 22, 0.68) !important;
+  font-size: 0.75rem !important;
+  line-height: 1 !important;
+  transition: transform 0.16s ease !important;
+}
+
+.guided-final-audit-trace[open] > .guided-final-audit-trace__summary::before {
+  transform: rotate(90deg) !important;
+}
+
+.guided-final-audit-trace__summary > * {
+  grid-column: 2 !important;
+  min-width: 0 !important;
+}
+
+.guided-final-audit-trace__summary .model-route-card__eyebrow {
+  margin: 0 !important;
+}
+
+.guided-final-audit-trace__summary h4 {
+  margin: 0.28rem 0 0 !important;
+  color: #102015 !important;
+  font-size: 1.08rem !important;
+  line-height: 1.2 !important;
+}
+
+.guided-final-audit-trace__summary p {
+  max-width: none !important;
+  margin: 0.35rem 0 0 !important;
+  color: rgba(20, 33, 22, 0.68) !important;
+  font-size: 0.95rem !important;
+  line-height: 1.45 !important;
+}
+
+.guided-final-audit-trace + .guided-step-primary-action,
+.guided-final-audit-trace ~ .guided-step-primary-action {
+  margin-top: 1rem !important;
+}
