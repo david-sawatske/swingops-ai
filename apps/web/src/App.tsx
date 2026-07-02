@@ -1,5 +1,4 @@
 import { FormEvent, useEffect, useState } from "react";
-import { previewModelRouting } from "./api/modelRouting";
 import {
   callMcpCompatibleTool,
   listConnectorCatalog,
@@ -43,11 +42,6 @@ import type {
   KnowledgeSearchResponse,
 } from "./types/knowledge";
 import type {
-  ModelRoutingGoal,
-  ModelTaskType,
-  PreviewModelRoutingResponse,
-} from "./types/ai";
-import type {
   IntakeBatchDetail,
   IntakeBatchSourceType,
   IntakeBatchSummary,
@@ -79,7 +73,6 @@ import {
 import { getReviewActionFallbackNote } from "./utils/reviewQueueDisplay";
 import { getReadOnlyMcpToolInput } from "./utils/readOnlyMcpToolInput";
 import { McpConnectorsPage } from "./components/mcp/McpConnectorsPage";
-import { ModelRoutingPage } from "./components/model-routing/ModelRoutingPage";
 import { ReviewQueuePage } from "./components/review-queue/ReviewQueuePage";
 import { WorkflowRunsPage } from "./components/workflows/WorkflowRunsPage";
 import {
@@ -213,21 +206,6 @@ function App() {
   >(null);
   const [latestModelCallLog, setLatestModelCallLog] =
     useState<ModelCallLog | null>(null);
-
-  const [modelRoutingTaskType, setModelRoutingTaskType] =
-    useState<ModelTaskType>("INTAKE_PARSING");
-  const [modelRoutingGoal, setModelRoutingGoal] =
-    useState<ModelRoutingGoal>("HIGH_QUALITY");
-  const [modelRoutingRequireJson, setModelRoutingRequireJson] = useState(true);
-  const [modelRoutingAllowDisabledProviders, setModelRoutingAllowDisabledProviders] =
-    useState(true);
-  const [modelRoutingPreview, setModelRoutingPreview] =
-    useState<PreviewModelRoutingResponse | null>(null);
-  const [isPreviewingModelRouting, setIsPreviewingModelRouting] =
-    useState(false);
-  const [modelRoutingPreviewError, setModelRoutingPreviewError] = useState<
-    string | null
-  >(null);
 
   const [selectedReadOnlyMcpToolName, setSelectedReadOnlyMcpToolName] =
     useState<ReadOnlyMcpToolName>("swingops.workflowRuns.list");
@@ -1189,32 +1167,6 @@ function App() {
     }
   }
 
-  async function handlePreviewModelRouting(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    try {
-      setIsPreviewingModelRouting(true);
-      setModelRoutingPreviewError(null);
-
-      const preview = await previewModelRouting({
-        taskType: modelRoutingTaskType,
-        preferredGoal: modelRoutingGoal,
-        requireJson: modelRoutingRequireJson,
-        allowDisabledProvidersForSimulation: modelRoutingAllowDisabledProviders,
-      });
-
-      setModelRoutingPreview(preview);
-    } catch (error) {
-      setModelRoutingPreviewError(
-        error instanceof Error
-          ? error.message
-          : "Unable to preview model routing.",
-      );
-    } finally {
-      setIsPreviewingModelRouting(false);
-    }
-  }
-
   async function handleExecuteReadOnlyMcpTool(
     event: FormEvent<HTMLFormElement>,
   ) {
@@ -1441,23 +1393,6 @@ function App() {
           onReviewQueueItemAction={(input) =>
             void handleReviewQueueItemAction(input)
           }
-        />
-      ) : null}
-
-      {activeView === "MODEL_ROUTING" ? (
-        <ModelRoutingPage
-          taskType={modelRoutingTaskType}
-          goal={modelRoutingGoal}
-          requireJson={modelRoutingRequireJson}
-          allowDisabledProviders={modelRoutingAllowDisabledProviders}
-          preview={modelRoutingPreview}
-          isPreviewing={isPreviewingModelRouting}
-          error={modelRoutingPreviewError}
-          onTaskTypeChange={setModelRoutingTaskType}
-          onGoalChange={setModelRoutingGoal}
-          onRequireJsonChange={setModelRoutingRequireJson}
-          onAllowDisabledProvidersChange={setModelRoutingAllowDisabledProviders}
-          onSubmit={handlePreviewModelRouting}
         />
       ) : null}
 
