@@ -15,7 +15,6 @@ import type {
 
 type UseGuidedWorkflowRunOptions = {
   refreshWorkflowData: () => Promise<void>;
-  resetReviewQueueActionState: () => void;
 };
 
 function upsertRecord(
@@ -35,7 +34,6 @@ function upsertRecord(
 
 export function useGuidedWorkflowRun({
   refreshWorkflowData,
-  resetReviewQueueActionState,
 }: UseGuidedWorkflowRunOptions) {
   const [endToEndAgenticDemoRawInput, setEndToEndAgenticDemoRawInput] =
     useState("");
@@ -95,7 +93,6 @@ export function useGuidedWorkflowRun({
     setMultiSourceIntakeDemoSuccess(null);
     setEndToEndAgenticDemoError(null);
     setEndToEndAgenticDemoSuccess(null);
-    resetReviewQueueActionState();
   }
 
   async function handleExecuteEndToEndAgenticDemo(
@@ -109,7 +106,6 @@ export function useGuidedWorkflowRun({
       setEndToEndAgenticDemoError(null);
       setEndToEndAgenticDemoSuccess(null);
       setCurrentRunAiReadyIntakeRecords([]);
-      resetReviewQueueActionState();
 
       const generatedTradeInRawInput = multiSourceIntakeDemoResult
         ? formatGuidedWorkflowInputFromSourceResult(multiSourceIntakeDemoResult, {
@@ -162,7 +158,6 @@ export function useGuidedWorkflowRun({
       setMultiSourceIntakeDemoSuccess(null);
       setEndToEndAgenticDemoError(null);
       setEndToEndAgenticDemoSuccess(null);
-      resetReviewQueueActionState();
 
       const result = await executeMultiSourceIntakeDemo(request);
       const persistedRecordsResponse = await listAiReadyIntakeRecords({

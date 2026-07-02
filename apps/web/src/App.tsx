@@ -1,22 +1,18 @@
 import { useEffect, useState } from "react";
 import {
-  dismissReviewQueueItem,
   listWorkflowRuns,
   listReviewQueueItems,
-  resolveReviewQueueItem,
-  resolveReviewQueueItemWithCorrections,
 } from "./api/workflows";
 import type {
   GlobalReviewQueueItem,
-  ResolveReviewQueueItemWithCorrectionsRequest,
   GlobalWorkflowRunSummary,
 } from "./types/workflow";
 import { type AppView } from "./constants/appNav";
-import { getReviewActionFallbackNote } from "./utils/reviewQueueDisplay";
 import { ReviewQueuePage } from "./components/review-queue/ReviewQueuePage";
 import { GuidedDemoPathPage } from "./components/guided-demo/GuidedDemoPathPage";
 import { type GuidedStep } from "./components/guided-demo/guidedWorkflowSteps";
 import { useGuidedWorkflowRun } from "./hooks/useGuidedWorkflowRun";
+import { useReviewQueueActions } from "./hooks/useReviewQueueActions";
 import { AppHeroNav } from "./components/layout/AppHeroNav";
 
 function App() {
@@ -39,18 +35,6 @@ function App() {
     string | null
   >(null);
 
-  const [activeReviewQueueItemId, setActiveReviewQueueItemId] = useState<
-    string | null
-  >(null);
-  const [reviewQueueNotesById, setReviewQueueNotesById] = useState<
-    Record<string, string>
-  >({});
-  const [reviewQueueActionError, setReviewQueueActionError] = useState<
-    string | null
-  >(null);
-  const [reviewQueueActionSuccess, setReviewQueueActionSuccess] = useState<
-    string | null
-  >(null);
   const openReviewQueueItemCount = globalReviewQueueItems.filter(
     (item) => item.status === "OPEN" || item.status === "IN_REVIEW",
   ).length;
@@ -79,7 +63,21 @@ function App() {
     upsertAiReadyIntakeRecord,
   } = useGuidedWorkflowRun({
     refreshWorkflowData,
+  });
+
+  const {
+    activeReviewQueueItemId,
+    reviewQueueNotesById,
+    reviewQueueActionError,
+    reviewQueueActionSuccess,
     resetReviewQueueActionState,
+    handleReviewQueueNotesChange,
+    handleReviewQueueItemAction,
+    handleResolveReviewQueueItemWithCorrections,
+  } = useReviewQueueActions({
+    refreshWorkflowData,
+    refreshCurrentRunAiReadyIntakeRecords,
+    upsertAiReadyIntakeRecord,
   });
 
   async function loadGlobalWorkflowRuns() {
@@ -120,13 +118,6 @@ function App() {
     }
   }
 
-  function resetReviewQueueActionState() {
-    setReviewQueueActionError(null);
-    setReviewQueueActionSuccess(null);
-    setActiveReviewQueueItemId(null);
-    setReviewQueueNotesById({});
-  }
-
   async function refreshWorkflowData() {
     await loadGlobalWorkflowRuns();
     await loadGlobalReviewQueueItems();
@@ -135,118 +126,27 @@ function App() {
   function resetGuidedRunState() {
     setGuidedActiveStep("MESSY_SOURCE_INTAKE");
     resetGuidedWorkflowRunState();
+    resetReviewQueueActionState();
+  }
+
+  function handleRunGuidedSourceIntake(
+    request?: Parameters<typeof handleRunMultiSourceIntakeDemo>[0],
+  ) {
+    resetReviewQueueActionState();
+    void handleRunMultiSourceIntakeDemo(request);
+  }
+
+  function handleRunGuidedTradeInWorkflow(
+    event: Parameters<typeof handleExecuteEndToEndAgenticDemo>[0],
+  ) {
+    resetReviewQueueActionState();
+    void handleExecuteEndToEndAgenticDemo(event);
   }
 
   useEffect(() => {
     void loadGlobalWorkflowRuns();
     void loadGlobalReviewQueueItems();
   }, []);
-
-  function handleReviewQueueNotesChange(
-    reviewQueueItemId: string,
-    reviewerNotes: string,
-  ) {
-    setReviewQueueNotesById((current) => ({
-      ...current,
-      [reviewQueueItemId]: reviewerNotes,
-    }));
-  }
-
-  async function handleReviewQueueItemAction(input: {
-    reviewQueueItemId: string;
-    action: "resolve" | "dismiss";
-    workflowRunId?: string | null;
-    intakeBatchId?: string | null;
-  }) {
-    const reviewerNotes =
-      reviewQueueNotesById[input.reviewQueueItemId]?.trim() ||
-      getReviewActionFallbackNote(input.action);
-
-    try {
-      setActiveReviewQueueItemId(input.reviewQueueItemId);
-      setReviewQueueActionError(null);
-      setReviewQueueActionSuccess(null);
-
-      if (input.action === "resolve") {
-        await resolveReviewQueueItem(input.reviewQueueItemId, {
-          reviewerNotes,
-        });
-      } else {
-        await dismissReviewQueueItem(input.reviewQueueItemId, {
-          reviewerNotes,
-        });
-      }
-
-      await refreshWorkflowData();
-
-      setReviewQueueNotesById((current) => {
-        const next = { ...current };
-        delete next[input.reviewQueueItemId];
-
-        return next;
-      });
-      setReviewQueueActionSuccess(
-        input.action === "resolve"
-          ? "Review queue item resolved."
-          : "Review queue item dismissed.",
-      );
-    } catch (error) {
-      setReviewQueueActionError(
-        error instanceof Error
-          ? error.message
-          : "Unable to update review queue item.",
-      );
-    } finally {
-      setActiveReviewQueueItemId(null);
-    }
-  }
-
-  async function handleResolveReviewQueueItemWithCorrections(input: {
-    reviewQueueItemId: string;
-    request: ResolveReviewQueueItemWithCorrectionsRequest;
-    workflowRunId?: string | null;
-    intakeBatchId?: string | null;
-  }) {
-    try {
-      setActiveReviewQueueItemId(input.reviewQueueItemId);
-      setReviewQueueActionError(null);
-      setReviewQueueActionSuccess(null);
-
-      const response = await resolveReviewQueueItemWithCorrections(
-        input.reviewQueueItemId,
-        input.request,
-      );
-
-      if (response.aiReadyIntakeRecord) {
-        upsertAiReadyIntakeRecord(response.aiReadyIntakeRecord);
-      }
-
-      await refreshCurrentRunAiReadyIntakeRecords(
-        input.workflowRunId ?? response.reviewQueueItem.workflowRunId,
-      );
-
-      await refreshWorkflowData();
-
-
-      setReviewQueueNotesById((current) => {
-        const next = { ...current };
-        delete next[input.reviewQueueItemId];
-
-        return next;
-      });
-      setReviewQueueActionSuccess(
-        "Review queue item resolved with structured corrections.",
-      );
-    } catch (error) {
-      setReviewQueueActionError(
-        error instanceof Error
-          ? error.message
-          : "Unable to resolve review queue item with structured corrections.",
-      );
-    } finally {
-      setActiveReviewQueueItemId(null);
-    }
-  }
 
   return (
     <main className="app-shell">
@@ -278,8 +178,8 @@ function App() {
           openReviewQueueItemCount={openReviewQueueItemCount}
           toolCallLogCount={totalToolCallLogCount}
           onTradeInRawInputChange={setEndToEndAgenticDemoRawInput}
-          onRunSourceIntake={handleRunMultiSourceIntakeDemo}
-          onRunTradeInWorkflow={handleExecuteEndToEndAgenticDemo}
+          onRunSourceIntake={handleRunGuidedSourceIntake}
+          onRunTradeInWorkflow={handleRunGuidedTradeInWorkflow}
           onViewChange={setActiveView}
           reviewQueueActionSuccess={reviewQueueActionSuccess}
           reviewQueueActionError={reviewQueueActionError}
