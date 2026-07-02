@@ -14,67 +14,6 @@ export type AgentToolRegistryFilter = {
 
 const registeredAgentTools: AgentToolDefinition[] = [
   {
-    name: "swingops.intakeBatches.list",
-    displayName: "List intake batches",
-    description:
-      "List intake batches so an agent can inspect incoming trade-in intake work before planning workflow actions.",
-    category: "INTAKE",
-    inputShape: {
-      type: "object",
-      fields: []
-    },
-    riskLevel: "LOW",
-    requiresHumanApproval: false,
-    mutatesData: false,
-    enabled: true,
-    implementationStatus: "ROUTE_BACKED",
-    statusReason:
-      "Safe read-only lookup backed by the existing GET /intake-batches route.",
-    existingHttpRoute: {
-      method: "GET",
-      path: "/intake-batches"
-    },
-    outputSummary:
-      "Returns intake batch summaries intentionally exposed for read-only agent planning.",
-    auditBehavior: "PERSIST_TOOL_CALL_LOG",
-    redactionNotes:
-      "Only serialized intake batch summary fields are returned; raw connector internals are not exposed."
-  },
-  {
-    name: "swingops.intakeBatches.get",
-    displayName: "Get intake batch",
-    description:
-      "Look up one intake batch with its raw intake items and associated workflow runs.",
-    category: "INTAKE",
-    inputShape: {
-      type: "object",
-      fields: [
-        {
-          name: "id",
-          type: "string",
-          required: true,
-          description: "The intake batch ID to retrieve."
-        }
-      ]
-    },
-    riskLevel: "LOW",
-    requiresHumanApproval: false,
-    mutatesData: false,
-    enabled: true,
-    implementationStatus: "ROUTE_BACKED",
-    statusReason:
-      "Safe read-only lookup backed by the existing GET /intake-batches/:id route.",
-    existingHttpRoute: {
-      method: "GET",
-      path: "/intake-batches/:id"
-    },
-    outputSummary:
-      "Returns one intake batch with serialized intake items and workflow run summaries.",
-    auditBehavior: "PERSIST_TOOL_CALL_LOG",
-    redactionNotes:
-      "Returns operational demo fields needed for review context; no transport credentials or internal Prisma metadata are exposed."
-  },
-  {
     name: "swingops.clubReference.search",
     displayName: "Search club reference",
     description:

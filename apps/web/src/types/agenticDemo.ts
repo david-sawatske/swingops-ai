@@ -1,5 +1,5 @@
 import type { ReviewQueueItem } from "./reviewQueue";
-import type { ExecuteWorkflowToolCallingPlanResponse, ModelCallLog, ToolCallLog } from "./workflowRun";
+import type { ModelCallLog, ToolCallLog } from "./workflowRun";
 
 export type AgenticTradeInRunEvalSummary = {
   extractionCompleteness: number;
@@ -9,24 +9,6 @@ export type AgenticTradeInRunEvalSummary = {
   modelProviderFallbackUsed: boolean;
   reviewRequired: boolean;
   pass: boolean;
-};
-
-export type ExecuteAgenticTradeInRunResponse = {
-  workflowRunId: string;
-  modelCallLog: ModelCallLog;
-  plan: ExecuteWorkflowToolCallingPlanResponse["plan"];
-  results: ExecuteWorkflowToolCallingPlanResponse["results"];
-  toolCallLogs: ToolCallLog[];
-  evalSummary: AgenticTradeInRunEvalSummary;
-  executionMetadata: {
-    orchestrator: string;
-    modelRoutingGoal: "HIGH_QUALITY";
-    modelTaskType: "INTAKE_PARSING";
-    providerFallbackExecutor: boolean;
-    deterministicToolPlan: boolean;
-    readOnlyMcpConnectorSurface: boolean;
-    qualityEvalPersisted: boolean;
-  };
 };
 
 export type AgenticTradeInDemoParsedItem = {

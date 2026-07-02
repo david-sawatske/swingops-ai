@@ -285,7 +285,7 @@ export async function toolRoutes(app: FastifyInstance): Promise<void> {
         transport: "REST_ADAPTER",
         executionEnabled: true,
         status:
-          "Filtered legacy registry response. Use the unfiltered response for MCP-compatible tools/list semantics."
+          "Filtered registry response. Use the unfiltered response for MCP-compatible tools/list semantics."
       }
     };
   });

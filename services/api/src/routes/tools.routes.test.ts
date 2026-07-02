@@ -447,7 +447,7 @@ describe("tool routes", () => {
         method: "POST",
         url: "/mcp/tools/invocations/execute-readonly",
         payload: {
-          toolName: "swingops.intakeBatches.list",
+          toolName: "swingops.workflowRuns.list",
           requestedBy: "agent.route-readonly-test"
         }
       });
@@ -457,7 +457,7 @@ describe("tool routes", () => {
       const body = response.json();
 
       expect(body.invocation).toMatchObject({
-        toolName: "swingops.intakeBatches.list",
+        toolName: "swingops.workflowRuns.list",
         status: "SUCCEEDED",
         requestedBy: "agent.route-readonly-test",
         workflowRunId: null,
@@ -472,7 +472,7 @@ describe("tool routes", () => {
         executionMode: "AGENT_AUTONOMOUS",
         executionEnabled: true,
         tool: {
-          name: "swingops.intakeBatches.list",
+          name: "swingops.workflowRuns.list",
           enabled: true,
           riskLevel: "LOW",
           mutatesData: false,
@@ -486,14 +486,14 @@ describe("tool routes", () => {
           externalTransport: false
         },
         data: {
-          intakeBatches: expect.any(Array)
+          workflowRuns: expect.any(Array)
         }
       });
       expect(body.toolCallLog).toMatchObject({
         id: body.invocation.toolCallLogId,
         workflowRunId: null,
         workflowStepId: null,
-        toolName: "swingops.intakeBatches.list",
+        toolName: "swingops.workflowRuns.list",
         status: "SUCCEEDED",
         errorMessage: null
       });
@@ -576,14 +576,13 @@ describe("tool routes", () => {
     });
   });
 
-
   describe("GET /mcp/connectors/catalog", () => {
     it("returns catalog tools with policy and invocation summary metadata", async () => {
       const app = buildApp();
 
       await prisma.toolCallLog.create({
         data: {
-          toolName: "swingops.intakeBatches.list",
+          toolName: "swingops.workflowRuns.list",
           status: "SUCCEEDED",
           outputJson: {
             connectorInvocation: true,
@@ -641,11 +640,11 @@ describe("tool routes", () => {
       expect(body.connectors).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            name: "swingops.intakeBatches.list",
-            displayName: "List intake batches",
+            name: "swingops.workflowRuns.list",
+            displayName: "List workflow runs",
             contract: expect.objectContaining({
-              toolId: "swingops.intakeBatches.list",
-              displayName: "List intake batches",
+              toolId: "swingops.workflowRuns.list",
+              displayName: "List workflow runs",
               auditBehavior: "PERSIST_TOOL_CALL_LOG"
             }),
             policyDecision: "ALLOW",
@@ -816,8 +815,6 @@ describe("tool routes", () => {
       );
 
       expect(body.tools.map((tool: { name: string }) => tool.name)).toEqual([
-        "swingops.intakeBatches.list",
-        "swingops.intakeBatches.get",
         "swingops.clubReference.search",
         "swingops.knowledgeBase.search",
         "swingops.inventory.lookupProduct",

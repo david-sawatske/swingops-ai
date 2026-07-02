@@ -1,3 +1,4 @@
+import { LEGACY_FREEFORM_NOTES_INTAKE_SOURCE_TYPE, LEGACY_MANUAL_ENTRY_INTAKE_SOURCE_TYPE } from "../intake/legacy-intake-source-types.js";
 import { describe, expect, it } from "vitest";
 
 import { buildApp } from "../app.js";
@@ -41,7 +42,7 @@ async function createWorkflowRunWithIntakeReviewItem() {
     data: {
       name: "Review Queue Dashboard Batch",
       description: "Batch with review context",
-      sourceType: "FREEFORM_NOTES",
+      sourceType: LEGACY_FREEFORM_NOTES_INTAKE_SOURCE_TYPE,
       status: "PROCESSING",
       itemCount: 1,
       items: {
@@ -644,7 +645,7 @@ describe("review queue item routes", () => {
       const intakeBatch = await prisma.intakeBatch.create({
         data: {
           name: "Existing condition learning-event filter",
-          sourceType: "MANUAL_ENTRY",
+          sourceType: LEGACY_MANUAL_ENTRY_INTAKE_SOURCE_TYPE,
           status: "COMPLETED",
           itemCount: 1
         }

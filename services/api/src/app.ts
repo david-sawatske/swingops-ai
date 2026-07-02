@@ -5,7 +5,6 @@ import { env } from "./config/env.js";
 import { aiRoutes } from "./routes/ai.routes.js";
 import { aiReadyIntakeRecordRoutes } from "./routes/ai-ready-intake-records.routes.js";
 import { healthRoutes } from "./routes/health.routes.js";
-import { intakeBatchRoutes } from "./routes/intake-batches.routes.js";
 import { knowledgeRoutes } from "./routes/knowledge.routes.js";
 import { reviewQueueItemRoutes } from "./routes/review-queue-items.routes.js";
 import { toolRoutes } from "./routes/tools.routes.js";
@@ -25,7 +24,6 @@ export function buildApp() {
   app.register(healthRoutes);
   app.register(aiRoutes);
   app.register(aiReadyIntakeRecordRoutes);
-  app.register(intakeBatchRoutes);
   app.register(knowledgeRoutes);
   app.register(reviewQueueItemRoutes);
   app.register(workflowRunRoutes);

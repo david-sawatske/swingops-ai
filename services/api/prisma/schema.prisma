@@ -54,6 +54,9 @@ enum IntakeItemStatus {
   FAILED
 }
 
+/// Legacy batch-level source metadata for IntakeBatch records.
+/// Current guided intake source types are enforced in the workflow/API layer:
+/// FREE_TEXT, POORLY_FORMED_CSV, EMAIL, LOG.
 enum IntakeSourceType {
   FREEFORM_NOTES
   BAD_CSV

@@ -243,7 +243,7 @@ describe("model router", () => {
     ]);
   });
 
-  it("keeps the existing goal field compatible with older routeModel callers", () => {
+  it("keeps the existing goal field compatible with existing routeModel callers", () => {
     const decision = routeModel({
       goal: "LOW_LATENCY",
       taskType: "REVIEW_SUMMARY"

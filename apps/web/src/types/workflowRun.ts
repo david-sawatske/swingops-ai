@@ -142,36 +142,7 @@ export type GlobalWorkflowRunSummary = WorkflowRunSummary & {
   openReviewQueueItemCount: number;
 };
 
-export type WorkflowRunDetail = {
-  workflowRun: WorkflowRunSummary;
-  steps: WorkflowStep[];
-  toolCallLogs: ToolCallLog[];
-  modelCallLogs: ModelCallLog[];
-  reviewQueueItems: ReviewQueueItem[];
-};
-
-export type StartWorkflowResponse = {
-  workflowRun: WorkflowRunSummary;
-  steps: WorkflowStep[];
-  modelCallLog: ModelCallLog;
-};
-
 export type WorkflowExecutionScenario = "HAPPY_PATH" | "NEEDS_REVIEW";
-
-export type ExecuteWorkflowRunRequest = {
-  scenario?: WorkflowExecutionScenario;
-};
-
-export type ExecuteWorkflowRunResponse = {
-  workflowRun: WorkflowRunSummary;
-  steps: WorkflowStep[];
-  toolCallLogs: ToolCallLog[];
-  reviewQueueItems: ReviewQueueItem[];
-};
-
-export type CreateProviderFallbackDemoResponse = {
-  modelCallLog: ModelCallLog;
-};
 
 export type ListWorkflowRunsResponse = {
   workflowRuns: GlobalWorkflowRunSummary[];
@@ -206,20 +177,3 @@ export type WorkflowToolCallingPlanCallResult = WorkflowToolCallingPlannedCall &
   failurePreview: string | null;
 };
 
-export type ExecuteWorkflowToolCallingPlanResponse = {
-  plan: {
-    planId: string;
-    workflowRunId: string;
-    status: WorkflowToolCallingPlanStatus;
-    plannedCalls: WorkflowToolCallingPlannedCall[];
-  };
-  results: WorkflowToolCallingPlanCallResult[];
-  toolCallLogs: ToolCallLog[];
-  executionMetadata: {
-    planner: string;
-    requestedBy: string;
-    readOnlyConnectorSurface: boolean;
-    mutationToolsEnabled: boolean;
-    policyCheckedBeforeEachExecution: boolean;
-  };
-};
