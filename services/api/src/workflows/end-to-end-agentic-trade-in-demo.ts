@@ -1,3 +1,4 @@
+import { LEGACY_FREEFORM_NOTES_INTAKE_SOURCE_TYPE } from "../intake/legacy-intake-source-types.js";
 import type { Prisma, ReviewQueueItem, ToolCallLog } from "@prisma/client";
 
 import { routeModel } from "../ai/model-router.js";
@@ -370,7 +371,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
       name: "Agentic Trade-In Demo",
       description:
         "End-to-end demo intake batch created from messy golf trade-in text.",
-      sourceType: "FREEFORM_NOTES",
+      sourceType: LEGACY_FREEFORM_NOTES_INTAKE_SOURCE_TYPE,
       status: "PROCESSING",
       itemCount: parsedItems.length,
       items: {

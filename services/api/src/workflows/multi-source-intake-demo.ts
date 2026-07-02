@@ -1,3 +1,4 @@
+import { LEGACY_FREEFORM_NOTES_INTAKE_SOURCE_TYPE } from "../intake/legacy-intake-source-types.js";
 import type { AiReadyIntakeRecord, Prisma, ReviewQueueItem, ToolCallLog } from "@prisma/client";
 
 import { prisma } from "../lib/prisma.js";
@@ -509,8 +510,6 @@ function splitSourceIntoRecordFragments(source: MultiSourceInput): string[] {
     );
   }
 
-
-
   if (source.sourceType === "POORLY_FORMED_CSV") {
     return lines.filter((line) =>
       /\b(titleist|cally|callaway|ping|taylormade|cleveland|odyssey|mizuno|rogue|tsr|g425|g430|rtx|white hot|jpx|hot metal)\b/i.test(line)
@@ -788,7 +787,7 @@ async function persistDemoAudit(input: {
       name: "Multi-Source Intake Demo",
       description:
         "Deterministic demo batch showing messy operational sources normalized into AI-ready intake assets.",
-      sourceType: "FREEFORM_NOTES",
+      sourceType: LEGACY_FREEFORM_NOTES_INTAKE_SOURCE_TYPE,
       status: input.reviewRecords.length > 0 ? "NEEDS_REVIEW" : "COMPLETED",
       itemCount: input.cleanedDatasetPreview.length,
       items: {

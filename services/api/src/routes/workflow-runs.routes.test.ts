@@ -1,3 +1,4 @@
+import { LEGACY_FREEFORM_NOTES_INTAKE_SOURCE_TYPE } from "../intake/legacy-intake-source-types.js";
 import { describe, expect, it } from "vitest";
 
 import { buildApp } from "../app.js";
@@ -30,7 +31,7 @@ describe("workflow run routes", () => {
       const intakeBatch = await prisma.intakeBatch.create({
         data: {
           name: "Workflow Runs Dashboard Batch",
-          sourceType: "FREEFORM_NOTES",
+          sourceType: LEGACY_FREEFORM_NOTES_INTAKE_SOURCE_TYPE,
           itemCount: 1,
           items: {
             create: [
