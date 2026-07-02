@@ -2,8 +2,6 @@ import { apiGet, apiPost } from "./client";
 import type {
   ConnectorCatalogResponse,
   ConnectorInvocationHistoryResponse,
-  ExecuteReadOnlyToolInvocationRequest,
-  ExecuteReadOnlyToolInvocationResponse,
   McpCompatibleToolCallRequest,
   McpCompatibleToolCallResponse,
 } from "../types/mcp";
@@ -18,15 +16,6 @@ export async function listConnectorInvocationHistory(
   return apiGet<ConnectorInvocationHistoryResponse>(
     `/mcp/tools/invocations/history?limit=${limit}`,
   );
-}
-
-export async function executeReadOnlyToolInvocation(
-  request: ExecuteReadOnlyToolInvocationRequest,
-): Promise<ExecuteReadOnlyToolInvocationResponse> {
-  return apiPost<
-    ExecuteReadOnlyToolInvocationResponse,
-    ExecuteReadOnlyToolInvocationRequest
-  >("/mcp/tools/invocations/execute-readonly", request);
 }
 
 export async function callMcpCompatibleTool(

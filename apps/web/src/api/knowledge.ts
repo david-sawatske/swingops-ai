@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from "./client";
+import { apiPost } from "./client";
 import type {
   KnowledgeEvalSummary,
   KnowledgeIngestionSummary,
@@ -28,13 +28,5 @@ export async function runKnowledgeRetrievalEvals(): Promise<KnowledgeEvalSummary
   return apiPost<KnowledgeEvalSummary, Record<string, never>>(
     "/knowledge/evals/run",
     {},
-  );
-}
-
-export async function listKnowledgeChunks(): Promise<{
-  chunks: KnowledgeSearchResponse["results"];
-}> {
-  return apiGet<{ chunks: KnowledgeSearchResponse["results"] }>(
-    "/knowledge/chunks",
   );
 }
