@@ -22,10 +22,8 @@ import type {
 import { type AppView } from "./constants/appNav";
 import { getReviewActionFallbackNote } from "./utils/reviewQueueDisplay";
 import { ReviewQueuePage } from "./components/review-queue/ReviewQueuePage";
-import {
-  GuidedDemoPathPage,
-  type GuidedStep,
-} from "./components/guided-demo/GuidedDemoPathPage";
+import { GuidedDemoPathPage } from "./components/guided-demo/GuidedDemoPathPage";
+import { type GuidedStep } from "./components/guided-demo/guidedWorkflowSteps";
 import { AppHeroNav } from "./components/layout/AppHeroNav";
 
 function App() {
