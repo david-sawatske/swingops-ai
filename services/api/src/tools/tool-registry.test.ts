@@ -7,8 +7,6 @@ describe("agent tool registry", () => {
     const tools = listAgentTools();
 
     expect(tools.map((tool) => tool.name)).toEqual([
-      "swingops.intakeBatches.list",
-      "swingops.intakeBatches.get",
       "swingops.clubReference.search",
       "swingops.knowledgeBase.search",
       "swingops.inventory.lookupProduct",
@@ -29,8 +27,6 @@ describe("agent tool registry", () => {
     expect(
       tools.filter((tool) => tool.enabled).map((tool) => tool.name)
     ).toEqual([
-      "swingops.intakeBatches.list",
-      "swingops.intakeBatches.get",
       "swingops.clubReference.search",
       "swingops.knowledgeBase.search",
       "swingops.inventory.lookupProduct",

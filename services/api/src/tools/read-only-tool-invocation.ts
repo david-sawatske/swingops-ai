@@ -783,51 +783,7 @@ async function executeConnectorTool(input: {
     });
   }
 
-  if (input.toolName === "swingops.intakeBatches.list") {
-    const intakeBatches = await prisma.intakeBatch.findMany({
-      orderBy: {
-        createdAt: "desc"
-      }
-    });
-
-    return connectorResult({
-      intakeBatches: intakeBatches.map(serializeIntakeBatch)
-    });
-  }
-
-  if (input.toolName === "swingops.intakeBatches.get") {
-    const parsedInput = getByIdInputSchema.parse(inputObject);
-
-    const intakeBatch = await prisma.intakeBatch.findUnique({
-      where: {
-        id: parsedInput.id
-      },
-      include: {
-        items: {
-          orderBy: {
-            createdAt: "asc"
-          }
-        },
-        workflowRuns: {
-          orderBy: {
-            createdAt: "desc"
-          }
-        }
-      }
-    });
-
-    if (!intakeBatch) {
-      throw new Error("Intake batch not found");
-    }
-
-    return connectorResult({
-      intakeBatch: serializeIntakeBatch(intakeBatch),
-      items: intakeBatch.items.map(serializeIntakeItem),
-      workflowRuns: intakeBatch.workflowRuns.map(serializeWorkflowRun)
-    });
-  }
-
-  if (input.toolName === "swingops.workflowRuns.list") {
+      if (input.toolName === "swingops.workflowRuns.list") {
     const parsedInput = workflowRunsListInputSchema.parse(inputObject);
 
     const workflowRuns = await prisma.workflowRun.findMany({
