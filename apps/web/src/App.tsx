@@ -79,7 +79,6 @@ import {
 import { getReviewActionFallbackNote } from "./utils/reviewQueueDisplay";
 import { getReadOnlyMcpToolInput } from "./utils/readOnlyMcpToolInput";
 import { McpConnectorsPage } from "./components/mcp/McpConnectorsPage";
-import { OverviewPage } from "./components/overview/OverviewPage";
 import { ModelRoutingPage } from "./components/model-routing/ModelRoutingPage";
 import { ReviewQueuePage } from "./components/review-queue/ReviewQueuePage";
 import { WorkflowRunsPage } from "./components/workflows/WorkflowRunsPage";
@@ -1388,16 +1387,6 @@ function App() {
           onResetGuidedRun={resetGuidedRunState}
           activeStep={guidedActiveStep}
           onActiveStepChange={setGuidedActiveStep}
-        />
-      ) : null}
-
-      {activeView === "OVERVIEW" ? (
-        <OverviewPage
-          intakeBatchCount={intakeBatches.length}
-          workflowRunCount={globalWorkflowRuns.length}
-          openReviewQueueItemCount={openReviewQueueItemCount}
-          toolCallLogCount={totalToolCallLogCount}
-          needsReviewWorkflowRunCount={needsReviewWorkflowRunCount}
         />
       ) : null}
 

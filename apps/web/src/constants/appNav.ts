@@ -1,6 +1,5 @@
 export type AppView =
   | "GUIDED_DEMO"
-  | "OVERVIEW"
   | "AGENTIC_DEMO"
   | "INTAKE"
   | "WORKFLOW_RUNS"
