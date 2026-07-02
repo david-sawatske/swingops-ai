@@ -1,15 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
 import {
-  callMcpCompatibleTool,
-  listConnectorCatalog,
-  listConnectorInvocationHistory,
-} from "./api/mcp";
-import {
-  ingestDemoKnowledgeBase,
-  runKnowledgeRetrievalEvals,
-  searchKnowledgeBase,
-} from "./api/knowledge";
-import {
   createIntakeBatch,
   getIntakeBatch,
   listIntakeBatches,
@@ -30,17 +20,6 @@ import {
   resolveReviewQueueItemWithCorrections,
   startWorkflowForIntakeBatch,
 } from "./api/workflows";
-import type {
-  ConnectorCatalogItem,
-  ConnectorInvocationHistoryItem,
-  ExternalMcpServerReadiness,
-  McpCompatibleToolCallResponse,
-} from "./types/mcp";
-import type {
-  KnowledgeEvalSummary,
-  KnowledgeIngestionSummary,
-  KnowledgeSearchResponse,
-} from "./types/knowledge";
 import type {
   IntakeBatchDetail,
   IntakeBatchSourceType,
@@ -65,12 +44,7 @@ import type {
 } from "./types/workflow";
 import { buildCreateIntakeBatchRequest } from "./utils/intakeForm";
 import { type AppView } from "./constants/appNav";
-import {
-  READ_ONLY_MCP_TOOL_OPTIONS,
-  type ReadOnlyMcpToolName,
-} from "./constants/mcpDemoTools";
 import { getReviewActionFallbackNote } from "./utils/reviewQueueDisplay";
-import { getReadOnlyMcpToolInput } from "./utils/readOnlyMcpToolInput";
 import { ReviewQueuePage } from "./components/review-queue/ReviewQueuePage";
 import {
   GuidedDemoPathPage,
@@ -201,59 +175,6 @@ function App() {
   const [latestModelCallLog, setLatestModelCallLog] =
     useState<ModelCallLog | null>(null);
 
-  const [selectedReadOnlyMcpToolName, setSelectedReadOnlyMcpToolName] =
-    useState<ReadOnlyMcpToolName>("swingops.workflowRuns.list");
-  const [selectedReadOnlyMcpWorkflowRunId, setSelectedReadOnlyMcpWorkflowRunId] =
-    useState("");
-  const [readOnlyMcpInvocationResult, setReadOnlyMcpInvocationResult] =
-    useState<McpCompatibleToolCallResponse | null>(null);
-  const [isExecutingReadOnlyMcpTool, setIsExecutingReadOnlyMcpTool] =
-    useState(false);
-  const [readOnlyMcpInvocationError, setReadOnlyMcpInvocationError] = useState<
-    string | null
-  >(null);
-  const [mcpConnectorCatalog, setMcpConnectorCatalog] = useState<
-    ConnectorCatalogItem[]
-  >([]);
-  const [externalMcpReadiness, setExternalMcpReadiness] =
-    useState<ExternalMcpServerReadiness | null>(null);
-  const [isLoadingMcpConnectorCatalog, setIsLoadingMcpConnectorCatalog] =
-    useState(true);
-  const [mcpConnectorCatalogError, setMcpConnectorCatalogError] = useState<
-    string | null
-  >(null);
-  const [mcpInvocationHistory, setMcpInvocationHistory] = useState<
-    ConnectorInvocationHistoryItem[]
-  >([]);
-  const [isLoadingMcpInvocationHistory, setIsLoadingMcpInvocationHistory] =
-    useState(true);
-  const [mcpInvocationHistoryError, setMcpInvocationHistoryError] = useState<
-    string | null
-  >(null);
-  const [mcpAuditStory, setMcpAuditStory] = useState(
-    "agent/tool request → policy decision → execution or block → persisted ToolCallLog audit record",
-  );
-  const [knowledgeSearchQuery, setKnowledgeSearchQuery] = useState(
-    "TM stealth2 drv 10.5 stiff condition 8.0 Average",
-  );
-  const [knowledgeIngestionSummary, setKnowledgeIngestionSummary] =
-    useState<KnowledgeIngestionSummary | null>(null);
-  const [knowledgeSearchResult, setKnowledgeSearchResult] =
-    useState<KnowledgeSearchResponse | null>(null);
-  const [knowledgeEvalSummary, setKnowledgeEvalSummary] =
-    useState<KnowledgeEvalSummary | null>(null);
-  const [isIngestingKnowledgeBase, setIsIngestingKnowledgeBase] =
-    useState(false);
-  const [isSearchingKnowledgeBase, setIsSearchingKnowledgeBase] =
-    useState(false);
-  const [isRunningKnowledgeEvals, setIsRunningKnowledgeEvals] = useState(false);
-  const [knowledgeBaseError, setKnowledgeBaseError] = useState<string | null>(
-    null,
-  );
-  const [knowledgeBaseSuccess, setKnowledgeBaseSuccess] = useState<
-    string | null
-  >(null);
-
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [sourceType, setSourceType] =
@@ -283,20 +204,6 @@ function App() {
 
     return counts;
   }, {} as Record<WorkflowRunStatus, number>);
-
-  const selectedWorkflowRunId =
-    selectedWorkflowRunDetail?.workflowRun.id ?? null;
-  const firstAvailableWorkflowRunId = globalWorkflowRuns[0]?.id ?? "";
-  const selectedMcpWorkflowRunId =
-    selectedReadOnlyMcpWorkflowRunId || firstAvailableWorkflowRunId;
-  const readOnlyMcpToolOptions = READ_ONLY_MCP_TOOL_OPTIONS.filter(
-    (tool) =>
-      tool.name !== "swingops.workflowRuns.get" || Boolean(selectedMcpWorkflowRunId),
-  );
-  const selectedReadOnlyMcpTool =
-    READ_ONLY_MCP_TOOL_OPTIONS.find(
-      (tool) => tool.name === selectedReadOnlyMcpToolName,
-    ) ?? READ_ONLY_MCP_TOOL_OPTIONS[0];
 
   async function loadIntakeBatches() {
     try {
@@ -388,136 +295,10 @@ function App() {
     setReviewQueueNotesById({});
   }
 
-  async function loadMcpConnectorCatalog() {
-    try {
-      setIsLoadingMcpConnectorCatalog(true);
-      setMcpConnectorCatalogError(null);
-
-      const response = await listConnectorCatalog();
-
-      setMcpConnectorCatalog(response.connectors);
-      setExternalMcpReadiness(response.externalMcpReadiness);
-    } catch (error) {
-      setMcpConnectorCatalogError(
-        error instanceof Error
-          ? error.message
-          : "Unable to load connector catalog.",
-      );
-    } finally {
-      setIsLoadingMcpConnectorCatalog(false);
-    }
-  }
-
-  async function loadMcpInvocationHistory() {
-    try {
-      setIsLoadingMcpInvocationHistory(true);
-      setMcpInvocationHistoryError(null);
-
-      const response = await listConnectorInvocationHistory(25);
-
-      setMcpInvocationHistory(response.invocations);
-      setMcpAuditStory(response.historyMetadata.auditStory);
-    } catch (error) {
-      setMcpInvocationHistoryError(
-        error instanceof Error
-          ? error.message
-          : "Unable to load connector invocation history.",
-      );
-    } finally {
-      setIsLoadingMcpInvocationHistory(false);
-    }
-  }
-
-  async function handleIngestDemoKnowledgeBase() {
-    try {
-      setIsIngestingKnowledgeBase(true);
-      setKnowledgeBaseError(null);
-      setKnowledgeBaseSuccess(null);
-
-      const summary = await ingestDemoKnowledgeBase();
-
-      setKnowledgeIngestionSummary(summary);
-      setKnowledgeBaseSuccess(
-        "Ingested " +
-          summary.documentsCreated +
-          " knowledge documents and " +
-          summary.chunksCreated +
-          " chunks.",
-      );
-      await loadMcpConnectorCatalog();
-    } catch (error) {
-      setKnowledgeBaseError(
-        error instanceof Error
-          ? error.message
-          : "Unable to ingest demo knowledge base.",
-      );
-    } finally {
-      setIsIngestingKnowledgeBase(false);
-    }
-  }
-
-  async function handleSearchKnowledgeBase(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    try {
-      setIsSearchingKnowledgeBase(true);
-      setKnowledgeBaseError(null);
-      setKnowledgeBaseSuccess(null);
-
-      const result = await searchKnowledgeBase(knowledgeSearchQuery);
-
-      setKnowledgeSearchResult(result);
-      setKnowledgeBaseSuccess(
-        "Found " +
-          result.results.length +
-          " grounded knowledge chunks for \"" +
-          result.query +
-          "\".",
-      );
-    } catch (error) {
-      setKnowledgeBaseError(
-        error instanceof Error
-          ? error.message
-          : "Unable to search knowledge base.",
-      );
-    } finally {
-      setIsSearchingKnowledgeBase(false);
-    }
-  }
-
-  async function handleRunKnowledgeRetrievalEvals() {
-    try {
-      setIsRunningKnowledgeEvals(true);
-      setKnowledgeBaseError(null);
-      setKnowledgeBaseSuccess(null);
-
-      const summary = await runKnowledgeRetrievalEvals();
-
-      setKnowledgeEvalSummary(summary);
-      setKnowledgeBaseSuccess(
-        "Knowledge evals passed " +
-          summary.passCount +
-          "/" +
-          summary.casesEvaluated +
-          " cases.",
-      );
-    } catch (error) {
-      setKnowledgeBaseError(
-        error instanceof Error
-          ? error.message
-          : "Unable to run knowledge retrieval evals.",
-      );
-    } finally {
-      setIsRunningKnowledgeEvals(false);
-    }
-  }
-
   useEffect(() => {
     void loadIntakeBatches();
     void loadGlobalWorkflowRuns();
     void loadGlobalReviewQueueItems();
-    void loadMcpConnectorCatalog();
-    void loadMcpInvocationHistory();
   }, []);
 
   function handleReviewQueueNotesChange(
@@ -679,7 +460,6 @@ function App() {
 
       await refreshSelectedWorkflowRunDetail(workflowRunId);
       await loadGlobalWorkflowRuns();
-      await loadMcpInvocationHistory();
     } catch (error) {
       setWorkflowToolCallingPlanError(
         error instanceof Error
@@ -729,7 +509,6 @@ function App() {
       await refreshSelectedWorkflowRunDetail(workflowRunId);
       await loadGlobalWorkflowRuns();
       await loadGlobalReviewQueueItems();
-      await loadMcpInvocationHistory();
     } catch (error) {
       setAgenticTradeInRunError(
         error instanceof Error
@@ -805,7 +584,6 @@ function App() {
       await loadIntakeBatches();
       await loadGlobalWorkflowRuns();
       await loadGlobalReviewQueueItems();
-      await loadMcpInvocationHistory();
     } catch (error) {
       setEndToEndAgenticDemoError(
         error instanceof Error
@@ -893,7 +671,6 @@ function App() {
       await loadIntakeBatches();
       await loadGlobalWorkflowRuns();
       await loadGlobalReviewQueueItems();
-      await loadMcpInvocationHistory();
     } catch (error) {
       setMultiSourceIntakeDemoResult(null);
       setPersistedAiReadyIntakeRecords([]);
@@ -937,8 +714,6 @@ function App() {
 
       await loadGlobalWorkflowRuns();
       await loadGlobalReviewQueueItems();
-      await loadMcpConnectorCatalog();
-      await loadMcpInvocationHistory();
 
       if (
         input.workflowRunId &&
@@ -1034,8 +809,6 @@ function App() {
 
       await loadGlobalWorkflowRuns();
       await loadGlobalReviewQueueItems();
-      await loadMcpConnectorCatalog();
-      await loadMcpInvocationHistory();
 
       if (
         input.workflowRunId &&
@@ -1151,69 +924,6 @@ function App() {
       );
     } finally {
       setIsStartingWorkflow(false);
-    }
-  }
-
-  async function handleExecuteReadOnlyMcpTool(
-    event: FormEvent<HTMLFormElement>,
-  ) {
-    event.preventDefault();
-
-    if (
-      selectedReadOnlyMcpToolName === "swingops.workflowRuns.get" &&
-      !selectedMcpWorkflowRunId
-    ) {
-      setReadOnlyMcpInvocationError(
-        "Create or select a workflow run before using the get-by-id connector demo.",
-      );
-      return;
-    }
-
-    try {
-      setIsExecutingReadOnlyMcpTool(true);
-      setReadOnlyMcpInvocationError(null);
-
-      const result = await callMcpCompatibleTool(selectedReadOnlyMcpToolName, {
-        arguments: getReadOnlyMcpToolInput(
-          selectedReadOnlyMcpToolName,
-          selectedMcpWorkflowRunId,
-        ),
-        requestedBy: "agent.web-mcp-compatible-demo",
-        workflowRunId:
-          selectedReadOnlyMcpToolName === "swingops.workflowRuns.get"
-            ? selectedMcpWorkflowRunId
-            : undefined,
-        invocationMode: selectedReadOnlyMcpTool.blockedDemo
-          ? "HUMAN_APPROVED"
-          : "AGENT_AUTONOMOUS",
-        humanApprovalGranted: selectedReadOnlyMcpTool.blockedDemo,
-      });
-
-      setReadOnlyMcpInvocationResult(result);
-      await loadGlobalWorkflowRuns();
-      await loadGlobalReviewQueueItems();
-
-      const selectedDetailWorkflowRunId =
-        selectedWorkflowRunDetail?.workflowRun.id ?? null;
-      const invokedWorkflowRunId =
-        result.toolId === "swingops.workflowRuns.get"
-          ? selectedMcpWorkflowRunId
-          : null;
-
-      if (
-        selectedDetailWorkflowRunId &&
-        invokedWorkflowRunId === selectedDetailWorkflowRunId
-      ) {
-        await refreshSelectedWorkflowRunDetail(selectedDetailWorkflowRunId);
-      }
-    } catch (error) {
-      setReadOnlyMcpInvocationError(
-        error instanceof Error
-          ? error.message
-          : "Unable to call MCP-compatible connector demo.",
-      );
-    } finally {
-      setIsExecutingReadOnlyMcpTool(false);
     }
   }
 
