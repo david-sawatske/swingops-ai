@@ -24,6 +24,7 @@ import { getReviewActionFallbackNote } from "./utils/reviewQueueDisplay";
 import { ReviewQueuePage } from "./components/review-queue/ReviewQueuePage";
 import { GuidedDemoPathPage } from "./components/guided-demo/GuidedDemoPathPage";
 import { type GuidedStep } from "./components/guided-demo/guidedWorkflowSteps";
+import { formatGuidedWorkflowInputFromSourceResult } from "./components/guided-demo/formatGuidedWorkflowInput";
 import { AppHeroNav } from "./components/layout/AppHeroNav";
 
 function App() {
@@ -194,32 +195,11 @@ function App() {
       setActiveReviewQueueItemId(null);
       setReviewQueueNotesById({});
 
-      const generatedTradeInRawInput =
-        multiSourceIntakeDemoResult?.cleanedDatasetPreview
-          .map((record, index) => {
-            const identity = [record.brand, record.productLine, record.category]
-              .filter(Boolean)
-              .join(" ");
-
-            const details = [
-              record.shaftFlex ? "shaft flex " + record.shaftFlex : null,
-              record.conditionGrade ? "condition " + record.conditionGrade : null,
-              record.tradeInValue === null ? null : "trade value $" + record.tradeInValue,
-              record.storeId ? "store " + record.storeId : null,
-              record.reviewNeeded ? "review needed" : "review clear",
-              record.missingFields.length > 0
-                ? "missing " + record.missingFields.join(", ")
-                : null,
-            ].filter(Boolean);
-
-            return (
-              String(index + 1) +
-              ". " +
-              (identity || "Unknown equipment") +
-              (details.length > 0 ? " — " + details.join("; ") : "")
-            );
+      const generatedTradeInRawInput = multiSourceIntakeDemoResult
+        ? formatGuidedWorkflowInputFromSourceResult(multiSourceIntakeDemoResult, {
+            includeMissingFields: true,
           })
-          .join("\n") ?? "";
+        : "";
 
       const result = await executeEndToEndAgenticTradeInDemo({
         rawInput: endToEndAgenticDemoRawInput.trim() || generatedTradeInRawInput,
@@ -281,31 +261,12 @@ function App() {
       setMultiSourceIntakeDemoResult(result);
       setPersistedAiReadyIntakeRecords(persistedRecordsResponse.records);
 
-      const generatedTradeInRawInput = result.cleanedDatasetPreview
-        .map((record, index) => {
-          const identity = [record.brand, record.productLine, record.category]
-            .filter(Boolean)
-            .join(" ");
-
-          const details = [
-            record.shaftFlex ? "shaft flex " + record.shaftFlex : null,
-            record.conditionGrade ? "condition " + record.conditionGrade : null,
-            record.tradeInValue === null ? null : "trade value $" + record.tradeInValue,
-            record.storeId ? "store " + record.storeId : null,
-            record.reviewNeeded ? "review needed" : "review clear",
-            record.missingFields.length > 0
-              ? "missing " + record.missingFields.join(", ")
-              : null,
-          ].filter(Boolean);
-
-          return (
-            String(index + 1) +
-            ". " +
-            (identity || "Unknown equipment") +
-            (details.length > 0 ? " — " + details.join("; ") : "")
-          );
-        })
-        .join("\n");
+      const generatedTradeInRawInput = formatGuidedWorkflowInputFromSourceResult(
+        result,
+        {
+          includeMissingFields: true,
+        },
+      );
 
       setEndToEndAgenticDemoRawInput(generatedTradeInRawInput);
       setEndToEndAgenticDemoResult(null);

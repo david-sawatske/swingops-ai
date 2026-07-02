@@ -17,6 +17,7 @@ import { GuidedValidationReviewStep } from "./steps/GuidedValidationReviewStep";
 import { GuidedMessySourceIntakeStep } from "./steps/GuidedMessySourceIntakeStep";
 import { GuidedRunSetupStep } from "./steps/GuidedRunSetupStep";
 import { GuidedWorkflowStepper } from "./GuidedWorkflowStepper";
+import { formatGuidedWorkflowInputFromSourceResult } from "./formatGuidedWorkflowInput";
 import {
   GUIDED_STEPS,
   getGuidedStepIndex,
@@ -64,33 +65,6 @@ type GuidedDemoPathPageProps = {
   }) => void;
   onResetGuidedRun: () => void;
 };
-
-function formatGeneratedWorkflowInput(
-  result: ExecuteMultiSourceIntakeDemoResponse,
-) {
-  return result.cleanedDatasetPreview
-    .map((record, index) => {
-      const identity = [record.brand, record.productLine, record.category]
-        .filter(Boolean)
-        .join(" ");
-
-      const details = [
-        record.shaftFlex ? "shaft flex " + record.shaftFlex : null,
-        record.conditionGrade ? "condition " + record.conditionGrade : null,
-        record.tradeInValue === null ? null : "trade value $" + record.tradeInValue,
-        record.storeId ? "store " + record.storeId : null,
-        record.reviewNeeded ? "review needed" : "review clear",
-      ].filter(Boolean);
-
-      return (
-        String(index + 1) +
-        ". " +
-        (identity || "Unknown equipment") +
-        (details.length > 0 ? " — " + details.join("; ") : "")
-      );
-    })
-    .join("\n");
-}
 
 export function GuidedDemoPathPage({
   activeStep,
@@ -159,7 +133,8 @@ export function GuidedDemoPathPage({
       return;
     }
 
-    const nextGeneratedInput = formatGeneratedWorkflowInput(sourceIntakeResult);
+    const nextGeneratedInput =
+      formatGuidedWorkflowInputFromSourceResult(sourceIntakeResult);
     setGeneratedWorkflowInput(nextGeneratedInput);
 
     if (!tradeInRawInput.trim()) {
