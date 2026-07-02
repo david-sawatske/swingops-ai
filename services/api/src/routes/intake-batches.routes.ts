@@ -2,7 +2,6 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import { prisma } from "../lib/prisma.js";
-import { createMockModelCallLogForWorkflowRun } from "../workflows/workflow-model-logging.js";
 
 const createIntakeBatchBodySchema = z.object({
   name: z.string().min(1),
@@ -27,34 +26,6 @@ const createIntakeBatchBodySchema = z.object({
 const paramsWithIdSchema = z.object({
   id: z.string().min(1)
 });
-
-const tradeInWorkflowSteps = [
-  {
-    stepName: "Parse intake input",
-    stepType: "PARSE_INPUT",
-    orderIndex: 1
-  },
-  {
-    stepName: "Normalize trade-in data",
-    stepType: "NORMALIZE_DATA",
-    orderIndex: 2
-  },
-  {
-    stepName: "Extract golf club fields",
-    stepType: "EXTRACT_GOLF_CLUB_FIELDS",
-    orderIndex: 3
-  },
-  {
-    stepName: "Validate structured output",
-    stepType: "VALIDATE_STRUCTURED_OUTPUT",
-    orderIndex: 4
-  },
-  {
-    stepName: "Create review item when needed",
-    stepType: "CREATE_REVIEW_ITEM",
-    orderIndex: 5
-  }
-] as const;
 
 function serializeIntakeBatch(batch: {
   id: string;
@@ -256,87 +227,6 @@ export async function intakeBatchRoutes(app: FastifyInstance): Promise<void> {
     return reply.status(201).send({
       intakeBatch: serializeIntakeBatch(intakeBatch),
       items: intakeBatch.items.map(serializeIntakeItem)
-    });
-  });
-
-  app.post("/intake-batches/:id/start-workflow", async (request, reply) => {
-    const parsedParams = paramsWithIdSchema.safeParse(request.params);
-
-    if (!parsedParams.success) {
-      return reply.status(400).send({
-        error: "Invalid intake batch id",
-        details: parsedParams.error.flatten()
-      });
-    }
-
-    const intakeBatch = await prisma.intakeBatch.findUnique({
-      where: {
-        id: parsedParams.data.id
-      },
-      include: {
-        items: {
-          orderBy: {
-            sourceRowNumber: "asc"
-          },
-          take: 1
-        }
-      }
-    });
-
-    if (!intakeBatch) {
-      return reply.status(404).send({
-        error: "Intake batch not found"
-      });
-    }
-
-    const firstIntakeItem = intakeBatch.items[0] ?? null;
-
-    const workflowRun = await prisma.workflowRun.create({
-      data: {
-        intakeBatchId: intakeBatch.id,
-        ...(firstIntakeItem ? { intakeItemId: firstIntakeItem.id } : {}),
-        workflowName: "trade-in-intake-v1",
-        status: "QUEUED",
-        steps: {
-          create: tradeInWorkflowSteps.map((step) => ({
-            stepName: step.stepName,
-            stepType: step.stepType,
-            orderIndex: step.orderIndex,
-            status: "PENDING",
-            inputJson: {
-              intakeBatchId: intakeBatch.id,
-              ...(firstIntakeItem
-                ? {
-                    intakeItemId: firstIntakeItem.id,
-                    originalText: firstIntakeItem.rawText
-                  }
-                : {}),
-              intakeBatchName: intakeBatch.name,
-              sourceType: intakeBatch.sourceType,
-              itemCount: intakeBatch.itemCount
-            }
-          }))
-        }
-      },
-      include: {
-        steps: {
-          orderBy: {
-            orderIndex: "asc"
-          }
-        }
-      }
-    });
-
-    const modelCallLog = await createMockModelCallLogForWorkflowRun({
-      workflowRunId: workflowRun.id,
-      taskType: "INTAKE_PARSING",
-      goal: "LOW_COST"
-    });
-
-    return reply.status(201).send({
-      workflowRun: serializeWorkflowRun(workflowRun),
-      steps: workflowRun.steps.map(serializeWorkflowStep),
-      modelCallLog: serializeModelCallLog(modelCallLog)
     });
   });
 

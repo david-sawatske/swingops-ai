@@ -2,16 +2,6 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import { prisma } from "../lib/prisma.js";
-import { executeWorkflowRunSimulation } from "../workflows/workflow-execution.js";
-import {
-  executeWorkflowToolCallingPlan,
-  WorkflowToolCallingPlanWorkflowRunNotFoundError
-} from "../workflows/workflow-tool-calling-plan.js";
-import { createMockModelCallLogForWorkflowRun } from "../workflows/workflow-model-logging.js";
-import {
-  AgenticTradeInWorkflowRunNotFoundError,
-  executeAgenticTradeInWorkflowRun
-} from "../workflows/agentic-trade-in-workflow.js";
 import {
   DEFAULT_AGENTIC_TRADE_IN_DEMO_INPUT,
   executeEndToEndAgenticTradeInDemo
@@ -22,10 +12,6 @@ import {
 
 const workflowRunParamsSchema = z.object({
   id: z.string().min(1)
-});
-
-const executeWorkflowRunBodySchema = z.object({
-  scenario: z.enum(["HAPPY_PATH", "NEEDS_REVIEW"]).optional()
 });
 
 const agenticTradeInDemoBodySchema = z
@@ -545,161 +531,4 @@ export async function workflowRunRoutes(app: FastifyInstance): Promise<void> {
     };
   });
 
-  app.post("/workflow-runs/:id/model-provider-fallback-demo", async (request, reply) => {
-    const parsedParams = workflowRunParamsSchema.safeParse(request.params);
-
-    if (!parsedParams.success) {
-      return reply.status(400).send({
-        error: "Invalid workflow run id",
-        details: parsedParams.error.flatten()
-      });
-    }
-
-    const workflowRun = await prisma.workflowRun.findUnique({
-      where: {
-        id: parsedParams.data.id
-      },
-      select: {
-        id: true
-      }
-    });
-
-    if (!workflowRun) {
-      return reply.status(404).send({
-        error: "Workflow run not found"
-      });
-    }
-
-    const modelCallLog = await createMockModelCallLogForWorkflowRun({
-      workflowRunId: workflowRun.id,
-      taskType: "INTAKE_PARSING",
-      goal: "HIGH_QUALITY"
-    });
-
-    const modelCallLogWithAttempts = await prisma.modelCallLog.findUniqueOrThrow({
-      where: {
-        id: modelCallLog.id
-      },
-      include: {
-        attemptLogs: {
-          orderBy: {
-            attemptOrder: "asc"
-          }
-        }
-      }
-    });
-
-    return {
-      modelCallLog: serializeModelCallLog(modelCallLogWithAttempts)
-    };
-  });
-
-  app.post("/workflow-runs/:id/agentic-trade-in-run", async (request, reply) => {
-    const parsedParams = workflowRunParamsSchema.safeParse(request.params);
-
-    if (!parsedParams.success) {
-      return reply.status(400).send({
-        error: "Invalid workflow run id",
-        details: parsedParams.error.flatten()
-      });
-    }
-
-    try {
-      const result = await executeAgenticTradeInWorkflowRun({
-        workflowRunId: parsedParams.data.id
-      });
-
-      return {
-        workflowRunId: result.workflowRunId,
-        modelCallLog: serializeModelCallLog(result.modelCallLog),
-        plan: result.toolCallingPlanExecution.plan,
-        results: result.toolCallingPlanExecution.results,
-        toolCallLogs: result.toolCallLogs.map(serializeToolCallLog),
-        evalSummary: result.evalSummary,
-        executionMetadata: result.executionMetadata
-      };
-    } catch (error) {
-      if (error instanceof AgenticTradeInWorkflowRunNotFoundError) {
-        return reply.status(404).send({
-          error: "Workflow run not found"
-        });
-      }
-
-      throw error;
-    }
-  });
-
-  app.post("/workflow-runs/:id/tool-calling-plan/execute", async (request, reply) => {
-    const parsedParams = workflowRunParamsSchema.safeParse(request.params);
-
-    if (!parsedParams.success) {
-      return reply.status(400).send({
-        error: "Invalid workflow run id",
-        details: parsedParams.error.flatten()
-      });
-    }
-
-    try {
-      const result = await executeWorkflowToolCallingPlan({
-        workflowRunId: parsedParams.data.id
-      });
-
-      return {
-        plan: result.plan,
-        results: result.results,
-        toolCallLogs: result.toolCallLogs.map(serializeToolCallLog),
-        executionMetadata: result.executionMetadata
-      };
-    } catch (error) {
-      if (error instanceof WorkflowToolCallingPlanWorkflowRunNotFoundError) {
-        return reply.status(404).send({
-          error: "Workflow run not found"
-        });
-      }
-
-      throw error;
-    }
-  });
-  app.post("/workflow-runs/:id/execute", async (request, reply) => {
-    const parsedParams = workflowRunParamsSchema.safeParse(request.params);
-    const parsedBody = executeWorkflowRunBodySchema.safeParse(request.body ?? {});
-
-    if (!parsedParams.success) {
-      return reply.status(400).send({
-        error: "Invalid workflow run id",
-        details: parsedParams.error.flatten()
-      });
-    }
-
-    if (!parsedBody.success) {
-      return reply.status(400).send({
-        error: "Invalid workflow execution request",
-        details: parsedBody.error.flatten()
-      });
-    }
-
-    try {
-      const result = await executeWorkflowRunSimulation({
-        workflowRunId: parsedParams.data.id,
-        ...(parsedBody.data.scenario === undefined
-          ? {}
-          : { scenario: parsedBody.data.scenario })
-      });
-
-      return {
-        workflowRun: serializeWorkflowRun(result.workflowRun),
-        steps: result.steps.map(serializeWorkflowStep),
-        toolCallLogs: result.toolCallLogs.map(serializeToolCallLog),
-        reviewQueueItems: result.reviewQueueItems.map(serializeReviewQueueItem)
-      };
-    } catch (error) {
-      if (error instanceof Error && error.message === "Workflow run not found") {
-        return reply.status(404).send({
-          error: "Workflow run not found"
-        });
-      }
-
-      throw error;
-    }
-  });
 }
