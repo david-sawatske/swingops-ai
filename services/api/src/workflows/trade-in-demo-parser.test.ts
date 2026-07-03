@@ -144,4 +144,165 @@ describe("parseTradeInDemoText", () => {
     expect(parsedItems[2]?.missingFields).not.toContain("shaftFlex");
   });
 
+  it("parses guarded workflow source values before review validation", () => {
+    const parsedItems = parseTradeInDemoText([
+      "TaylorMade Stealth 2 driver shaft stiff condition 8.0 Average trade value $150",
+      "TaylorMade Stealth 2 driver shaft stiff cond avg trade value $150"
+    ].join("\n"));
+
+    expect(parsedItems).toHaveLength(2);
+
+    for (const item of parsedItems) {
+      expect(item).toMatchObject({
+        brand: "TaylorMade",
+        productLine: "Stealth 2",
+        category: "DRIVER",
+        shaftFlex: "STIFF",
+        conditionGrade: "8.0 Average",
+        tradeInValue: 150
+      });
+      expect(item?.conditionNotes).toContain("8.0 Average");
+      expect(item?.missingFields).not.toEqual(
+        expect.arrayContaining(["shaftFlex", "conditionGrade", "tradeInValue", "conditionNotes"])
+      );
+    }
+  });
+
+  it("normalizes guarded workflow value, flex, and condition shorthand variants", () => {
+    const cases = [
+      {
+        raw: "Titleist TSR 7w shaft stf condition 8.0 Average value $145",
+        expected: {
+          brand: "Titleist",
+          productLine: "TSR",
+          category: "FAIRWAY_WOOD",
+          shaftFlex: "STIFF",
+          conditionGrade: "8.0 Average",
+          tradeInValue: 145
+        }
+      },
+      {
+        raw: "Titleist TSR 7w shaft stiff condition 8.0 Average trade value $145",
+        expected: {
+          brand: "Titleist",
+          productLine: "TSR",
+          category: "FAIRWAY_WOOD",
+          shaftFlex: "STIFF",
+          conditionGrade: "8.0 Average",
+          tradeInValue: 145
+        }
+      },
+      {
+        raw: "Titleist TSR 7w shaft stiff condition 8.0 Average estimated value 145",
+        expected: {
+          brand: "Titleist",
+          productLine: "TSR",
+          category: "FAIRWAY_WOOD",
+          shaftFlex: "STIFF",
+          conditionGrade: "8.0 Average",
+          tradeInValue: 145
+        }
+      },
+      {
+        raw: "Titleist TSR 7w shaft stiff condition 8.0 Average value=145",
+        expected: {
+          brand: "Titleist",
+          productLine: "TSR",
+          category: "FAIRWAY_WOOD",
+          shaftFlex: "STIFF",
+          conditionGrade: "8.0 Average",
+          tradeInValue: 145
+        }
+      },
+      {
+        raw: "PING G425 4-PW shaft reg condition 6.0 Poor value $210",
+        expected: {
+          brand: "PING",
+          productLine: "G425",
+          category: "IRON_SET",
+          shaftFlex: "REGULAR",
+          conditionGrade: "6.0 Poor",
+          tradeInValue: 210
+        }
+      },
+      {
+        raw: "Callaway Rogue ST Max driver shaft x-stiff condition 7.0 Below Average value $130",
+        expected: {
+          brand: "Callaway",
+          productLine: "Rogue ST Max",
+          category: "DRIVER",
+          shaftFlex: "X_STIFF",
+          conditionGrade: "7.0 Below Average",
+          tradeInValue: 130
+        }
+      },
+      {
+        raw: "Mizuno JPX 923 Hot Metal irons shaft Tour X-Stiff condition 9.0 Above Average value $390",
+        expected: {
+          brand: "Mizuno",
+          productLine: "JPX 923 Hot Metal",
+          category: "IRON_SET",
+          shaftFlex: "TOUR_X_STIFF",
+          conditionGrade: "9.0 Above Average",
+          tradeInValue: 390
+        }
+      },
+      {
+        raw: "Odyssey White Hot OG putter ladies flex condition 8.0 Average value $95",
+        expected: {
+          brand: "Odyssey",
+          productLine: "White Hot OG",
+          category: "PUTTER",
+          shaftFlex: "LADIES",
+          conditionGrade: "8.0 Average",
+          tradeInValue: 95
+        }
+      },
+      {
+        raw: "TaylorMade Stealth 2 driver shaft stiff condition below avg value $150",
+        expected: {
+          brand: "TaylorMade",
+          productLine: "Stealth 2",
+          category: "DRIVER",
+          shaftFlex: "STIFF",
+          conditionGrade: "7.0 Below Average",
+          tradeInValue: 150
+        }
+      },
+      {
+        raw: "TaylorMade Stealth 2 driver shaft stiff cond aa value $150",
+        expected: {
+          brand: "TaylorMade",
+          productLine: "Stealth 2",
+          category: "DRIVER",
+          shaftFlex: "STIFF",
+          conditionGrade: "9.0 Above Average",
+          tradeInValue: 150
+        }
+      },
+      {
+        raw: "TaylorMade Stealth 2 driver shaft stiff condition mint value $150",
+        expected: {
+          brand: "TaylorMade",
+          productLine: "Stealth 2",
+          category: "DRIVER",
+          shaftFlex: "STIFF",
+          conditionGrade: "9.5 Mint",
+          tradeInValue: 150
+        }
+      }
+    ];
+
+    const parsedItems = parseTradeInDemoText(cases.map((testCase) => testCase.raw).join("\n"));
+
+    expect(parsedItems).toHaveLength(cases.length);
+
+    cases.forEach((testCase, index) => {
+      expect(parsedItems[index]).toMatchObject(testCase.expected);
+      expect(parsedItems[index]?.missingFields).not.toEqual(
+        expect.arrayContaining(["shaftFlex", "conditionGrade", "tradeInValue", "conditionNotes"])
+      );
+    });
+  });
+
 });

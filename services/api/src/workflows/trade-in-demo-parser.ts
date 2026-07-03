@@ -10,6 +10,8 @@ export type ParsedTradeInDemoItem = {
   shaftBrand: string | null;
   shaftModel: string | null;
   shaftFlex: string | null;
+  conditionGrade: string | null;
+  tradeInValue: number | null;
   conditionNotes: string[];
   accessoriesNotes: string[];
   uncertaintyNotes: string[];
@@ -208,6 +210,14 @@ const SHAFT_MODEL_PATTERNS: {
   }
 ];
 
+const CONDITION_GRADES = [
+  "9.5 Mint",
+  "9.0 Above Average",
+  "8.0 Average",
+  "7.0 Below Average",
+  "6.0 Poor"
+] as const;
+
 const CONDITION_NOTE_PATTERNS: {
   note: string;
   aliases: RegExp[];
@@ -380,7 +390,7 @@ function detectShaftFlex(line: string): string | null {
     return "X_STIFF";
   }
 
-  if (/\bstiff\b/i.test(line) || /\bs\s*flex\b/i.test(line) || /\bSTIFF\b/.test(line)) {
+  if (/\bstiff\b/i.test(line) || /\bstf\b/i.test(line) || /\bs\s*flex\b/i.test(line) || /\bSTIFF\b/.test(line)) {
     return "STIFF";
   }
 
@@ -449,6 +459,67 @@ function collectNotes(
       .filter((pattern) => pattern.aliases.some((alias) => alias.test(line)))
       .map((pattern) => pattern.note)
   );
+}
+
+function detectConditionGrade(line: string): string | null {
+  const explicitConditionGrade = CONDITION_GRADES.find((grade) =>
+    new RegExp(`\\b${grade.replace(".", "\\.")}\\b`, "i").test(line)
+  );
+
+  if (explicitConditionGrade) {
+    return explicitConditionGrade;
+  }
+
+  const shorthandMatch = line.match(
+    /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*(above\s*(?:avg|average)|aa|below\s*(?:avg|average)|ba|avg|average|poor|mint)\b/i
+  );
+
+  if (!shorthandMatch?.[1]) {
+    return null;
+  }
+
+  const shorthand = shorthandMatch[1].toLowerCase().replace(/\s+/g, " ");
+
+  if (shorthand === "mint") {
+    return "9.5 Mint";
+  }
+
+  if (shorthand === "above avg" || shorthand === "above average" || shorthand === "aa") {
+    return "9.0 Above Average";
+  }
+
+  if (shorthand === "avg" || shorthand === "average") {
+    return "8.0 Average";
+  }
+
+  if (shorthand === "below avg" || shorthand === "below average" || shorthand === "ba") {
+    return "7.0 Below Average";
+  }
+
+  if (shorthand === "poor") {
+    return "6.0 Poor";
+  }
+
+  return null;
+}
+
+function detectTradeInValue(line: string): number | null {
+  const dollarMatch = line.match(/\$(\d{2,4})\b/);
+  if (dollarMatch?.[1]) {
+    return Number(dollarMatch[1]);
+  }
+
+  const estimatedMatch = line.match(/\bestimated\s+value\s*(?:=|is|:)?\s*(\d{2,4})\b/i);
+  if (estimatedMatch?.[1]) {
+    return Number(estimatedMatch[1]);
+  }
+
+  const valueMatch = line.match(/\b(?:trade\s*)?value\s*(?:=|is|:)?\s*(\d{2,4})\b/i);
+  if (valueMatch?.[1]) {
+    return Number(valueMatch[1]);
+  }
+
+  return null;
 }
 
 function buildMissingFields(input: {
@@ -533,7 +604,12 @@ function parseLine(rawLine: string, index: number): ParsedTradeInDemoItem {
   const shaftBrand = detectShaftBrand(cleanedLine);
   const shaftModel = detectShaftModel(cleanedLine);
   const shaftFlex = detectShaftFlex(cleanedLine);
-  const conditionNotes = collectNotes(cleanedLine, CONDITION_NOTE_PATTERNS);
+  const conditionGrade = detectConditionGrade(cleanedLine);
+  const tradeInValue = detectTradeInValue(cleanedLine);
+  const conditionNotes = unique([
+    ...(conditionGrade ? [conditionGrade] : []),
+    ...collectNotes(cleanedLine, CONDITION_NOTE_PATTERNS)
+  ]);
   const accessoriesNotes = collectNotes(cleanedLine, ACCESSORY_NOTE_PATTERNS);
   const uncertaintyNotes = collectNotes(cleanedLine, UNCERTAINTY_PATTERNS);
   const missingFields = buildMissingFields({
@@ -566,6 +642,8 @@ function parseLine(rawLine: string, index: number): ParsedTradeInDemoItem {
     shaftBrand,
     shaftModel,
     shaftFlex,
+    conditionGrade,
+    tradeInValue,
     conditionNotes,
     accessoriesNotes,
     uncertaintyNotes,

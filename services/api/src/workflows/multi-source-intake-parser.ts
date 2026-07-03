@@ -128,7 +128,7 @@ function detectShaftFlex(text: string): string | null {
     return "X_STIFF";
   }
 
-  if (/\bstiff\b|\bs flex\b|\btensei s\b/i.test(text)) {
+  if (/\bstiff\b|\bstf\b|\bs flex\b|\btensei s\b/i.test(text)) {
     return "STIFF";
   }
 
@@ -156,11 +156,45 @@ const CONDITION_GRADES = [
 ] as const;
 
 function detectConditionGrade(text: string): string | null {
-  const conditionGrade = CONDITION_GRADES.find((grade) =>
+  const explicitConditionGrade = CONDITION_GRADES.find((grade) =>
     new RegExp(`\\b${grade.replace(".", "\\.")}\\b`, "i").test(text)
   );
 
-  return conditionGrade ?? null;
+  if (explicitConditionGrade) {
+    return explicitConditionGrade;
+  }
+
+  const shorthandMatch = text.match(
+    /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*(above\s*(?:avg|average)|aa|below\s*(?:avg|average)|ba|avg|average|poor|mint)\b/i
+  );
+
+  if (!shorthandMatch?.[1]) {
+    return null;
+  }
+
+  const shorthand = shorthandMatch[1].toLowerCase().replace(/\s+/g, " ");
+
+  if (shorthand === "mint") {
+    return "9.5 Mint";
+  }
+
+  if (shorthand === "above avg" || shorthand === "above average" || shorthand === "aa") {
+    return "9.0 Above Average";
+  }
+
+  if (shorthand === "avg" || shorthand === "average") {
+    return "8.0 Average";
+  }
+
+  if (shorthand === "below avg" || shorthand === "below average" || shorthand === "ba") {
+    return "7.0 Below Average";
+  }
+
+  if (shorthand === "poor") {
+    return "6.0 Poor";
+  }
+
+  return null;
 }
 
 function detectTradeInValue(text: string): number | null {
