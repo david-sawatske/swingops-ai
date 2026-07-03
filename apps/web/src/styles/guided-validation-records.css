@@ -809,3 +809,70 @@
 }
 
 
+
+.guided-review-source-match-editor {
+  border: 1px solid rgba(34, 81, 49, 0.18);
+  border-radius: 14px;
+  background: rgba(246, 255, 248, 0.8);
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.9rem;
+}
+
+.guided-review-source-match-editor > div:first-child strong {
+  display: block;
+  font-size: 0.86rem;
+}
+
+.guided-review-source-match-editor > div:first-child p {
+  color: #4d5f4f;
+  font-size: 0.78rem;
+  margin: 0.25rem 0 0;
+}
+
+.guided-review-source-match-original {
+  border: 1px solid rgba(18, 41, 24, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.74);
+  padding: 0.75rem;
+}
+
+.guided-review-source-match-original span {
+  color: #526255;
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+}
+
+.guided-review-source-match-original p {
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.guided-review-source-match-grid {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.guided-review-source-match-grid label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.guided-review-source-match-grid input {
+  border: 1px solid rgba(18, 41, 24, 0.18);
+  border-radius: 10px;
+  font: inherit;
+  padding: 0.65rem 0.7rem;
+}
+
+.guided-review-source-match-grid small {
+  color: #5f6f62;
+  font-size: 0.72rem;
+  font-weight: 500;
+}

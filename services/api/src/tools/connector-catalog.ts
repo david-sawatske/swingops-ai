@@ -226,7 +226,7 @@ async function getInvocationSummaries(): Promise<Map<string, ConnectorInvocation
     select: {
       toolName: true,
       status: true,
-      outputJson: true,
+      outputJson: false,
       createdAt: true
     }
   });
@@ -257,10 +257,6 @@ async function getInvocationSummaries(): Promise<Map<string, ConnectorInvocation
 
     if (log.status === "FAILED") {
       existing.failedCount += 1;
-    }
-
-    if (getPolicyDecision(log.outputJson) === "BLOCK") {
-      existing.blockedCount += 1;
     }
 
     summaries.set(log.toolName, existing);

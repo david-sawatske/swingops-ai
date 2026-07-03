@@ -448,6 +448,9 @@ describe("tool routes", () => {
         url: "/mcp/tools/invocations/execute-readonly",
         payload: {
           toolName: "swingops.workflowRuns.list",
+          inputJson: {
+            maxResults: 3
+          },
           requestedBy: "agent.route-readonly-test"
         }
       });
@@ -462,7 +465,9 @@ describe("tool routes", () => {
         requestedBy: "agent.route-readonly-test",
         workflowRunId: null,
         workflowStepId: null,
-        inputJson: null,
+        inputJson: {
+          maxResults: 3
+        },
         executionAttempted: true,
         toolCallLogId: expect.any(String)
       });
@@ -489,6 +494,7 @@ describe("tool routes", () => {
           workflowRuns: expect.any(Array)
         }
       });
+      expect(body.connectorResult.data.workflowRuns.length).toBeLessThanOrEqual(3);
       expect(body.toolCallLog).toMatchObject({
         id: body.invocation.toolCallLogId,
         workflowRunId: null,

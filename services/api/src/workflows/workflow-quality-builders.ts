@@ -547,7 +547,7 @@ export function buildAgentPlan(input: {
       actionType: "RECORD_TRACE",
       expectedOutput: "Workflow quality summary for the current run.",
       status: "COMPLETED",
-      linkedTraceEventIds: ["audit-event-10"],
+      linkedTraceEventIds: ["audit-event-11"],
       requiredTools: [],
       validationRules: [],
       retryPolicy: null,

@@ -13,10 +13,13 @@ export function ReviewSummaryCards({
   recordsStillNeedingAttentionCount,
   reviewItemsCreatedCount,
 }: ReviewSummaryCardsProps) {
+  const displayQualityStatus =
+    recordsStillNeedingAttentionCount === 0 ? "READY" : qualityStatus;
+
   return (
     <div className="guided-validation-summary-grid">
       <article>
-        <strong>{formatStatusLabel(qualityStatus)}</strong>
+        <strong>{formatStatusLabel(displayQualityStatus)}</strong>
         <span>quality status</span>
       </article>
       <article>

@@ -11,8 +11,16 @@ import {
   type TradeInValuationResult
 } from "../internal-systems/trade-in-valuation-service.js";
 import { ensureDemoKnowledgeBaseReady } from "../knowledge/knowledge-ingestion.js";
-import { searchKnowledgeBase, type KnowledgeSearchResult } from "../knowledge/knowledge-search.js";
+import {
+  searchKnowledgeBase,
+  type KnowledgeSearchResult
+} from "../knowledge/knowledge-search.js";
 import { prisma } from "../lib/prisma.js";
+import {
+  applyPriorReviewLearningEvidenceToParsedItem,
+  findPriorReviewLearningEvidence,
+  type PriorReviewLearningEvidence
+} from "../review-learning/review-learning-evidence.js";
 import {
   executeReadOnlyToolInvocation,
   type ReadOnlyToolInvocationResult
@@ -50,6 +58,10 @@ export type EndToEndAgenticTradeInDemoResult = {
   valuationEvidenceByItem: {
     parsedItemId: string;
     estimate: TradeInValuationResult;
+  }[];
+  priorReviewLearningEvidenceByItem: {
+    parsedItemId: string;
+    evidence: PriorReviewLearningEvidence[];
   }[];
   modelRoutingDecision: ReturnType<typeof routeModel>;
   modelCallLog: Awaited<ReturnType<typeof createMockModelCallLogForWorkflowRun>>;
@@ -104,6 +116,7 @@ export type EndToEndAgenticTradeInDemoResult = {
     inventoryMatchCount: number;
     valuationRangeCount: number;
     valuationReviewRequiredCount: number;
+    priorReviewEvidenceCount: number;
     selectedProvider: string;
     selectedModel: string;
     productStory: string;
@@ -251,6 +264,7 @@ function buildAuditTrail(input: {
   knowledgeMatchesByItem: EndToEndAgenticTradeInDemoResult["knowledgeMatchesByItem"];
   inventoryMatchesByItem: EndToEndAgenticTradeInDemoResult["inventoryMatchesByItem"];
   valuationEvidenceByItem: EndToEndAgenticTradeInDemoResult["valuationEvidenceByItem"];
+  priorReviewLearningEvidenceByItem: EndToEndAgenticTradeInDemoResult["priorReviewLearningEvidenceByItem"];
   modelRoutingDecision: ReturnType<typeof routeModel>;
   toolCallResults: DemoToolResult[];
   reviewQueueItemsCreated: ReviewQueueItem[];
@@ -348,6 +362,21 @@ function buildAuditTrail(input: {
     },
     {
       orderIndex: 10,
+      label: "Prior review evidence checked",
+      status:
+        input.finalSummary.priorReviewEvidenceCount > 0
+          ? "SUCCEEDED"
+          : "INFO",
+      summary:
+        input.finalSummary.priorReviewEvidenceCount > 0
+          ? `${input.finalSummary.priorReviewEvidenceCount} prior review evidence item(s) found from resolved corrections.`
+          : "No prior review evidence matched this run.",
+      details: {
+        priorReviewLearningEvidenceByItem: input.priorReviewLearningEvidenceByItem
+      }
+    },
+    {
+      orderIndex: 11,
       label: "Final demo summary",
       status: "INFO",
       summary: input.finalSummary.productStory,
@@ -399,6 +428,38 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
       startedAt: new Date()
     }
   });
+
+  const priorReviewLearningEvidenceByItem = [];
+
+  for (const item of parsedItems) {
+    const evidence = await findPriorReviewLearningEvidence({
+      rawText: item.rawLine,
+      sourceType: "FREE_TEXT",
+      excludeWorkflowRunId: workflowRun.id,
+      parsedFields: {
+        brand: item.brand,
+        productLine: item.productLine,
+        category: item.category,
+        shaftFlex: item.shaftFlex
+      }
+    });
+
+    priorReviewLearningEvidenceByItem.push({
+      parsedItemId: item.id,
+      evidence
+    });
+  }
+
+  for (const item of parsedItems) {
+    const priorReviewEvidence = priorReviewLearningEvidenceByItem.find(
+      (evidenceByItem) => evidenceByItem.parsedItemId === item.id
+    );
+
+    applyPriorReviewLearningEvidenceToParsedItem(
+      item,
+      priorReviewEvidence?.evidence ?? []
+    );
+  }
 
   const knowledgeMatchesByItem = [];
 
@@ -629,6 +690,10 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
   const valuationReviewRequiredCount = valuationEvidenceByItem.filter(
     (evidence) => evidence.estimate.reviewRequired
   ).length;
+  const priorReviewEvidenceCount = priorReviewLearningEvidenceByItem.reduce(
+    (count, item) => count + item.evidence.length,
+    0
+  );
   const finalSummary = {
     parsedItemCount: parsedItems.length,
     knowledgeMatchCount,
@@ -639,6 +704,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     inventoryMatchCount,
     valuationRangeCount,
     valuationReviewRequiredCount,
+    priorReviewEvidenceCount,
     selectedProvider: modelRoutingDecision.selectedProvider,
     selectedModel: modelRoutingDecision.selectedModel,
     productStory:
@@ -669,6 +735,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     knowledgeMatchesByItem,
     inventoryMatchesByItem,
     valuationEvidenceByItem,
+    priorReviewLearningEvidenceByItem,
     modelRoutingDecision,
     modelCallLog,
     toolCallingPlan,

@@ -91,7 +91,8 @@ const workflowRunsListInputSchema = z
   .object({
     status: z
       .enum(["QUEUED", "RUNNING", "NEEDS_REVIEW", "COMPLETED", "FAILED"])
-      .optional()
+      .optional(),
+    maxResults: z.number().int().min(1).max(25).optional()
   })
   .strict();
 
@@ -455,6 +456,7 @@ async function executeConnectorTool(input: {
       orderBy: {
         createdAt: "desc"
       },
+      take: parsedInput.maxResults ?? 10,
       include: {
         intakeBatch: true,
         intakeItem: true,
@@ -467,7 +469,8 @@ async function executeConnectorTool(input: {
         toolCallLogs: {
           orderBy: {
             createdAt: "desc"
-          }
+          },
+          take: 1
         },
         reviewQueueItems: {
           select: {

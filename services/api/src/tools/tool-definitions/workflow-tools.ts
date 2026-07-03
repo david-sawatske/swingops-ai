@@ -126,6 +126,12 @@ export const workflowRunAgentTools: AgentToolDefinition[] = [
             "COMPLETED",
             "FAILED"
           ]
+        },
+        {
+          name: "maxResults",
+          type: "number",
+          required: false,
+          description: "Maximum workflow runs to return, capped at 25."
         }
       ]
     },

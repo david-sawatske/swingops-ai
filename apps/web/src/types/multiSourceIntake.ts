@@ -28,6 +28,7 @@ export type MultiSourceIntakeRecord = {
   missingFields: string[];
   confidence: number;
   reviewNeeded: boolean;
+  sourceText?: string;
   normalizedText: string;
 };
 

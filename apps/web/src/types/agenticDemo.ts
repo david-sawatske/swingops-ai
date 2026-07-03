@@ -72,6 +72,20 @@ export type AgenticTradeInDemoInventoryLookup = {
   }[];
 };
 
+export type PriorReviewLearningEvidence = {
+  fieldName: string;
+  correctedValue: string | null;
+  proposedValue: string | null;
+  rawTextMatch: string | null;
+  evidenceText: string | null;
+  confidence: number;
+  strength: "WEAK" | "MEDIUM" | "STRONG";
+  reasonCodes: string[];
+  summary: string;
+  learningEventId: string;
+  createdAt: string;
+};
+
 export type AgenticTradeInDemoValuationEstimate = {
   productId: string | null;
   sku: string | null;
@@ -263,6 +277,10 @@ export type ExecuteEndToEndAgenticTradeInDemoResponse = {
     parsedItemId: string;
     estimate: AgenticTradeInDemoValuationEstimate;
   }[];
+  priorReviewLearningEvidenceByItem: {
+    parsedItemId: string;
+    evidence: PriorReviewLearningEvidence[];
+  }[];
   modelRoutingDecision: {
     selectedProvider: string;
     selectedModel: string;
@@ -312,6 +330,7 @@ export type ExecuteEndToEndAgenticTradeInDemoResponse = {
     inventoryMatchCount: number;
     valuationRangeCount: number;
     valuationReviewRequiredCount: number;
+    priorReviewEvidenceCount: number;
     selectedProvider: string;
     selectedModel: string;
     productStory: string;

@@ -100,7 +100,7 @@ function RecordAttentionList({ card }: { card: RecordReviewCard }) {
   const unresolvedRetries = card.retryEvents.filter((event) => event.status === "UNRESOLVED");
 
   const attentionItems = [
-    ...card.missingFields.map((field) => ({
+    ...getUnresolvedMissingFields(card).map((field) => ({
       id: `missing-${field}`,
       label: `Confirm ${formatFieldLabel(field)}`,
       detail: "This value is missing or unclear in the normalized record.",
@@ -160,6 +160,112 @@ function canResolveReviewItem(reviewItem: ReviewQueueItem | null) {
   return reviewItem?.status === "OPEN" || reviewItem?.status === "IN_REVIEW";
 }
 
+const REVIEW_LEARNING_SOURCE_MATCH_FIELDS = [
+  "brand",
+  "productLine",
+  "category",
+  "shaftFlex",
+  "conditionGrade",
+  "demoValue",
+] as const;
+
+type ReviewLearningSourceMatchField =
+  (typeof REVIEW_LEARNING_SOURCE_MATCH_FIELDS)[number];
+
+function compactWhitespace(value: string) {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function findFirstSourceMatch(sourceEvidence: string, patterns: RegExp[]) {
+  for (const pattern of patterns) {
+    const match = sourceEvidence.match(pattern);
+
+    if (match?.[0]) {
+      return compactWhitespace(match[0]);
+    }
+  }
+
+  return "";
+}
+
+function getSourceTextMatchSuggestion(
+  card: RecordReviewCard,
+  fieldName: ReviewLearningSourceMatchField,
+) {
+  const sourceEvidence = card.sourceEvidence;
+
+  if (!sourceEvidence || sourceEvidence === "No source evidence captured for this record.") {
+    return "";
+  }
+
+  if (fieldName === "shaftFlex") {
+    return findFirstSourceMatch(sourceEvidence, [
+      /\bshaft\s+(?:stf|stiff|regular|reg|senior|lite|ladies|women|x\s*-?\s*stiff|tour\s+x)\b/i,
+      /\b(?:stf|s\s*-?\s*flex|stiff|regular|reg\s*flex|r\s*-?\s*flex|senior|sr|lite|ladies|l\s*-?\s*flex|x\s*-?\s*stiff|x\s*-?\s*flex|tour\s+x)\b/i,
+    ]);
+  }
+
+  if (fieldName === "conditionGrade") {
+    return findFirstSourceMatch(sourceEvidence, [
+      /\bcondition\s+(?:9\.5\s+Mint|9\.0\s+Above\s+Average|8\.0\s+Average|7\.0\s+Below\s+Average|6\.0\s+Poor|avg|average|poor|mint)\b/i,
+      /\b(?:9\.5\s+Mint|9\.0\s+Above\s+Average|8\.0\s+Average|7\.0\s+Below\s+Average|6\.0\s+Poor)\b/i,
+      /\bcond\s+(?:avg|average|poor|mint)\b/i,
+    ]);
+  }
+
+  if (fieldName === "category") {
+    return findFirstSourceMatch(sourceEvidence, [
+      /\b(?:[3-9]\s*-\s*(?:pw|gw|sw)|irons?|iron\s+set)\b/i,
+      /\b(?:driver|drv|1\s*w|[357]\s*w|fairway|fw|hybrid|hy|rescue|wedge|putter|pt)\b/i,
+    ]);
+  }
+
+  if (fieldName === "demoValue") {
+    return findFirstSourceMatch(sourceEvidence, [
+      /\b(?:value|trade|trade-in|estimate|estimated)\s*[:=]?\s*\$?\d+\b/i,
+      /\$\d+\b/i,
+    ]);
+  }
+
+  const proposedRecord = getProposedRecord(card.reviewItem);
+  const rawValue =
+    fieldName === "brand"
+      ? getFirstString(card.parsedRecord, ["brand"]) ??
+        getFirstString(proposedRecord, ["brand"])
+      : fieldName === "productLine"
+        ? getFirstString(card.parsedRecord, ["productLine", "model", "title"]) ??
+          getFirstString(proposedRecord, ["productLine", "model", "title"])
+        : null;
+
+  if (!rawValue) {
+    return "";
+  }
+
+  const compactValue = normalizeComparable(rawValue);
+  const matchingToken = sourceEvidence.split(/\s+/).find((token) =>
+    normalizeComparable(token).includes(compactValue),
+  );
+
+  return matchingToken ?? "";
+}
+
+function buildSourceTextMatches(card: RecordReviewCard) {
+  return REVIEW_LEARNING_SOURCE_MATCH_FIELDS.reduce<Record<string, string>>(
+    (matches, fieldName) => ({
+      ...matches,
+      [fieldName]: getSourceTextMatchSuggestion(card, fieldName),
+    }),
+    {},
+  );
+}
+
+function getSourceTextMatchValue(
+  draft: ReviewCorrectionDraft,
+  fieldName: string,
+) {
+  return draft.sourceTextMatches[fieldName]?.trim() ?? "";
+}
+
 export function buildCorrectionDraft(card: RecordReviewCard): ReviewCorrectionDraft {
   const proposedRecord = getProposedRecord(card.reviewItem);
   const brand =
@@ -193,6 +299,7 @@ export function buildCorrectionDraft(card: RecordReviewCard): ReviewCorrectionDr
       inferConditionGradeFromText(card.sourceEvidence) ||
       "8.0 Average",
     demoValue: demoValue === null || demoValue === undefined ? "" : String(demoValue),
+    sourceTextMatches: buildSourceTextMatches(card),
     demoValuationNote: "",
     reviewerNotes: "Confirmed current run review item from the guided validation checkpoint.",
   };
@@ -306,7 +413,7 @@ export function buildLearningEvents(
     const proposedValue = getCurrentValueForField(card, fieldName);
     const changed =
       normalizeComparable(proposedValue) !== normalizeComparable(correctedValue);
-    const wasMissing = card.missingFields.some(
+    const wasMissing = getUnresolvedMissingFields(card).some(
       (field) => normalizeComparable(field) === normalizeComparable(fieldName),
     );
     const isFocusedReviewField =
@@ -323,15 +430,21 @@ export function buildLearningEvents(
       continue;
     }
 
+    const rawTextMatch = getSourceTextMatchValue(draft, fieldName);
+
     events.push({
       fieldName,
-      rawTextMatch: card.sourceEvidence.slice(0, 240),
+      ...(rawTextMatch ? { rawTextMatch } : {}),
       proposedValue: proposedValue || undefined,
       correctedValue,
       evidenceText: card.sourceEvidence.slice(0, 240),
-      confidenceImpact: wasMissing
-        ? "Human review supplied a missing field."
-        : "Human review corrected the normalized field.",
+      confidenceImpact: rawTextMatch
+        ? wasMissing
+          ? "Human review supplied a missing field and tied it to source text."
+          : "Human review corrected the normalized field and tied it to source text."
+        : wasMissing
+          ? "Human review supplied a missing field without an exact source text match."
+          : "Human review corrected the normalized field without an exact source text match.",
     });
   }
 
@@ -457,12 +570,28 @@ function addBlankCorrectableFieldSignals(card: RecordReviewCard, fields: Set<str
   }
 }
 
+function cardHasActiveCorrectionWork(card: RecordReviewCard) {
+  return card.status === "needs-review" && canResolveReviewItem(card.reviewItem);
+}
+
+function getUnresolvedMissingFields(card: RecordReviewCard) {
+  return card.missingFields.filter((fieldName) => {
+    const currentValue = getCurrentValueForField(card, fieldName);
+
+    return !currentValue || currentValue === "—";
+  });
+}
+
 function getCorrectionFocusFields(card: RecordReviewCard) {
+  if (!cardHasActiveCorrectionWork(card)) {
+    return [];
+  }
+
   const fields = new Set<string>();
 
   addSourceMissingFieldSignals(card, fields);
 
-  for (const field of card.missingFields) {
+  for (const field of getUnresolvedMissingFields(card)) {
     const correctionField = getCorrectionFieldFromSignal(field);
 
     if (correctionField) {
@@ -514,6 +643,16 @@ function getCorrectionFocusFields(card: RecordReviewCard) {
 }
 
 function getRecordCardSummary(card: RecordReviewCard) {
+  if (!cardHasActiveCorrectionWork(card)) {
+    if (card.status === "resolved") {
+      return "Review item resolved.";
+    }
+
+    if (card.status === "ready") {
+      return "No action required. This record passed the current review gates.";
+    }
+  }
+
   const focusFields = getCorrectionFocusFields(card);
 
   if (focusFields.length > 0) {
@@ -875,6 +1014,12 @@ function RecordCorrectionPanel({
           </dl>
         </details>
       ) : null}
+        <SourceTextMatchEditor
+          card={card}
+          draft={draft}
+          onDraftChange={onDraftChange}
+        />
+
 
       <label>
         Valuation note
@@ -955,6 +1100,86 @@ function PassedRecordReviewSummary({ card }: { card: RecordReviewCard }) {
         </article>
       </div>
     </div>
+  );
+}
+
+function getSourceMatchFieldsForForm(card: RecordReviewCard) {
+  return getCorrectionFocusFields(card).filter((fieldName) =>
+    isCorrectionFormFieldName(fieldName) &&
+    REVIEW_LEARNING_SOURCE_MATCH_FIELDS.includes(
+      fieldName as ReviewLearningSourceMatchField,
+    ),
+  );
+}
+
+function SourceTextMatchEditor({
+  card,
+  draft,
+  onDraftChange,
+}: {
+  card: RecordReviewCard;
+  draft: ReviewCorrectionDraft;
+  onDraftChange: (draft: ReviewCorrectionDraft) => void;
+}) {
+  const fieldNames = getSourceMatchFieldsForForm(card);
+
+  if (fieldNames.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="guided-review-source-match-editor">
+      <div>
+        <strong>Matching source text</strong>
+        <p>
+          Tie each correction to the exact phrase in the original record. This is
+          what future runs can safely use as prior review evidence.
+        </p>
+      </div>
+
+      <div className="guided-review-source-match-original">
+        <span>Original record</span>
+        <p>{card.sourceEvidence}</p>
+      </div>
+
+      <div className="guided-review-source-match-grid">
+        {fieldNames.map((fieldName) => {
+          const suggestion = getSourceTextMatchSuggestion(
+            card,
+            fieldName as ReviewLearningSourceMatchField,
+          );
+
+          return (
+            <label key={fieldName}>
+              {formatFieldLabel(fieldName)}
+              <input
+                onChange={(event) =>
+                  onDraftChange({
+                    ...draft,
+                    sourceTextMatches: {
+                      ...draft.sourceTextMatches,
+                      [fieldName]: event.target.value,
+                    },
+                  })
+                }
+                placeholder={
+                  suggestion
+                    ? `Suggested: ${suggestion}`
+                    : "Exact source phrase, or leave blank if reviewer judgment only"
+                }
+                type="text"
+                value={draft.sourceTextMatches[fieldName] ?? ""}
+              />
+              <small>
+                {suggestion
+                  ? `Suggested source match: ${suggestion}`
+                  : "Leave blank only when no exact source phrase exists."}
+              </small>
+            </label>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

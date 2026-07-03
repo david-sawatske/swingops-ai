@@ -18,6 +18,12 @@ function getWorkflowInput(rawInput: string, generatedWorkflowInput: string) {
   return rawInput || generatedWorkflowInput;
 }
 
+function getPriorReviewEvidence(
+  result: ExecuteEndToEndAgenticTradeInDemoResponse | null,
+) {
+  return result?.priorReviewLearningEvidenceByItem.flatMap((item) => item.evidence) ?? [];
+}
+
 export function GuidedGuardedAgentExecutionStep({
   error,
   generatedWorkflowInput,
@@ -32,6 +38,7 @@ export function GuidedGuardedAgentExecutionStep({
   const workflowInput = getWorkflowInput(rawInput, generatedWorkflowInput);
   const canRunWorkflow = workflowInput.trim().length > 0 && !isRunning;
   const hasCompletedGuardedRun = Boolean(result) && !isRunning;
+  const priorReviewEvidence = getPriorReviewEvidence(result);
 
   return (
     <article className="guided-workflow-card">
@@ -153,6 +160,7 @@ export function GuidedGuardedAgentExecutionStep({
             <strong>Workflow run completed</strong>
             <span>{result.finalSummary.parsedItemCount} parsed</span>
             <span>{result.finalSummary.knowledgeMatchCount} RAG matches</span>
+            <span>{result.finalSummary.priorReviewEvidenceCount} prior review evidence</span>
             <span>{result.reviewQueueItemsCreated.length} review items</span>
             <span>{result.finalSummary.blockedMutationToolCallCount} blocked mutation(s)</span>
           </div>
@@ -170,6 +178,18 @@ export function GuidedGuardedAgentExecutionStep({
                 safety evidence used by Validation and Human Review.
               </p>
             </div>
+
+            {priorReviewEvidence.length > 0 ? (
+              <div className="guided-final-review-callout">
+                <strong>Prior review evidence found</strong>
+                <p>{priorReviewEvidence[0]?.summary}</p>
+                {priorReviewEvidence.length > 1 ? (
+                  <p className="guided-validation-empty-note">
+                    {priorReviewEvidence.length - 1} additional prior review evidence item(s) found.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className="guided-guarded-result-grid">
               <article>

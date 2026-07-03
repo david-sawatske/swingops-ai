@@ -304,6 +304,7 @@ export function buildRecord(source: MultiSourceParserInput, fragment: string, in
     missingFields,
     confidence,
     reviewNeeded: missingFields.length > 0 || confidence < 0.72,
+    sourceText: fragment,
     normalizedText: [
       brand,
       productLine,

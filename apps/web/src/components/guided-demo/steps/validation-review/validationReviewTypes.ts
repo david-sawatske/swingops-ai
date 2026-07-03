@@ -40,6 +40,7 @@ export type ReviewCorrectionDraft = {
   shaftFlex: ReviewCorrectionShaftFlex | "";
   conditionGrade: ReviewConditionGrade | "";
   demoValue: string;
+  sourceTextMatches: Record<string, string>;
   demoValuationNote: string;
   reviewerNotes: string;
 };

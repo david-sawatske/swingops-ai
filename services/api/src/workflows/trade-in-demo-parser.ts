@@ -66,6 +66,8 @@ const CATEGORY_PATTERNS: {
       /\bfw\b/i,
       /\b3w\b/i,
       /\b5w\b/i,
+      /\b7w\b/i,
+      /\b9w\b/i,
       /\bwood\b/i,
       /\bFAIRWAY_WOOD\b/
     ]
@@ -399,7 +401,7 @@ function detectShaftFlex(line: string): string | null {
 
 function detectLoft(line: string): string | null {
   const explicitLoftMatch = line.match(/\b(\d{1,2}(?:\.\d)?)\s*(?:deg|degree|°)\b/i);
-  const shorthandLoftMatch = line.match(/\b(?:driver|drv|fairway|wood|3w|5w)\s+(\d{1,2}(?:\.\d)?)\b/i);
+  const shorthandLoftMatch = line.match(/\b(?:driver|drv|fairway|wood|3w|5w|7w|9w)\s+(\d{1,2}(?:\.\d)?)\b/i);
   const loftMatch = explicitLoftMatch ?? shorthandLoftMatch;
 
   if (!loftMatch) {

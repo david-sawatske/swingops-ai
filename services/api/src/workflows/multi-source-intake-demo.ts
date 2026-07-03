@@ -385,7 +385,7 @@ async function persistDemoAudit(input: {
       itemCount: input.cleanedDatasetPreview.length,
       items: {
         create: input.cleanedDatasetPreview.map((record, index) => ({
-          rawText: record.normalizedText || record.sourceType,
+          rawText: record.sourceText || record.normalizedText || record.sourceType,
           sourceRowNumber: index + 1,
           status: record.reviewNeeded ? "NEEDS_REVIEW" : "STRUCTURED"
         }))
@@ -434,8 +434,8 @@ async function persistDemoAudit(input: {
         sourceRecordId: record.id,
         sourceType: record.sourceType,
         sourceName: sourceResult?.sourceName ?? record.sourceType,
-        rawText: sourceResult?.rawContent ?? record.normalizedText,
-        cleanedText: sourceResult?.cleanedText ?? record.normalizedText,
+        rawText: record.sourceText || record.normalizedText,
+        cleanedText: record.normalizedText || sourceResult?.cleanedText || record.sourceText,
         normalizedJson: toInputJson(record),
         inferredSchemaJson: toInputJson(sourceResult?.inferredSchema ?? SHARED_SCHEMA),
         metadataJson: toInputJson(sourceResult?.metadata ?? {}),
@@ -465,7 +465,7 @@ async function persistDemoAudit(input: {
             ? "MISSING_REQUIRED_FIELDS"
             : "LOW_CONFIDENCE",
         status: "OPEN",
-        originalText: reviewRecord.normalizedText,
+        originalText: reviewRecord.sourceText || reviewRecord.normalizedText,
         proposedGolfClubJson: toInputJson({
           ...reviewRecord,
           reviewReasonSummary:

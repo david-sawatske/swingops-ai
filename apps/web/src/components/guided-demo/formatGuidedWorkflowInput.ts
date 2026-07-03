@@ -13,6 +13,12 @@ export function formatGuidedWorkflowInputFromRecords(
 ) {
   return records
     .map((record, index) => {
+      const sourceText = record.sourceText?.trim();
+
+      if (sourceText) {
+        return sourceText;
+      }
+
       const identity = [record.brand, record.productLine, record.category]
         .filter(Boolean)
         .join(" ");

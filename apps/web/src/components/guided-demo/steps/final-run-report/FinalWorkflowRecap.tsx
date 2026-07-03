@@ -65,7 +65,7 @@ export function FinalWorkflowRecap({
           title="Candidates created"
         />
         <WorkflowRecapStep
-          body={`${finalSummary.knowledgeMatchCount} RAG match(es), ${finalSummary.inventoryMatchCount} inventory match(es), ${finalSummary.valuationRangeCount} valuation range(s), ${finalSummary.blockedMutationToolCallCount} blocked action(s).`}
+          body={`${finalSummary.knowledgeMatchCount} RAG match(es), ${finalSummary.inventoryMatchCount} inventory match(es), ${finalSummary.valuationRangeCount} valuation range(s), ${finalSummary.priorReviewEvidenceCount} prior review evidence item(s), ${finalSummary.blockedMutationToolCallCount} blocked action(s).`}
           eyebrow="3 · Guarded Agent Execution"
           metric={`${finalSummary.successfulReadOnlyToolCallCount}`}
           title="Tool calls"

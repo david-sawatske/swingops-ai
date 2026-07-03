@@ -334,6 +334,102 @@ describe("workflow run routes", () => {
   });
 
   describe("POST /workflow-runs/agentic-trade-in-demo", () => {
+    it("returns prior review learning evidence when a later run matches field-specific raw text", async () => {
+      const app = buildApp();
+
+      const priorWorkflowRun = await prisma.workflowRun.create({
+        data: {
+          workflowName: "prior-review-learning-source",
+          status: "COMPLETED"
+        }
+      });
+
+      const priorReviewQueueItem = await prisma.reviewQueueItem.create({
+        data: {
+          workflowRunId: priorWorkflowRun.id,
+          reason: "MISSING_REQUIRED_FIELDS",
+          status: "RESOLVED",
+          originalText: "Prior reviewed record with shaft stf",
+          proposedGolfClubJson: {
+            shaftFlex: null,
+            reviewReasonSummary: "Missing shaftFlex"
+          }
+        }
+      });
+
+      const reviewedTradeInRecord = await prisma.reviewedTradeInRecord.create({
+        data: {
+          reviewQueueItemId: priorReviewQueueItem.id,
+          workflowRunId: priorWorkflowRun.id,
+          originalText: "Prior reviewed record with shaft stf",
+          correctedShaftFlex: "STIFF",
+          reviewerNotes: "Reviewer confirmed stf means STIFF."
+        }
+      });
+
+      await prisma.humanReviewLearningEvent.create({
+        data: {
+          reviewedTradeInRecordId: reviewedTradeInRecord.id,
+          reviewQueueItemId: priorReviewQueueItem.id,
+          workflowRunId: priorWorkflowRun.id,
+          fieldName: "shaftFlex",
+          rawTextMatch: "stf",
+          proposedValue: "Missing",
+          correctedValue: "STIFF",
+          evidenceText: "Reviewer corrected shaft stf to STIFF."
+        }
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/workflow-runs/agentic-trade-in-demo",
+        payload: {
+          rawInput: "Titleist TSR 3w shaft stf condition 8.0 Average"
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+      const priorReviewEvidence = body.priorReviewLearningEvidenceByItem.flatMap(
+        (item: { evidence: unknown[] }) => item.evidence
+      );
+
+      expect(body.priorReviewLearningEvidenceByItem).toHaveLength(
+        body.parsedItems.length
+      );
+      expect(priorReviewEvidence).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            fieldName: "shaftFlex",
+            correctedValue: "STIFF",
+            strength: "STRONG",
+            summary:
+              "Prior review evidence suggested shaftFlex = STIFF from similar raw text: stf."
+          })
+        ])
+      );
+      expect(body.finalSummary).toMatchObject({
+        priorReviewEvidenceCount: priorReviewEvidence.length
+      });
+      expect(body.auditTrail).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            label: "Prior review evidence checked",
+            summary: expect.stringContaining("prior review evidence item")
+          })
+        ])
+      );
+
+      await prisma.workflowRun.delete({
+        where: {
+          id: priorWorkflowRun.id
+        }
+      });
+
+      await app.close();
+    });
+
     it("runs the polished end-to-end agentic trade-in demo and returns an audit trail", async () => {
       const app = buildApp();
 
@@ -602,6 +698,7 @@ describe("workflow run routes", () => {
         "Read-only tools executed",
         "Mutation tool blocked",
         "Human review surfaced",
+        "Prior review evidence checked",
         "Final demo summary"
       ]);
 
