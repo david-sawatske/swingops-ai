@@ -17,9 +17,10 @@ import {
 } from "../knowledge/knowledge-search.js";
 import { prisma } from "../lib/prisma.js";
 import {
-  applyPriorReviewLearningEvidenceToParsedItem,
+  buildPriorReviewLearningSuggestionsFromEvidence,
   findPriorReviewLearningEvidence,
-  type PriorReviewLearningEvidence
+  type PriorReviewLearningEvidence,
+  type PriorReviewLearningSuggestion
 } from "../review-learning/review-learning-evidence.js";
 import {
   executeReadOnlyToolInvocation,
@@ -62,6 +63,10 @@ export type EndToEndAgenticTradeInDemoResult = {
   priorReviewLearningEvidenceByItem: {
     parsedItemId: string;
     evidence: PriorReviewLearningEvidence[];
+  }[];
+  priorReviewLearningSuggestionsByItem: {
+    parsedItemId: string;
+    suggestions: PriorReviewLearningSuggestion[];
   }[];
   modelRoutingDecision: ReturnType<typeof routeModel>;
   modelCallLog: Awaited<ReturnType<typeof createMockModelCallLogForWorkflowRun>>;
@@ -117,6 +122,7 @@ export type EndToEndAgenticTradeInDemoResult = {
     valuationRangeCount: number;
     valuationReviewRequiredCount: number;
     priorReviewEvidenceCount: number;
+    priorReviewSuggestionCount: number;
     selectedProvider: string;
     selectedModel: string;
     productStory: string;
@@ -265,6 +271,7 @@ function buildAuditTrail(input: {
   inventoryMatchesByItem: EndToEndAgenticTradeInDemoResult["inventoryMatchesByItem"];
   valuationEvidenceByItem: EndToEndAgenticTradeInDemoResult["valuationEvidenceByItem"];
   priorReviewLearningEvidenceByItem: EndToEndAgenticTradeInDemoResult["priorReviewLearningEvidenceByItem"];
+  priorReviewLearningSuggestionsByItem: EndToEndAgenticTradeInDemoResult["priorReviewLearningSuggestionsByItem"];
   modelRoutingDecision: ReturnType<typeof routeModel>;
   toolCallResults: DemoToolResult[];
   reviewQueueItemsCreated: ReviewQueueItem[];
@@ -364,15 +371,16 @@ function buildAuditTrail(input: {
       orderIndex: 10,
       label: "Prior review evidence checked",
       status:
-        input.finalSummary.priorReviewEvidenceCount > 0
+        input.finalSummary.priorReviewSuggestionCount > 0
           ? "SUCCEEDED"
           : "INFO",
       summary:
-        input.finalSummary.priorReviewEvidenceCount > 0
-          ? `${input.finalSummary.priorReviewEvidenceCount} prior review evidence item(s) found from resolved corrections.`
-          : "No prior review evidence matched this run.",
+        input.finalSummary.priorReviewSuggestionCount > 0
+          ? `${input.finalSummary.priorReviewSuggestionCount} prior review suggestion(s) surfaced from resolved corrections.`
+          : "No prior review suggestions matched this run.",
       details: {
-        priorReviewLearningEvidenceByItem: input.priorReviewLearningEvidenceByItem
+        priorReviewLearningEvidenceByItem: input.priorReviewLearningEvidenceByItem,
+        priorReviewLearningSuggestionsByItem: input.priorReviewLearningSuggestionsByItem
       }
     },
     {
@@ -450,16 +458,11 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     });
   }
 
-  for (const item of parsedItems) {
-    const priorReviewEvidence = priorReviewLearningEvidenceByItem.find(
-      (evidenceByItem) => evidenceByItem.parsedItemId === item.id
-    );
-
-    applyPriorReviewLearningEvidenceToParsedItem(
-      item,
-      priorReviewEvidence?.evidence ?? []
-    );
-  }
+  const priorReviewLearningSuggestionsByItem =
+    priorReviewLearningEvidenceByItem.map((item) => ({
+      parsedItemId: item.parsedItemId,
+      suggestions: buildPriorReviewLearningSuggestionsFromEvidence(item.evidence)
+    }));
 
   const knowledgeMatchesByItem = [];
 
@@ -694,6 +697,10 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     (count, item) => count + item.evidence.length,
     0
   );
+  const priorReviewSuggestionCount = priorReviewLearningSuggestionsByItem.reduce(
+    (count, item) => count + item.suggestions.length,
+    0
+  );
   const finalSummary = {
     parsedItemCount: parsedItems.length,
     knowledgeMatchCount,
@@ -705,6 +712,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     valuationRangeCount,
     valuationReviewRequiredCount,
     priorReviewEvidenceCount,
+    priorReviewSuggestionCount,
     selectedProvider: modelRoutingDecision.selectedProvider,
     selectedModel: modelRoutingDecision.selectedModel,
     productStory:
@@ -736,6 +744,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     inventoryMatchesByItem,
     valuationEvidenceByItem,
     priorReviewLearningEvidenceByItem,
+    priorReviewLearningSuggestionsByItem,
     modelRoutingDecision,
     modelCallLog,
     toolCallingPlan,

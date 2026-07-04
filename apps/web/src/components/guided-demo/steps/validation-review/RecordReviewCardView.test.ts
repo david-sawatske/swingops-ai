@@ -40,6 +40,7 @@ function buildReviewCard(overrides: Partial<RecordReviewCard> = {}): RecordRevie
     inventoryEvidence: null,
     valuationEvidence: null,
     sourceEvidence: "PING G425 4-PW shaft unknown condition unclear value pending review",
+    priorReviewSuggestions: [],
     missingFields: ["shaftFlex", "conditionGrade", "demoValue"],
     reviewReasons: ["Shaft flex, condition, and trade-in value need reviewer confirmation."],
     validationChecks: [],

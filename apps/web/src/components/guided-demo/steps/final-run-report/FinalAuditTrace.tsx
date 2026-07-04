@@ -23,8 +23,8 @@ export function FinalAuditTrace({
   result: ExecuteEndToEndAgenticTradeInDemoResponse;
   reviewStatusSummary: string;
 }) {
-  const priorReviewEvidence = result.priorReviewLearningEvidenceByItem.flatMap(
-    (item) => item.evidence,
+  const priorReviewSuggestions = result.priorReviewLearningSuggestionsByItem.flatMap(
+    (item) => item.suggestions,
   );
 
   return (
@@ -65,8 +65,8 @@ export function FinalAuditTrace({
           <article>
             <strong>Prior review learning</strong>
             <p>
-              {priorReviewEvidence.length > 0
-                ? `${priorReviewEvidence.length} prior correction evidence item(s) found.`
+              {priorReviewSuggestions.length > 0
+                ? `${priorReviewSuggestions.length} prior review suggestion(s) surfaced.`
                 : "No prior correction evidence matched this run."}
             </p>
           </article>
@@ -116,20 +116,20 @@ export function FinalAuditTrace({
             <dd>{qualitySummary.evidenceCoverage}</dd>
           </div>
           <div>
-            <dt>Prior review evidence</dt>
-            <dd>{priorReviewEvidence.length}</dd>
+            <dt>Prior review suggestions</dt>
+            <dd>{priorReviewSuggestions.length}</dd>
           </div>
         </dl>
 
-        {priorReviewEvidence.length > 0 ? (
+        {priorReviewSuggestions.length > 0 ? (
           <div className="guided-final-review-callout">
-            <strong>Prior review evidence used as run evidence</strong>
-            {priorReviewEvidence.slice(0, 4).map((evidence) => (
-              <p key={evidence.learningEventId}>{evidence.summary}</p>
+            <strong>Prior review suggestions surfaced for review</strong>
+            {priorReviewSuggestions.slice(0, 4).map((suggestion) => (
+              <p key={suggestion.sourceLearningEventId}>{suggestion.summary}</p>
             ))}
-            {priorReviewEvidence.length > 4 ? (
+            {priorReviewSuggestions.length > 4 ? (
               <p className="guided-validation-empty-note">
-                Showing 4 of {priorReviewEvidence.length} prior review evidence item(s).
+                Showing 4 of {priorReviewSuggestions.length} prior review suggestion(s).
               </p>
             ) : null}
           </div>

@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import type {
   ReviewConditionGrade,
   ReviewCorrectionCategory,
@@ -11,6 +13,7 @@ import {
   SHAFT_FLEX_OPTIONS,
 } from "./validationReviewOptions";
 import type {
+  PriorReviewLearningSuggestion,
   RecordReviewCard,
   ReviewCorrectionDraft,
   ReviewQueueItem,
@@ -711,14 +714,20 @@ function getRecordCardSummary(card: RecordReviewCard) {
   return card.suggestedAction;
 }
 
-function CorrectionFocusCallout({ card }: { card: RecordReviewCard }) {
-  const focusFields = getCorrectionFocusFields(card);
+function CorrectionFocusCallout({
+  card,
+  focusFieldsOverride,
+}: {
+  card: RecordReviewCard;
+  focusFieldsOverride?: string[];
+}) {
+  const focusFields = focusFieldsOverride ?? getCorrectionFocusFields(card);
 
   if (focusFields.length === 0) {
     return (
       <div className="guided-correction-focus">
         <strong>Fields needing attention</strong>
-        <p>Review the source evidence and confirm the corrected record values.</p>
+        <p>All suggested values have been applied. Confirm the corrected record before saving.</p>
       </div>
     );
   }
@@ -765,6 +774,256 @@ function getSecondaryCorrectionFields(
 ): CorrectionFormFieldName[] {
   return CORRECTION_FORM_FIELD_NAMES.filter(
     (field) => !visibleFields.includes(field),
+  );
+}
+
+function getAppliedSuggestionFieldNames(
+  suggestions: PriorReviewLearningSuggestion[],
+  appliedSuggestionIds: Set<string>,
+) {
+  const appliedFieldNames = new Set<CorrectionFormFieldName>();
+
+  for (const suggestion of suggestions) {
+    if (!appliedSuggestionIds.has(getPriorReviewSuggestionKey(suggestion))) {
+      continue;
+    }
+
+    const fieldName = getSuggestionDraftFieldName(suggestion.fieldName);
+
+    if (fieldName) {
+      appliedFieldNames.add(fieldName);
+    }
+  }
+
+  return appliedFieldNames;
+}
+
+function getVisibleCorrectionFieldsAfterAppliedSuggestions(
+  card: RecordReviewCard,
+  appliedSuggestionFieldNames: Set<CorrectionFormFieldName>,
+): CorrectionFormFieldName[] {
+  return getVisibleCorrectionFields(card).filter((fieldName) => {
+    return !appliedSuggestionFieldNames.has(fieldName);
+  });
+}
+
+function getSuggestionDraftFieldName(fieldName: string): CorrectionFormFieldName | null {
+  const normalized = normalizeComparable(fieldName);
+
+  if (normalized === "brand") {
+    return "brand";
+  }
+
+  if (normalized === "productline" || normalized === "model") {
+    return "productLine";
+  }
+
+  if (normalized === "category") {
+    return "category";
+  }
+
+  if (normalized === "shaftflex" || normalized === "flex") {
+    return "shaftFlex";
+  }
+
+  if (normalized === "conditiongrade" || normalized === "condition") {
+    return "conditionGrade";
+  }
+
+  if (normalized === "demovalue" || normalized === "tradeinvalue" || normalized === "value") {
+    return "demoValue";
+  }
+
+  return null;
+}
+
+function getPriorReviewSuggestionKey(suggestion: PriorReviewLearningSuggestion) {
+  return [
+    suggestion.sourceLearningEventId,
+    suggestion.fieldName,
+    suggestion.rawTextMatch ?? "no-source-phrase",
+  ].join("-");
+}
+
+function applyPriorReviewSuggestionToDraft(
+  draft: ReviewCorrectionDraft,
+  suggestion: PriorReviewLearningSuggestion,
+): ReviewCorrectionDraft {
+  const fieldName = getSuggestionDraftFieldName(suggestion.fieldName);
+  const suggestedValue = String(suggestion.suggestedValue ?? "").trim();
+
+  if (!fieldName || !suggestedValue) {
+    return draft;
+  }
+
+  const sourceTextMatches = suggestion.rawTextMatch
+    ? {
+        ...draft.sourceTextMatches,
+        [fieldName]: suggestion.rawTextMatch,
+      }
+    : draft.sourceTextMatches;
+
+  if (fieldName === "brand") {
+    return {
+      ...draft,
+      brand: suggestedValue,
+      sourceTextMatches,
+    };
+  }
+
+  if (fieldName === "productLine") {
+    return {
+      ...draft,
+      productLine: suggestedValue,
+      sourceTextMatches,
+    };
+  }
+
+  if (fieldName === "category") {
+    return {
+      ...draft,
+      category: normalizeCategoryValue(suggestedValue),
+      sourceTextMatches,
+    };
+  }
+
+  if (fieldName === "shaftFlex") {
+    return {
+      ...draft,
+      shaftFlex: normalizeShaftFlexValue(suggestedValue),
+      sourceTextMatches,
+    };
+  }
+
+  if (fieldName === "conditionGrade") {
+    return {
+      ...draft,
+      conditionGrade: normalizeConditionGradeValue(suggestedValue),
+      sourceTextMatches,
+    };
+  }
+
+  const numericValue = suggestedValue.replace(/[^\d.]+/g, "");
+
+  return {
+    ...draft,
+    demoValue: numericValue,
+    sourceTextMatches,
+  };
+}
+
+function getActionablePriorReviewSuggestions(
+  suggestions: PriorReviewLearningSuggestion[],
+) {
+  return suggestions.filter((suggestion) => {
+    return String(suggestion.suggestedValue ?? "").trim().length > 0;
+  });
+}
+
+function getOpenPriorReviewSuggestions(
+  suggestions: PriorReviewLearningSuggestion[],
+  handledSuggestionIds: Set<string>,
+) {
+  return getActionablePriorReviewSuggestions(suggestions).filter((suggestion) => {
+    return !handledSuggestionIds.has(getPriorReviewSuggestionKey(suggestion));
+  });
+}
+
+function PriorReviewSuggestionsPanel({
+  draft,
+  handledSuggestionIds,
+  onApplySuggestion,
+  onRequestManualValue,
+  suggestions,
+}: {
+  draft: ReviewCorrectionDraft;
+  handledSuggestionIds: Set<string>;
+  onApplySuggestion: (suggestion: PriorReviewLearningSuggestion) => void;
+  onRequestManualValue: (suggestion: PriorReviewLearningSuggestion) => void;
+  suggestions: PriorReviewLearningSuggestion[];
+}) {
+  const actionableSuggestions = getActionablePriorReviewSuggestions(suggestions);
+  const openSuggestions = getOpenPriorReviewSuggestions(
+    suggestions,
+    handledSuggestionIds,
+  );
+  const currentSuggestion = openSuggestions[0] ?? null;
+
+  if (!currentSuggestion) {
+    return null;
+  }
+
+  const currentStep = actionableSuggestions.length - openSuggestions.length + 1;
+  const fieldName = getSuggestionDraftFieldName(currentSuggestion.fieldName);
+  const suggestedValue = String(currentSuggestion.suggestedValue ?? "").trim();
+  const canApply = Boolean(fieldName && suggestedValue);
+  const draftValue = fieldName ? getCorrectedValueForField(draft, fieldName) : "";
+
+  return (
+    <div className="guided-prior-review-suggestions">
+      <div className="guided-prior-review-suggestions__header">
+        <div>
+          <strong>Prior review suggestion</strong>
+          <p>
+            Review this prior approved correction before moving to the remaining
+            unresolved fields.
+          </p>
+        </div>
+        <span>
+          {currentStep} of {actionableSuggestions.length}
+        </span>
+      </div>
+
+      <div className="guided-prior-review-suggestions__list">
+        <article
+          className="guided-prior-review-suggestion"
+          key={getPriorReviewSuggestionKey(currentSuggestion)}
+        >
+          <dl>
+            <div>
+              <dt>Field</dt>
+              <dd>{formatFieldLabel(currentSuggestion.fieldName)}</dd>
+            </div>
+            <div>
+              <dt>Source phrase</dt>
+              <dd>{currentSuggestion.rawTextMatch ? '"' + currentSuggestion.rawTextMatch + '"' : "—"}</dd>
+            </div>
+            <div>
+              <dt>Previously approved value</dt>
+              <dd>{formatDisplayValue(currentSuggestion.suggestedValue)}</dd>
+            </div>
+            <div>
+              <dt>Strength</dt>
+              <dd>{formatEnumLabel(currentSuggestion.strength)}</dd>
+            </div>
+          </dl>
+
+          <p>{currentSuggestion.confidenceImpact}</p>
+
+          {draftValue ? (
+            <small>Current correction form value: {draftValue}</small>
+          ) : null}
+
+          <div className="guided-prior-review-suggestion__actions">
+            <button
+              className="guided-step-primary-action"
+              disabled={!canApply}
+              onClick={() => onApplySuggestion(currentSuggestion)}
+              type="button"
+            >
+              Apply suggested value
+            </button>
+            <button
+              className="guided-review-secondary-action"
+              onClick={() => onRequestManualValue(currentSuggestion)}
+              type="button"
+            >
+              Enter different value
+            </button>
+          </div>
+        </article>
+      </div>
+    </div>
   );
 }
 
@@ -880,6 +1139,45 @@ function RecordCorrectionPanel({
   onCancelEditing: () => void;
   onSubmit: () => void;
 }) {
+  const [handledSuggestionIds, setHandledSuggestionIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [appliedSuggestionIds, setAppliedSuggestionIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+
+  function markSuggestionHandled(suggestion: PriorReviewLearningSuggestion) {
+    setHandledSuggestionIds((current) => {
+      const next = new Set(current);
+      next.add(getPriorReviewSuggestionKey(suggestion));
+
+      return next;
+    });
+  }
+
+  function handleRequestManualValue(suggestion: PriorReviewLearningSuggestion) {
+    markSuggestionHandled(suggestion);
+
+    if (!isEditing) {
+      onStartEditing();
+    }
+  }
+
+  function handleApplySuggestion(suggestion: PriorReviewLearningSuggestion) {
+    onDraftChange(applyPriorReviewSuggestionToDraft(draft, suggestion));
+    markSuggestionHandled(suggestion);
+    setAppliedSuggestionIds((current) => {
+      const next = new Set(current);
+      next.add(getPriorReviewSuggestionKey(suggestion));
+
+      return next;
+    });
+
+    if (!isEditing) {
+      onStartEditing();
+    }
+  }
+
   if (!card.reviewItem) {
     return (
       <div className="guided-record-correction-panel guided-record-correction-panel--muted">
@@ -898,8 +1196,19 @@ function RecordCorrectionPanel({
     );
   }
 
-  const visibleFields = getVisibleCorrectionFields(card);
+  const appliedSuggestionFieldNames = getAppliedSuggestionFieldNames(
+    card.priorReviewSuggestions,
+    appliedSuggestionIds,
+  );
+  const visibleFields = getVisibleCorrectionFieldsAfterAppliedSuggestions(
+    card,
+    appliedSuggestionFieldNames,
+  );
   const secondaryFields = getSecondaryCorrectionFields(visibleFields);
+  const hasOpenPriorReviewSuggestions =
+    getOpenPriorReviewSuggestions(card.priorReviewSuggestions, handledSuggestionIds).length > 0;
+  const hasPriorReviewSuggestions =
+    getActionablePriorReviewSuggestions(card.priorReviewSuggestions).length > 0;
 
   if (!isEditing) {
     return (
@@ -908,15 +1217,53 @@ function RecordCorrectionPanel({
           <strong>Ready for human correction</strong>
           <p>Focus on {visibleFields.map(getCorrectionFieldLabel).join(", ")}.</p>
         </div>
-        <CorrectionFocusCallout card={card} />
-        <button className="guided-step-primary-action" onClick={onStartEditing} type="button">
-          Review and correct
-        </button>
+        {hasOpenPriorReviewSuggestions ? null : (
+          <CorrectionFocusCallout card={card} focusFieldsOverride={visibleFields} />
+        )}
+        <PriorReviewSuggestionsPanel
+          draft={draft}
+          handledSuggestionIds={handledSuggestionIds}
+          onApplySuggestion={handleApplySuggestion}
+          onRequestManualValue={handleRequestManualValue}
+          suggestions={card.priorReviewSuggestions}
+        />
+        {hasOpenPriorReviewSuggestions ? null : (
+          <button className="guided-step-primary-action" onClick={onStartEditing} type="button">
+            {hasPriorReviewSuggestions ? "Review remaining fields" : "Review and correct"}
+          </button>
+        )}
       </div>
     );
   }
 
   const isSaving = activeReviewQueueItemId === card.reviewItem.id;
+
+  if (hasOpenPriorReviewSuggestions) {
+    return (
+      <div className="guided-record-correction-form">
+        <div className="guided-record-correction-form__header">
+          <div>
+            <strong>Review prior suggestions first</strong>
+            <p>
+              Apply a surfaced suggestion or enter a different value before resolving
+              the remaining fields.
+            </p>
+          </div>
+          <button disabled={isSaving} onClick={onCancelEditing} type="button">
+            Cancel
+          </button>
+        </div>
+
+        <PriorReviewSuggestionsPanel
+          draft={draft}
+          handledSuggestionIds={handledSuggestionIds}
+          onApplySuggestion={handleApplySuggestion}
+          onRequestManualValue={handleRequestManualValue}
+          suggestions={card.priorReviewSuggestions}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="guided-record-correction-form">
@@ -932,7 +1279,7 @@ function RecordCorrectionPanel({
         </button>
       </div>
 
-      <CorrectionFocusCallout card={card} />
+      <CorrectionFocusCallout card={card} focusFieldsOverride={visibleFields} />
 
       <div className="guided-record-correction-grid guided-record-correction-grid--focused">
         {visibleFields.includes("brand") ? (
@@ -1064,10 +1411,11 @@ function RecordCorrectionPanel({
         </details>
       ) : null}
         <SourceTextMatchEditor
-          card={card}
-          draft={draft}
-          onDraftChange={onDraftChange}
-        />
+        appliedSuggestionFieldNames={appliedSuggestionFieldNames}
+        card={card}
+        draft={draft}
+        onDraftChange={onDraftChange}
+      />
 
 
       <label>
@@ -1157,9 +1505,13 @@ function PassedRecordReviewSummary({ card }: { card: RecordReviewCard }) {
   );
 }
 
-function getSourceMatchFieldsForForm(card: RecordReviewCard) {
+function getSourceMatchFieldsForForm(
+  card: RecordReviewCard,
+  appliedSuggestionFieldNames: Set<CorrectionFormFieldName>,
+) {
   return getCorrectionFocusFields(card).filter((fieldName) =>
     isCorrectionFormFieldName(fieldName) &&
+    !appliedSuggestionFieldNames.has(fieldName as CorrectionFormFieldName) &&
     REVIEW_LEARNING_SOURCE_MATCH_FIELDS.includes(
       fieldName as ReviewLearningSourceMatchField,
     ),
@@ -1167,15 +1519,20 @@ function getSourceMatchFieldsForForm(card: RecordReviewCard) {
 }
 
 function SourceTextMatchEditor({
+  appliedSuggestionFieldNames,
   card,
   draft,
   onDraftChange,
 }: {
+  appliedSuggestionFieldNames: Set<CorrectionFormFieldName>;
   card: RecordReviewCard;
   draft: ReviewCorrectionDraft;
   onDraftChange: (draft: ReviewCorrectionDraft) => void;
 }) {
-  const fieldNames = getSourceMatchFieldsForForm(card);
+  const fieldNames = getSourceMatchFieldsForForm(
+    card,
+    appliedSuggestionFieldNames,
+  );
 
   if (fieldNames.length === 0) {
     return null;
