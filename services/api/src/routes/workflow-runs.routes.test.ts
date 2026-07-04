@@ -334,7 +334,7 @@ describe("workflow run routes", () => {
   });
 
   describe("POST /workflow-runs/agentic-trade-in-demo", () => {
-    it("returns prior review learning evidence when a later run matches field-specific raw text", async () => {
+    it("returns prior review learning suggestions when a later run matches field-specific raw text", async () => {
       const app = buildApp();
 
       const priorWorkflowRun = await prisma.workflowRun.create({
@@ -394,8 +394,15 @@ describe("workflow run routes", () => {
       const priorReviewEvidence = body.priorReviewLearningEvidenceByItem.flatMap(
         (item: { evidence: unknown[] }) => item.evidence
       );
+      const priorReviewSuggestions =
+        body.priorReviewLearningSuggestionsByItem.flatMap(
+          (item: { suggestions: unknown[] }) => item.suggestions
+        );
 
       expect(body.priorReviewLearningEvidenceByItem).toHaveLength(
+        body.parsedItems.length
+      );
+      expect(body.priorReviewLearningSuggestionsByItem).toHaveLength(
         body.parsedItems.length
       );
       expect(priorReviewEvidence).toEqual(
@@ -409,14 +416,27 @@ describe("workflow run routes", () => {
           })
         ])
       );
+      expect(priorReviewSuggestions).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            fieldName: "shaftFlex",
+            suggestedValue: "STIFF",
+            previousCorrectedValue: "STIFF",
+            rawTextMatch: "stf",
+            status: "SUGGESTED",
+            strength: "STRONG"
+          })
+        ])
+      );
       expect(body.finalSummary).toMatchObject({
-        priorReviewEvidenceCount: priorReviewEvidence.length
+        priorReviewEvidenceCount: priorReviewEvidence.length,
+        priorReviewSuggestionCount: priorReviewSuggestions.length
       });
       expect(body.auditTrail).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             label: "Prior review evidence checked",
-            summary: expect.stringContaining("prior review evidence item")
+            summary: expect.stringContaining("prior review suggestion")
           })
         ])
       );
@@ -1098,9 +1118,10 @@ describe("workflow run routes", () => {
         model: "mock-golf-workflow-model",
         attemptOrder: 1,
         status: "SUCCESS",
-        latencyMs: 0,
+        latencyMs: expect.any(Number),
         estimatedCostUsd: 0
       });
+      expect(body.modelCallLogs[0].attemptLogs[0].latencyMs).toBeGreaterThanOrEqual(0);
       expect(body.modelCallLogs[0].attemptLogs[0].modelCallLogId).toBe(
         body.modelCallLogs[0].id
       );

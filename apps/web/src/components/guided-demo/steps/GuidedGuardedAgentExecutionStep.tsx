@@ -18,10 +18,10 @@ function getWorkflowInput(rawInput: string, generatedWorkflowInput: string) {
   return rawInput || generatedWorkflowInput;
 }
 
-function getPriorReviewEvidence(
+function getPriorReviewSuggestions(
   result: ExecuteEndToEndAgenticTradeInDemoResponse | null,
 ) {
-  return result?.priorReviewLearningEvidenceByItem.flatMap((item) => item.evidence) ?? [];
+  return result?.priorReviewLearningSuggestionsByItem.flatMap((item) => item.suggestions) ?? [];
 }
 
 export function GuidedGuardedAgentExecutionStep({
@@ -38,7 +38,7 @@ export function GuidedGuardedAgentExecutionStep({
   const workflowInput = getWorkflowInput(rawInput, generatedWorkflowInput);
   const canRunWorkflow = workflowInput.trim().length > 0 && !isRunning;
   const hasCompletedGuardedRun = Boolean(result) && !isRunning;
-  const priorReviewEvidence = getPriorReviewEvidence(result);
+  const priorReviewSuggestions = getPriorReviewSuggestions(result);
 
   return (
     <article className="guided-workflow-card">
@@ -160,7 +160,7 @@ export function GuidedGuardedAgentExecutionStep({
             <strong>Workflow run completed</strong>
             <span>{result.finalSummary.parsedItemCount} parsed</span>
             <span>{result.finalSummary.knowledgeMatchCount} RAG matches</span>
-            <span>{result.finalSummary.priorReviewEvidenceCount} prior review evidence</span>
+            <span>{result.finalSummary.priorReviewSuggestionCount} prior review suggestion(s)</span>
             <span>{result.reviewQueueItemsCreated.length} review items</span>
             <span>{result.finalSummary.blockedMutationToolCallCount} blocked mutation(s)</span>
           </div>
@@ -175,17 +175,17 @@ export function GuidedGuardedAgentExecutionStep({
               <h4>Guarded workflow evidence is ready</h4>
               <p>
                 The guarded workflow produced the model, grounding, tool, validation, and
-                safety evidence used by Validation and Human Review.
+                reviewer-facing suggestions surfaced for Validation and Human Review.
               </p>
             </div>
 
-            {priorReviewEvidence.length > 0 ? (
+            {priorReviewSuggestions.length > 0 ? (
               <div className="guided-final-review-callout">
-                <strong>Prior review evidence found</strong>
-                <p>{priorReviewEvidence[0]?.summary}</p>
-                {priorReviewEvidence.length > 1 ? (
+                <strong>Prior review suggestion surfaced</strong>
+                <p>{priorReviewSuggestions[0]?.summary}</p>
+                {priorReviewSuggestions.length > 1 ? (
                   <p className="guided-validation-empty-note">
-                    {priorReviewEvidence.length - 1} additional prior review evidence item(s) found.
+                    {priorReviewSuggestions.length - 1} additional prior review suggestion(s) surfaced.
                   </p>
                 ) : null}
               </div>

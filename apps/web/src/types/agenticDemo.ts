@@ -90,6 +90,24 @@ export type PriorReviewLearningEvidence = {
   createdAt: string;
 };
 
+export type PriorReviewLearningSuggestion = {
+  fieldName: string;
+  rawTextMatch: string | null;
+  suggestedValue: string | null;
+  previousCorrectedValue: string | null;
+  proposedValue: string | null;
+  evidenceText: string | null;
+  confidence: number;
+  strength: "WEAK" | "MEDIUM" | "STRONG";
+  confidenceImpact: string;
+  reasonCodes: string[];
+  summary: string;
+  whySuggestionExists: string;
+  sourceLearningEventId: string;
+  status: "SUGGESTED";
+  createdAt: string;
+};
+
 export type AgenticTradeInDemoValuationEstimate = {
   productId: string | null;
   sku: string | null;
@@ -285,6 +303,10 @@ export type ExecuteEndToEndAgenticTradeInDemoResponse = {
     parsedItemId: string;
     evidence: PriorReviewLearningEvidence[];
   }[];
+  priorReviewLearningSuggestionsByItem: {
+    parsedItemId: string;
+    suggestions: PriorReviewLearningSuggestion[];
+  }[];
   modelRoutingDecision: {
     selectedProvider: string;
     selectedModel: string;
@@ -335,6 +357,7 @@ export type ExecuteEndToEndAgenticTradeInDemoResponse = {
     valuationRangeCount: number;
     valuationReviewRequiredCount: number;
     priorReviewEvidenceCount: number;
+    priorReviewSuggestionCount: number;
     selectedProvider: string;
     selectedModel: string;
     productStory: string;

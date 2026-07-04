@@ -12,6 +12,7 @@ import {
 import type {
   DemoResult,
   ParsedItem,
+  PriorReviewLearningSuggestion,
   RecordReviewCard,
   RetryEvent,
   ReviewOutcome,
@@ -294,6 +295,22 @@ export function getReviewOutcomeForItem(
   return (
     reviewOutcomes.find((outcome) => outcome.reviewQueueItemId === reviewItem.id) ?? null
   );
+}
+
+export function getPriorReviewSuggestionsForRecord(input: {
+  result: DemoResult;
+  index: number;
+  recordIdentity: string | null;
+}): PriorReviewLearningSuggestion[] {
+  const directMatch = input.result.priorReviewLearningSuggestionsByItem.find(
+    (item) => item.parsedItemId === input.recordIdentity,
+  );
+
+  if (directMatch) {
+    return directMatch.suggestions;
+  }
+
+  return input.result.priorReviewLearningSuggestionsByItem[input.index]?.suggestions ?? [];
 }
 
 export function findRecordIndexFromText(values: unknown[], recordCount: number) {
@@ -665,6 +682,11 @@ export function buildRecordReviewCards(
       inventoryEvidence,
       valuationEvidence,
       sourceEvidence: getSourceEvidence({ parsedRecord, reviewItem }),
+      priorReviewSuggestions: getPriorReviewSuggestionsForRecord({
+        result,
+        index,
+        recordIdentity,
+      }),
       missingFields,
       reviewReasons,
       validationChecks: [],
@@ -705,6 +727,7 @@ export function buildRecordReviewCards(
       inventoryEvidence: null,
       valuationEvidence,
       sourceEvidence: getSourceEvidence({ parsedRecord, reviewItem }),
+      priorReviewSuggestions: [],
       missingFields,
       reviewReasons,
       validationChecks: [],

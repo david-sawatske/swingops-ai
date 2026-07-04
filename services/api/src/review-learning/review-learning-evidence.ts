@@ -16,6 +16,26 @@ export type PriorReviewLearningEvidence = {
   createdAt: string;
 };
 
+export type PriorReviewLearningSuggestionStatus = "SUGGESTED";
+
+export type PriorReviewLearningSuggestion = {
+  fieldName: string;
+  rawTextMatch: string | null;
+  suggestedValue: string | null;
+  previousCorrectedValue: string | null;
+  proposedValue: string | null;
+  evidenceText: string | null;
+  confidence: number;
+  strength: PriorReviewLearningEvidenceStrength;
+  confidenceImpact: string;
+  reasonCodes: string[];
+  summary: string;
+  whySuggestionExists: string;
+  sourceLearningEventId: string;
+  status: PriorReviewLearningSuggestionStatus;
+  createdAt: string;
+};
+
 export type PriorReviewLearningEvidenceInput = {
   rawText: string;
   parsedFields?: {
@@ -644,80 +664,108 @@ export async function findPriorReviewLearningEvidence(
 }
 
 
-export type ReviewLearningApplicableParsedItem = {
-  shaftFlex: string | null;
-  missingFields: string[];
-  confidence: number;
-  uncertaintyNotes: string[];
-};
-
-function normalizeShaftFlexCorrection(value: string | null | undefined) {
-  const normalizedValue = value
-    ?.trim()
-    .toUpperCase()
-    .replace(/[\s-]+/g, "_");
-
-  if (!normalizedValue) {
-    return null;
+function buildSuggestionConfidenceImpact(evidence: PriorReviewLearningEvidence) {
+  if (evidence.strength === "STRONG") {
+    return "Strong prior review match. Surface as a suggestion, but require reviewer action before changing the record.";
   }
 
-  if (normalizedValue === "TOUR_X" || normalizedValue === "TOUR_X_STIFF") {
-    return "TOUR_X_STIFF";
+  if (evidence.strength === "MEDIUM") {
+    return "Moderate prior review match. Treat as supporting context for the reviewer.";
   }
 
-  if (normalizedValue === "X" || normalizedValue === "X_STIFF" || normalizedValue === "X_FLEX") {
-    return "X_STIFF";
-  }
-
-  if (normalizedValue === "STIFF" || normalizedValue === "S" || normalizedValue === "S_FLEX") {
-    return "STIFF";
-  }
-
-  if (normalizedValue === "REGULAR" || normalizedValue === "REG" || normalizedValue === "R" || normalizedValue === "R_FLEX") {
-    return "REGULAR";
-  }
-
-  if (normalizedValue === "SENIOR" || normalizedValue === "SR" || normalizedValue === "A" || normalizedValue === "A_FLEX") {
-    return "SENIOR";
-  }
-
-  if (normalizedValue === "LADIES" || normalizedValue === "LADY" || normalizedValue === "L" || normalizedValue === "L_FLEX") {
-    return "LADIES";
-  }
-
-  return null;
+  return "Weak prior review match. Show only as low-confidence context.";
 }
 
-export function applyPriorReviewLearningEvidenceToParsedItem<T extends ReviewLearningApplicableParsedItem>(
-  item: T,
+function buildSuggestionReason(evidence: PriorReviewLearningEvidence) {
+  const reason = evidence.reasonCodes.length > 0
+    ? evidence.reasonCodes.join(", ")
+    : "No reason code captured";
+
+  return `Matched prior approved correction using: ${reason}.`;
+}
+
+function normalizeSuggestionIdentityPart(value: string | null | undefined) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function getSuggestionIdentityKey(evidence: PriorReviewLearningEvidence) {
+  return [
+    normalizeSuggestionIdentityPart(evidence.fieldName),
+    normalizeSuggestionIdentityPart(evidence.rawTextMatch),
+    normalizeSuggestionIdentityPart(evidence.correctedValue),
+  ].join(":");
+}
+
+function getSuggestionStrengthRank(value: PriorReviewLearningEvidenceStrength) {
+  if (value === "STRONG") {
+    return 3;
+  }
+
+  if (value === "MEDIUM") {
+    return 2;
+  }
+
+  return 1;
+}
+
+function shouldReplacePriorSuggestionCandidate(
+  current: PriorReviewLearningEvidence,
+  candidate: PriorReviewLearningEvidence,
+) {
+  const currentStrengthRank = getSuggestionStrengthRank(current.strength);
+  const candidateStrengthRank = getSuggestionStrengthRank(candidate.strength);
+
+  if (candidateStrengthRank !== currentStrengthRank) {
+    return candidateStrengthRank > currentStrengthRank;
+  }
+
+  if (candidate.confidence !== current.confidence) {
+    return candidate.confidence > current.confidence;
+  }
+
+  return new Date(candidate.createdAt).getTime() > new Date(current.createdAt).getTime();
+}
+
+function dedupePriorReviewLearningEvidenceForSuggestions(
   evidence: PriorReviewLearningEvidence[],
-): T {
-  const shaftFlexEvidence = evidence.find(
-    (event) =>
-      event.fieldName === "shaftFlex" &&
-      event.confidence >= 0.7 &&
-      event.strength !== "WEAK" &&
-      Boolean(event.rawTextMatch) &&
-      Boolean(normalizeShaftFlexCorrection(event.correctedValue)),
-  );
+) {
+  const evidenceByIdentity = new Map<string, PriorReviewLearningEvidence>();
 
-  if (!item.shaftFlex && shaftFlexEvidence) {
-    const correctedShaftFlex = normalizeShaftFlexCorrection(
-      shaftFlexEvidence.correctedValue,
-    );
+  for (const item of evidence) {
+    const identityKey = getSuggestionIdentityKey(item);
+    const current = evidenceByIdentity.get(identityKey);
 
-    if (correctedShaftFlex) {
-      item.shaftFlex = correctedShaftFlex;
-      item.missingFields = item.missingFields.filter(
-        (fieldName) => fieldName !== "shaftFlex",
-      );
-      item.confidence = Math.min(0.99, Number((item.confidence + 0.08).toFixed(2)));
-      item.uncertaintyNotes = [
-        ...item.uncertaintyNotes,
-        `Applied prior human review evidence for shaftFlex from source text "${shaftFlexEvidence.rawTextMatch}".`,
-      ];
+    if (!current || shouldReplacePriorSuggestionCandidate(current, item)) {
+      evidenceByIdentity.set(identityKey, item);
     }
   }
 
-  return item;
+  return Array.from(evidenceByIdentity.values());
+}
+
+export function buildPriorReviewLearningSuggestionsFromEvidence(
+  evidence: PriorReviewLearningEvidence[],
+): PriorReviewLearningSuggestion[] {
+  return dedupePriorReviewLearningEvidenceForSuggestions(evidence).map((item) => ({
+    fieldName: item.fieldName,
+    rawTextMatch: item.rawTextMatch,
+    suggestedValue: item.correctedValue,
+    previousCorrectedValue: item.correctedValue,
+    proposedValue: item.proposedValue,
+    evidenceText: item.evidenceText,
+    confidence: item.confidence,
+    strength: item.strength,
+    confidenceImpact: buildSuggestionConfidenceImpact(item),
+    reasonCodes: item.reasonCodes,
+    summary: item.correctedValue
+      ? `Prior review suggestion: ${item.fieldName} = ${item.correctedValue} from prior approved source text${item.rawTextMatch ? `: ${item.rawTextMatch}` : "."}`
+      : item.summary,
+    whySuggestionExists: buildSuggestionReason(item),
+    sourceLearningEventId: item.learningEventId,
+    status: "SUGGESTED",
+    createdAt: item.createdAt
+  }));
 }
