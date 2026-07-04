@@ -1,8 +1,12 @@
 import {
-  findNumberParserEvidence,
   findTextParserEvidence,
   omitEmptyParserEvidence
 } from "./parser-evidence.js";
+import {
+  detectApprovedConditionGradeWithEvidence,
+  detectShaftFlexWithEvidence,
+  detectTradeInValueWithEvidence
+} from "./parser-normalizers.js";
 import type { ParserEvidence } from "./parser-evidence.js";
 import type {
   MultiSourceIntakeRecord,
@@ -125,102 +129,6 @@ function detectCategory(text: string): string | null {
   return null;
 }
 
-function detectShaftFlex(text: string): string | null {
-  if (/\btour\s*x\s*-?\s*stiff\b|\btx\s*flex\b|\btour\s*x\b/i.test(text)) {
-    return "TOUR_X_STIFF";
-  }
-
-  if (/\bx\s*-?\s*stiff\b|\bx\s*flex\b/i.test(text)) {
-    return "X_STIFF";
-  }
-
-  if (/\bstiff\b|\bstf\b|\bs flex\b|\btensei s\b/i.test(text)) {
-    return "STIFF";
-  }
-
-  if (/\bsenior\b|\bsr\s*flex\b|\ba\s*flex\b/i.test(text)) {
-    return "SENIOR";
-  }
-
-  if (/\blad(y|ies)\b|\bl\s*flex\b/i.test(text)) {
-    return "LADIES";
-  }
-
-  if (/\breg\b|\bregular\b/i.test(text)) {
-    return "REGULAR";
-  }
-
-  return null;
-}
-
-const CONDITION_GRADES = [
-  "9.5 Mint",
-  "9.0 Above Average",
-  "8.0 Average",
-  "7.0 Below Average",
-  "6.0 Poor"
-] as const;
-
-function detectConditionGrade(text: string): string | null {
-  const explicitConditionGrade = CONDITION_GRADES.find((grade) =>
-    new RegExp(`\\b${grade.replace(".", "\\.")}\\b`, "i").test(text)
-  );
-
-  if (explicitConditionGrade) {
-    return explicitConditionGrade;
-  }
-
-  const shorthandMatch = text.match(
-    /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*(above\s*(?:avg|average)|aa|below\s*(?:avg|average)|ba|avg|average|poor|mint)\b/i
-  );
-
-  if (!shorthandMatch?.[1]) {
-    return null;
-  }
-
-  const shorthand = shorthandMatch[1].toLowerCase().replace(/\s+/g, " ");
-
-  if (shorthand === "mint") {
-    return "9.5 Mint";
-  }
-
-  if (shorthand === "above avg" || shorthand === "above average" || shorthand === "aa") {
-    return "9.0 Above Average";
-  }
-
-  if (shorthand === "avg" || shorthand === "average") {
-    return "8.0 Average";
-  }
-
-  if (shorthand === "below avg" || shorthand === "below average" || shorthand === "ba") {
-    return "7.0 Below Average";
-  }
-
-  if (shorthand === "poor") {
-    return "6.0 Poor";
-  }
-
-  return null;
-}
-
-function detectTradeInValue(text: string): number | null {
-  const dollarMatch = text.match(/\$(\d{2,4})\b/);
-  if (dollarMatch?.[1]) {
-    return Number(dollarMatch[1]);
-  }
-
-  const valueMatch = text.match(/\bvalue\s*(?:pending review|is|=)?\s*(\d{2,4})\b/i);
-  if (valueMatch?.[1]) {
-    return Number(valueMatch[1]);
-  }
-
-  const estimatedMatch = text.match(/\bestimated value\s*(\d{2,4})\b/i);
-  if (estimatedMatch?.[1]) {
-    return Number(estimatedMatch[1]);
-  }
-
-  return null;
-}
 
 function buildParserEvidence(
   text: string,
@@ -264,25 +172,9 @@ function buildParserEvidence(
       { value: "PUTTER", aliases: [/\bputter\b/i] },
       { value: "IRON_SET", aliases: [/\birons?\b/i, /\b[4-9]-pw\b/i] },
     ]),
-    shaftFlex: findTextParserEvidence(text, values.shaftFlex, [
-      { value: "TOUR_X_STIFF", aliases: [/\bshaft\s+tour\s*x\s*-?\s*stiff\b/i, /\btour\s*x\s*-?\s*stiff\b/i, /\btx\s*flex\b/i, /\btour\s*x\b/i] },
-      { value: "X_STIFF", aliases: [/\bshaft\s+x\s*-?\s*stiff\b/i, /\bx\s*-?\s*stiff\b/i, /\bx\s*flex\b/i] },
-      { value: "STIFF", aliases: [/\bshaft\s+(?:stf|stiff)\b/i, /\bstf\b/i, /\bstiff\b/i, /\bs flex\b/i, /\btensei\s+s\b/i] },
-      { value: "SENIOR", aliases: [/\bshaft\s+senior\b/i, /\bsenior\b/i, /\bsr\s*flex\b/i, /\ba\s*flex\b/i] },
-      { value: "LADIES", aliases: [/\bshaft\s+lad(?:y|ies)\b/i, /\blad(y|ies)\b/i, /\bl\s*flex\b/i] },
-      { value: "REGULAR", aliases: [/\bshaft\s+(?:reg|regular)\b/i, /\breg\s*flex\b/i, /\breg\b/i, /\bregular\b/i] },
-    ]),
-    conditionGrade: findTextParserEvidence(text, values.conditionGrade, [
-      { value: "9.5 Mint", aliases: [/\b9\.5\s*Mint\b/i, /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*mint\b/i] },
-      { value: "9.0 Above Average", aliases: [/\b9\.0\s*Above\s*Average\b/i, /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*(?:above\s*(?:avg|average)|aa)\b/i] },
-      { value: "8.0 Average", aliases: [/\b8\.0\s*Average\b/i, /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*(?:avg|average)\b/i] },
-      { value: "7.0 Below Average", aliases: [/\b7\.0\s*Below\s*Average\b/i, /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*(?:below\s*(?:avg|average)|ba)\b/i] },
-      { value: "6.0 Poor", aliases: [/\b6\.0\s*Poor\b/i, /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*poor\b/i] },
-    ]),
-    tradeInValue: findNumberParserEvidence(text, values.tradeInValue, [
-      /\b(?:trade\s*-?\s*in\s+value|trade\s+value|estimated\s+value|value)\s*(?:=|is|:)?\s*\$?(\d{2,4})\b/i,
-      /\$(\d{2,4})\b/,
-    ]),
+    shaftFlex: detectShaftFlexWithEvidence(text).evidence,
+    conditionGrade: detectApprovedConditionGradeWithEvidence(text).evidence,
+    tradeInValue: detectTradeInValueWithEvidence(text).evidence,
   });
 }
 
@@ -367,9 +259,9 @@ export function buildRecord(source: MultiSourceParserInput, fragment: string, in
   const brand = detectBrand(fragment);
   const productLine = detectProductLine(fragment);
   const category = detectCategory(fragment);
-  const shaftFlex = detectShaftFlex(fragment);
-  const conditionGrade = detectConditionGrade(fragment);
-  const tradeInValue = detectTradeInValue(fragment);
+  const shaftFlex = detectShaftFlexWithEvidence(fragment).value;
+  const conditionGrade = detectApprovedConditionGradeWithEvidence(fragment).value;
+  const tradeInValue = detectTradeInValueWithEvidence(fragment).value;
   const parserEvidence = buildParserEvidence(fragment, {
     brand,
     productLine,
