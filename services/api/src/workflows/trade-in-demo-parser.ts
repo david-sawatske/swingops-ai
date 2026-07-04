@@ -1,8 +1,12 @@
 import {
-  findNumberParserEvidence,
   findTextParserEvidence,
   omitEmptyParserEvidence
 } from "./parser-evidence.js";
+import {
+  detectApprovedConditionGradeWithEvidence,
+  detectShaftFlexWithEvidence,
+  detectTradeInValueWithEvidence
+} from "./parser-normalizers.js";
 import type { ParserEvidence } from "./parser-evidence.js";
 
 export type ParsedTradeInDemoItem = {
@@ -218,13 +222,6 @@ const SHAFT_MODEL_PATTERNS: {
   }
 ];
 
-const CONDITION_GRADES = [
-  "9.5 Mint",
-  "9.0 Above Average",
-  "8.0 Average",
-  "7.0 Below Average",
-  "6.0 Poor"
-] as const;
 
 const CONDITION_NOTE_PATTERNS: {
   note: string;
@@ -384,38 +381,6 @@ function detectShaftModel(line: string): string | null {
   return null;
 }
 
-function detectShaftFlex(line: string): string | null {
-  if (
-    /\btour\s*x\s*-?\s*stiff\b/i.test(line) ||
-    /\btx\s*flex\b/i.test(line) ||
-    /\btour\s*x\b/i.test(line) ||
-    /\bTOUR_X_STIFF\b/.test(line)
-  ) {
-    return "TOUR_X_STIFF";
-  }
-
-  if (/\bx\s*-?\s*stiff\b/i.test(line) || /\bx\s*flex\b/i.test(line) || /\bX_STIFF\b/.test(line)) {
-    return "X_STIFF";
-  }
-
-  if (/\bstiff\b/i.test(line) || /\bstf\b/i.test(line) || /\bs\s*flex\b/i.test(line) || /\bSTIFF\b/.test(line)) {
-    return "STIFF";
-  }
-
-  if (/\bregular\b/i.test(line) || /\breg\b/i.test(line) || /\br\s*flex\b/i.test(line) || /\bREGULAR\b/.test(line)) {
-    return "REGULAR";
-  }
-
-  if (/\bsenior\b/i.test(line) || /\bsr\b/i.test(line) || /\ba\s*flex\b/i.test(line) || /\bSENIOR\b/.test(line)) {
-    return "SENIOR";
-  }
-
-  if (/\blad(y|ies)\b/i.test(line) || /\bl\s*flex\b/i.test(line) || /\bLADIES\b/.test(line)) {
-    return "LADIES";
-  }
-
-  return null;
-}
 
 function detectLoft(line: string): string | null {
   const explicitLoftMatch = line.match(/\b(\d{1,2}(?:\.\d)?)\s*(?:deg|degree|°)\b/i);
@@ -469,66 +434,6 @@ function collectNotes(
   );
 }
 
-function detectConditionGrade(line: string): string | null {
-  const explicitConditionGrade = CONDITION_GRADES.find((grade) =>
-    new RegExp(`\\b${grade.replace(".", "\\.")}\\b`, "i").test(line)
-  );
-
-  if (explicitConditionGrade) {
-    return explicitConditionGrade;
-  }
-
-  const shorthandMatch = line.match(
-    /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*(above\s*(?:avg|average)|aa|below\s*(?:avg|average)|ba|avg|average|poor|mint)\b/i
-  );
-
-  if (!shorthandMatch?.[1]) {
-    return null;
-  }
-
-  const shorthand = shorthandMatch[1].toLowerCase().replace(/\s+/g, " ");
-
-  if (shorthand === "mint") {
-    return "9.5 Mint";
-  }
-
-  if (shorthand === "above avg" || shorthand === "above average" || shorthand === "aa") {
-    return "9.0 Above Average";
-  }
-
-  if (shorthand === "avg" || shorthand === "average") {
-    return "8.0 Average";
-  }
-
-  if (shorthand === "below avg" || shorthand === "below average" || shorthand === "ba") {
-    return "7.0 Below Average";
-  }
-
-  if (shorthand === "poor") {
-    return "6.0 Poor";
-  }
-
-  return null;
-}
-
-function detectTradeInValue(line: string): number | null {
-  const dollarMatch = line.match(/\$(\d{2,4})\b/);
-  if (dollarMatch?.[1]) {
-    return Number(dollarMatch[1]);
-  }
-
-  const estimatedMatch = line.match(/\bestimated\s+value\s*(?:=|is|:)?\s*(\d{2,4})\b/i);
-  if (estimatedMatch?.[1]) {
-    return Number(estimatedMatch[1]);
-  }
-
-  const valueMatch = line.match(/\b(?:trade\s*)?value\s*(?:=|is|:)?\s*(\d{2,4})\b/i);
-  if (valueMatch?.[1]) {
-    return Number(valueMatch[1]);
-  }
-
-  return null;
-}
 
 function buildParserEvidence(
   line: string,
@@ -575,25 +480,9 @@ function buildParserEvidence(
       { value: "WEDGE", aliases: [/\bwedge\b/i, /\b\d{2}\s*deg\b/i, /\bWEDGE\b/] },
       { value: "PUTTER", aliases: [/\bputter\b/i, /\bPUTTER\b/] },
     ]),
-    shaftFlex: findTextParserEvidence(line, values.shaftFlex, [
-      { value: "TOUR_X_STIFF", aliases: [/\bshaft\s+tour\s*x\s*-?\s*stiff\b/i, /\btour\s*x\s*-?\s*stiff\b/i, /\btx\s*flex\b/i, /\btour\s*x\b/i, /\bTOUR_X_STIFF\b/] },
-      { value: "X_STIFF", aliases: [/\bshaft\s+x\s*-?\s*stiff\b/i, /\bx\s*-?\s*stiff\b/i, /\bx\s*flex\b/i, /\bX_STIFF\b/] },
-      { value: "STIFF", aliases: [/\bshaft\s+(?:stf|stiff)\b/i, /\bstf\b/i, /\bstiff\b/i, /\bs\s*flex\b/i, /\bSTIFF\b/] },
-      { value: "REGULAR", aliases: [/\bshaft\s+(?:reg|regular)\b/i, /\bregular\b/i, /\breg\b/i, /\br\s*flex\b/i, /\bREGULAR\b/] },
-      { value: "SENIOR", aliases: [/\bshaft\s+senior\b/i, /\bsenior\b/i, /\bsr\b/i, /\ba\s*flex\b/i, /\bSENIOR\b/] },
-      { value: "LADIES", aliases: [/\bshaft\s+lad(?:y|ies)\b/i, /\blad(y|ies)\b/i, /\bl\s*flex\b/i, /\bLADIES\b/] },
-    ]),
-    conditionGrade: findTextParserEvidence(line, values.conditionGrade, [
-      { value: "9.5 Mint", aliases: [/\b9\.5\s*Mint\b/i, /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*mint\b/i] },
-      { value: "9.0 Above Average", aliases: [/\b9\.0\s*Above\s*Average\b/i, /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*(?:above\s*(?:avg|average)|aa)\b/i] },
-      { value: "8.0 Average", aliases: [/\b8\.0\s*Average\b/i, /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*(?:avg|average)\b/i] },
-      { value: "7.0 Below Average", aliases: [/\b7\.0\s*Below\s*Average\b/i, /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*(?:below\s*(?:avg|average)|ba)\b/i] },
-      { value: "6.0 Poor", aliases: [/\b6\.0\s*Poor\b/i, /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*poor\b/i] },
-    ]),
-    tradeInValue: findNumberParserEvidence(line, values.tradeInValue, [
-      /\b(?:trade\s*-?\s*in\s+value|trade\s+value|estimated\s+value|value)\s*(?:=|is|:)?\s*\$?(\d{2,4})\b/i,
-      /\$(\d{2,4})\b/,
-    ]),
+    shaftFlex: detectShaftFlexWithEvidence(line).evidence,
+    conditionGrade: detectApprovedConditionGradeWithEvidence(line).evidence,
+    tradeInValue: detectTradeInValueWithEvidence(line).evidence,
   });
 }
 
@@ -678,9 +567,9 @@ function parseLine(rawLine: string, index: number): ParsedTradeInDemoItem {
   const category = detectCategory(cleanedLine);
   const shaftBrand = detectShaftBrand(cleanedLine);
   const shaftModel = detectShaftModel(cleanedLine);
-  const shaftFlex = detectShaftFlex(cleanedLine);
-  const conditionGrade = detectConditionGrade(cleanedLine);
-  const tradeInValue = detectTradeInValue(cleanedLine);
+  const shaftFlex = detectShaftFlexWithEvidence(cleanedLine).value;
+  const conditionGrade = detectApprovedConditionGradeWithEvidence(cleanedLine).value;
+  const tradeInValue = detectTradeInValueWithEvidence(cleanedLine).value;
   const parserEvidence = buildParserEvidence(cleanedLine, {
     brand,
     productLine,
