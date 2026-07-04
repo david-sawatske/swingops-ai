@@ -27,7 +27,6 @@ import {
   getRecordStatusClassName,
   getStatusClassName,
   getValuationSummary,
-  inferConditionGradeFromText,
   normalizeCategoryValue,
   normalizeComparable,
   normalizeConditionGradeValue,
@@ -266,6 +265,12 @@ function getSourceTextMatchValue(
   return draft.sourceTextMatches[fieldName]?.trim() ?? "";
 }
 
+function shouldStartCorrectionFieldBlank(card: RecordReviewCard, fieldName: CorrectionFormFieldName) {
+  return getCorrectionFocusFields(card).some(
+    (focusField) => normalizeComparable(focusField) === normalizeComparable(fieldName),
+  );
+}
+
 export function buildCorrectionDraft(card: RecordReviewCard): ReviewCorrectionDraft {
   const proposedRecord = getProposedRecord(card.reviewItem);
   const brand =
@@ -292,13 +297,21 @@ export function buildCorrectionDraft(card: RecordReviewCard): ReviewCorrectionDr
   return {
     brand,
     productLine,
-    category: normalizeCategoryValue(category),
-    shaftFlex: normalizeShaftFlexValue(shaftFlex),
-    conditionGrade:
-      normalizeConditionGradeValue(conditionGrade) ||
-      inferConditionGradeFromText(card.sourceEvidence) ||
-      "8.0 Average",
-    demoValue: demoValue === null || demoValue === undefined ? "" : String(demoValue),
+    category: shouldStartCorrectionFieldBlank(card, "category")
+      ? ""
+      : normalizeCategoryValue(category),
+    shaftFlex: shouldStartCorrectionFieldBlank(card, "shaftFlex")
+      ? ""
+      : normalizeShaftFlexValue(shaftFlex),
+    conditionGrade: shouldStartCorrectionFieldBlank(card, "conditionGrade")
+      ? ""
+      : normalizeConditionGradeValue(conditionGrade),
+    demoValue:
+      shouldStartCorrectionFieldBlank(card, "demoValue") ||
+      demoValue === null ||
+      demoValue === undefined
+        ? ""
+        : String(demoValue),
     sourceTextMatches: buildSourceTextMatches(card),
     demoValuationNote: "",
     reviewerNotes: "Confirmed current run review item from the guided validation checkpoint.",
@@ -519,27 +532,27 @@ function getCorrectionFieldLabel(fieldName: string) {
 function addSourceMissingFieldSignals(card: RecordReviewCard, fields: Set<string>) {
   const sourceText = card.sourceEvidence.toLowerCase();
 
-  if (/missing\s+(?:trade\s*-?\s*in\s*)?value|missing\s+tradeinvalue|value\s+pending|trade\s*-?\s*in\s+value\s+(?:missing|unclear|pending)/i.test(sourceText)) {
+  if (/missing\s+(?:trade\s*-?\s*in\s*)?value|missing\s+tradeinvalue|value\s+(?:missing|unknown|unclear|pending)|trade\s*-?\s*in\s+value\s+(?:missing|unknown|unclear|pending)/i.test(sourceText)) {
     fields.add("demoValue");
   }
 
-  if (/missing\s+condition|condition\s+(?:missing|unclear|pending)|conditionnotes/i.test(sourceText)) {
+  if (/missing\s+condition|condition\s+(?:missing|unknown|unclear|pending)|conditionnotes/i.test(sourceText)) {
     fields.add("conditionGrade");
   }
 
-  if (/missing\s+category|category\s+(?:missing|unclear|pending|could not be classified)/i.test(sourceText)) {
+  if (/missing\s+category|category\s+(?:missing|unknown|unclear|pending|could not be classified)/i.test(sourceText)) {
     fields.add("category");
   }
 
-  if (/missing\s+(?:shaft\s*)?flex|shaft\s*flex\s+(?:missing|unclear|pending)/i.test(sourceText)) {
+  if (/missing\s+(?:shaft\s*)?flex|shaft(?:\s*flex)?\s+(?:missing|unknown|unclear|pending)|flex\s+(?:missing|unknown|unclear|pending)/i.test(sourceText)) {
     fields.add("shaftFlex");
   }
 
-  if (/missing\s+product|product\s+(?:line\s+)?(?:missing|unclear|pending)/i.test(sourceText)) {
+  if (/missing\s+product|product\s+(?:line\s+)?(?:missing|unknown|unclear|pending)/i.test(sourceText)) {
     fields.add("productLine");
   }
 
-  if (/missing\s+brand|brand\s+(?:missing|unclear|pending)/i.test(sourceText)) {
+  if (/missing\s+brand|brand\s+(?:missing|unknown|unclear|pending)/i.test(sourceText)) {
     fields.add("brand");
   }
 }
