@@ -1,3 +1,5 @@
+import type { ParserEvidence } from "./parserEvidence";
+
 export type MultiSourceIntakeSourceType =
   | "FREE_TEXT"
   | "POORLY_FORMED_CSV"
@@ -20,6 +22,7 @@ export type MultiSourceIntakeRecord = {
   shaftFlex: string | null;
   conditionGrade: string | null;
   tradeInValue: number | null;
+  parserEvidence?: ParserEvidence;
   customerName: string | null;
   customerEmail: string | null;
   storeId: string | null;

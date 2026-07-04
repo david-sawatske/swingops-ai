@@ -1,3 +1,10 @@
+import {
+  findNumberParserEvidence,
+  findTextParserEvidence,
+  omitEmptyParserEvidence
+} from "./parser-evidence.js";
+import type { ParserEvidence } from "./parser-evidence.js";
+
 export type ParsedTradeInDemoItem = {
   id: string;
   rawLine: string;
@@ -12,6 +19,7 @@ export type ParsedTradeInDemoItem = {
   shaftFlex: string | null;
   conditionGrade: string | null;
   tradeInValue: number | null;
+  parserEvidence?: ParserEvidence;
   conditionNotes: string[];
   accessoriesNotes: string[];
   uncertaintyNotes: string[];
@@ -522,6 +530,73 @@ function detectTradeInValue(line: string): number | null {
   return null;
 }
 
+function buildParserEvidence(
+  line: string,
+  values: {
+    brand: string | null;
+    productLine: string | null;
+    category: string | null;
+    shaftFlex: string | null;
+    conditionGrade: string | null;
+    tradeInValue: number | null;
+  },
+): ParserEvidence {
+  return omitEmptyParserEvidence({
+    brand: findTextParserEvidence(line, values.brand, [
+      { value: "TaylorMade", aliases: [/\btaylormade\b/i, /\btm\b/i] },
+      { value: "Titleist", aliases: [/\btitleist\b/i] },
+      { value: "Callaway", aliases: [/\bcallaway\b/i, /\bcally\b/i] },
+      { value: "PING", aliases: [/\bping\b/i] },
+      { value: "Cleveland", aliases: [/\bcleveland\b/i] },
+      { value: "Odyssey", aliases: [/\bodyssey\b/i] },
+      { value: "Mizuno", aliases: [/\bmizuno\b/i] },
+    ]),
+    productLine: findTextParserEvidence(line, values.productLine, [
+      { value: "Stealth 2", aliases: [/\bstealth\s*2\b/i, /\bstealth2\b/i] },
+      { value: "Stealth", aliases: [/\bstealth\b/i] },
+      { value: "TSR", aliases: [/\btsr[123]?\b/i] },
+      { value: "TS", aliases: [/\bts[123]?\b/i] },
+      { value: "Rogue ST Max", aliases: [/\brogue\s*st\s*max\b/i] },
+      { value: "G425", aliases: [/\bg425\b/i] },
+      { value: "G430 Max", aliases: [/\bg430\s*max\b/i] },
+      { value: "G430", aliases: [/\bg430\b/i] },
+      {
+        value: "RTX 6 ZipCore",
+        aliases: [/\brtx\s*6(?:\s*zip\s*core|\s*zipcore)?\b/i, /\brtx6\b/i, /\brtx\s*zip\s*core\b/i],
+      },
+      { value: "White Hot OG", aliases: [/\bwhite\s*hot\s*og\b/i, /\bwh\s*og\b/i] },
+      { value: "JPX 923 Hot Metal", aliases: [/\bjpx\s*923(?:\s*hot\s*metal)?\b/i, /\bhot\s*metal\b/i] },
+    ]),
+    category: findTextParserEvidence(line, values.category, [
+      { value: "DRIVER", aliases: [/\bdriver\b/i, /\bdrv\b/i, /\bdr\b/i, /\bDRIVER\b/] },
+      { value: "FAIRWAY_WOOD", aliases: [/\bfairway\b/i, /\bfw\b/i, /\b3w\b/i, /\b5w\b/i, /\b7w\b/i, /\b9w\b/i, /\bwood\b/i, /\bFAIRWAY_WOOD\b/] },
+      { value: "IRON_SET", aliases: [/\birons?\b/i, /\b[4-9]-pw\b/i, /\b[5-9]-gw\b/i, /\bIRON_SET\b/] },
+      { value: "HYBRID", aliases: [/\bhy\b/i, /\bhybrid\b/i, /\bHYBRID\b/] },
+      { value: "WEDGE", aliases: [/\bwedge\b/i, /\b\d{2}\s*deg\b/i, /\bWEDGE\b/] },
+      { value: "PUTTER", aliases: [/\bputter\b/i, /\bPUTTER\b/] },
+    ]),
+    shaftFlex: findTextParserEvidence(line, values.shaftFlex, [
+      { value: "TOUR_X_STIFF", aliases: [/\bshaft\s+tour\s*x\s*-?\s*stiff\b/i, /\btour\s*x\s*-?\s*stiff\b/i, /\btx\s*flex\b/i, /\btour\s*x\b/i, /\bTOUR_X_STIFF\b/] },
+      { value: "X_STIFF", aliases: [/\bshaft\s+x\s*-?\s*stiff\b/i, /\bx\s*-?\s*stiff\b/i, /\bx\s*flex\b/i, /\bX_STIFF\b/] },
+      { value: "STIFF", aliases: [/\bshaft\s+(?:stf|stiff)\b/i, /\bstf\b/i, /\bstiff\b/i, /\bs\s*flex\b/i, /\bSTIFF\b/] },
+      { value: "REGULAR", aliases: [/\bshaft\s+(?:reg|regular)\b/i, /\bregular\b/i, /\breg\b/i, /\br\s*flex\b/i, /\bREGULAR\b/] },
+      { value: "SENIOR", aliases: [/\bshaft\s+senior\b/i, /\bsenior\b/i, /\bsr\b/i, /\ba\s*flex\b/i, /\bSENIOR\b/] },
+      { value: "LADIES", aliases: [/\bshaft\s+lad(?:y|ies)\b/i, /\blad(y|ies)\b/i, /\bl\s*flex\b/i, /\bLADIES\b/] },
+    ]),
+    conditionGrade: findTextParserEvidence(line, values.conditionGrade, [
+      { value: "9.5 Mint", aliases: [/\b9\.5\s*Mint\b/i, /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*mint\b/i] },
+      { value: "9.0 Above Average", aliases: [/\b9\.0\s*Above\s*Average\b/i, /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*(?:above\s*(?:avg|average)|aa)\b/i] },
+      { value: "8.0 Average", aliases: [/\b8\.0\s*Average\b/i, /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*(?:avg|average)\b/i] },
+      { value: "7.0 Below Average", aliases: [/\b7\.0\s*Below\s*Average\b/i, /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*(?:below\s*(?:avg|average)|ba)\b/i] },
+      { value: "6.0 Poor", aliases: [/\b6\.0\s*Poor\b/i, /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*poor\b/i] },
+    ]),
+    tradeInValue: findNumberParserEvidence(line, values.tradeInValue, [
+      /\b(?:trade\s*-?\s*in\s+value|trade\s+value|estimated\s+value|value)\s*(?:=|is|:)?\s*\$?(\d{2,4})\b/i,
+      /\$(\d{2,4})\b/,
+    ]),
+  });
+}
+
 function buildMissingFields(input: {
   brand: string | null;
   productLine: string | null;
@@ -606,6 +681,14 @@ function parseLine(rawLine: string, index: number): ParsedTradeInDemoItem {
   const shaftFlex = detectShaftFlex(cleanedLine);
   const conditionGrade = detectConditionGrade(cleanedLine);
   const tradeInValue = detectTradeInValue(cleanedLine);
+  const parserEvidence = buildParserEvidence(cleanedLine, {
+    brand,
+    productLine,
+    category,
+    shaftFlex,
+    conditionGrade,
+    tradeInValue
+  });
   const conditionNotes = unique([
     ...(conditionGrade ? [conditionGrade] : []),
     ...collectNotes(cleanedLine, CONDITION_NOTE_PATTERNS)
@@ -644,6 +727,7 @@ function parseLine(rawLine: string, index: number): ParsedTradeInDemoItem {
     shaftFlex,
     conditionGrade,
     tradeInValue,
+    parserEvidence,
     conditionNotes,
     accessoriesNotes,
     uncertaintyNotes,

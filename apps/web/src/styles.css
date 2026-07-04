@@ -14,6 +14,7 @@
 @import "./styles/guided-validation.css";
 @import "./styles/guided-final-report.css";
 @import "./styles/guided-validation-records.css";
+@import "./styles/guided-parser-evidence.css";
 @import "./styles/guided-final-refinements.css";
 @import "./styles/guided-source-polish.css";
 @import "./styles/guided-guarded-polish.css";

@@ -1,5 +1,6 @@
 import type { ReviewQueueItem } from "./reviewQueue";
 import type { ModelCallLog, ToolCallLog } from "./workflowRun";
+import type { ParserEvidence } from "./parserEvidence";
 
 export type AgenticTradeInRunEvalSummary = {
   extractionCompleteness: number;
@@ -23,6 +24,9 @@ export type AgenticTradeInDemoParsedItem = {
   shaftBrand: string | null;
   shaftModel: string | null;
   shaftFlex: string | null;
+  conditionGrade: string | null;
+  tradeInValue: number | null;
+  parserEvidence?: ParserEvidence;
   conditionNotes: string[];
   accessoriesNotes: string[];
   uncertaintyNotes: string[];
