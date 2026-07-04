@@ -305,4 +305,55 @@ describe("parseTradeInDemoText", () => {
     });
   });
 
+
+  it("captures field-level parser evidence for guarded workflow records", () => {
+    const parsedItems = parseTradeInDemoText(
+      "Titleist TSR2 3w shaft stiff cond avg trade value $150"
+    );
+
+    expect(parsedItems[0]).toMatchObject({
+      brand: "Titleist",
+      productLine: "TSR",
+      category: "FAIRWAY_WOOD",
+      shaftFlex: "STIFF",
+      conditionGrade: "8.0 Average",
+      tradeInValue: 150,
+      parserEvidence: {
+        brand: { value: "Titleist", sourceText: "Titleist" },
+        productLine: { value: "TSR", sourceText: "TSR2" },
+        category: { value: "FAIRWAY_WOOD", sourceText: "3w" },
+        shaftFlex: { value: "STIFF", sourceText: "shaft stiff" },
+        conditionGrade: { value: "8.0 Average", sourceText: "cond avg" },
+        tradeInValue: { value: 150, sourceText: "trade value $150" }
+      }
+    });
+  });
+
+  it("does not create parser evidence for unknown guarded workflow fields", () => {
+    const parsedItems = parseTradeInDemoText(
+      "PING G425 4-PW shaft unknown condition unclear value pending review"
+    );
+
+    expect(parsedItems[0]).toMatchObject({
+      brand: "PING",
+      productLine: "G425",
+      category: "IRON_SET",
+      shaftFlex: null,
+      conditionGrade: null,
+      tradeInValue: null,
+      parserEvidence: {
+        brand: { value: "PING", sourceText: "PING" },
+        productLine: { value: "G425", sourceText: "G425" },
+        category: { value: "IRON_SET", sourceText: "4-PW" }
+      }
+    });
+
+    expect(parsedItems[0]?.parserEvidence?.shaftFlex).toBeUndefined();
+    expect(parsedItems[0]?.parserEvidence?.conditionGrade).toBeUndefined();
+    expect(parsedItems[0]?.parserEvidence?.tradeInValue).toBeUndefined();
+    expect(parsedItems[0]?.missingFields).toEqual(
+      expect.arrayContaining(["shaftFlex", "conditionNotes"])
+    );
+  });
+
 });

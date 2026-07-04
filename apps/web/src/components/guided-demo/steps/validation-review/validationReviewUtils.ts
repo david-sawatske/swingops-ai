@@ -143,6 +143,37 @@ export function getFirstValue(record: Record<string, unknown> | null, keys: stri
   return null;
 }
 
+export type ParserEvidenceDisplay = {
+  value: string | number;
+  sourceText: string;
+};
+
+export function getParserEvidenceForField(
+  record: Record<string, unknown> | null,
+  keys: string[],
+): ParserEvidenceDisplay | null {
+  const evidenceRoot = asRecord(record?.parserEvidence);
+
+  if (!evidenceRoot) {
+    return null;
+  }
+
+  for (const key of keys) {
+    const evidence = asRecord(evidenceRoot[key]);
+    const sourceText = asString(evidence?.sourceText);
+    const value = getFirstValue(evidence, ["value"]);
+
+    if (sourceText && (asString(value) || asNumber(value) !== null)) {
+      return {
+        value: value as string | number,
+        sourceText,
+      };
+    }
+  }
+
+  return null;
+}
+
 export function getFirstString(record: Record<string, unknown> | null, keys: string[]) {
   const value = getFirstValue(record, keys);
   const stringValue = asString(value);
@@ -196,6 +227,7 @@ export function getSourceEvidence(input: {
     getFirstString(reviewRecord, ["originalText"]) ??
     getFirstString(input.parsedRecord, [
       "rawText",
+      "rawLine",
       "sourceText",
       "normalizedText",
       "originalText",

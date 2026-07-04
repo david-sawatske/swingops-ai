@@ -22,6 +22,7 @@ import {
   formatStatusLabel,
   getFirstString,
   getFirstValue,
+  getParserEvidenceForField,
   getInventorySummary,
   getProposedRecord,
   getRecordStatusClassName,
@@ -40,30 +41,35 @@ function RecordFieldGrid({ card }: { card: RecordReviewCard }) {
     {
       label: "Brand",
       value: getFirstValue(card.parsedRecord, ["brand"]) ?? getFirstValue(proposedRecord, ["brand"]),
+      evidenceKeys: ["brand"],
     },
     {
       label: "Product line",
       value:
         getFirstValue(card.parsedRecord, ["productLine", "model", "title"]) ??
         getFirstValue(proposedRecord, ["productLine", "model", "title"]),
+      evidenceKeys: ["productLine"],
     },
     {
       label: "Category",
       value:
         getFirstValue(card.parsedRecord, ["category"]) ??
         getFirstValue(proposedRecord, ["category"]),
+      evidenceKeys: ["category"],
     },
     {
       label: "Shaft flex",
       value:
         getFirstValue(card.parsedRecord, ["shaftFlex", "flex"]) ??
         getFirstValue(proposedRecord, ["shaftFlex", "flex"]),
+      evidenceKeys: ["shaftFlex"],
     },
     {
       label: "Condition",
       value:
         getFirstValue(card.parsedRecord, ["conditionGrade"]) ??
         getFirstValue(proposedRecord, ["conditionGrade"]),
+      evidenceKeys: ["conditionGrade"],
     },
     {
       label: "Trade-in value",
@@ -71,23 +77,39 @@ function RecordFieldGrid({ card }: { card: RecordReviewCard }) {
         getFirstValue(card.parsedRecord, ["tradeInValue", "demoValue", "value"]) ??
         getFirstValue(proposedRecord, ["tradeInValue", "demoValue", "value"]),
       currency: true,
+      evidenceKeys: ["tradeInValue", "demoValue", "value"],
     },
     {
       label: "Store",
       value:
         getFirstValue(card.parsedRecord, ["storeId", "store"]) ??
         getFirstValue(proposedRecord, ["storeId", "store"]),
+      evidenceKeys: [],
     },
   ];
 
   return (
     <dl className="guided-record-field-grid">
-      {fields.map((field) => (
-        <div key={field.label}>
-          <dt>{field.label}</dt>
-          <dd>{formatDisplayValue(field.value, { currency: field.currency })}</dd>
-        </div>
-      ))}
+      {fields.map((field) => {
+        const parserEvidence =
+          field.evidenceKeys.length > 0
+            ? getParserEvidenceForField(card.parsedRecord, field.evidenceKeys)
+            : null;
+
+        return (
+          <div key={field.label}>
+            <dt>{field.label}</dt>
+            <dd>
+              <span>{formatDisplayValue(field.value, { currency: field.currency })}</span>
+              {parserEvidence ? (
+                <small className="guided-parser-field-evidence">
+                  Parsed from “{parserEvidence.sourceText}”
+                </small>
+              ) : null}
+            </dd>
+          </div>
+        );
+      })}
     </dl>
   );
 }
@@ -1018,12 +1040,26 @@ function RecordCorrectionPanel({
         <details className="guided-record-secondary-fields">
           <summary>Other normalized fields</summary>
           <dl>
-            {secondaryFields.map((field) => (
-              <div key={field}>
-                <dt>{getCorrectionFieldLabel(field)}</dt>
-                <dd>{getCorrectedValueForField(draft, field) || "—"}</dd>
-              </div>
-            ))}
+            {secondaryFields.map((field) => {
+              const parserEvidence = getParserEvidenceForField(
+                card.parsedRecord,
+                field === "demoValue" ? ["tradeInValue", "demoValue", "value"] : [field],
+              );
+
+              return (
+                <div key={field}>
+                  <dt>{getCorrectionFieldLabel(field)}</dt>
+                  <dd>
+                    <span>{getCorrectedValueForField(draft, field) || "—"}</span>
+                    {parserEvidence ? (
+                      <small className="guided-parser-field-evidence">
+                        Parsed from “{parserEvidence.sourceText}”
+                      </small>
+                    ) : null}
+                  </dd>
+                </div>
+              );
+            })}
           </dl>
         </details>
       ) : null}
@@ -1092,6 +1128,11 @@ function PassedRecordReviewSummary({ card }: { card: RecordReviewCard }) {
           This record has no active review item. The available system evidence is
           summarized below.
         </p>
+      </div>
+
+      <div className="guided-passed-record-normalized-fields">
+        <strong>Normalized fields and parser evidence</strong>
+        <RecordFieldGrid card={card} />
       </div>
 
       <div className="guided-passed-record-evidence-grid">

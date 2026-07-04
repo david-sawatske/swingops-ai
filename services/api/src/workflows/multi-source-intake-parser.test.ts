@@ -33,6 +33,14 @@ describe("multi-source intake parser normalization matrix", () => {
     expect(record.missingFields).not.toEqual(
       expect.arrayContaining(["shaftFlex", "conditionGrade", "tradeInValue"])
     );
+    expect(record.parserEvidence).toMatchObject({
+      brand: { value: "TaylorMade", sourceText: "TaylorMade" },
+      productLine: { value: "Stealth 2", sourceText: "Stealth 2" },
+      category: { value: "DRIVER", sourceText: "driver" },
+      shaftFlex: { value: "STIFF", sourceText: "shaft stiff" },
+      conditionGrade: { value: "8.0 Average", sourceText: "cond avg" },
+      tradeInValue: { value: 150, sourceText: "trade value $150" }
+    });
   });
 
   it("normalizes trade value variants", () => {
@@ -128,4 +136,30 @@ describe("multi-source intake parser normalization matrix", () => {
       expect(record.missingFields).not.toContain("conditionGrade");
     }
   });
+
+  it("does not create parser evidence for unknown review fields", () => {
+    const record = parseRecord(
+      "PING G425 4-PW shaft unknown condition unclear value pending review"
+    );
+
+    expect(record).toMatchObject({
+      brand: "PING",
+      productLine: "G425",
+      category: "IRON_SET",
+      shaftFlex: null,
+      conditionGrade: null,
+      tradeInValue: null,
+      reviewNeeded: true
+    });
+
+    expect(record.parserEvidence).toMatchObject({
+      brand: { value: "PING", sourceText: "PING" },
+      productLine: { value: "G425", sourceText: "G425" },
+      category: { value: "IRON_SET", sourceText: "4-PW" }
+    });
+    expect(record.parserEvidence?.shaftFlex).toBeUndefined();
+    expect(record.parserEvidence?.conditionGrade).toBeUndefined();
+    expect(record.parserEvidence?.tradeInValue).toBeUndefined();
+  });
+
 });
