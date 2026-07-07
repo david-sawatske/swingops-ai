@@ -7,6 +7,8 @@ import type {
   ListAiReadyIntakeRecordsResponse,
   ListReviewQueueItemsResponse,
   ListWorkflowRunsResponse,
+  ListWorkflowEvalScenariosResponse,
+  RunWorkflowEvalsResponse,
   ResolveReviewQueueItemWithCorrectionsRequest,
   ResolveReviewQueueItemWithCorrectionsResponse,
   ReviewQueueItemActionRequest,
@@ -84,6 +86,17 @@ export async function executeMultiSourceIntakeDemo(
     ExecuteMultiSourceIntakeDemoResponse,
     ExecuteMultiSourceIntakeDemoRequest
   >("/workflow-runs/multi-source-intake-demo", request);
+}
+
+export async function listWorkflowEvalScenarios(): Promise<ListWorkflowEvalScenariosResponse> {
+  return apiGet<ListWorkflowEvalScenariosResponse>("/workflow-evals/scenarios");
+}
+
+export async function runWorkflowEvals(): Promise<RunWorkflowEvalsResponse> {
+  return apiPost<RunWorkflowEvalsResponse, Record<string, never>>(
+    "/workflow-evals/run",
+    {},
+  );
 }
 
 export async function listAiReadyIntakeRecords(

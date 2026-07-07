@@ -9,6 +9,7 @@ import { knowledgeRoutes } from "./routes/knowledge.routes.js";
 import { reviewQueueItemRoutes } from "./routes/review-queue-items.routes.js";
 import { toolRoutes } from "./routes/tools.routes.js";
 import { workflowRunRoutes } from "./routes/workflow-runs.routes.js";
+import { workflowEvalRoutes } from "./routes/workflow-evals.routes.js";
 
 export function buildApp() {
   const app = Fastify({
@@ -27,6 +28,7 @@ export function buildApp() {
   app.register(knowledgeRoutes);
   app.register(reviewQueueItemRoutes);
   app.register(workflowRunRoutes);
+  app.register(workflowEvalRoutes);
   app.register(toolRoutes);
 
   return app;

@@ -26,7 +26,7 @@ const providerHealthByName: Record<
     provider: "OPENAI",
     status: "HEALTHY",
     estimatedLatencyMs: 650,
-    reason: "Hosted OpenAI route is healthy in the portfolio simulation."
+    reason: "Hosted OpenAI route is healthy in the local simulation."
   },
   ANTHROPIC: {
     provider: "ANTHROPIC",
