@@ -7,7 +7,7 @@ export function GuidedRunSetupStep({ onContinue }: GuidedRunSetupStepProps) {
     <article className="guided-workflow-card guided-workflow-card--hero guided-workflow-card--overview">
       <section className="guided-step-orientation">
         <span className="model-route-card__eyebrow">Workflow overview</span>
-        <h3>What operational job is this run supposed to complete?</h3>
+        <h3>What operational task is this run supposed to complete?</h3>
         <p>
           A golf retail team receives trade-in details through messy customer messages,
           counter notes, malformed CSV rows, and system logs. The goal of this run is to

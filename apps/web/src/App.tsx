@@ -7,13 +7,43 @@ import type {
   GlobalReviewQueueItem,
   GlobalWorkflowRunSummary,
 } from "./types/workflow";
-import { type AppView } from "./constants/appNav";
+import { APP_NAV_ITEMS, type AppView } from "./constants/appNav";
 import { ReviewQueuePage } from "./components/review-queue/ReviewQueuePage";
+import { WorkflowQualityChecksPage } from "./components/workflow-evals/WorkflowQualityChecksPage";
 import { GuidedDemoPathPage } from "./components/guided-demo/GuidedDemoPathPage";
 import { type GuidedStep } from "./components/guided-demo/guidedWorkflowSteps";
 import { useGuidedWorkflowRun } from "./hooks/useGuidedWorkflowRun";
 import { useReviewQueueActions } from "./hooks/useReviewQueueActions";
 import { AppHeroNav } from "./components/layout/AppHeroNav";
+
+function AppModeTabs({
+  activeView,
+  onViewChange,
+}: {
+  activeView: AppView;
+  onViewChange: (view: AppView) => void;
+}) {
+  return (
+    <nav className="app-mode-tabs" aria-label="Application mode">
+      {APP_NAV_ITEMS.map((item) => (
+        <button
+          aria-pressed={activeView === item.view}
+          className={
+            activeView === item.view
+              ? "app-mode-tabs__button app-mode-tabs__button--active"
+              : "app-mode-tabs__button"
+          }
+          key={item.view}
+          onClick={() => onViewChange(item.view)}
+          type="button"
+        >
+          <span>{item.eyebrow}</span>
+          <strong>{item.label}</strong>
+        </button>
+      ))}
+    </nav>
+  );
+}
 
 function App() {
   const [activeView, setActiveView] = useState<AppView>("GUIDED_DEMO");
@@ -152,10 +182,14 @@ function App() {
     <main className="app-shell">
       <AppHeroNav />
 
-      {activeView !== "GUIDED_DEMO" ? (
+      {activeView !== "REVIEW_QUEUE" ? (
+        <AppModeTabs activeView={activeView} onViewChange={setActiveView} />
+      ) : null}
+
+      {activeView === "REVIEW_QUEUE" ? (
         <section className="guided-return-panel">
           <button onClick={() => setActiveView("GUIDED_DEMO")} type="button">
-            ← Back to Guided Workflow
+            ← Back to Main Workflow
           </button>
         </section>
       ) : null}
@@ -196,6 +230,10 @@ function App() {
           activeStep={guidedActiveStep}
           onActiveStepChange={setGuidedActiveStep}
         />
+      ) : null}
+
+      {activeView === "QUALITY_CHECKS" ? (
+        <WorkflowQualityChecksPage />
       ) : null}
 
       {activeView === "REVIEW_QUEUE" ? (

@@ -1,0 +1,445 @@
+.app-mode-tabs {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.app-mode-tabs__button {
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 1rem;
+  cursor: pointer;
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.85rem 1rem;
+  text-align: left;
+}
+
+.app-mode-tabs__button span {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-mode-tabs__button strong {
+  font-size: 0.95rem;
+}
+
+.app-mode-tabs__button--active {
+  border-color: rgba(59, 130, 246, 0.7);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.workflow-eval-page {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.workflow-eval-hero-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.workflow-eval-hero-card__content,
+.workflow-eval-guardrail-card,
+.workflow-eval-scenario-card,
+.workflow-eval-observed-panel,
+.workflow-eval-record-snapshot,
+.workflow-eval-evidence-list,
+.workflow-eval-scenario-list,
+.workflow-eval-failure-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.workflow-eval-hero-card h3 {
+  margin-bottom: 0.15rem;
+}
+
+.workflow-eval-guardrail-grid,
+.workflow-eval-summary-grid,
+.workflow-eval-scenario-grid,
+.workflow-eval-result-metrics {
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.workflow-eval-guardrail-card,
+.workflow-eval-metric-card,
+.workflow-eval-scenario-card,
+.workflow-eval-scenario-panel,
+.workflow-eval-input-panel,
+.workflow-eval-observed-panel,
+.workflow-eval-evidence-list article {
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 0.85rem;
+  padding: 0.75rem;
+}
+
+.workflow-eval-metric-card {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.workflow-eval-metric-card span {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.workflow-eval-metric-card strong {
+  font-size: 1.55rem;
+}
+
+.workflow-eval-scenario-card__header {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+.workflow-eval-scenario-card__header h4 {
+  margin-bottom: 0.25rem;
+}
+
+.workflow-eval-input-panel pre {
+  margin: 0.45rem 0 0;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+
+.workflow-eval-status {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 0.2rem 0.5rem;
+}
+
+.workflow-eval-status--passed {
+  background: rgba(34, 197, 94, 0.14);
+}
+
+.workflow-eval-status--failed {
+  background: rgba(239, 68, 68, 0.14);
+}
+
+.workflow-eval-status--ready {
+  background: rgba(148, 163, 184, 0.16);
+}
+
+.workflow-eval-observed-header {
+  align-items: start;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+.workflow-eval-observed-header h5 {
+  margin-bottom: 0.1rem;
+}
+
+.workflow-eval-success-note {
+  border: 1px solid rgba(34, 197, 94, 0.22);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin: 0;
+  padding: 0.35rem 0.6rem;
+  white-space: nowrap;
+}
+
+.workflow-eval-proof-strip {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.workflow-eval-proof-strip article {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 0.75rem;
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.55rem;
+}
+
+.workflow-eval-proof-strip span {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.workflow-eval-proof-strip strong {
+  font-size: 0.86rem;
+}
+
+.workflow-eval-proof-strip__wide {
+  grid-column: span 2;
+}
+
+.workflow-eval-result-details {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 0.75rem;
+  padding: 0.65rem;
+}
+
+.workflow-eval-result-details summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.workflow-eval-expected-list {
+  margin: 0.6rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.workflow-eval-record-snapshot dl {
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.workflow-eval-observed-field {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 0.7rem;
+  padding: 0.55rem;
+}
+
+.workflow-eval-observed-field dt {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.workflow-eval-observed-field dd {
+  margin: 0.2rem 0 0;
+}
+
+.workflow-eval-error {
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 0.85rem;
+  padding: 0.85rem;
+}
+
+@media (max-width: 700px) {
+  .app-mode-tabs {
+    grid-template-columns: 1fr;
+  }
+
+  .workflow-eval-scenario-card__header,
+  .workflow-eval-observed-header {
+    display: grid;
+  }
+
+  .workflow-eval-proof-strip__wide {
+    grid-column: span 1;
+  }
+}
+
+.workflow-eval-result-details {
+  padding: 0.5rem 0.65rem;
+}
+
+.workflow-eval-result-details summary {
+  line-height: 1.2;
+}
+
+.workflow-eval-record-snapshot {
+  gap: 0.55rem;
+  padding-top: 0.55rem;
+}
+
+.workflow-eval-record-snapshot dl {
+  gap: 0.35rem 0.9rem;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  margin: 0;
+}
+
+.workflow-eval-observed-field {
+  border: 0;
+  border-radius: 0;
+  padding: 0.2rem 0;
+}
+
+.workflow-eval-observed-field dt {
+  font-size: 0.62rem;
+}
+
+.workflow-eval-observed-field dd {
+  margin: 0.12rem 0 0;
+}
+
+.workflow-eval-evidence-list {
+  border-top: 1px solid rgba(148, 163, 184, 0.22);
+  gap: 0.25rem;
+  padding-top: 0.5rem;
+}
+
+.workflow-eval-evidence-list article {
+  border: 0;
+  border-radius: 0;
+  padding: 0.25rem 0;
+}
+
+.workflow-eval-evidence-list article + article {
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.workflow-eval-evidence-list p {
+  margin: 0.12rem 0 0;
+}
+
+.workflow-eval-suggestion-list {
+  border: 1px solid rgba(34, 197, 94, 0.22);
+  border-radius: 0.75rem;
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.65rem;
+}
+
+.workflow-eval-suggestion-list h5 {
+  margin-bottom: 0.1rem;
+}
+
+.workflow-eval-suggestion-card {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.workflow-eval-suggestion-card dl {
+  display: grid;
+  gap: 0.45rem 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  margin: 0;
+}
+
+.workflow-eval-suggestion-card dt {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.workflow-eval-suggestion-card dd {
+  margin: 0.12rem 0 0;
+}
+
+.workflow-eval-suggestion-card p {
+  margin: 0;
+}
+
+.workflow-eval-guardrail-card,
+.workflow-eval-scenario-panel,
+.workflow-eval-input-panel {
+  padding: 0.55rem 0.65rem;
+}
+
+.workflow-eval-guardrail-card {
+  gap: 0.35rem;
+  min-height: auto;
+}
+
+.workflow-eval-guardrail-card strong {
+  font-size: 0.9rem;
+  line-height: 1.15;
+}
+
+.workflow-eval-guardrail-card p,
+.workflow-eval-scenario-panel p {
+  font-size: 0.86rem;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.workflow-eval-scenario-grid {
+  gap: 0.55rem;
+}
+
+.workflow-eval-scenario-panel {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.workflow-eval-scenario-panel .model-route-card__eyebrow {
+  font-size: 0.62rem;
+}
+
+.workflow-eval-scenario-card {
+  gap: 0.55rem;
+  padding: 0.7rem;
+}
+
+.workflow-eval-scenario-card__header {
+  gap: 0.55rem;
+}
+
+.workflow-eval-scenario-card__header p {
+  margin: 0;
+}
+
+.workflow-eval-input-panel pre {
+  font-size: 0.78rem;
+  line-height: 1.25;
+  margin-top: 0.3rem;
+}
+
+.workflow-eval-observed-panel {
+  gap: 0.45rem;
+  padding: 0.6rem;
+}
+
+.workflow-eval-proof-strip {
+  gap: 0.4rem;
+}
+
+.workflow-eval-proof-strip article {
+  padding: 0.45rem 0.5rem;
+}
+
+.workflow-eval-result-details {
+  padding: 0.45rem 0.55rem;
+}
+
+.workflow-eval-summary-grid,
+.workflow-eval-guardrail-grid,
+.workflow-eval-result-metrics {
+  gap: 0.55rem;
+}
+
+.workflow-eval-interpretation-note {
+  border: 1px solid rgba(59, 130, 246, 0.18);
+  border-radius: 0.85rem;
+  font-size: 0.86rem;
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+}
+
+.workflow-eval-status {
+  white-space: nowrap;
+}
+
+.workflow-eval-page .workflow-eval-hero-card.guided-workflow-card {
+  gap: 0.7rem;
+  padding-block: 1.2rem;
+}
+
+.workflow-eval-page .workflow-eval-hero-card__content {
+  gap: 0.45rem;
+}
+
+.workflow-eval-page .workflow-eval-hero-card h3,
+.workflow-eval-page .workflow-eval-hero-card p {
+  margin: 0;
+}
+
+.workflow-eval-page .workflow-eval-hero-card .guided-step-primary-action {
+  margin-top: 0.25rem;
+}
+
+.workflow-eval-page {
+  gap: 0.75rem;
+}

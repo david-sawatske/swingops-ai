@@ -3,3 +3,4 @@ export * from "./reviewQueue";
 export * from "./agenticDemo";
 export * from "./multiSourceIntake";
 export * from "./aiReadyRecords";
+export * from "./workflowEvals";
