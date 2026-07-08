@@ -1,38 +1,42 @@
 .admin-ops-page {
   display: grid;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .admin-ops-hero,
 .admin-ops-metric-card,
-.admin-ops-section-card {
+.admin-ops-section-card,
+.admin-ops-panel,
+.admin-ops-embedded-panel {
   border: 1px solid rgba(148, 163, 184, 0.24);
-  background: rgba(15, 23, 42, 0.72);
-  box-shadow: 0 18px 60px rgba(15, 23, 42, 0.22);
+  background: rgba(15, 23, 42, 0.68);
+  box-shadow: 0 18px 60px rgba(15, 23, 42, 0.18);
 }
 
 .admin-ops-hero {
-  border-radius: 24px;
-  padding: 1.5rem;
+  border-radius: 22px;
+  padding: 1.25rem;
 }
 
 .admin-ops-hero h2 {
-  margin: 0.35rem 0 0;
-  font-size: clamp(1.8rem, 4vw, 3rem);
+  margin: 0.3rem 0 0;
+  font-size: clamp(1.7rem, 3.5vw, 2.7rem);
   letter-spacing: -0.05em;
 }
 
 .admin-ops-hero p {
-  max-width: 76rem;
-  margin: 0.75rem 0 0;
+  max-width: 74rem;
+  margin: 0.65rem 0 0;
   color: #cbd5e1;
-  line-height: 1.7;
+  line-height: 1.55;
 }
 
 .admin-ops-metric-grid,
-.admin-ops-section-grid {
+.admin-ops-section-grid,
+.admin-ops-mini-metric-grid,
+.admin-ops-config-grid {
   display: grid;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .admin-ops-metric-grid {
@@ -40,96 +44,99 @@
 }
 
 .admin-ops-section-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .admin-ops-metric-card,
 .admin-ops-section-card {
-  border-radius: 20px;
-  padding: 1.1rem;
+  border-radius: 16px;
+  padding: 0.9rem;
 }
 
-.admin-ops-metric-card span {
+.admin-ops-section-card {
+  color: inherit;
+  text-decoration: none;
+  transition:
+    border-color 140ms ease,
+    transform 140ms ease,
+    background 140ms ease;
+}
+
+.admin-ops-section-card:hover {
+  border-color: rgba(59, 130, 246, 0.55);
+  background: rgba(30, 41, 59, 0.72);
+  transform: translateY(-1px);
+}
+
+.admin-ops-metric-card span,
+.admin-ops-config-card span {
   color: #94a3b8;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 800;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .admin-ops-metric-card strong {
   display: block;
-  margin-top: 0.35rem;
-  font-size: 2rem;
+  margin-top: 0.25rem;
+  font-size: 1.65rem;
   letter-spacing: -0.04em;
 }
 
 .admin-ops-metric-card p,
 .admin-ops-section-card p {
-  margin: 0.45rem 0 0;
+  margin: 0.35rem 0 0;
   color: #cbd5e1;
-  line-height: 1.55;
+  line-height: 1.35;
 }
 
 .admin-ops-section-card h3 {
   margin: 0;
   color: #f8fafc;
-  font-size: 1rem;
+  font-size: 0.92rem;
 }
 
-@media (max-width: 900px) {
-  .admin-ops-metric-grid,
-  .admin-ops-section-grid {
-    grid-template-columns: 1fr;
-  }
+.admin-ops-section-card p {
+  font-size: 0.82rem;
 }
 
-
+.admin-ops-panel,
 .admin-ops-embedded-panel {
   display: grid;
-  gap: 1rem;
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  border-radius: 24px;
+  gap: 0.9rem;
+  border-radius: 22px;
   padding: 1rem;
-  background: rgba(15, 23, 42, 0.48);
+  scroll-margin-top: 1rem;
 }
 
 .admin-ops-panel-heading {
-  padding: 0.25rem 0.25rem 0;
+  padding: 0.1rem 0.1rem 0;
 }
 
 .admin-ops-panel-heading h3 {
-  margin: 0.35rem 0 0;
+  margin: 0.3rem 0 0;
   color: #f8fafc;
-  font-size: 1.25rem;
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
 }
 
 .admin-ops-panel-heading p {
   max-width: 72rem;
-  margin: 0.5rem 0 0;
+  margin: 0.45rem 0 0;
   color: #cbd5e1;
-  line-height: 1.6;
-}
-
-.admin-ops-panel {
-  display: grid;
-  gap: 1rem;
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  border-radius: 24px;
-  padding: 1rem;
-  background: rgba(15, 23, 42, 0.48);
+  line-height: 1.5;
 }
 
 .admin-ops-mini-metric-grid {
-  display: grid;
-  gap: 1rem;
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .admin-ops-table-wrap {
   overflow-x: auto;
   border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 18px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.32);
 }
 
 .admin-ops-table {
@@ -138,19 +145,23 @@
   min-width: 860px;
 }
 
+.admin-ops-table--dense {
+  font-size: 0.9rem;
+}
+
 .admin-ops-table th,
 .admin-ops-table td {
-  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
-  padding: 0.85rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.13);
+  padding: 0.72rem;
   text-align: left;
   vertical-align: top;
 }
 
 .admin-ops-table th {
   color: #94a3b8;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
@@ -161,7 +172,7 @@
 .admin-ops-table-stack,
 .admin-ops-reference-list {
   display: grid;
-  gap: 0.3rem;
+  gap: 0.25rem;
 }
 
 .admin-ops-table-stack strong {
@@ -171,7 +182,19 @@
 .admin-ops-table-stack small,
 .admin-ops-reference-list small {
   color: #94a3b8;
-  line-height: 1.35;
+  line-height: 1.3;
+}
+
+.admin-ops-reference-list small {
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    "Courier New",
+    monospace;
 }
 
 .admin-ops-status-badge {
@@ -180,11 +203,12 @@
   align-items: center;
   border: 1px solid rgba(148, 163, 184, 0.24);
   border-radius: 999px;
-  padding: 0.25rem 0.55rem;
-  font-size: 0.68rem;
+  padding: 0.22rem 0.5rem;
+  font-size: 0.64rem;
   font-weight: 900;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .admin-ops-status-badge--success {
@@ -204,38 +228,52 @@
   color: #cbd5e1;
 }
 
+.admin-ops-alias-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+  max-width: 24rem;
+}
+
+.admin-ops-alias-list span,
+.admin-ops-alias-list small {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 999px;
+  padding: 0.16rem 0.42rem;
+  background: rgba(15, 23, 42, 0.38);
+  color: #dbeafe;
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.admin-ops-alias-list small {
+  color: #94a3b8;
+}
+
 .admin-ops-config-grid {
-  display: grid;
-  gap: 1rem;
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .admin-ops-config-card {
   border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 18px;
-  padding: 1rem;
-  background: rgba(15, 23, 42, 0.62);
-}
-
-.admin-ops-config-card span {
-  color: #94a3b8;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  border-radius: 16px;
+  padding: 0.85rem;
+  background: rgba(15, 23, 42, 0.48);
 }
 
 .admin-ops-config-card strong {
   display: block;
-  margin-top: 0.4rem;
+  margin-top: 0.35rem;
   color: #f8fafc;
 }
 
 .admin-ops-config-card p,
 .admin-ops-muted,
 .admin-ops-error {
-  margin: 0.45rem 0 0;
-  line-height: 1.55;
+  margin: 0.4rem 0 0;
+  line-height: 1.45;
 }
 
 .admin-ops-muted {
@@ -246,16 +284,142 @@
   color: #fecaca;
 }
 
+.admin-ops-embedded-panel .workflow-eval-page {
+  gap: 0.75rem;
+}
+
+.admin-ops-embedded-panel .workflow-eval-hero-card,
+.admin-ops-embedded-panel .workflow-eval-guardrail-card,
+.admin-ops-embedded-panel .workflow-eval-metric-card,
+.admin-ops-embedded-panel .workflow-eval-scenario-card,
+.admin-ops-embedded-panel .workflow-eval-observed-panel,
+.admin-ops-embedded-panel .workflow-eval-input-panel,
+.admin-ops-embedded-panel .workflow-eval-scenario-panel {
+  background: rgba(15, 23, 42, 0.38);
+  border-color: rgba(148, 163, 184, 0.18);
+  color: #e2e8f0;
+}
+
+.admin-ops-embedded-panel .workflow-eval-hero-card {
+  border-radius: 16px;
+  padding: 0.9rem;
+}
+
+.admin-ops-embedded-panel .workflow-eval-hero-card h3 {
+  margin: 0.2rem 0 0;
+}
+
+.admin-ops-embedded-panel .workflow-eval-guardrail-grid,
+.admin-ops-embedded-panel .workflow-eval-summary-grid,
+.admin-ops-embedded-panel .workflow-eval-result-metrics {
+  gap: 0.55rem;
+}
+
+.admin-ops-embedded-panel .workflow-eval-scenario-grid {
+  gap: 0.7rem;
+}
+
+.admin-ops-embedded-panel .workflow-eval-scenario-card {
+  border-radius: 16px;
+  padding: 0.75rem;
+}
+
+.admin-ops-embedded-panel .workflow-eval-scenario-card__header {
+  gap: 0.6rem;
+}
+
+.admin-ops-embedded-panel .workflow-eval-scenario-card__header h4 {
+  font-size: 0.98rem;
+  line-height: 1.2;
+}
+
+.admin-ops-embedded-panel .workflow-eval-observed-panel {
+  border-radius: 14px;
+  padding: 0.7rem;
+}
+
 @media (max-width: 1200px) {
+  .admin-ops-section-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .admin-ops-mini-metric-grid,
   .admin-ops-config-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
+@media (max-width: 900px) {
+  .admin-ops-metric-grid,
+  .admin-ops-section-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-ops-table {
+    min-width: 0;
+  }
+
+  .admin-ops-table thead {
+    display: none;
+  }
+
+  .admin-ops-table,
+  .admin-ops-table tbody,
+  .admin-ops-table-row-card,
+  .admin-ops-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .admin-ops-table-row-card {
+    border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+    padding: 0.65rem;
+  }
+
+  .admin-ops-table-row-card:last-child {
+    border-bottom: 0;
+  }
+
+  .admin-ops-table td {
+    border-bottom: 0;
+    padding: 0.32rem 0;
+  }
+
+  .admin-ops-table td:first-child {
+    padding-top: 0;
+  }
+
+  .admin-ops-table td:last-child {
+    padding-bottom: 0;
+  }
+
+  .admin-ops-alias-list {
+    max-width: none;
+  }
+}
+
 @media (max-width: 760px) {
+  .admin-ops-page {
+    gap: 0.85rem;
+  }
+
+  .admin-ops-hero,
+  .admin-ops-panel,
+  .admin-ops-embedded-panel {
+    border-radius: 18px;
+    padding: 0.85rem;
+  }
+
   .admin-ops-mini-metric-grid,
   .admin-ops-config-grid {
     grid-template-columns: 1fr;
+  }
+
+  .admin-ops-metric-card strong {
+    font-size: 1.45rem;
+  }
+
+  .admin-ops-panel-heading h3 {
+    font-size: 1.05rem;
   }
 }

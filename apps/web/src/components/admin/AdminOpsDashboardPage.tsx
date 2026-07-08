@@ -26,34 +26,34 @@ type AdminOpsDashboardPageProps = {
 
 const ADMIN_OPS_SECTIONS = [
   {
+    id: "admin-ops-records-title",
     title: "AI-ready records",
-    body:
-      "Review created records, source intake candidates, run-scoped records, missing fields, and review status.",
+    body: "Structured output, missing fields, and review state.",
   },
   {
-    title: "Validation & Quality Checks",
-    body:
-      "Keep parser, repair, review routing, and protected workflow behaviors visible from one operations surface.",
+    id: "admin-ops-quality-checks-title",
+    title: "Quality checks",
+    body: "Scenario matrix and protected workflow behavior.",
   },
   {
+    id: "admin-ops-model-title",
     title: "Model telemetry",
-    body:
-      "Compare provider execution, fallback, latency, estimated cost, validation status, and repair outcomes.",
+    body: "Cost, latency, fallback, and validation status.",
   },
   {
+    id: "admin-ops-normalization-title",
     title: "Normalization matrix",
-    body:
-      "Show deterministic golf term aliases, negative evidence, and blocked repair rules before model output is trusted.",
+    body: "Aliases, negative evidence, and blocked repairs.",
   },
   {
-    title: "Workflow configuration",
-    body:
-      "Display confidence thresholds, provider routing policy, validation rules, fallback behavior, and mutation safety.",
+    id: "admin-ops-config-title",
+    title: "Workflow config",
+    body: "Read-only execution and safety policy.",
   },
   {
+    id: "admin-ops-knowledge-title",
     title: "Knowledge grounding",
-    body:
-      "Inspect seed knowledge, ingestion status, and grounding coverage without replacing deterministic normalization.",
+    body: "Seed data and grounding coverage.",
   },
 ] as const;
 
@@ -143,6 +143,18 @@ function formatLatency(value: number | null | undefined) {
   return `${value} ms`;
 }
 
+function formatShortId(value: string | null | undefined) {
+  if (!value) {
+    return "Blank";
+  }
+
+  if (value.length <= 12) {
+    return value;
+  }
+
+  return `${value.slice(0, 6)}…${value.slice(-4)}`;
+}
+
 function AdminOpsStatusBadge({
   children,
   tone = "neutral",
@@ -154,6 +166,20 @@ function AdminOpsStatusBadge({
     <span className={`admin-ops-status-badge admin-ops-status-badge--${tone}`}>
       {children}
     </span>
+  );
+}
+
+function AdminOpsAliasList({ aliases }: { aliases: string[] }) {
+  const visibleAliases = aliases.slice(0, 5);
+  const hiddenAliasCount = aliases.length - visibleAliases.length;
+
+  return (
+    <div className="admin-ops-alias-list">
+      {visibleAliases.map((alias) => (
+        <span key={alias}>{alias}</span>
+      ))}
+      {hiddenAliasCount > 0 ? <small>+{hiddenAliasCount}</small> : null}
+    </div>
   );
 }
 
@@ -238,7 +264,7 @@ function AdminOpsAiReadyRecordsPanel() {
 
       {records.length > 0 ? (
         <div className="admin-ops-table-wrap">
-          <table className="admin-ops-table">
+          <table className="admin-ops-table admin-ops-table--dense">
             <thead>
               <tr>
                 <th>Status</th>
@@ -254,7 +280,7 @@ function AdminOpsAiReadyRecordsPanel() {
                 const missingFields = normalized.missingFields ?? [];
 
                 return (
-                  <tr key={record.id}>
+                  <tr key={record.id} className="admin-ops-table-row-card">
                     <td>
                       <div className="admin-ops-table-stack">
                         <AdminOpsStatusBadge
@@ -294,9 +320,15 @@ function AdminOpsAiReadyRecordsPanel() {
                     </td>
                     <td>
                       <div className="admin-ops-reference-list">
-                        <small>run: {formatNullable(record.workflowRunId)}</small>
-                        <small>batch: {formatNullable(record.intakeBatchId)}</small>
-                        <small>item: {formatNullable(record.intakeItemId)}</small>
+                        <small title={record.workflowRunId ?? undefined}>
+                          run: {formatShortId(record.workflowRunId)}
+                        </small>
+                        <small title={record.intakeBatchId ?? undefined}>
+                          batch: {formatShortId(record.intakeBatchId)}
+                        </small>
+                        <small title={record.intakeItemId ?? undefined}>
+                          item: {formatShortId(record.intakeItemId)}
+                        </small>
                       </div>
                     </td>
                   </tr>
@@ -413,7 +445,7 @@ function AdminOpsModelTelemetryPanel({
         </p>
       ) : (
         <div className="admin-ops-table-wrap">
-          <table className="admin-ops-table">
+          <table className="admin-ops-table admin-ops-table--dense">
             <thead>
               <tr>
                 <th>Run</th>
@@ -426,11 +458,11 @@ function AdminOpsModelTelemetryPanel({
             </thead>
             <tbody>
               {modelCalls.slice(0, 10).map(({ run, modelCall }) => (
-                <tr key={modelCall.id}>
+                <tr key={modelCall.id} className="admin-ops-table-row-card">
                   <td>
                     <div className="admin-ops-table-stack">
                       <strong>{run.workflowName}</strong>
-                      <small>{run.id}</small>
+                      <small title={run.id}>{formatShortId(run.id)}</small>
                     </div>
                   </td>
                   <td>
@@ -530,7 +562,7 @@ function AdminOpsNormalizationMatrixPanel() {
 
       {entries.length > 0 ? (
         <div className="admin-ops-table-wrap">
-          <table className="admin-ops-table">
+          <table className="admin-ops-table admin-ops-table--dense">
             <thead>
               <tr>
                 <th>Field</th>
@@ -543,9 +575,11 @@ function AdminOpsNormalizationMatrixPanel() {
             </thead>
             <tbody>
               {entries.map((entry) => (
-                <tr key={entry.id}>
+                <tr key={entry.id} className="admin-ops-table-row-card">
                   <td>{entry.field}</td>
-                  <td>{entry.aliases.join(", ")}</td>
+                  <td>
+                    <AdminOpsAliasList aliases={entry.aliases} />
+                  </td>
                   <td>{formatNullable(entry.canonicalValue)}</td>
                   <td>
                     <AdminOpsStatusBadge
@@ -665,17 +699,21 @@ export function AdminOpsDashboardPage({
         ))}
       </section>
 
-      <section
+      <nav
         className="admin-ops-section-grid"
         aria-label="Admin Ops dashboard sections"
       >
         {ADMIN_OPS_SECTIONS.map((section) => (
-          <article className="admin-ops-section-card" key={section.title}>
+          <a
+            className="admin-ops-section-card"
+            href={`#${section.id}`}
+            key={section.title}
+          >
             <h3>{section.title}</h3>
             <p>{section.body}</p>
-          </article>
+          </a>
         ))}
-      </section>
+      </nav>
 
       <AdminOpsAiReadyRecordsPanel />
 
