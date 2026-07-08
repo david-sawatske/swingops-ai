@@ -531,7 +531,22 @@ describe("workflow run routes", () => {
       });
       expect(body.modelCallLog).toMatchObject({
         workflowRunId: body.persisted.workflowRunId,
-        status: "SUCCEEDED"
+        status: "SUCCEEDED",
+        provider: "MOCK",
+        model: "mock-golf-workflow-model"
+      });
+      expect(body.modelCallLog.requestJson).toMatchObject({
+        taskType: "FIELD_NORMALIZATION",
+        policyKey: "MAIN_RUN_FIELD_REPAIR",
+        agentName: "main-run-field-repair-agent",
+        allowDisabledProvidersForSimulation: false
+      });
+      expect(body.fieldRepairExecution).toMatchObject({
+        modelCallLogId: body.modelCallLog.id,
+        jsonValid: true,
+        validationPassed: true,
+        suggestions: expect.any(Array),
+        validationErrors: []
       });
 
       expect(body.toolCallingPlan.plannedCalls.map((call: { toolName: string }) => call.toolName)).toEqual([
@@ -640,7 +655,7 @@ describe("workflow run routes", () => {
         routingGoal: "HIGH_QUALITY",
         finalProvider: body.modelCallLog.provider,
         finalModel: body.modelCallLog.model,
-        fallbackUsed: true,
+        fallbackUsed: false,
         attempts: expect.any(Array)
       });
       expect(body.providerFallbackTrace.attempts.length).toBeGreaterThanOrEqual(1);
@@ -699,7 +714,7 @@ describe("workflow run routes", () => {
         inventoryMatches: 1,
         valuationRangesGenerated: 1,
         valuationReviewRequired: 1,
-        providerFallbackUsed: true,
+        providerFallbackUsed: false,
         evidenceCoverage: expect.any(String)
       });
       expect(body.workflowQualitySummary.validationPassed).toBeGreaterThan(0);

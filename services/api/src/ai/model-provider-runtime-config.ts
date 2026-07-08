@@ -40,8 +40,13 @@ type RuntimeEnv = Partial<Record<string, string | undefined>>;
 export function getModelProviderRuntimeConfig(
   env: RuntimeEnv = process.env
 ): ModelProviderRuntimeConfig {
+  const realModelCallsBlockedByTest =
+    (env.NODE_ENV === "test" || env.VITEST === "true") &&
+    env.ALLOW_REAL_MODEL_CALLS_IN_TESTS !== "true";
+
   const config: ModelProviderRuntimeConfig = {
-    enableRealModelCalls: env.ENABLE_REAL_MODEL_CALLS === "true"
+    enableRealModelCalls:
+      env.ENABLE_REAL_MODEL_CALLS === "true" && !realModelCallsBlockedByTest
   };
 
   if (env.OPENAI_API_KEY !== undefined) {

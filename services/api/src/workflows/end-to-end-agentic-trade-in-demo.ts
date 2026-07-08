@@ -1,7 +1,7 @@
 import { LEGACY_FREEFORM_NOTES_INTAKE_SOURCE_TYPE } from "../intake/legacy-intake-source-types.js";
-import type { Prisma, ReviewQueueItem, ToolCallLog } from "@prisma/client";
+import type { ModelCallLog, Prisma, ReviewQueueItem, ToolCallLog } from "@prisma/client";
 
-import { routeModel } from "../ai/model-router.js";
+import type { ModelRouteDecision } from "../ai/model-router.js";
 import {
   lookupInventoryProduct,
   type InventoryProductLookupResult
@@ -26,7 +26,17 @@ import {
   executeReadOnlyToolInvocation,
   type ReadOnlyToolInvocationResult
 } from "../tools/read-only-tool-invocation.js";
-import { createMockModelCallLogForWorkflowRun } from "./workflow-model-logging.js";
+import {
+  createModelExecutionLogForWorkflowRun
+} from "./workflow-model-logging.js";
+import {
+  MAIN_RUN_FIELD_REPAIR_AGENT_NAME,
+  MAIN_RUN_FIELD_REPAIR_POLICY_KEY,
+  MAIN_RUN_FIELD_REPAIR_TASK_TYPE,
+  buildMainRunFieldRepairExecutionInput,
+  validateMainRunFieldRepairModelOutput,
+  type FieldRepairSuggestion
+} from "./main-run-field-repair.js";
 import {
   buildWorkflowQualityBundle,
   type WorkflowQualityBundle
@@ -68,8 +78,15 @@ export type EndToEndAgenticTradeInDemoResult = {
     parsedItemId: string;
     suggestions: PriorReviewLearningSuggestion[];
   }[];
-  modelRoutingDecision: ReturnType<typeof routeModel>;
-  modelCallLog: Awaited<ReturnType<typeof createMockModelCallLogForWorkflowRun>>;
+  modelRoutingDecision: ModelRouteDecision;
+  modelCallLog: ModelCallLog;
+  fieldRepairExecution: {
+    modelCallLogId: string;
+    suggestions: FieldRepairSuggestion[];
+    jsonValid: boolean;
+    validationPassed: boolean;
+    validationErrors: string[];
+  };
   toolCallingPlan: {
     planId: string;
     plannedCalls: {
@@ -192,6 +209,46 @@ function needsReview(item: ParsedTradeInDemoItem): boolean {
   return item.confidence < 0.72 || item.missingFields.length > 0;
 }
 
+function shouldRunFieldRepair(item: ParsedTradeInDemoItem): boolean {
+  return (
+    item.confidence < 0.72 ||
+    item.missingFields.length > 0 ||
+    item.uncertaintyNotes.length > 0
+  );
+}
+
+function getModelRoutingDecisionFromLog(
+  modelCallLog: ModelCallLog
+): ModelRouteDecision {
+  const responseJson = modelCallLog.responseJson as
+    | {
+        routingDecision?: ModelRouteDecision;
+      }
+    | null
+    | undefined;
+
+  if (!responseJson?.routingDecision) {
+    throw new Error("Model call log is missing routing decision metadata.");
+  }
+
+  return responseJson.routingDecision;
+}
+
+function getProviderExecutionOutputJson(
+  modelCallLog: ModelCallLog
+): Record<string, unknown> | null {
+  const responseJson = modelCallLog.responseJson as
+    | {
+        providerExecution?: {
+          outputJson?: Record<string, unknown> | null;
+        };
+      }
+    | null
+    | undefined;
+
+  return responseJson?.providerExecution?.outputJson ?? null;
+}
+
 function buildInventoryLookupInput(item: ParsedTradeInDemoItem): Record<string, string> {
   return {
     ...(item.brand ? { brand: item.brand } : {}),
@@ -272,7 +329,8 @@ function buildAuditTrail(input: {
   valuationEvidenceByItem: EndToEndAgenticTradeInDemoResult["valuationEvidenceByItem"];
   priorReviewLearningEvidenceByItem: EndToEndAgenticTradeInDemoResult["priorReviewLearningEvidenceByItem"];
   priorReviewLearningSuggestionsByItem: EndToEndAgenticTradeInDemoResult["priorReviewLearningSuggestionsByItem"];
-  modelRoutingDecision: ReturnType<typeof routeModel>;
+  modelRoutingDecision: ModelRouteDecision;
+  fieldRepairExecution: EndToEndAgenticTradeInDemoResult["fieldRepairExecution"];
   toolCallResults: DemoToolResult[];
   reviewQueueItemsCreated: ReviewQueueItem[];
   finalSummary: EndToEndAgenticTradeInDemoResult["finalSummary"];
@@ -329,9 +387,12 @@ function buildAuditTrail(input: {
     {
       orderIndex: 6,
       label: "Model route selected",
-      status: "SUCCEEDED",
-      summary: `${input.modelRoutingDecision.selectedProvider} / ${input.modelRoutingDecision.selectedModel} selected for intake parsing with cost, latency, quality, and health rationale.`,
-      details: input.modelRoutingDecision
+      status: input.fieldRepairExecution.validationPassed ? "SUCCEEDED" : "NEEDS_REVIEW",
+      summary: `${input.modelRoutingDecision.selectedProvider} / ${input.modelRoutingDecision.selectedModel} executed field repair with ${input.fieldRepairExecution.suggestions.length} validated suggestion(s).`,
+      details: {
+        routingDecision: input.modelRoutingDecision,
+        fieldRepairExecution: input.fieldRepairExecution
+      }
     },
     {
       orderIndex: 7,
@@ -503,18 +564,57 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     };
   });
 
-  const modelRoutingDecision = routeModel({
-    taskType: "INTAKE_PARSING",
-    preferredGoal: "HIGH_QUALITY",
-    requireJson: true,
-    allowDisabledProvidersForSimulation: true
+  const fieldRepairInputJson = buildMainRunFieldRepairExecutionInput({
+    workflowRunId: workflowRun.id,
+    records: parsedItems.filter(shouldRunFieldRepair).map((item) => ({
+      recordId: item.id,
+      sourceText: item.rawLine,
+      missingFields: item.missingFields,
+      confidence: item.confidence,
+      currentFields: {
+        brand: item.brand,
+        productLine: item.productLine,
+        category: item.category,
+        shaftFlex: item.shaftFlex,
+        conditionGrade: item.conditionGrade,
+        tradeInValue: item.tradeInValue
+      },
+      parserEvidence: item.parserEvidence ?? null
+    }))
   });
 
-  const modelCallLog = await createMockModelCallLogForWorkflowRun({
+  const modelCallLog = await createModelExecutionLogForWorkflowRun({
     workflowRunId: workflowRun.id,
-    taskType: "INTAKE_PARSING",
-    goal: "HIGH_QUALITY"
+    taskType: MAIN_RUN_FIELD_REPAIR_TASK_TYPE,
+    goal: "HIGH_QUALITY",
+    policyKey: MAIN_RUN_FIELD_REPAIR_POLICY_KEY,
+    agentName: MAIN_RUN_FIELD_REPAIR_AGENT_NAME,
+    workflowName: "main-run",
+    workflowStep: "field-repair",
+    requireJson: true,
+    allowDisabledProvidersForSimulation: false,
+    inputJson: fieldRepairInputJson,
+    validateOutput(outputJson) {
+      const validation = validateMainRunFieldRepairModelOutput(outputJson);
+
+      return {
+        jsonValid: validation.jsonValid,
+        validationPassed: validation.validationPassed,
+        validationErrors: validation.validationErrors
+      };
+    }
   });
+  const modelRoutingDecision = getModelRoutingDecisionFromLog(modelCallLog);
+  const fieldRepairValidation = validateMainRunFieldRepairModelOutput(
+    getProviderExecutionOutputJson(modelCallLog)
+  );
+  const fieldRepairExecution = {
+    modelCallLogId: modelCallLog.id,
+    suggestions: fieldRepairValidation.output?.suggestions ?? [],
+    jsonValid: fieldRepairValidation.jsonValid,
+    validationPassed: fieldRepairValidation.validationPassed,
+    validationErrors: fieldRepairValidation.validationErrors
+  };
 
   const reviewQueueItemsCreated: ReviewQueueItem[] = [];
 
@@ -747,6 +847,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     priorReviewLearningSuggestionsByItem,
     modelRoutingDecision,
     modelCallLog,
+    fieldRepairExecution,
     toolCallingPlan,
     toolCallResults,
     blockedToolCallResult,

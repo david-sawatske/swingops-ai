@@ -1,7 +1,5 @@
 import { getModelProvider } from "./model-provider-registry.js";
-import {
-  isModelProviderAdapterError
-} from "./model-provider-errors.js";
+import { isModelProviderAdapterError } from "./model-provider-errors.js";
 import {
   routeModel,
   type ModelRouteCandidateSummary,
@@ -13,9 +11,10 @@ import type {
   ModelProviderName,
   ModelTaskType
 } from "./model-provider.types.js";
-import type {
-  ModelProviderFetch,
-  ModelProviderRuntimeConfig
+import {
+  getModelProviderRuntimeConfig,
+  type ModelProviderFetch,
+  type ModelProviderRuntimeConfig
 } from "./model-provider-runtime-config.js";
 
 export type ModelProviderFallbackAttemptStatus =
@@ -40,6 +39,12 @@ export type ModelProviderFallbackAttempt = {
   completedAt: Date;
 };
 
+export type ModelProviderOutputValidationResult = {
+  jsonValid: boolean;
+  validationPassed: boolean;
+  validationErrors: string[];
+};
+
 export type ExecuteModelWithProviderFallbackInput = {
   taskType: ModelTaskType;
   goal: ModelRoutingGoal;
@@ -48,6 +53,9 @@ export type ExecuteModelWithProviderFallbackInput = {
   allowDisabledProvidersForSimulation?: boolean;
   runtimeConfig?: ModelProviderRuntimeConfig;
   fetchFn?: ModelProviderFetch;
+  validateOutput?: (
+    outputJson: Record<string, unknown> | null
+  ) => ModelProviderOutputValidationResult;
 };
 
 export type ExecuteModelWithProviderFallbackResult = {
@@ -64,19 +72,25 @@ export type ExecuteModelWithProviderFallbackResult = {
 export async function executeModelWithProviderFallback(
   input: ExecuteModelWithProviderFallbackInput
 ): Promise<ExecuteModelWithProviderFallbackResult> {
-  const routingDecision = routeModel({
-    preferredGoal: input.goal,
-    taskType: input.taskType,
-    ...(input.requireJson !== undefined
-      ? { requireJson: input.requireJson }
-      : {}),
-    ...(input.allowDisabledProvidersForSimulation !== undefined
-      ? {
-          allowDisabledProvidersForSimulation:
-            input.allowDisabledProvidersForSimulation
-        }
-      : {})
-  });
+  const runtimeConfig = input.runtimeConfig ?? getModelProviderRuntimeConfig();
+  const routingDecision = routeModel(
+    {
+      preferredGoal: input.goal,
+      taskType: input.taskType,
+      ...(input.requireJson !== undefined
+        ? { requireJson: input.requireJson }
+        : {}),
+      ...(input.allowDisabledProvidersForSimulation !== undefined
+        ? {
+            allowDisabledProvidersForSimulation:
+              input.allowDisabledProvidersForSimulation
+          }
+        : {})
+    },
+    {
+      providerEnabledByName: buildRuntimeProviderEnabledByName(runtimeConfig)
+    }
+  );
   const candidates = buildExecutionCandidates(routingDecision);
   const attempts: ModelProviderFallbackAttempt[] = [];
 
@@ -106,12 +120,29 @@ export async function executeModelWithProviderFallback(
         model: candidate.model,
         taskType: input.taskType,
         inputJson: input.inputJson,
-        ...(input.runtimeConfig !== undefined
-          ? { runtimeConfig: input.runtimeConfig }
-          : {}),
+        runtimeConfig,
         ...(input.fetchFn !== undefined ? { fetchFn: input.fetchFn } : {})
       });
+      const validationResult = input.validateOutput
+        ? input.validateOutput(result.outputJson)
+        : null;
       const completedAt = new Date();
+
+      if (validationResult && !validationResult.validationPassed) {
+        attempts.push({
+          provider: candidate.provider,
+          model: candidate.model,
+          attemptOrder: attempts.length + 1,
+          status: "FAILED",
+          reason: `Provider ${candidate.provider} / ${candidate.model} returned output that failed validation.`,
+          errorMessage: buildValidationFailureMessage(validationResult),
+          latencyMs: Date.now() - startMs,
+          estimatedCostUsd: candidate.estimatedCostUsd,
+          startedAt,
+          completedAt
+        });
+        continue;
+      }
 
       attempts.push({
         provider: candidate.provider,
@@ -258,10 +289,37 @@ function classifyAttemptStatus(
   return "FAILED";
 }
 
+function buildValidationFailureMessage(
+  validationResult: ModelProviderOutputValidationResult
+): string {
+  return [
+    "Model output validation failed.",
+    `jsonValid=${validationResult.jsonValid}.`,
+    `validationPassed=${validationResult.validationPassed}.`,
+    ...validationResult.validationErrors
+  ].join(" ");
+}
+
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message;
   }
 
   return String(error);
+}
+
+function buildRuntimeProviderEnabledByName(
+  runtimeConfig: ModelProviderRuntimeConfig
+): Partial<Record<ModelProviderName, boolean>> {
+  return {
+    OPENAI: Boolean(runtimeConfig.enableRealModelCalls && runtimeConfig.openAiApiKey),
+    ANTHROPIC: Boolean(runtimeConfig.enableRealModelCalls && runtimeConfig.anthropicApiKey),
+    AZURE_OPENAI: Boolean(
+      runtimeConfig.enableRealModelCalls &&
+        runtimeConfig.azureOpenAiApiKey &&
+        runtimeConfig.azureOpenAiEndpoint &&
+        runtimeConfig.azureOpenAiDeployment
+    ),
+    OLLAMA: Boolean(runtimeConfig.ollamaBaseUrl)
+  };
 }

@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import { prisma } from "../lib/prisma.js";
-import { createMockModelCallLogForWorkflowRun } from "./workflow-model-logging.js";
+import {
+  createMockModelCallLogForWorkflowRun,
+  createModelExecutionLogForWorkflowRun
+} from "./workflow-model-logging.js";
 
 const testWorkflowName = "test-model-routing-workflow";
 
@@ -42,7 +45,12 @@ describe("workflow model logging", () => {
       requireJson: true,
       allowDisabledProvidersForSimulation: true,
       providerFallbackExecutor: true,
-      mock: true
+      mock: true,
+      inputJson: {
+        workflowRunId: workflowRun.id,
+        taskType: "INTAKE_PARSING",
+        routingGoal: "HIGH_QUALITY"
+      }
     });
 
     expect(modelCallLog.responseJson).toMatchObject({
@@ -193,6 +201,122 @@ describe("workflow model logging", () => {
       status: "SUCCESS",
       latencyMs: expect.any(Number),
       estimatedCostUsd: 0
+    });
+  });
+
+  it("persists policy, agent, workflow step, input and output validation metadata", async () => {
+    const workflowRun = await prisma.workflowRun.create({
+      data: {
+        workflowName: testWorkflowName
+      }
+    });
+
+    const modelCallLog = await createModelExecutionLogForWorkflowRun({
+      workflowRunId: workflowRun.id,
+      taskType: "FIELD_NORMALIZATION",
+      goal: "LOW_COST",
+      policyKey: "MAIN_RUN_FIELD_REPAIR",
+      agentName: "main-run-field-repair-agent",
+      workflowName: "main-run",
+      workflowStep: "field-repair",
+      requireJson: true,
+      inputJson: {
+        records: [
+          {
+            recordId: "record-1",
+            sourceText: "Titleist TSR 3w Tensei s flex condition avg value $150",
+            missingFields: ["shaftFlex", "conditionGrade", "tradeInValue"]
+          }
+        ]
+      },
+      runtimeConfig: {
+        enableRealModelCalls: false
+      },
+      validateOutput(outputJson) {
+        return {
+          jsonValid: Boolean(outputJson),
+          validationPassed: Boolean(outputJson),
+          validationErrors: []
+        };
+      }
+    });
+
+    expect(modelCallLog.provider).toBe("MOCK");
+    expect(modelCallLog.model).toBe("mock-golf-workflow-model");
+    expect(modelCallLog.status).toBe("SUCCEEDED");
+    expect(modelCallLog.requestJson).toMatchObject({
+      workflowRunId: workflowRun.id,
+      taskType: "FIELD_NORMALIZATION",
+      routingGoal: "LOW_COST",
+      requireJson: true,
+      allowDisabledProvidersForSimulation: false,
+      providerFallbackExecutor: true,
+      policyKey: "MAIN_RUN_FIELD_REPAIR",
+      agentName: "main-run-field-repair-agent",
+      workflowName: "main-run",
+      workflowStep: "field-repair",
+      inputJson: {
+        policyKey: "MAIN_RUN_FIELD_REPAIR",
+        agentName: "main-run-field-repair-agent",
+        workflowName: "main-run",
+        workflowStep: "field-repair"
+      },
+      mock: true
+    });
+    expect(modelCallLog.responseJson).toMatchObject({
+      policyKey: "MAIN_RUN_FIELD_REPAIR",
+      agentName: "main-run-field-repair-agent",
+      workflowName: "main-run",
+      workflowStep: "field-repair",
+      validation: {
+        jsonValid: true,
+        validationPassed: true,
+        validationErrors: []
+      },
+      providerExecution: {
+        outputJson: {
+          suggestions: expect.any(Array)
+        }
+      }
+    });
+  });
+
+  it("marks the model call failed when output validation fails", async () => {
+    const workflowRun = await prisma.workflowRun.create({
+      data: {
+        workflowName: testWorkflowName
+      }
+    });
+
+    const modelCallLog = await createModelExecutionLogForWorkflowRun({
+      workflowRunId: workflowRun.id,
+      taskType: "INTAKE_PARSING",
+      goal: "LOW_COST",
+      inputJson: {
+        workflowRunId: workflowRun.id
+      },
+      runtimeConfig: {
+        enableRealModelCalls: false
+      },
+      validateOutput() {
+        return {
+          jsonValid: false,
+          validationPassed: false,
+          validationErrors: ["suggestions: Required"]
+        };
+      }
+    });
+
+    expect(modelCallLog.provider).toBe("MOCK");
+    expect(modelCallLog.status).toBe("FAILED");
+    expect(modelCallLog.errorMessage).toContain("Model output validation failed.");
+    expect(modelCallLog.errorMessage).toContain("suggestions: Required");
+    expect(modelCallLog.responseJson).toMatchObject({
+      validation: {
+        jsonValid: false,
+        validationPassed: false,
+        validationErrors: ["suggestions: Required"]
+      }
     });
   });
 });
