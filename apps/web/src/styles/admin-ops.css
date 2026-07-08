@@ -1,6 +1,6 @@
 .admin-ops-page {
   display: grid;
-  gap: 1rem;
+  gap: 1.1rem;
 }
 
 .admin-ops-hero,
@@ -8,26 +8,35 @@
 .admin-ops-section-card,
 .admin-ops-panel,
 .admin-ops-embedded-panel {
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  background: rgba(15, 23, 42, 0.68);
-  box-shadow: 0 18px 60px rgba(15, 23, 42, 0.18);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(248, 250, 252, 0.94);
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.08);
+  color: #0f172a;
 }
 
 .admin-ops-hero {
   border-radius: 22px;
   padding: 1.25rem;
+  background:
+    linear-gradient(135deg, rgba(239, 246, 255, 0.96), rgba(248, 250, 252, 0.98));
+}
+
+.admin-ops-hero .model-route-card__eyebrow,
+.admin-ops-panel-heading .model-route-card__eyebrow {
+  color: #2563eb;
 }
 
 .admin-ops-hero h2 {
   margin: 0.3rem 0 0;
-  font-size: clamp(1.7rem, 3.5vw, 2.7rem);
+  color: #0f172a;
+  font-size: clamp(1.7rem, 3.5vw, 2.65rem);
   letter-spacing: -0.05em;
 }
 
 .admin-ops-hero p {
   max-width: 74rem;
   margin: 0.65rem 0 0;
-  color: #cbd5e1;
+  color: #475569;
   line-height: 1.55;
 }
 
@@ -63,14 +72,14 @@
 }
 
 .admin-ops-section-card:hover {
-  border-color: rgba(59, 130, 246, 0.55);
-  background: rgba(30, 41, 59, 0.72);
+  border-color: rgba(37, 99, 235, 0.4);
+  background: #eff6ff;
   transform: translateY(-1px);
 }
 
 .admin-ops-metric-card span,
 .admin-ops-config-card span {
-  color: #94a3b8;
+  color: #64748b;
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -80,6 +89,7 @@
 .admin-ops-metric-card strong {
   display: block;
   margin-top: 0.25rem;
+  color: #0f172a;
   font-size: 1.65rem;
   letter-spacing: -0.04em;
 }
@@ -87,13 +97,13 @@
 .admin-ops-metric-card p,
 .admin-ops-section-card p {
   margin: 0.35rem 0 0;
-  color: #cbd5e1;
+  color: #475569;
   line-height: 1.35;
 }
 
 .admin-ops-section-card h3 {
   margin: 0;
-  color: #f8fafc;
+  color: #0f172a;
   font-size: 0.92rem;
 }
 
@@ -116,7 +126,7 @@
 
 .admin-ops-panel-heading h3 {
   margin: 0.3rem 0 0;
-  color: #f8fafc;
+  color: #0f172a;
   font-size: 1.15rem;
   letter-spacing: -0.02em;
 }
@@ -124,7 +134,7 @@
 .admin-ops-panel-heading p {
   max-width: 72rem;
   margin: 0.45rem 0 0;
-  color: #cbd5e1;
+  color: #475569;
   line-height: 1.5;
 }
 
@@ -134,9 +144,9 @@
 
 .admin-ops-table-wrap {
   overflow-x: auto;
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid rgba(15, 23, 42, 0.1);
   border-radius: 16px;
-  background: rgba(15, 23, 42, 0.32);
+  background: #ffffff;
 }
 
 .admin-ops-table {
@@ -151,14 +161,15 @@
 
 .admin-ops-table th,
 .admin-ops-table td {
-  border-bottom: 1px solid rgba(148, 163, 184, 0.13);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
   padding: 0.72rem;
   text-align: left;
   vertical-align: top;
 }
 
 .admin-ops-table th {
-  color: #94a3b8;
+  background: #f8fafc;
+  color: #64748b;
   font-size: 0.66rem;
   font-weight: 900;
   letter-spacing: 0.12em;
@@ -176,12 +187,12 @@
 }
 
 .admin-ops-table-stack strong {
-  color: #f8fafc;
+  color: #0f172a;
 }
 
 .admin-ops-table-stack small,
 .admin-ops-reference-list small {
-  color: #94a3b8;
+  color: #64748b;
   line-height: 1.3;
 }
 
@@ -201,7 +212,7 @@
   display: inline-flex;
   width: fit-content;
   align-items: center;
-  border: 1px solid rgba(148, 163, 184, 0.24);
+  border: 1px solid rgba(100, 116, 139, 0.22);
   border-radius: 999px;
   padding: 0.22rem 0.5rem;
   font-size: 0.64rem;
@@ -212,20 +223,20 @@
 }
 
 .admin-ops-status-badge--success {
-  border-color: rgba(34, 197, 94, 0.4);
-  background: rgba(34, 197, 94, 0.12);
-  color: #bbf7d0;
+  border-color: rgba(22, 163, 74, 0.32);
+  background: #dcfce7;
+  color: #166534;
 }
 
 .admin-ops-status-badge--warning {
-  border-color: rgba(245, 158, 11, 0.42);
-  background: rgba(245, 158, 11, 0.12);
-  color: #fde68a;
+  border-color: rgba(217, 119, 6, 0.32);
+  background: #fef3c7;
+  color: #92400e;
 }
 
 .admin-ops-status-badge--neutral {
-  background: rgba(148, 163, 184, 0.1);
-  color: #cbd5e1;
+  background: #e2e8f0;
+  color: #334155;
 }
 
 .admin-ops-alias-list {
@@ -239,17 +250,18 @@
 .admin-ops-alias-list small {
   display: inline-flex;
   align-items: center;
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  border: 1px solid rgba(37, 99, 235, 0.16);
   border-radius: 999px;
   padding: 0.16rem 0.42rem;
-  background: rgba(15, 23, 42, 0.38);
-  color: #dbeafe;
+  background: #eff6ff;
+  color: #1e3a8a;
   font-size: 0.72rem;
   line-height: 1.2;
 }
 
 .admin-ops-alias-list small {
-  color: #94a3b8;
+  background: #f1f5f9;
+  color: #64748b;
 }
 
 .admin-ops-config-grid {
@@ -257,16 +269,16 @@
 }
 
 .admin-ops-config-card {
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid rgba(15, 23, 42, 0.1);
   border-radius: 16px;
   padding: 0.85rem;
-  background: rgba(15, 23, 42, 0.48);
+  background: #ffffff;
 }
 
 .admin-ops-config-card strong {
   display: block;
   margin-top: 0.35rem;
-  color: #f8fafc;
+  color: #0f172a;
 }
 
 .admin-ops-config-card p,
@@ -277,11 +289,11 @@
 }
 
 .admin-ops-muted {
-  color: #94a3b8;
+  color: #64748b;
 }
 
 .admin-ops-error {
-  color: #fecaca;
+  color: #991b1b;
 }
 
 .admin-ops-embedded-panel .workflow-eval-page {
@@ -295,9 +307,9 @@
 .admin-ops-embedded-panel .workflow-eval-observed-panel,
 .admin-ops-embedded-panel .workflow-eval-input-panel,
 .admin-ops-embedded-panel .workflow-eval-scenario-panel {
-  background: rgba(15, 23, 42, 0.38);
-  border-color: rgba(148, 163, 184, 0.18);
-  color: #e2e8f0;
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.1);
+  color: #0f172a;
 }
 
 .admin-ops-embedded-panel .workflow-eval-hero-card {
@@ -307,6 +319,7 @@
 
 .admin-ops-embedded-panel .workflow-eval-hero-card h3 {
   margin: 0.2rem 0 0;
+  color: #0f172a;
 }
 
 .admin-ops-embedded-panel .workflow-eval-guardrail-grid,
@@ -329,6 +342,7 @@
 }
 
 .admin-ops-embedded-panel .workflow-eval-scenario-card__header h4 {
+  color: #0f172a;
   font-size: 0.98rem;
   line-height: 1.2;
 }
@@ -336,6 +350,26 @@
 .admin-ops-embedded-panel .workflow-eval-observed-panel {
   border-radius: 14px;
   padding: 0.7rem;
+}
+
+.admin-ops-embedded-panel .workflow-eval-success-note {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.admin-ops-embedded-panel .workflow-eval-status--passed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.admin-ops-embedded-panel .workflow-eval-status--failed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.admin-ops-embedded-panel .workflow-eval-status--ready {
+  background: #e2e8f0;
+  color: #334155;
 }
 
 @media (max-width: 1200px) {
@@ -372,7 +406,7 @@
   }
 
   .admin-ops-table-row-card {
-    border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+    border-bottom: 1px solid rgba(15, 23, 42, 0.1);
     padding: 0.65rem;
   }
 
