@@ -20,6 +20,41 @@ export function formatQualityStatus(status: string) {
   return status.replace(/_/g, " ").toLowerCase();
 }
 
+export function formatLatencyMs(value: number | null) {
+  return value === null ? "—" : `${value.toLocaleString()} ms`;
+}
+
+export function formatCostEstimate(value: number | null) {
+  if (value === null) {
+    return "—";
+  }
+
+  if (value > 0 && value < 0.01) {
+    return "< $0.01";
+  }
+
+  return `${value.toFixed(2)}`;
+}
+
+export function formatFieldRepairValue(value: string | number) {
+  return typeof value === "number" ? formatCurrency(value) : formatEnumLabel(value);
+}
+
+export function getModelExecutionValidationLabel(input: {
+  jsonValid: boolean;
+  validationPassed: boolean;
+}) {
+  if (!input.jsonValid) {
+    return "JSON invalid";
+  }
+
+  return input.validationPassed ? "Validation passed" : "Validation failed";
+}
+
+export function getProviderAttemptLabel(status: string) {
+  return status.replace(/_/g, " ").toLowerCase();
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null && !Array.isArray(value)
     ? (value as Record<string, unknown>)

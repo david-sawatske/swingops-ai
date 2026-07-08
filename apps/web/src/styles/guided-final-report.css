@@ -176,3 +176,121 @@
   }
 }
 
+
+/* main-run-model-execution-visibility */
+.guided-model-execution-card {
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(39, 57, 44, 0.12);
+  border-radius: 16px;
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.8rem;
+}
+
+.guided-model-execution-card__header {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+.guided-model-execution-card__header h5 {
+  color: #142417;
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  margin: 0.15rem 0 0.25rem;
+}
+
+.guided-model-execution-card__header p {
+  color: rgba(20, 36, 23, 0.68);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.guided-model-execution-metrics {
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+}
+
+.guided-model-execution-metrics div {
+  background: rgba(247, 250, 246, 0.72);
+  border: 1px solid rgba(39, 57, 44, 0.1);
+  border-radius: 14px;
+  padding: 0.6rem 0.65rem;
+}
+
+.guided-model-execution-metrics dt {
+  color: rgba(20, 36, 23, 0.58);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.055em;
+  margin-bottom: 0.2rem;
+  text-transform: uppercase;
+}
+
+.guided-model-execution-metrics dd {
+  color: #142417;
+  font-size: 0.82rem;
+  font-weight: 850;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.guided-field-repair-suggestion-list {
+  display: grid;
+  gap: 0.45rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.guided-field-repair-suggestion-list li {
+  background: rgba(247, 250, 246, 0.72);
+  border: 1px solid rgba(39, 57, 44, 0.1);
+  border-radius: 14px;
+  padding: 0.6rem 0.65rem;
+}
+
+.guided-field-repair-suggestion-list strong {
+  color: #142417;
+  display: block;
+  font-size: 0.82rem;
+  margin-bottom: 0.18rem;
+}
+
+.guided-field-repair-suggestion-list p {
+  color: rgba(20, 36, 23, 0.66);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.guided-model-execution-note {
+  margin-top: 0.75rem;
+}
+
+@media (max-width: 760px) {
+  .guided-model-execution-card__header {
+    display: grid;
+  }
+
+  .guided-model-execution-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .guided-model-execution-metrics {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* main-run-model-execution-visibility label cleanup */
+.guided-model-execution-metrics dt {
+  overflow-wrap: anywhere;
+}
