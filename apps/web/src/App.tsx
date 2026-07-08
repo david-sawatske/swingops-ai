@@ -234,6 +234,7 @@ function App() {
 
       {activeView === "ADMIN_OPS" ? (
         <AdminOpsDashboardPage
+          workflowRuns={globalWorkflowRuns}
           workflowRunCount={globalWorkflowRuns.length}
           openReviewQueueItemCount={openReviewQueueItemCount}
           toolCallLogCount={totalToolCallLogCount}
