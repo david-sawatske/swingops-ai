@@ -139,6 +139,9 @@ export function serializeReviewQueueItem(item: {
   proposedGolfClubJson: unknown;
   reviewerNotes: string | null;
   resolvedAt: Date | null;
+  supersededByReviewQueueItemId?: string | null;
+  supersededAt?: Date | null;
+  supersededReason?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }) {

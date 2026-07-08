@@ -130,6 +130,7 @@ enum ReviewQueueStatus {
   IN_REVIEW
   RESOLVED
   DISMISSED
+  SUPERSEDED
 }
 
 enum ReviewReason {
@@ -166,6 +167,7 @@ enum AiReadyIntakeRecordStatus {
   READY_FOR_REVIEW
   READY_FOR_RAG
   NEEDS_REVIEW
+  SUPERSEDED
 }
 
 model IntakeBatch {
@@ -415,9 +417,19 @@ model ReviewQueueItem {
   reviewerNotes String?   @map("reviewer_notes")
   resolvedAt    DateTime? @map("resolved_at")
 
+  supersededByReviewQueueItemId String?   @map("superseded_by_review_queue_item_id")
+  supersededAt                  DateTime? @map("superseded_at")
+  supersededReason              String?   @map("superseded_reason")
+
+
   intakeItem  IntakeItem?  @relation(fields: [intakeItemId], references: [id], onDelete: SetNull)
   golfClub    GolfClub?    @relation(fields: [golfClubId], references: [id], onDelete: SetNull)
   workflowRun WorkflowRun? @relation(fields: [workflowRunId], references: [id], onDelete: SetNull)
+
+  supersededByReviewQueueItem ReviewQueueItem?  @relation("ReviewQueueItemSupersession", fields: [supersededByReviewQueueItemId], references: [id], onDelete: SetNull)
+  supersededReviewQueueItems  ReviewQueueItem[] @relation("ReviewQueueItemSupersession")
+
+
 
   createdAt                 DateTime                   @default(now()) @map("created_at")
   updatedAt                 DateTime                   @updatedAt @map("updated_at")
@@ -427,6 +439,8 @@ model ReviewQueueItem {
   @@index([intakeItemId])
   @@index([golfClubId])
   @@index([workflowRunId])
+
+  @@index([supersededByReviewQueueItemId])
   @@index([reason])
   @@index([status])
   @@map("review_queue_items")
@@ -457,9 +471,16 @@ model AiReadyIntakeRecord {
   embeddingReady Boolean @default(false) @map("embedding_ready")
   ragReady       Boolean @default(false) @map("rag_ready")
 
+  supersededByAiReadyIntakeRecordId String?   @map("superseded_by_ai_ready_intake_record_id")
+  supersededAt                      DateTime? @map("superseded_at")
+  supersededReason                  String?   @map("superseded_reason")
+
   intakeBatch IntakeBatch? @relation(fields: [intakeBatchId], references: [id], onDelete: SetNull)
   intakeItem  IntakeItem?  @relation(fields: [intakeItemId], references: [id], onDelete: SetNull)
   workflowRun WorkflowRun? @relation(fields: [workflowRunId], references: [id], onDelete: SetNull)
+
+  supersededByAiReadyIntakeRecord AiReadyIntakeRecord?  @relation("AiReadyIntakeRecordSupersession", fields: [supersededByAiReadyIntakeRecordId], references: [id], onDelete: SetNull)
+  supersededAiReadyIntakeRecords  AiReadyIntakeRecord[] @relation("AiReadyIntakeRecordSupersession")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -467,6 +488,8 @@ model AiReadyIntakeRecord {
   @@index([intakeBatchId])
   @@index([intakeItemId])
   @@index([workflowRunId])
+
+  @@index([supersededByAiReadyIntakeRecordId])
   @@index([sourceType])
   @@index([status])
   @@index([reviewNeeded])

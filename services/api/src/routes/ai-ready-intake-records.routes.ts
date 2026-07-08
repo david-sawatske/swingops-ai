@@ -18,7 +18,8 @@ const aiReadyIntakeRecordSourceTypeSchema = z.enum([
 const aiReadyIntakeRecordStatusSchema = z.enum([
   "READY_FOR_REVIEW",
   "READY_FOR_RAG",
-  "NEEDS_REVIEW"
+  "NEEDS_REVIEW",
+  "SUPERSEDED"
 ]);
 
 const listAiReadyIntakeRecordsQuerySchema = z.object({
@@ -47,6 +48,9 @@ function serializeAiReadyIntakeRecord(record: {
   reviewNeeded: boolean;
   embeddingReady: boolean;
   ragReady: boolean;
+  supersededByAiReadyIntakeRecordId: string | null;
+  supersededAt: Date | null;
+  supersededReason: string | null;
   createdAt: Date;
   updatedAt: Date;
 }) {
@@ -68,6 +72,9 @@ function serializeAiReadyIntakeRecord(record: {
     reviewNeeded: record.reviewNeeded,
     embeddingReady: record.embeddingReady,
     ragReady: record.ragReady,
+    supersededByAiReadyIntakeRecordId: record.supersededByAiReadyIntakeRecordId,
+    supersededAt: record.supersededAt ? record.supersededAt.toISOString() : null,
+    supersededReason: record.supersededReason,
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString()
   };

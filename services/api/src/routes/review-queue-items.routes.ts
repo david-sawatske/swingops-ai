@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
@@ -44,7 +45,8 @@ const reviewQueueItemStatusSchema = z.enum([
   "OPEN",
   "IN_REVIEW",
   "RESOLVED",
-  "DISMISSED"
+  "DISMISSED",
+  "SUPERSEDED"
 ]);
 
 const listReviewQueueItemsQuerySchema = z.object({
@@ -154,6 +156,86 @@ function normalizeLearningEventComparable(value: unknown) {
   return String(value ?? "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "");
+}
+
+function normalizeReviewSourceText(value: string | null | undefined) {
+  return String(value ?? "")
+    .replace(/^\s*\d+\s*[).:-]\s*/, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+async function supersedeUpstreamAiReadyCandidates(input: {
+  tx: Prisma.TransactionClient;
+  finalAiReadyIntakeRecordId: string;
+  finalReviewQueueItemId: string;
+  finalWorkflowRunId: string | null;
+  finalIntakeItemId: string | null;
+  finalSourceText: string | null;
+}) {
+  const normalizedFinalSourceText = normalizeReviewSourceText(input.finalSourceText);
+
+  if (!normalizedFinalSourceText) {
+    return 0;
+  }
+
+  const finalIntakeItem = input.finalIntakeItemId
+    ? await input.tx.intakeItem.findUnique({
+        where: {
+          id: input.finalIntakeItemId
+        },
+        select: {
+          sourceRowNumber: true
+        }
+      })
+    : null;
+
+  const upstreamCandidates = await input.tx.aiReadyIntakeRecord.findMany({
+    where: {
+      id: {
+        not: input.finalAiReadyIntakeRecordId
+      },
+      status: "NEEDS_REVIEW"
+    },
+    include: {
+      workflowRun: true,
+      intakeItem: true
+    }
+  });
+
+  const matchingCandidateIds = upstreamCandidates
+    .filter((candidate) => {
+      return (
+        candidate.workflowRun?.workflowName === "multi-source-intake-demo" &&
+        candidate.workflowRunId !== input.finalWorkflowRunId &&
+        candidate.intakeItem?.sourceRowNumber === finalIntakeItem?.sourceRowNumber &&
+        normalizeReviewSourceText(candidate.rawText) === normalizedFinalSourceText
+      );
+    })
+    .map((candidate) => candidate.id);
+
+  if (matchingCandidateIds.length === 0) {
+    return 0;
+  }
+
+  const result = await input.tx.aiReadyIntakeRecord.updateMany({
+    where: {
+      id: {
+        in: matchingCandidateIds
+      }
+    },
+    data: {
+      status: "SUPERSEDED",
+      reviewNeeded: false,
+      embeddingReady: false,
+      ragReady: false,
+      supersededByAiReadyIntakeRecordId: input.finalAiReadyIntakeRecordId,
+      supersededAt: new Date(),
+      supersededReason: `Superseded by human-reviewed AI-ready record ${input.finalAiReadyIntakeRecordId} from review item ${input.finalReviewQueueItemId}.`
+    }
+  });
+
+  return result.count;
 }
 
 async function maybeCompleteWorkflowRunAfterReview(input: {
@@ -483,6 +565,15 @@ async function resolveReviewQueueItemWithCorrections(input: {
             ragReady: reviewedAiReadyShapeIsRagReady
           }
         });
+
+    await supersedeUpstreamAiReadyCandidates({
+      tx,
+      finalAiReadyIntakeRecordId: updatedAiReadyIntakeRecord.id,
+      finalReviewQueueItemId: reviewQueueItem.id,
+      finalWorkflowRunId: reviewQueueItem.workflowRunId,
+      finalIntakeItemId: reviewQueueItem.intakeItemId,
+      finalSourceText: reviewQueueItem.originalText
+    });
 
     const learningEvents = await tx.humanReviewLearningEvent.findMany({
       where: {

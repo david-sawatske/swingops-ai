@@ -3,7 +3,8 @@ import type { MultiSourceIntakeRecord, MultiSourceIntakeSchemaField, MultiSource
 export type AiReadyIntakeRecordStatus =
   | "READY_FOR_REVIEW"
   | "READY_FOR_RAG"
-  | "NEEDS_REVIEW";
+  | "NEEDS_REVIEW"
+  | "SUPERSEDED";
 
 export type AiReadyIntakeRecord = {
   id: string;
@@ -23,6 +24,9 @@ export type AiReadyIntakeRecord = {
   reviewNeeded: boolean;
   embeddingReady: boolean;
   ragReady: boolean;
+  supersededByAiReadyIntakeRecordId?: string | null;
+  supersededAt?: string | null;
+  supersededReason?: string | null;
   createdAt: string;
   updatedAt: string;
 };
