@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { listAiReadyIntakeRecords } from "../../api/workflows";
+import {
+  getAdminOpsNormalizationMatrix,
+  listAiReadyIntakeRecords,
+} from "../../api/workflows";
 import type {
+  AdminOpsNormalizationMatrixEntry,
   AiReadyIntakeRecord,
   GlobalWorkflowRunSummary,
 } from "../../types/workflow";
@@ -455,6 +459,113 @@ function AdminOpsModelTelemetryPanel({
   );
 }
 
+
+function AdminOpsNormalizationMatrixPanel() {
+  const [entries, setEntries] = useState<AdminOpsNormalizationMatrixEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function loadMatrix() {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const response = await getAdminOpsNormalizationMatrix();
+
+      setEntries(response.entries);
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Unable to load normalization matrix.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadMatrix();
+  }, []);
+
+  const blockedOrReviewEntries = entries.filter(
+    (entry) => entry.action !== "NORMALIZE",
+  );
+
+  return (
+    <section className="admin-ops-panel" aria-labelledby="admin-ops-normalization-title">
+      <div className="admin-ops-panel-heading">
+        <span className="model-route-card__eyebrow">Normalization matrix</span>
+        <h3 id="admin-ops-normalization-title">
+          Structured golf term controls
+        </h3>
+        <p>
+          Displays deterministic aliases, negative evidence, context requirements,
+          and repair-blocking rules that stay higher authority than model output.
+        </p>
+      </div>
+
+      <div className="admin-ops-mini-metric-grid">
+        <AdminOpsMetricCard
+          metric={{
+            detail: "Read-only entries exposed by the Admin Ops API.",
+            label: "Matrix entries",
+            value: entries.length,
+          }}
+        />
+        <AdminOpsMetricCard
+          metric={{
+            detail: "Entries that block repair or route ambiguous evidence to review.",
+            label: "Guardrail entries",
+            value: blockedOrReviewEntries.length,
+          }}
+        />
+      </div>
+
+      {isLoading ? (
+        <p className="admin-ops-muted">Loading normalization matrix...</p>
+      ) : null}
+
+      {error ? <p className="admin-ops-error">{error}</p> : null}
+
+      {entries.length > 0 ? (
+        <div className="admin-ops-table-wrap">
+          <table className="admin-ops-table">
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Aliases</th>
+                <th>Canonical value</th>
+                <th>Action</th>
+                <th>Context</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((entry) => (
+                <tr key={entry.id}>
+                  <td>{entry.field}</td>
+                  <td>{entry.aliases.join(", ")}</td>
+                  <td>{formatNullable(entry.canonicalValue)}</td>
+                  <td>
+                    <AdminOpsStatusBadge
+                      tone={entry.action === "NORMALIZE" ? "success" : "warning"}
+                    >
+                      {entry.action}
+                    </AdminOpsStatusBadge>
+                  </td>
+                  <td>{entry.requiresContext ? "Required" : "Not required"}</td>
+                  <td>{entry.notes}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function AdminOpsConfigPanel() {
   return (
     <section className="admin-ops-panel" aria-labelledby="admin-ops-config-title">
@@ -590,6 +701,8 @@ export function AdminOpsDashboardPage({
       </section>
 
       <AdminOpsModelTelemetryPanel workflowRuns={workflowRuns} />
+
+      <AdminOpsNormalizationMatrixPanel />
 
       <AdminOpsConfigPanel />
 

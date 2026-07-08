@@ -179,4 +179,67 @@ describe("main run field repair contract", () => {
       reviewRequired: true
     });
   });
+  it("rejects schema-valid shaft repair when source phrase contains negative evidence", () => {
+    const result = validateMainRunFieldRepairModelOutput({
+      suggestions: [
+        {
+          recordId: "record-1",
+          fieldName: "shaftFlex",
+          sourcePhrase: "shaft unknown",
+          candidateValue: "REGULAR",
+          confidence: 0.91,
+          reason: "The model incorrectly treated unknown shaft as regular.",
+          reviewRequired: false
+        }
+      ]
+    });
+
+    expect(result.jsonValid).toBe(true);
+    expect(result.validationPassed).toBe(false);
+    expect(result.output).toBeNull();
+    expect(result.validationErrors.join(" ")).toContain("negative evidence");
+  });
+
+  it("rejects schema-valid wedge repair when source phrase is utility wood evidence", () => {
+    const result = validateMainRunFieldRepairModelOutput({
+      suggestions: [
+        {
+          recordId: "record-1",
+          fieldName: "category",
+          sourcePhrase: "UW 19 degree",
+          candidateValue: "WEDGE",
+          confidence: 0.91,
+          reason: "The model incorrectly mapped utility wood text to wedge.",
+          reviewRequired: false
+        }
+      ]
+    });
+
+    expect(result.jsonValid).toBe(true);
+    expect(result.validationPassed).toBe(false);
+    expect(result.output).toBeNull();
+    expect(result.validationErrors.join(" ")).toContain("utility wood evidence");
+  });
+
+  it("rejects ambiguous single-letter regular shaft repair without shaft-flex context", () => {
+    const result = validateMainRunFieldRepairModelOutput({
+      suggestions: [
+        {
+          recordId: "record-1",
+          fieldName: "shaftFlex",
+          sourcePhrase: "Ventus Blue R",
+          candidateValue: "REGULAR",
+          confidence: 0.91,
+          reason: "The model treated an ambiguous single-letter R as shaft flex.",
+          reviewRequired: false
+        }
+      ]
+    });
+
+    expect(result.jsonValid).toBe(true);
+    expect(result.validationPassed).toBe(false);
+    expect(result.output).toBeNull();
+    expect(result.validationErrors.join(" ")).toContain("single-letter R is ambiguous");
+  });
+
 });

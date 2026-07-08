@@ -96,7 +96,7 @@ const CATEGORY_PATTERNS: {
   },
   {
     category: "WEDGE",
-    aliases: [/\bwedge\b/i, /\b\d{2}\s*deg\b/i, /\bWEDGE\b/]
+    aliases: [/\bwedge\b/i, /\b(?:46|48|50|52|54|56|58|60)\s*(?:deg|degree|°)?\b/i, /\bWEDGE\b/]
   },
   {
     category: "PUTTER",

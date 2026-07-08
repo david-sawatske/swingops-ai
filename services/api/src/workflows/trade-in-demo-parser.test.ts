@@ -356,4 +356,19 @@ describe("parseTradeInDemoText", () => {
     );
   });
 
+  it("does not map utility wood loft evidence to Wedge", () => {
+    const parsedItems = parseTradeInDemoText(
+      "Callaway Apex UW 19 degree shaft stiff condition 8.0 Average"
+    );
+
+    expect(parsedItems).toHaveLength(1);
+    expect(parsedItems[0]).toMatchObject({
+      brand: "Callaway",
+      shaftFlex: "STIFF",
+      conditionGrade: "8.0 Average",
+      category: null
+    });
+    expect(parsedItems[0]?.missingFields).toContain("category");
+  });
+
 });

@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 
 import { prisma } from "../lib/prisma.js";
+import { getGolfTermNormalizationMatrix } from "../workflows/golf-term-normalization.js";
 
 const SUCCESSFUL_MODEL_ATTEMPT_STATUSES = new Set(["SUCCESS", "SUCCEEDED"]);
 
@@ -288,4 +289,8 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.get("/admin/ops/workflow-config", async () => WORKFLOW_CONFIG_SNAPSHOT);
+
+  app.get("/admin/ops/normalization-matrix", async () => ({
+    entries: getGolfTermNormalizationMatrix()
+  }));
 }

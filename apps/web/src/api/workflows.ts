@@ -4,6 +4,7 @@ import type {
   ExecuteMultiSourceIntakeDemoRequest,
   ExecuteEndToEndAgenticTradeInDemoResponse,
   ExecuteMultiSourceIntakeDemoResponse,
+  GetAdminOpsNormalizationMatrixResponse,
   ListAiReadyIntakeRecordsResponse,
   ListReviewQueueItemsResponse,
   ListWorkflowRunsResponse,
@@ -122,5 +123,11 @@ export async function listAiReadyIntakeRecords(
     queryString
       ? `/ai-ready-intake-records?${queryString}`
       : "/ai-ready-intake-records",
+  );
+}
+
+export async function getAdminOpsNormalizationMatrix(): Promise<GetAdminOpsNormalizationMatrixResponse> {
+  return apiGet<GetAdminOpsNormalizationMatrixResponse>(
+    "/admin/ops/normalization-matrix",
   );
 }

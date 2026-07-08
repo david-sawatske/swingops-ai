@@ -89,4 +89,37 @@ describe("admin ops routes", () => {
 
     await app.close();
   });
+  it("returns the structured golf normalization matrix", async () => {
+    const app = buildApp();
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/admin/ops/normalization-matrix"
+    });
+
+    expect(response.statusCode).toBe(200);
+
+    const body = response.json();
+
+    expect(body.entries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "negative-evidence",
+          action: "BLOCK_REPAIR"
+        }),
+        expect.objectContaining({
+          id: "category-utility-wood",
+          action: "ROUTE_TO_REVIEW"
+        }),
+        expect.objectContaining({
+          id: "shaft-regular",
+          canonicalValue: "REGULAR",
+          requiresContext: true
+        })
+      ])
+    );
+
+    await app.close();
+  });
+
 });
