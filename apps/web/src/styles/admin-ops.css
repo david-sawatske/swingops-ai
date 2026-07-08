@@ -83,3 +83,30 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+.admin-ops-embedded-panel {
+  display: grid;
+  gap: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 24px;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.admin-ops-panel-heading {
+  padding: 0.25rem 0.25rem 0;
+}
+
+.admin-ops-panel-heading h3 {
+  margin: 0.35rem 0 0;
+  color: #f8fafc;
+  font-size: 1.25rem;
+}
+
+.admin-ops-panel-heading p {
+  max-width: 72rem;
+  margin: 0.5rem 0 0;
+  color: #cbd5e1;
+  line-height: 1.6;
+}

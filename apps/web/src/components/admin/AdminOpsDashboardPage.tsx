@@ -1,3 +1,5 @@
+import { WorkflowQualityChecksPage } from "../workflow-evals/WorkflowQualityChecksPage";
+
 type AdminOpsMetric = {
   label: string;
   value: string | number;
@@ -102,6 +104,25 @@ export function AdminOpsDashboardPage({
             <p>{section.body}</p>
           </article>
         ))}
+      </section>
+
+      <section
+        className="admin-ops-embedded-panel"
+        aria-labelledby="admin-ops-quality-checks-title"
+      >
+        <div className="admin-ops-panel-heading">
+          <span className="model-route-card__eyebrow">Validation & Quality Checks</span>
+          <h3 id="admin-ops-quality-checks-title">
+            Protected workflow behavior
+          </h3>
+          <p>
+            Run scenario checks from the Admin Ops surface so parser behavior,
+            review routing, prior correction suggestions, and workflow quality
+            stay connected to the broader control view.
+          </p>
+        </div>
+
+        <WorkflowQualityChecksPage />
       </section>
     </section>
   );
