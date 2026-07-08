@@ -10,6 +10,7 @@ import type {
 import { APP_NAV_ITEMS, type AppView } from "./constants/appNav";
 import { ReviewQueuePage } from "./components/review-queue/ReviewQueuePage";
 import { WorkflowQualityChecksPage } from "./components/workflow-evals/WorkflowQualityChecksPage";
+import { AdminOpsDashboardPage } from "./components/admin/AdminOpsDashboardPage";
 import { GuidedDemoPathPage } from "./components/guided-demo/GuidedDemoPathPage";
 import { type GuidedStep } from "./components/guided-demo/guidedWorkflowSteps";
 import { useGuidedWorkflowRun } from "./hooks/useGuidedWorkflowRun";
@@ -234,6 +235,14 @@ function App() {
 
       {activeView === "QUALITY_CHECKS" ? (
         <WorkflowQualityChecksPage />
+      ) : null}
+
+      {activeView === "ADMIN_OPS" ? (
+        <AdminOpsDashboardPage
+          workflowRunCount={globalWorkflowRuns.length}
+          openReviewQueueItemCount={openReviewQueueItemCount}
+          toolCallLogCount={totalToolCallLogCount}
+        />
       ) : null}
 
       {activeView === "REVIEW_QUEUE" ? (

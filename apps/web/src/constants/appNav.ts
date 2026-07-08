@@ -1,6 +1,7 @@
 export type AppView =
   | "GUIDED_DEMO"
   | "QUALITY_CHECKS"
+  | "ADMIN_OPS"
   | "REVIEW_QUEUE";
 
 export type AppNavItem = {
@@ -19,5 +20,10 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     view: "QUALITY_CHECKS",
     label: "Quality Checks",
     eyebrow: "Scenario matrix",
+  },
+  {
+    view: "ADMIN_OPS",
+    label: "Admin Ops",
+    eyebrow: "Control tower",
   },
 ];
