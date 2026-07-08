@@ -108,6 +108,30 @@ export type PriorReviewLearningSuggestion = {
   createdAt: string;
 };
 
+export type FieldRepairSuggestion = {
+  recordId?: string;
+  fieldName:
+    | "brand"
+    | "productLine"
+    | "category"
+    | "shaftFlex"
+    | "conditionGrade"
+    | "tradeInValue";
+  sourcePhrase: string;
+  candidateValue: string | number;
+  confidence: number;
+  reason: string;
+  reviewRequired: boolean;
+};
+
+export type FieldRepairExecution = {
+  modelCallLogId: string;
+  suggestions: FieldRepairSuggestion[];
+  jsonValid: boolean;
+  validationPassed: boolean;
+  validationErrors: string[];
+};
+
 export type AgenticTradeInDemoValuationEstimate = {
   productId: string | null;
   sku: string | null;
@@ -307,6 +331,7 @@ export type ExecuteEndToEndAgenticTradeInDemoResponse = {
     parsedItemId: string;
     suggestions: PriorReviewLearningSuggestion[];
   }[];
+  fieldRepairExecution: FieldRepairExecution;
   modelRoutingDecision: {
     selectedProvider: string;
     selectedModel: string;
