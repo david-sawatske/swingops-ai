@@ -90,13 +90,35 @@ function toJsonObject(value: unknown): Record<string, unknown> {
   return {};
 }
 
+const REQUIRED_REVIEW_READY_FIELDS = [
+  "brand",
+  "productLine",
+  "category",
+  "conditionGrade"
+] as const;
+
+class ReviewCorrectionValidationError extends Error {
+  missingFields: string[];
+
+  constructor(missingFields: string[]) {
+    super(
+      `Review correction is incomplete. Missing required field(s): ${missingFields.join(", ")}.`
+    );
+    this.name = "ReviewCorrectionValidationError";
+    this.missingFields = missingFields;
+  }
+}
+
+function getMissingReviewReadyFields(record: Record<string, unknown>) {
+  return REQUIRED_REVIEW_READY_FIELDS.filter((fieldName) => {
+    const value = record[fieldName];
+
+    return !(typeof value === "string" && value.trim().length > 0);
+  });
+}
+
 function hasRagReadyReviewShape(record: Record<string, unknown>) {
-  return Boolean(
-    record.brand &&
-      record.productLine &&
-      record.category &&
-      record.conditionGrade
-  );
+  return getMissingReviewReadyFields(record).length === 0;
 }
 
 function getProposedClubField(
@@ -413,8 +435,14 @@ async function resolveReviewQueueItemWithCorrections(input: {
       missingFields: []
     };
 
+    const reviewedAiReadyMissingFields =
+      getMissingReviewReadyFields(reviewedAiReadyJson);
     const reviewedAiReadyShapeIsRagReady =
-      hasRagReadyReviewShape(reviewedAiReadyJson);
+      reviewedAiReadyMissingFields.length === 0;
+
+    if (!reviewedAiReadyShapeIsRagReady) {
+      throw new ReviewCorrectionValidationError(reviewedAiReadyMissingFields);
+    }
 
     const updatedAiReadyIntakeRecord = existingAiReadyRecord
       ? await tx.aiReadyIntakeRecord.update({
@@ -595,14 +623,27 @@ export async function reviewQueueItemRoutes(
         });
       }
 
-      const result = await resolveReviewQueueItemWithCorrections({
-        reviewQueueItemId: parsedParams.data.id,
-        ...(parsedBody.data.reviewerNotes === undefined
-          ? {}
-          : { reviewerNotes: parsedBody.data.reviewerNotes }),
-        correctedRecord: parsedBody.data.correctedRecord,
-        learningEvents: parsedBody.data.learningEvents
-      });
+      let result;
+
+      try {
+        result = await resolveReviewQueueItemWithCorrections({
+          reviewQueueItemId: parsedParams.data.id,
+          ...(parsedBody.data.reviewerNotes === undefined
+            ? {}
+            : { reviewerNotes: parsedBody.data.reviewerNotes }),
+          correctedRecord: parsedBody.data.correctedRecord,
+          learningEvents: parsedBody.data.learningEvents
+        });
+      } catch (error) {
+        if (error instanceof ReviewCorrectionValidationError) {
+          return reply.status(400).send({
+            error: error.message,
+            missingFields: error.missingFields
+          });
+        }
+
+        throw error;
+      }
 
       if (!result) {
         return reply.status(404).send({

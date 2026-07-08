@@ -129,6 +129,12 @@ function normalizeComparable(value: unknown) {
     .replace(/[^a-z0-9]+/g, "");
 }
 
+function normalizeSourceComparable(value: unknown) {
+  return normalizeComparable(
+    String(value ?? "").replace(/^\s*\d+\s*[).:-]\s*/, ""),
+  );
+}
+
 function formatFieldLabel(value: string) {
   return value
     .replace(/([a-z])([A-Z])/g, "$1 $2")
@@ -288,12 +294,41 @@ export function getGroupedCorrectionSummaries(corrections: CorrectionSummary[]) 
 }
 
 function recordMatchesReviewItem(record: RecordSummary, item: GlobalReviewQueueItem) {
-  if (record.intakeItemId && item.intakeItemId && record.intakeItemId === item.intakeItemId) {
+  const proposed = getProposedRecord(item);
+  const reviewed = item.reviewedTradeInRecord;
+  const reviewIntakeItemIds = [item.intakeItemId, reviewed?.intakeItemId].filter(
+    (value): value is string => Boolean(value),
+  );
+
+  if (record.intakeItemId && reviewIntakeItemIds.includes(record.intakeItemId)) {
     return true;
   }
 
-  const proposed = getProposedRecord(item);
-  const reviewed = item.reviewedTradeInRecord;
+  const candidateSourceTexts = [record.rawText, record.cleanedText]
+    .map(normalizeSourceComparable)
+    .filter(Boolean);
+  const reviewSourceTexts = [
+    item.originalText,
+    reviewed?.originalText,
+    getFirstString(proposed, [
+      "rawText",
+      "rawLine",
+      "sourceText",
+      "originalText",
+      "normalizedText",
+      "cleanedText",
+    ]),
+  ]
+    .map(normalizeSourceComparable)
+    .filter(Boolean);
+
+  if (
+    candidateSourceTexts.length > 0 &&
+    reviewSourceTexts.length > 0 &&
+    candidateSourceTexts.some((candidateText) => reviewSourceTexts.includes(candidateText))
+  ) {
+    return true;
+  }
 
   const reviewBrand =
     reviewed?.correctedBrand ?? getFirstString(proposed, ["brand", "correctedBrand"]);

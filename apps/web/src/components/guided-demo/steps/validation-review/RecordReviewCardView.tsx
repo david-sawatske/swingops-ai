@@ -620,6 +620,27 @@ function getUnresolvedMissingFields(card: RecordReviewCard) {
   });
 }
 
+function getRequiredCorrectionFields(card: RecordReviewCard) {
+  const requiredFields: CorrectionFormFieldName[] = [];
+
+  for (const fieldName of getCorrectionFocusFields(card)) {
+    if (isCorrectionFormFieldName(fieldName) && !requiredFields.includes(fieldName)) {
+      requiredFields.push(fieldName);
+    }
+  }
+
+  return requiredFields;
+}
+
+function getBlockingCorrectionFields(
+  card: RecordReviewCard,
+  draft: ReviewCorrectionDraft,
+) {
+  return getRequiredCorrectionFields(card).filter((fieldName) => {
+    return getCorrectedValueForField(draft, fieldName).trim().length === 0;
+  });
+}
+
 function getCorrectionFocusFields(card: RecordReviewCard) {
   if (!cardHasActiveCorrectionWork(card)) {
     return [];
@@ -1237,6 +1258,7 @@ function RecordCorrectionPanel({
   }
 
   const isSaving = activeReviewQueueItemId === card.reviewItem.id;
+  const blockingCorrectionFields = getBlockingCorrectionFields(card, draft);
 
   if (hasOpenPriorReviewSuggestions) {
     return (
@@ -1280,6 +1302,15 @@ function RecordCorrectionPanel({
       </div>
 
       <CorrectionFocusCallout card={card} focusFieldsOverride={visibleFields} />
+
+      {blockingCorrectionFields.length > 0 ? (
+        <div className="guided-correction-focus guided-correction-focus--warning" role="alert">
+          <strong>Complete required fields before resolving</strong>
+          <p>
+            Missing: {blockingCorrectionFields.map(getCorrectionFieldLabel).join(", ")}.
+          </p>
+        </div>
+      ) : null}
 
       <div className="guided-record-correction-grid guided-record-correction-grid--focused">
         {visibleFields.includes("brand") ? (
@@ -1443,7 +1474,7 @@ function RecordCorrectionPanel({
       <div className="guided-record-correction-form__actions">
         <button
           className="guided-step-primary-action"
-          disabled={isSaving}
+          disabled={isSaving || blockingCorrectionFields.length > 0}
           onClick={onSubmit}
           type="button"
         >
