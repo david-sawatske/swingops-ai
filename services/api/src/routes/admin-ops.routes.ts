@@ -77,6 +77,37 @@ function calculateRate(numerator: number, denominator: number): number {
   return Math.round((numerator / denominator) * 1000) / 10;
 }
 
+function getStringFromNormalizedJson(
+  normalizedJson: unknown,
+  fieldName: string
+): string | null {
+  if (
+    normalizedJson !== null &&
+    typeof normalizedJson === "object" &&
+    !Array.isArray(normalizedJson) &&
+    fieldName in normalizedJson
+  ) {
+    const value = (normalizedJson as Record<string, unknown>)[fieldName];
+
+    return typeof value === "string" && value.length > 0 ? value : null;
+  }
+
+  return null;
+}
+
+function incrementCount(counts: Record<string, number>, key: string): void {
+  counts[key] = (counts[key] ?? 0) + 1;
+}
+
+function getSortedCountEntries(counts: Record<string, number>): Array<{
+  label: string;
+  count: number;
+}> {
+  return Object.entries(counts)
+    .map(([label, count]) => ({ label, count }))
+    .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
+}
+
 function getMissingFieldsFromNormalizedJson(normalizedJson: unknown): string[] {
   if (
     normalizedJson !== null &&
@@ -103,12 +134,12 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
           status: true,
           reviewNeeded: true,
           ragReady: true,
-          normalizedJson: true
+          normalizedJson: true,
+          createdAt: true
         },
         orderBy: {
           createdAt: "desc"
-        },
-        take: 500
+        }
       }),
       prisma.workflowRun.findMany({
         select: {
@@ -144,30 +175,67 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
       })
     ]);
 
-    const aiReadyByStatus = aiReadyRecords.reduce<Record<string, number>>(
-      (counts, record) => ({
-        ...counts,
-        [record.status]: (counts[record.status] ?? 0) + 1
-      }),
-      {}
+    const activeAiReadyRecords = aiReadyRecords.filter(
+      (record) => record.status !== "SUPERSEDED"
     );
-    const aiReadyBySourceType = aiReadyRecords.reduce<Record<string, number>>(
-      (counts, record) => ({
-        ...counts,
-        [record.sourceType]: (counts[record.sourceType] ?? 0) + 1
-      }),
-      {}
-    );
-    const missingFieldCounts = aiReadyRecords.reduce<Record<string, number>>(
+    const aiReadyByStatus = aiReadyRecords.reduce<Record<string, number>>((counts, record) => {
+      incrementCount(counts, record.status);
+
+      return counts;
+    }, {});
+    const aiReadyBySourceType = aiReadyRecords.reduce<Record<string, number>>((counts, record) => {
+      incrementCount(counts, record.sourceType);
+
+      return counts;
+    }, {});
+    const missingFieldCounts = activeAiReadyRecords.reduce<Record<string, number>>(
       (counts, record) => {
         for (const field of getMissingFieldsFromNormalizedJson(record.normalizedJson)) {
-          counts[field] = (counts[field] ?? 0) + 1;
+          incrementCount(counts, field);
         }
 
         return counts;
       },
       {}
     );
+    const categoryCounts = activeAiReadyRecords.reduce<Record<string, number>>(
+      (counts, record) => {
+        const category = getStringFromNormalizedJson(record.normalizedJson, "category") ?? "Blank";
+
+        incrementCount(counts, category);
+
+        return counts;
+      },
+      {}
+    );
+    const sourceQuality = getSortedCountEntries(aiReadyBySourceType).map(({ label }) => {
+      const sourceRecords = aiReadyRecords.filter((record) => record.sourceType === label);
+      const activeSourceRecords = sourceRecords.filter((record) => record.status !== "SUPERSEDED");
+
+      return {
+        sourceType: label,
+        total: sourceRecords.length,
+        active: activeSourceRecords.length,
+        reviewNeeded: activeSourceRecords.filter((record) => record.reviewNeeded).length,
+        groundingReady: activeSourceRecords.filter((record) => record.ragReady).length,
+        superseded: sourceRecords.filter((record) => record.status === "SUPERSEDED").length
+      };
+    });
+    const now = Date.now();
+    const oneDayInMs = 24 * 60 * 60 * 1000;
+    const newestAiReadyRecord = aiReadyRecords[0] ?? null;
+    const aiReadyFreshness = {
+      newestCreatedAt: newestAiReadyRecord ? newestAiReadyRecord.createdAt.toISOString() : null,
+      last24Hours: aiReadyRecords.filter(
+        (record) => now - record.createdAt.getTime() <= oneDayInMs
+      ).length,
+      last7Days: aiReadyRecords.filter(
+        (record) => now - record.createdAt.getTime() <= 7 * oneDayInMs
+      ).length,
+      last30Days: aiReadyRecords.filter(
+        (record) => now - record.createdAt.getTime() <= 30 * oneDayInMs
+      ).length
+    };
 
     const workflowRunsByStatus = workflowRuns.reduce<Record<string, number>>(
       (counts, run) => ({
@@ -263,11 +331,17 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
     return {
       aiReadyRecords: {
         total: aiReadyRecords.length,
+        active: activeAiReadyRecords.length,
+        superseded: aiReadyRecords.filter((record) => record.status === "SUPERSEDED").length,
         byStatus: aiReadyByStatus,
         bySourceType: aiReadyBySourceType,
-        reviewNeeded: aiReadyRecords.filter((record) => record.reviewNeeded).length,
-        ragReady: aiReadyRecords.filter((record) => record.ragReady).length,
-        missingFieldCounts
+        reviewNeeded: activeAiReadyRecords.filter((record) => record.reviewNeeded).length,
+        ragReady: activeAiReadyRecords.filter((record) => record.ragReady).length,
+        missingFieldCounts,
+        missingFieldHotspots: getSortedCountEntries(missingFieldCounts),
+        categoryMix: getSortedCountEntries(categoryCounts),
+        sourceQuality,
+        freshness: aiReadyFreshness
       },
       workflowRuns: {
         total: workflowRuns.length,

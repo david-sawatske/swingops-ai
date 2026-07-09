@@ -34,6 +34,10 @@ export type AiReadyIntakeRecord = {
 export type ListAiReadyIntakeRecordsResponse = {
   records: AiReadyIntakeRecord[];
   count: number;
+  totalCount: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
 };
 
 export type GetAiReadyIntakeRecordResponse = {

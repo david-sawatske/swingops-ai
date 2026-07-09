@@ -19,11 +19,22 @@ describe("admin ops routes", () => {
       expect.objectContaining({
         aiReadyRecords: expect.objectContaining({
           total: expect.any(Number),
+          active: expect.any(Number),
+          superseded: expect.any(Number),
           byStatus: expect.any(Object),
           bySourceType: expect.any(Object),
           reviewNeeded: expect.any(Number),
           ragReady: expect.any(Number),
-          missingFieldCounts: expect.any(Object)
+          missingFieldCounts: expect.any(Object),
+          missingFieldHotspots: expect.any(Array),
+          categoryMix: expect.any(Array),
+          sourceQuality: expect.any(Array),
+          freshness: expect.objectContaining({
+            newestCreatedAt: expect.anything(),
+            last24Hours: expect.any(Number),
+            last7Days: expect.any(Number),
+            last30Days: expect.any(Number)
+          })
         }),
         workflowRuns: expect.objectContaining({
           total: expect.any(Number),

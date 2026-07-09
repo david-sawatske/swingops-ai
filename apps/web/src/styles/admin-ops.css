@@ -457,3 +457,422 @@
     font-size: 1.05rem;
   }
 }
+
+.admin-ops-history-details {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.admin-ops-history-details > summary {
+  cursor: pointer;
+  padding: 0.78rem 0.9rem;
+  color: #334155;
+  font-weight: 800;
+}
+
+.admin-ops-history-list {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0 0.9rem 0.9rem;
+}
+
+.admin-ops-history-card {
+  display: grid;
+  gap: 0.45rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  padding: 0.72rem;
+  background: #f8fafc;
+}
+
+.admin-ops-history-card__main,
+.admin-ops-history-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.admin-ops-history-card__main strong {
+  color: #0f172a;
+}
+
+.admin-ops-history-card__main small,
+.admin-ops-history-card p {
+  color: #64748b;
+}
+
+.admin-ops-history-card p {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.admin-ops-history-card__meta span {
+  border: 1px solid rgba(100, 116, 139, 0.18);
+  border-radius: 999px;
+  padding: 0.16rem 0.42rem;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.admin-ops-history-technical {
+  margin-top: 0.1rem;
+}
+
+.admin-ops-history-technical > summary {
+  cursor: pointer;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.admin-ops-record-controls {
+  display: grid;
+  grid-template-columns: minmax(18rem, 2fr) repeat(5, minmax(9rem, 1fr)) auto;
+  gap: 0.7rem;
+  align-items: end;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 16px;
+  padding: 0.85rem;
+  background: #ffffff;
+}
+
+.admin-ops-field {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.admin-ops-field--wide {
+  min-width: 18rem;
+}
+
+.admin-ops-field span {
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.admin-ops-field input,
+.admin-ops-field select {
+  width: 100%;
+  border: 1px solid rgba(100, 116, 139, 0.25);
+  border-radius: 12px;
+  padding: 0.58rem 0.65rem;
+  background: #f8fafc;
+  color: #0f172a;
+  font: inherit;
+}
+
+.admin-ops-field input:focus,
+.admin-ops-field select:focus {
+  border-color: rgba(37, 99, 235, 0.5);
+  outline: 3px solid rgba(37, 99, 235, 0.14);
+}
+
+.admin-ops-clear-button {
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  border-radius: 12px;
+  padding: 0.6rem 0.75rem;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.admin-ops-clear-button:disabled {
+  cursor: not-allowed;
+  border-color: rgba(100, 116, 139, 0.18);
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+
+.admin-ops-record-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.admin-ops-record-summary span {
+  border-radius: 999px;
+  padding: 0.16rem 0.45rem;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.admin-ops-record-group {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.admin-ops-record-group-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  padding: 0.58rem 0.72rem;
+  background: #f8fafc;
+}
+
+.admin-ops-record-group-heading strong {
+  color: #0f172a;
+}
+
+.admin-ops-record-group-heading span {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+@media (max-width: 1300px) {
+  .admin-ops-record-controls {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .admin-ops-field--wide {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-ops-record-controls {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-ops-record-preview-note {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  border: 1px solid rgba(37, 99, 235, 0.14);
+  border-radius: 14px;
+  padding: 0.65rem 0.75rem;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
+.admin-ops-record-preview-note span {
+  font-size: 0.88rem;
+  font-weight: 750;
+}
+
+.admin-ops-record-preview-note button {
+  border: 1px solid rgba(37, 99, 235, 0.24);
+  border-radius: 999px;
+  padding: 0.38rem 0.7rem;
+  background: #ffffff;
+  color: #1d4ed8;
+  font-weight: 850;
+}
+
+.admin-ops-compact-record-preview {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.admin-ops-compact-record-preview__header h4 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.05rem;
+}
+
+.admin-ops-compact-record-preview__header p {
+  margin: 0.28rem 0 0;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.admin-ops-table--preview {
+  min-width: 720px;
+}
+
+.admin-ops-workbench-button {
+  width: fit-content;
+}
+
+.admin-ops-record-workbench-panel {
+  display: grid;
+  gap: 0.85rem;
+  max-height: 86vh;
+  overflow: auto;
+}
+
+.admin-ops-snapshot-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.admin-ops-snapshot-card {
+  display: grid;
+  gap: 0.35rem;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 16px;
+  padding: 0.85rem;
+  background: #ffffff;
+}
+
+.admin-ops-snapshot-card span {
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.admin-ops-snapshot-card strong {
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.admin-ops-snapshot-card p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.4;
+}
+
+.admin-ops-snapshot-card--action .admin-ops-clear-button {
+  width: fit-content;
+  margin-top: 0.15rem;
+}
+
+.admin-ops-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  padding: 0.65rem 0.75rem;
+  background: #f8fafc;
+}
+
+.admin-ops-pagination button {
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  border-radius: 999px;
+  padding: 0.4rem 0.72rem;
+  background: #ffffff;
+  color: #1d4ed8;
+  font-weight: 850;
+}
+
+.admin-ops-pagination button:disabled {
+  cursor: not-allowed;
+  border-color: rgba(100, 116, 139, 0.18);
+  color: #94a3b8;
+}
+
+.admin-ops-pagination span {
+  color: #475569;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+@media (max-width: 1100px) {
+  .admin-ops-snapshot-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-ops-snapshot-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+.admin-ops-record-workbench-panel .admin-ops-table--dense {
+  min-width: 900px;
+  table-layout: fixed;
+}
+
+.admin-ops-record-workbench-panel .admin-ops-table--dense th:nth-child(1),
+.admin-ops-record-workbench-panel .admin-ops-table--dense td:nth-child(1) {
+  width: 15%;
+}
+
+.admin-ops-record-workbench-panel .admin-ops-table--dense th:nth-child(2),
+.admin-ops-record-workbench-panel .admin-ops-table--dense td:nth-child(2) {
+  width: 39%;
+}
+
+.admin-ops-record-workbench-panel .admin-ops-table--dense th:nth-child(3),
+.admin-ops-record-workbench-panel .admin-ops-table--dense td:nth-child(3) {
+  width: 24%;
+}
+
+.admin-ops-record-workbench-panel .admin-ops-table--dense th:nth-child(4),
+.admin-ops-record-workbench-panel .admin-ops-table--dense td:nth-child(4) {
+  width: 22%;
+}
+
+.admin-ops-record-workbench-panel .admin-ops-table-stack small {
+  line-height: 1.35;
+}
+
+
+.admin-ops-source-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+}
+
+
+.admin-ops-search-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.admin-ops-search-control input {
+  width: 100%;
+  padding-right: 2.4rem;
+}
+
+.admin-ops-search-submit {
+  position: absolute;
+  right: 0.35rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #1d4ed8;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 900;
+  line-height: 1;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.admin-ops-search-submit:hover:not(:disabled) {
+  border-color: rgba(37, 99, 235, 0.38);
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+.admin-ops-search-submit:disabled {
+  cursor: not-allowed;
+  border-color: rgba(100, 116, 139, 0.18);
+  background: #f8fafc;
+  color: #94a3b8;
+}
