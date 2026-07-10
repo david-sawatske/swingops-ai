@@ -746,10 +746,6 @@
   line-height: 1.4;
 }
 
-.admin-ops-snapshot-card--action .admin-ops-clear-button {
-  width: fit-content;
-  margin-top: 0.15rem;
-}
 
 .admin-ops-pagination {
   display: flex;
@@ -875,4 +871,144 @@
   border-color: rgba(100, 116, 139, 0.18);
   background: #f8fafc;
   color: #94a3b8;
+}
+
+
+.admin-ops-card-action-button {
+  align-self: flex-start;
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  border-radius: 999px;
+  margin-top: auto;
+  padding: 0.42rem 0.72rem;
+  background: #ffffff;
+  color: #1d4ed8;
+  cursor: pointer;
+  font-weight: 850;
+}
+
+.admin-ops-card-action-button:hover {
+  border-color: rgba(37, 99, 235, 0.4);
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+
+.admin-ops-metric-card,
+.admin-ops-snapshot-card {
+  display: flex;
+  flex-direction: column;
+}
+
+
+.admin-ops-insight-tabs-card {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 18px;
+  padding: 1rem;
+  background: #ffffff;
+}
+
+.admin-ops-insight-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.admin-ops-insight-tab {
+  border: 1px solid rgba(100, 116, 139, 0.22);
+  border-radius: 999px;
+  padding: 0.45rem 0.72rem;
+  background: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  font-weight: 850;
+}
+
+.admin-ops-insight-tab:hover {
+  border-color: rgba(37, 99, 235, 0.32);
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.admin-ops-insight-tab--active {
+  border-color: rgba(37, 99, 235, 0.42);
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.admin-ops-insight-card {
+  display: grid;
+  gap: 0.9rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 16px;
+  padding: 1rem;
+  background: #f8fafc;
+}
+
+.admin-ops-insight-card__header {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.admin-ops-insight-card__header span {
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.admin-ops-insight-card__header h4 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.2rem;
+}
+
+.admin-ops-insight-card__header p {
+  margin: 0;
+  color: #475569;
+}
+
+.admin-ops-insight-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.admin-ops-insight-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 12px;
+  padding: 0.65rem 0.75rem;
+  background: #ffffff;
+}
+
+.admin-ops-insight-row span {
+  color: #475569;
+  font-weight: 800;
+}
+
+.admin-ops-insight-row strong {
+  color: #0f172a;
+  font-weight: 900;
+}
+
+.admin-ops-insight-row small {
+  grid-column: 1 / -1;
+  color: #64748b;
+  font-weight: 700;
+}
+
+
+.admin-ops-ai-ready-activity-note {
+  margin: 0.45rem 0 0;
+  padding: 0;
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 750;
+  text-align: center;
 }

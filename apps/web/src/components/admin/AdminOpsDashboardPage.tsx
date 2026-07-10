@@ -17,6 +17,8 @@ type AdminOpsMetric = {
   label: string;
   value: string | number;
   detail: string;
+  actionLabel?: string;
+  onAction?: () => void;
 };
 
 type AdminOpsDashboardPageProps = {
@@ -113,6 +115,15 @@ function AdminOpsMetricCard({ metric }: { metric: AdminOpsMetric }) {
       <span>{metric.label}</span>
       <strong>{metric.value}</strong>
       <p>{metric.detail}</p>
+      {metric.actionLabel && metric.onAction ? (
+        <button
+          className="admin-ops-card-action-button"
+          onClick={metric.onAction}
+          type="button"
+        >
+          {metric.actionLabel}
+        </button>
+      ) : null}
     </article>
   );
 }
@@ -157,6 +168,14 @@ function formatShortId(value: string | null | undefined) {
   return `${value.slice(0, 6)}…${value.slice(-4)}`;
 }
 
+function formatAdminOpsPercent(numerator: number, denominator: number) {
+  if (denominator <= 0) {
+    return "0%";
+  }
+
+  return `${Math.round((numerator / denominator) * 100)}%`;
+}
+
 function AdminOpsStatusBadge({
   children,
   tone = "neutral",
@@ -197,6 +216,9 @@ type AiReadySortOption =
   | "STATUS"
   | "SOURCE";
 type AiReadyDateFilter = "ALL" | "TODAY" | "LAST_7_DAYS" | "LAST_30_DAYS";
+type AiReadyInsightTab =
+  | "MISSING_FIELDS"
+  | "SOURCE_QUALITY";
 
 const AI_READY_STATUS_FILTERS: {
   label: string;
@@ -238,6 +260,14 @@ const AI_READY_DATE_FILTERS: {
   { label: "Today", value: "TODAY" },
   { label: "Last 7 days", value: "LAST_7_DAYS" },
   { label: "Last 30 days", value: "LAST_30_DAYS" },
+];
+
+const AI_READY_INSIGHT_TABS: {
+  label: string;
+  value: AiReadyInsightTab;
+}[] = [
+  { label: "Missing fields", value: "MISSING_FIELDS" },
+  { label: "Source quality", value: "SOURCE_QUALITY" },
 ];
 
 const AI_READY_RECORD_PREVIEW_LIMIT = 4;
@@ -469,6 +499,8 @@ function AdminOpsAiReadyRecordsPanel() {
     useState<AiReadyReadinessFilter>("ALL");
   const [dateFilter, setDateFilter] = useState<AiReadyDateFilter>("ALL");
   const [sortOption, setSortOption] = useState<AiReadySortOption>("NEWEST");
+  const [insightTab, setInsightTab] =
+    useState<AiReadyInsightTab>("MISSING_FIELDS");
   const [recordOffset, setRecordOffset] = useState(0);
   const [isRecordWorkbenchOpen, setIsRecordWorkbenchOpen] = useState(false);
 
@@ -495,7 +527,6 @@ function AdminOpsAiReadyRecordsPanel() {
     readinessFilter !== "ALL",
     dateFilter !== "ALL",
     sortOption !== "NEWEST",
-
   ].filter(Boolean).length;
 
   async function loadSummary() {
@@ -565,6 +596,30 @@ function AdminOpsAiReadyRecordsPanel() {
     statusFilter,
   ]);
 
+  function openRecordWorkbenchWithFilters({
+    status = "ACTIVE",
+    source = "ALL",
+    readiness = "ALL",
+    date = "ALL",
+    sort = "NEWEST",
+  }: {
+    status?: AiReadyStatusFilter;
+    source?: string;
+    readiness?: AiReadyReadinessFilter;
+    date?: AiReadyDateFilter;
+    sort?: AiReadySortOption;
+  } = {}) {
+    setSearchDraft("");
+    setSearchQuery("");
+    setStatusFilter(status);
+    setSourceFilter(source);
+    setReadinessFilter(readiness);
+    setDateFilter(date);
+    setSortOption(sort);
+    setRecordOffset(0);
+    setIsRecordWorkbenchOpen(true);
+  }
+
   function submitSearchQuery() {
     const nextSearchQuery = searchDraft.trim();
 
@@ -615,37 +670,48 @@ function AdminOpsAiReadyRecordsPanel() {
         <span className="model-route-card__eyebrow">AI-ready records</span>
         <h3 id="admin-ops-records-title">Created record visibility</h3>
         <p>
-          Shows operational snapshots across the full AI-ready record store. Open
-          the explorer to filter, sort, group, and audit individual records.
+          Prioritize records that need review, inspect missing fields, and open
+          focused workbench views for the records that need action.
         </p>
       </div>
 
       <div className="admin-ops-mini-metric-grid">
         <AdminOpsMetricCard
           metric={{
+            actionLabel: "Open active records",
             detail: "Records that are still active in the workflow lifecycle.",
             label: "Active records",
+            onAction: () => openRecordWorkbenchWithFilters(),
             value: aiReadySummary?.active ?? "—",
           }}
         />
         <AdminOpsMetricCard
           metric={{
+            actionLabel: "Review records",
             detail: "Active records that should not move forward without review.",
             label: "Need review",
+            onAction: () =>
+              openRecordWorkbenchWithFilters({ readiness: "REVIEW_NEEDED" }),
             value: aiReadySummary?.reviewNeeded ?? "—",
           }}
         />
         <AdminOpsMetricCard
           metric={{
+            actionLabel: "Open ready records",
             detail: "Active records marked ready for grounding workflows.",
             label: "Grounding-ready",
+            onAction: () =>
+              openRecordWorkbenchWithFilters({ readiness: "GROUNDING_READY" }),
             value: aiReadySummary?.ragReady ?? "—",
           }}
         />
         <AdminOpsMetricCard
           metric={{
+            actionLabel: "View history",
             detail: "Historical intake candidates replaced by final records.",
             label: "Replaced history",
+            onAction: () =>
+              openRecordWorkbenchWithFilters({ status: "SUPERSEDED" }),
             value: aiReadySummary?.superseded ?? "—",
           }}
         />
@@ -658,105 +724,114 @@ function AdminOpsAiReadyRecordsPanel() {
       {summaryError ? <p className="admin-ops-error">{summaryError}</p> : null}
 
       {aiReadySummary ? (
-        <div className="admin-ops-snapshot-grid">
-          <article className="admin-ops-snapshot-card">
-            <span>Review workload</span>
-            <strong>
-              {aiReadySummary.reviewNeeded === 0
-                ? "No active blockers"
-                : `${aiReadySummary.reviewNeeded} need review`}
-            </strong>
-            <p>
-              {aiReadySummary.reviewNeeded === 0
-                ? "Latest active records are clear for downstream grounding."
-                : "Open the explorer to inspect records that still need judgment."}
-            </p>
-          </article>
+        <div className="admin-ops-insight-tabs-card">
+          <div
+            aria-label="AI-ready record insight tabs"
+            className="admin-ops-insight-tabs"
+            role="tablist"
+          >
+            {AI_READY_INSIGHT_TABS.map((tab) => (
+              <button
+                aria-selected={insightTab === tab.value}
+                className={
+                  insightTab === tab.value
+                    ? "admin-ops-insight-tab admin-ops-insight-tab--active"
+                    : "admin-ops-insight-tab"
+                }
+                key={tab.value}
+                onClick={() => setInsightTab(tab.value)}
+                role="tab"
+                type="button"
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
-          <article className="admin-ops-snapshot-card">
-            <span>Missing field hotspots</span>
-            <strong>
-              {aiReadySummary.missingFieldHotspots[0]
-                ? `${aiReadySummary.missingFieldHotspots[0].label} · ${aiReadySummary.missingFieldHotspots[0].count}`
-                : "No hotspots"}
-            </strong>
-            <p>
-              {aiReadySummary.missingFieldHotspots.length > 0
-                ? aiReadySummary.missingFieldHotspots
-                    .slice(0, 3)
-                    .map((entry) => `${entry.label}: ${entry.count}`)
-                    .join(" · ")
-                : "No active records reported missing fields."}
-            </p>
-          </article>
+          <article className="admin-ops-insight-card">
+            {insightTab === "MISSING_FIELDS" ? (
+              <>
+                <div className="admin-ops-insight-card__header">
+                  <span>Missing field hotspots</span>
+                  <p>
+                    Fields most often blocking active records from becoming
+                    complete.
+                  </p>
+                </div>
 
-          <article className="admin-ops-snapshot-card">
-            <span>Source quality</span>
-            <strong>
-              {aiReadySummary.sourceQuality[0]
-                ? `${aiReadySummary.sourceQuality[0].sourceType} · ${aiReadySummary.sourceQuality[0].active} active`
-                : "No source activity"}
-            </strong>
-            <p>
-              {aiReadySummary.sourceQuality.length > 0
-                ? aiReadySummary.sourceQuality
-                    .slice(0, 2)
-                    .map(
-                      (entry) =>
-                        `${entry.sourceType}: ${entry.reviewNeeded} review / ${entry.groundingReady} ready`,
-                    )
-                    .join(" · ")
-                : "Run the workflow to create source quality signals."}
-            </p>
-          </article>
+                <div className="admin-ops-insight-list">
+                  {aiReadySummary.missingFieldHotspots.length > 0 ? (
+                    aiReadySummary.missingFieldHotspots
+                      .slice(0, 5)
+                      .map((entry) => (
+                        <div className="admin-ops-insight-row" key={entry.label}>
+                          <span>{entry.label}</span>
+                          <strong>{entry.count}</strong>
+                        </div>
+                      ))
+                  ) : (
+                    <p className="admin-ops-muted">
+                      No active records reported missing fields.
+                    </p>
+                  )}
+                </div>
+              </>
+            ) : null}
 
-          <article className="admin-ops-snapshot-card">
-            <span>Category mix</span>
-            <strong>
-              {aiReadySummary.categoryMix[0]
-                ? `${aiReadySummary.categoryMix[0].label} · ${aiReadySummary.categoryMix[0].count}`
-                : "No active categories"}
-            </strong>
-            <p>
-              {aiReadySummary.categoryMix.length > 0
-                ? aiReadySummary.categoryMix
-                    .slice(0, 3)
-                    .map((entry) => `${entry.label}: ${entry.count}`)
-                    .join(" · ")
-                : "No active category mix is available yet."}
-            </p>
-          </article>
+            {insightTab === "SOURCE_QUALITY" ? (
+              <>
+                <div className="admin-ops-insight-card__header">
+                  <span>Source quality</span>
+                  <h4>
+                    {aiReadySummary.sourceQuality[0]
+                      ? `${aiReadySummary.sourceQuality[0].sourceType} · ${aiReadySummary.sourceQuality[0].active} active`
+                      : "No source activity"}
+                  </h4>
+                  <p>
+                    Source-level review and grounding readiness across active
+                    records.
+                  </p>
+                </div>
 
-          <article className="admin-ops-snapshot-card">
-            <span>Freshness</span>
-            <strong>
-              {aiReadySummary.freshness.newestCreatedAt
-                ? formatAdminOpsDate(aiReadySummary.freshness.newestCreatedAt)
-                : "No records yet"}
-            </strong>
-            <p>
-              Last 24h: {aiReadySummary.freshness.last24Hours} · Last 7d:{" "}
-              {aiReadySummary.freshness.last7Days} · Last 30d:{" "}
-              {aiReadySummary.freshness.last30Days}
-            </p>
-          </article>
+                <div className="admin-ops-insight-list">
+                  {aiReadySummary.sourceQuality.length > 0 ? (
+                    aiReadySummary.sourceQuality.slice(0, 5).map((entry) => (
+                      <div className="admin-ops-insight-row" key={entry.sourceType}>
+                        <span>{entry.sourceType}</span>
+                        <strong>{entry.active} active</strong>
+                        <small>
+                          {formatAdminOpsPercent(entry.groundingReady, entry.active)} ready ·{" "}
+                          {formatAdminOpsPercent(entry.reviewNeeded, entry.active)} need review
+                        </small>
+                        <small>
+                          {entry.groundingReady} ready / {entry.reviewNeeded} review
+                        </small>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="admin-ops-muted">
+                      Run the workflow to create source quality signals.
+                    </p>
+                  )}
+                </div>
+              </>
+            ) : null}
 
-          <article className="admin-ops-snapshot-card admin-ops-snapshot-card--action">
-            <span>Explore records</span>
-            <strong>{aiReadySummary.total} total records</strong>
-            <p>
-              Search, filter, sort, group, page through records, and inspect
-              replaced record history.
-            </p>
-            <button
-              className="admin-ops-clear-button"
-              onClick={() => setIsRecordWorkbenchOpen(true)}
-              type="button"
-            >
-              Explore data
-            </button>
+
           </article>
         </div>
+      ) : null}
+
+      {aiReadySummary ? (
+        <p className="admin-ops-ai-ready-activity-note">
+          Record activity: newest AI-ready record created{" "}
+          {aiReadySummary.freshness.newestCreatedAt
+            ? formatAdminOpsDate(aiReadySummary.freshness.newestCreatedAt)
+            : "No records yet"}{" "}
+          · Created in last 24h: {aiReadySummary.freshness.last24Hours} · Last
+          7d: {aiReadySummary.freshness.last7Days} · Last 30d:{" "}
+          {aiReadySummary.freshness.last30Days}
+        </p>
       ) : null}
 
       {isRecordWorkbenchOpen ? (
@@ -773,7 +848,7 @@ function AdminOpsAiReadyRecordsPanel() {
                 </span>
                 <h4>Full AI-ready record workbench</h4>
                 <p>
-                  Filter, sort, group, page through records, and audit active
+                  Search, filter, sort, page through records, and audit active
                   records without treating replaced intake candidates as active
                   issues.
                 </p>
