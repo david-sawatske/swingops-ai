@@ -639,6 +639,200 @@ describe("review queue item routes", () => {
       await app.close();
     });
 
+    it("supersedes matching upstream AI-ready candidate records after human review creates the final record", async () => {
+      const app = buildApp();
+      const sourceText =
+        "Callaway Apex UW 19 degree Ventus Blue R condition 8.0 Average value $165 store 104";
+
+      const upstreamBatch = await prisma.intakeBatch.create({
+        data: {
+          name: "Upstream AI-ready candidate supersession batch",
+          sourceType: LEGACY_FREEFORM_NOTES_INTAKE_SOURCE_TYPE,
+          status: "NEEDS_REVIEW",
+          itemCount: 1,
+          items: {
+            create: {
+              rawText: `1) ${sourceText}`,
+              sourceRowNumber: 1,
+              status: "NEEDS_REVIEW"
+            }
+          }
+        },
+        include: {
+          items: true
+        }
+      });
+
+      const upstreamWorkflowRun = await prisma.workflowRun.create({
+        data: {
+          intakeBatchId: upstreamBatch.id,
+          workflowName: "multi-source-intake-demo",
+          status: "NEEDS_REVIEW",
+          startedAt: new Date()
+        }
+      });
+
+      const upstreamAiReadyCandidate = await prisma.aiReadyIntakeRecord.create({
+        data: {
+          intakeBatchId: upstreamBatch.id,
+          intakeItemId: upstreamBatch.items[0]!.id,
+          workflowRunId: upstreamWorkflowRun.id,
+          sourceRecordId: "upstream-callaway-apex-uw",
+          sourceType: "FREE_TEXT",
+          sourceName: "Upstream source intake candidate",
+          rawText: `1) ${sourceText}`,
+          cleanedText: sourceText,
+          normalizedJson: {
+            id: "upstream-callaway-apex-uw",
+            sourceType: "FREE_TEXT",
+            normalizedText: sourceText,
+            brand: "Callaway",
+            productLine: null,
+            category: null,
+            shaftFlex: null,
+            conditionGrade: "8.0 Average",
+            tradeInValue: 165,
+            reviewNeeded: true,
+            missingFields: ["productLine", "category", "shaftFlex"]
+          },
+          status: "NEEDS_REVIEW",
+          reviewNeeded: true,
+          embeddingReady: false,
+          ragReady: false
+        }
+      });
+
+      const finalBatch = await prisma.intakeBatch.create({
+        data: {
+          name: "Guarded workflow final review batch",
+          sourceType: LEGACY_FREEFORM_NOTES_INTAKE_SOURCE_TYPE,
+          status: "NEEDS_REVIEW",
+          itemCount: 1,
+          items: {
+            create: {
+              rawText: sourceText,
+              sourceRowNumber: 1,
+              status: "NEEDS_REVIEW"
+            }
+          }
+        },
+        include: {
+          items: true
+        }
+      });
+
+      const finalWorkflowRun = await prisma.workflowRun.create({
+        data: {
+          intakeBatchId: finalBatch.id,
+          workflowName: "end-to-end-agentic-trade-in-demo",
+          status: "NEEDS_REVIEW",
+          startedAt: new Date()
+        }
+      });
+
+      const finalReviewQueueItem = await prisma.reviewQueueItem.create({
+        data: {
+          workflowRunId: finalWorkflowRun.id,
+          intakeItemId: finalBatch.items[0]!.id,
+          reason: "MISSING_REQUIRED_FIELDS",
+          status: "OPEN",
+          originalText: sourceText,
+          proposedGolfClubJson: {
+            brand: "Callaway",
+            productLine: null,
+            category: null,
+            shaftFlex: null,
+            conditionGrade: "8.0 Average",
+            tradeInValue: 165,
+            missingFields: ["productLine", "category", "shaftFlex"]
+          }
+        }
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: `/review-queue-items/${finalReviewQueueItem.id}/resolve-with-corrections`,
+        payload: {
+          reviewerNotes: "Human approved final Callaway Apex UW record.",
+          correctedRecord: {
+            brand: "Callaway",
+            productLine: "Apex UW",
+            category: "FAIRWAY_WOOD",
+            shaftFlex: "REGULAR",
+            conditionGrade: "8.0 Average",
+            demoValue: 165
+          },
+          learningEvents: [
+            {
+              fieldName: "category",
+              rawTextMatch: "Apex UW 19 degree",
+              correctedValue: "Fairway Wood",
+              evidenceText: sourceText
+            }
+          ]
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.aiReadyIntakeRecord).toMatchObject({
+        status: "READY_FOR_RAG",
+        reviewNeeded: false,
+        ragReady: true
+      });
+
+      const supersededCandidate =
+        await prisma.aiReadyIntakeRecord.findUniqueOrThrow({
+          where: {
+            id: upstreamAiReadyCandidate.id
+          }
+        });
+
+      expect(supersededCandidate.status).toBe("SUPERSEDED");
+      expect(supersededCandidate.reviewNeeded).toBe(false);
+      expect(supersededCandidate.ragReady).toBe(false);
+      expect(supersededCandidate.supersededAt).not.toBeNull();
+      expect(supersededCandidate.supersededByAiReadyIntakeRecordId).toBe(
+        body.aiReadyIntakeRecord.id
+      );
+      expect(supersededCandidate.supersededReason).toContain(
+        finalReviewQueueItem.id
+      );
+
+      const supersededListResponse = await app.inject({
+        method: "GET",
+        url: "/ai-ready-intake-records?status=SUPERSEDED"
+      });
+
+      expect(supersededListResponse.statusCode).toBe(200);
+
+      const supersededListBody = supersededListResponse.json();
+      const serializedSupersededCandidate = supersededListBody.records.find(
+        (record: { id: string }) => record.id === upstreamAiReadyCandidate.id
+      );
+
+      expect(serializedSupersededCandidate).toMatchObject({
+        id: upstreamAiReadyCandidate.id,
+        status: "SUPERSEDED",
+        supersededByAiReadyIntakeRecordId: body.aiReadyIntakeRecord.id
+      });
+      expect(serializedSupersededCandidate.supersededAt).toEqual(
+        expect.any(String)
+      );
+      expect(serializedSupersededCandidate.supersededReason).toContain(
+        finalReviewQueueItem.id
+      );
+
+      await deleteWorkflowRun(finalWorkflowRun.id);
+      await deleteWorkflowRun(upstreamWorkflowRun.id);
+      await deleteIntakeBatch(finalBatch.id);
+      await deleteIntakeBatch(upstreamBatch.id);
+
+      await app.close();
+    });
+
     it("filters learning events for fields that were already present on the AI-ready record", async () => {
       const app = buildApp();
       const reviewQueueItem = await createReviewQueueItem();

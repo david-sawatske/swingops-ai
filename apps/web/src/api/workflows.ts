@@ -4,6 +4,9 @@ import type {
   ExecuteMultiSourceIntakeDemoRequest,
   ExecuteEndToEndAgenticTradeInDemoResponse,
   ExecuteMultiSourceIntakeDemoResponse,
+  GetAdminOpsNormalizationMatrixResponse,
+  GetAdminOpsSummaryResponse,
+  GetAdminOpsWorkflowConfigResponse,
   ListAiReadyIntakeRecordsResponse,
   ListReviewQueueItemsResponse,
   ListWorkflowRunsResponse,
@@ -103,9 +106,18 @@ export async function listAiReadyIntakeRecords(
   filters: {
     workflowRunId?: string;
     intakeBatchId?: string;
+    search?: string;
     sourceType?: string;
     status?: string;
+    activeOnly?: boolean;
+    reviewNeeded?: boolean;
+    ragReady?: boolean;
+    missingFields?: boolean;
+    createdFrom?: string;
+    createdTo?: string;
     limit?: number;
+    offset?: number;
+    sort?: string;
   } = {},
 ): Promise<ListAiReadyIntakeRecordsResponse> {
   const searchParams = new URLSearchParams();
@@ -122,5 +134,21 @@ export async function listAiReadyIntakeRecords(
     queryString
       ? `/ai-ready-intake-records?${queryString}`
       : "/ai-ready-intake-records",
+  );
+}
+
+export async function getAdminOpsSummary(): Promise<GetAdminOpsSummaryResponse> {
+  return apiGet<GetAdminOpsSummaryResponse>("/admin/ops/summary");
+}
+
+export async function getAdminOpsNormalizationMatrix(): Promise<GetAdminOpsNormalizationMatrixResponse> {
+  return apiGet<GetAdminOpsNormalizationMatrixResponse>(
+    "/admin/ops/normalization-matrix",
+  );
+}
+
+export async function getAdminOpsWorkflowConfig(): Promise<GetAdminOpsWorkflowConfigResponse> {
+  return apiGet<GetAdminOpsWorkflowConfigResponse>(
+    "/admin/ops/workflow-config",
   );
 }

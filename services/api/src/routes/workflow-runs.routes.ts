@@ -100,6 +100,7 @@ export async function workflowRunRoutes(app: FastifyInstance): Promise<void> {
       orderBy: {
         createdAt: "desc"
       },
+      take: 100,
       include: {
         intakeBatch: true,
         intakeItem: true,
@@ -119,18 +120,59 @@ export async function workflowRunRoutes(app: FastifyInstance): Promise<void> {
         toolCallLogs: {
           orderBy: {
             createdAt: "desc"
-          }
+          },
+          take: 1
         },
         reviewQueueItems: {
           select: {
             status: true
           }
+        },
+        _count: {
+          select: {
+            toolCallLogs: true,
+            reviewQueueItems: true
+          }
         }
       }
     });
 
+    const workflowRunIds = workflowRuns.map((run) => run.id);
+    const auditOnlyToolCallLogs =
+      workflowRunIds.length > 0
+        ? await prisma.toolCallLog.findMany({
+            where: {
+              workflowRunId: {
+                in: workflowRunIds
+              },
+              outputJson: {
+                path: ["previewOnly"],
+                equals: true
+              }
+            },
+            select: {
+              workflowRunId: true
+            }
+          })
+        : [];
+    const auditOnlyToolCallLogCountsByRunId = auditOnlyToolCallLogs.reduce<
+      Record<string, number>
+    >((counts, log) => {
+      if (log.workflowRunId) {
+        counts[log.workflowRunId] = (counts[log.workflowRunId] ?? 0) + 1;
+      }
+
+      return counts;
+    }, {});
+
     return {
-      workflowRuns: workflowRuns.map(serializeWorkflowRunListItem)
+      workflowRuns: workflowRuns.map((workflowRun) =>
+        serializeWorkflowRunListItem({
+          ...workflowRun,
+          auditOnlyToolCallLogCount:
+            auditOnlyToolCallLogCountsByRunId[workflowRun.id] ?? 0
+        })
+      )
     };
   });
 

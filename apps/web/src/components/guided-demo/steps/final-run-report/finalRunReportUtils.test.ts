@@ -155,6 +155,216 @@ describe("finalRunReportUtils", () => {
     expect(mergedRecord.transformationNotes).toContain("Step 4 resolved review item");
   });
 
+  it("marks a corrected record resolved when source text matches but the candidate started incomplete", () => {
+    const sourceText =
+      "Callaway Apex UW 19 degree Ventus Blue R condition 8.0 Average value $165 store 104";
+
+    const mergedRecord = buildMergedRecord({
+      candidateRecord: makeCandidateRecord({
+        id: "candidate-callaway-uw",
+        intakeItemId: null,
+        label: "Callaway",
+        brand: "Callaway",
+        productLine: null,
+        category: null,
+        shaftFlex: null,
+        conditionGrade: "8.0 Average",
+        tradeInValue: 165,
+        valueLabel: "$165",
+        status: "NEEDS_REVIEW",
+        reviewNeeded: true,
+        ragReady: false,
+        missingFields: ["productLine", "category", "shaftFlex"],
+        rawText: sourceText,
+        cleanedText: sourceText,
+      }),
+      index: 0,
+      result: makeResult(),
+      reviewItems: [
+        makeReviewItem({
+          intakeItemId: "intake-item-10",
+          status: "RESOLVED",
+          originalText: sourceText,
+          proposedGolfClubJson: {
+            id: "parsed_item_10",
+            brand: "Callaway",
+            productLine: null,
+            category: null,
+            shaftFlex: null,
+            conditionGrade: "8.0 Average",
+            tradeInValue: 165,
+            rawLine: sourceText,
+          },
+          reviewedTradeInRecord: {
+            id: "reviewed-record-10",
+            reviewQueueItemId: "review-item-1",
+            workflowRunId: "workflow-run-1",
+            intakeItemId: "intake-item-10",
+            originalText: sourceText,
+            correctedBrand: "Callaway",
+            correctedProductLine: "Apex UW",
+            correctedCategory: "FAIRWAY_WOOD",
+            correctedShaftFlex: "REGULAR",
+            correctedConditionGrade: "8.0 Average",
+            correctedDemoValue: 111,
+            demoValuationNote: null,
+            reviewerNotes: "Corrected utility wood details.",
+            approvedAt: "2026-06-30T00:00:00.000Z",
+            createdAt: "2026-06-30T00:00:00.000Z",
+            updatedAt: "2026-06-30T00:00:00.000Z",
+          },
+        }),
+      ],
+    });
+
+    expect(mergedRecord.finalReviewLabel).toBe("Resolved");
+    expect(mergedRecord.finalReviewDetail).toBe("Human correction applied");
+    expect(mergedRecord.status).toBe("READY_FOR_RAG");
+    expect(mergedRecord.reviewNeeded).toBe(false);
+    expect(mergedRecord.ragReady).toBe(true);
+    expect(mergedRecord.label).toBe("Callaway · Apex UW · Fairway Wood");
+    expect(mergedRecord.productLine).toBe("Apex UW");
+    expect(mergedRecord.category).toBe("FAIRWAY_WOOD");
+    expect(mergedRecord.shaftFlex).toBe("REGULAR");
+    expect(mergedRecord.tradeInValue).toBe(111);
+  });
+
+  it("still resolves a corrected record when persisted intake ids differ but source text matches", () => {
+    const sourceText =
+      "Callaway Apex UW 19 degree Ventus Blue R condition 8.0 Average value $165 store 104";
+
+    const mergedRecord = buildMergedRecord({
+      candidateRecord: makeCandidateRecord({
+        id: "candidate-callaway-uw",
+        intakeItemId: "step-2-intake-item-10",
+        label: "Callaway",
+        brand: "Callaway",
+        productLine: null,
+        category: null,
+        shaftFlex: null,
+        conditionGrade: "8.0 Average",
+        tradeInValue: 165,
+        valueLabel: "$165",
+        status: "NEEDS_REVIEW",
+        reviewNeeded: true,
+        ragReady: false,
+        missingFields: ["productLine", "category", "shaftFlex"],
+        rawText: sourceText,
+        cleanedText: sourceText,
+      }),
+      index: 0,
+      result: makeResult(),
+      reviewItems: [
+        makeReviewItem({
+          intakeItemId: "step-3-review-intake-item-10",
+          status: "RESOLVED",
+          originalText: sourceText,
+          proposedGolfClubJson: {
+            id: "parsed_item_10",
+            brand: "Callaway",
+            productLine: null,
+            category: null,
+            shaftFlex: null,
+            conditionGrade: "8.0 Average",
+            tradeInValue: 165,
+            rawLine: sourceText,
+          },
+          reviewedTradeInRecord: {
+            id: "reviewed-record-10",
+            reviewQueueItemId: "review-item-1",
+            workflowRunId: "workflow-run-1",
+            intakeItemId: "step-3-review-intake-item-10",
+            originalText: sourceText,
+            correctedBrand: "Callaway",
+            correctedProductLine: "Apex UW",
+            correctedCategory: "FAIRWAY_WOOD",
+            correctedShaftFlex: "REGULAR",
+            correctedConditionGrade: "8.0 Average",
+            correctedDemoValue: 111,
+            demoValuationNote: null,
+            reviewerNotes: "Corrected utility wood details.",
+            approvedAt: "2026-06-30T00:00:00.000Z",
+            createdAt: "2026-06-30T00:00:00.000Z",
+            updatedAt: "2026-06-30T00:00:00.000Z",
+          },
+        }),
+      ],
+    });
+
+    expect(mergedRecord.finalReviewLabel).toBe("Resolved");
+    expect(mergedRecord.status).toBe("READY_FOR_RAG");
+    expect(mergedRecord.reviewNeeded).toBe(false);
+    expect(mergedRecord.label).toBe("Callaway · Apex UW · Fairway Wood");
+  });
+
+  it("matches corrected records when the candidate source text includes a leading row number", () => {
+    const sourceText =
+      "Callaway Apex UW 19 degree Ventus Blue R condition 8.0 Average value $165 store 104";
+
+    const mergedRecord = buildMergedRecord({
+      candidateRecord: makeCandidateRecord({
+        id: "candidate-callaway-uw",
+        intakeItemId: "step-2-intake-item-10",
+        label: "Callaway",
+        brand: "Callaway",
+        productLine: null,
+        category: null,
+        shaftFlex: null,
+        conditionGrade: "8.0 Average",
+        tradeInValue: 165,
+        valueLabel: "$165",
+        status: "NEEDS_REVIEW",
+        reviewNeeded: true,
+        ragReady: false,
+        missingFields: ["productLine", "category", "shaftFlex"],
+        rawText: `10) ${sourceText}`,
+        cleanedText: "Callaway | 8.0 Average | value 165 | store 104",
+      }),
+      index: 0,
+      result: makeResult(),
+      reviewItems: [
+        makeReviewItem({
+          intakeItemId: "step-3-review-intake-item-10",
+          status: "RESOLVED",
+          originalText: sourceText,
+          proposedGolfClubJson: {
+            id: "parsed_item_10",
+            brand: "Callaway",
+            productLine: null,
+            category: null,
+            shaftFlex: null,
+            conditionGrade: "8.0 Average",
+            tradeInValue: 165,
+            rawLine: sourceText,
+          },
+          reviewedTradeInRecord: {
+            id: "reviewed-record-10",
+            reviewQueueItemId: "review-item-1",
+            workflowRunId: "workflow-run-1",
+            intakeItemId: "step-3-review-intake-item-10",
+            originalText: sourceText,
+            correctedBrand: "Callaway",
+            correctedProductLine: "Apex UW",
+            correctedCategory: "FAIRWAY_WOOD",
+            correctedShaftFlex: "REGULAR",
+            correctedConditionGrade: "8.0 Average",
+            correctedDemoValue: 165,
+            demoValuationNote: null,
+            reviewerNotes: "Corrected utility wood details.",
+            approvedAt: "2026-06-30T00:00:00.000Z",
+            createdAt: "2026-06-30T00:00:00.000Z",
+            updatedAt: "2026-06-30T00:00:00.000Z",
+          },
+        }),
+      ],
+    });
+
+    expect(mergedRecord.finalReviewLabel).toBe("Resolved");
+    expect(mergedRecord.status).toBe("READY_FOR_RAG");
+    expect(mergedRecord.reviewNeeded).toBe(false);
+    expect(mergedRecord.label).toBe("Callaway · Apex UW · Fairway Wood");
+  });
+
   it("keeps an open review item marked as needing review", () => {
     const mergedRecord = buildMergedRecord({
       candidateRecord: makeCandidateRecord({

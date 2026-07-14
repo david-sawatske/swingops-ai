@@ -169,18 +169,25 @@ export function serializeWorkflowRunListItem(run: {
   reviewQueueItems: {
     status: string;
   }[];
+  _count?: {
+    toolCallLogs: number;
+    reviewQueueItems: number;
+  };
+  auditOnlyToolCallLogCount?: number;
 }) {
   const openReviewQueueItemCount = run.reviewQueueItems.filter(
     (item) => item.status === "OPEN" || item.status === "IN_REVIEW"
   ).length;
-  const auditOnlyToolCallLogCount = run.toolCallLogs.filter(
-    (log) =>
-      typeof log.outputJson === "object" &&
-      log.outputJson !== null &&
-      !Array.isArray(log.outputJson) &&
-      "previewOnly" in log.outputJson &&
-      log.outputJson.previewOnly === true
-  ).length;
+  const auditOnlyToolCallLogCount =
+    run.auditOnlyToolCallLogCount ??
+    run.toolCallLogs.filter(
+      (log) =>
+        typeof log.outputJson === "object" &&
+        log.outputJson !== null &&
+        !Array.isArray(log.outputJson) &&
+        "previewOnly" in log.outputJson &&
+        log.outputJson.previewOnly === true
+    ).length;
 
   return {
     ...serializeWorkflowRun(run),
@@ -192,9 +199,10 @@ export function serializeWorkflowRunListItem(run: {
     latestToolCallLog: run.toolCallLogs[0]
       ? serializeToolCallLog(run.toolCallLogs[0])
       : null,
-    totalToolCallLogCount: run.toolCallLogs.length,
+    totalToolCallLogCount: run._count?.toolCallLogs ?? run.toolCallLogs.length,
     auditOnlyToolCallLogCount,
-    totalReviewQueueItemCount: run.reviewQueueItems.length,
+    totalReviewQueueItemCount:
+      run._count?.reviewQueueItems ?? run.reviewQueueItems.length,
     openReviewQueueItemCount
   };
 }

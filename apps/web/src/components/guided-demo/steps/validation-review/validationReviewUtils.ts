@@ -372,59 +372,39 @@ export function findMatchingReviewItem(input: {
   usedReviewItemIds: Set<string>;
 }) {
   const recordIdentity = getRecordIdentity(input.parsedRecord);
-  const brand = normalizeComparable(getFirstString(input.parsedRecord, ["brand"]));
-  const productLine = normalizeComparable(
-    getFirstString(input.parsedRecord, ["productLine", "model", "title"]),
-  );
-
-  const directMatch = input.reviewItems.find((reviewItem) => {
-    if (input.usedReviewItemIds.has(reviewItem.id)) {
-      return false;
-    }
-
-    const proposedRecord = getProposedRecord(reviewItem);
-    const proposedIdentity = getRecordIdentity(proposedRecord ?? {});
-    const proposedBrand = normalizeComparable(getFirstString(proposedRecord, ["brand"]));
-    const proposedProductLine = normalizeComparable(
-      getFirstString(proposedRecord, ["productLine", "model", "title"]),
-    );
-    const originalText = normalizeComparable(asRecord(reviewItem)?.originalText);
-
-    if (recordIdentity && proposedIdentity && recordIdentity === proposedIdentity) {
-      return true;
-    }
-
-    if (brand && productLine && proposedBrand === brand && proposedProductLine === productLine) {
-      return true;
-    }
-
-    return Boolean(
-      originalText &&
-        ((brand && originalText.includes(brand)) ||
-          (productLine && originalText.includes(productLine))),
-    );
-  });
-
-  if (directMatch) {
-    return directMatch;
-  }
-
-  const missingFields = getMissingFields({
-    parsedRecord: input.parsedRecord,
-    reviewItem: null,
-  });
-  const confidence =
-    asNumber(input.parsedRecord.confidence) ?? asNumber(input.parsedRecord.confidenceScore);
-  const reviewNeeded = input.parsedRecord.reviewNeeded === true;
-  const likelyNeedsReview =
-    reviewNeeded || missingFields.length > 0 || (confidence !== null && confidence < 0.72);
-
-  if (!likelyNeedsReview) {
-    return null;
-  }
+  const intakeItemId = getFirstString(input.parsedRecord, ["intakeItemId"]);
+  const sourceRowNumber = asNumber(input.parsedRecord.sourceRowNumber);
 
   return (
-    input.reviewItems.find((reviewItem) => !input.usedReviewItemIds.has(reviewItem.id)) ?? null
+    input.reviewItems.find((reviewItem) => {
+      if (input.usedReviewItemIds.has(reviewItem.id)) {
+        return false;
+      }
+
+      const proposedRecord = getProposedRecord(reviewItem);
+      const proposedIdentity = getRecordIdentity(proposedRecord ?? {});
+      const reviewItemRecord = asRecord(reviewItem);
+      const reviewIntakeItem = asRecord(reviewItemRecord?.intakeItem);
+      const reviewSourceRowNumber = asNumber(reviewIntakeItem?.sourceRowNumber);
+
+      if (recordIdentity && proposedIdentity && recordIdentity === proposedIdentity) {
+        return true;
+      }
+
+      if (intakeItemId && reviewItem.intakeItemId && intakeItemId === reviewItem.intakeItemId) {
+        return true;
+      }
+
+      if (
+        sourceRowNumber !== null &&
+        reviewSourceRowNumber !== null &&
+        sourceRowNumber === reviewSourceRowNumber
+      ) {
+        return true;
+      }
+
+      return false;
+    }) ?? null
   );
 }
 

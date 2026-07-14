@@ -5,7 +5,8 @@ export type ReviewQueueItemStatus =
   | "OPEN"
   | "IN_REVIEW"
   | "RESOLVED"
-  | "DISMISSED";
+  | "DISMISSED"
+  | "SUPERSEDED";
 
 export type ReviewedTradeInRecord = {
   id: string;
@@ -53,6 +54,9 @@ export type ReviewQueueItem = {
   proposedGolfClubJson: unknown;
   reviewerNotes: string | null;
   resolvedAt: string | null;
+  supersededByReviewQueueItemId?: string | null;
+  supersededAt?: string | null;
+  supersededReason?: string | null;
   createdAt: string;
   updatedAt: string;
 };

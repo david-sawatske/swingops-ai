@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+import {
+  getFieldRepairSuggestionMatrixValidationErrors,
+  getGolfTermNormalizationMatrix
+} from "./golf-term-normalization.js";
+
 export const MAIN_RUN_FIELD_REPAIR_POLICY_KEY = "MAIN_RUN_FIELD_REPAIR";
 export const MAIN_RUN_FIELD_REPAIR_AGENT_NAME = "main-run-field-repair-agent";
 export const MAIN_RUN_FIELD_REPAIR_TASK_TYPE = "FIELD_NORMALIZATION" as const;
@@ -109,6 +114,12 @@ export type FieldRepairValidationResult =
       validationErrors: [];
     }
   | {
+      jsonValid: true;
+      validationPassed: false;
+      output: null;
+      validationErrors: string[];
+    }
+  | {
       jsonValid: false;
       validationPassed: false;
       output: null;
@@ -155,6 +166,7 @@ export function buildMainRunFieldRepairExecutionInput(
         "6.0 Poor"
       ]
     },
+    normalizationMatrix: getGolfTermNormalizationMatrix(),
     normalizationExamples: [
       {
         sourcePhrase: "s flex",
@@ -170,6 +182,18 @@ export function buildMainRunFieldRepairExecutionInput(
         sourcePhrase: "tour x stiff",
         fieldName: "shaftFlex",
         candidateValue: "TOUR_X_STIFF"
+      },
+      {
+        sourcePhrase: "shaft unknown",
+        fieldName: "shaftFlex",
+        candidateValue: null,
+        action: "BLOCK_REPAIR"
+      },
+      {
+        sourcePhrase: "UW 19 degree",
+        fieldName: "category",
+        candidateValue: null,
+        action: "ROUTE_TO_REVIEW"
       },
       {
         sourcePhrase: "condition avg",
@@ -199,6 +223,9 @@ export function buildMainRunFieldRepairExecutionInput(
       "For conditionGrade, candidateValue must be one of 9.5 Mint, 9.0 Above Average, 8.0 Average, 7.0 Below Average, 6.0 Poor.",
       "For category, candidateValue must be one of DRIVER, FAIRWAY_WOOD, HYBRID, IRON_SET, WEDGE, PUTTER.",
       "For tradeInValue, candidateValue must be a number.",
+      "Do not suggest a value when sourcePhrase contains negative evidence such as unknown, unclear, pending, not listed, ?, or tbd.",
+      "Do not map utility wood evidence such as UW or utility wood to WEDGE.",
+      "Only map single-letter R to REGULAR when the source phrase clearly identifies shaft-flex context.",
       "Low-confidence suggestions must keep reviewRequired true.",
       "Do not invent missing fields without evidence."
     ]
@@ -220,6 +247,22 @@ export function validateMainRunFieldRepairModelOutput(
         parsedOutput.error.issues,
         candidateJson
       )
+    };
+  }
+
+  const matrixValidationErrors = parsedOutput.data.suggestions.flatMap(
+    (suggestion, index) =>
+      getFieldRepairSuggestionMatrixValidationErrors(suggestion).map(
+        (message) => `suggestions.${index}: ${message}`
+      )
+  );
+
+  if (matrixValidationErrors.length > 0) {
+    return {
+      jsonValid: true,
+      validationPassed: false,
+      output: null,
+      validationErrors: matrixValidationErrors
     };
   }
 
