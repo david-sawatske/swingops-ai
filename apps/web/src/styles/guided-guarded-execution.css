@@ -8,24 +8,54 @@
 
 .guided-guarded-systems-strip article {
   display: grid;
-  gap: 0.75rem;
-  grid-template-columns: minmax(130px, 0.25fr) minmax(0, 1fr);
-  padding: 0.65rem 0;
+  gap: 1rem;
+  grid-template-columns: minmax(190px, 0.32fr) minmax(0, 1fr);
+  padding: 0.72rem 0;
 }
 
 .guided-guarded-systems-strip article + article {
   border-top: 1px solid rgba(39, 57, 44, 0.12);
 }
 
-.guided-guarded-systems-strip strong {
+.guided-guarded-system-heading,
+.guided-guarded-system-details {
+  display: grid;
+  gap: 0.22rem;
+}
+
+.guided-guarded-system-heading strong {
   color: #142417;
   font-size: 0.84rem;
 }
 
-.guided-guarded-systems-strip span {
+.guided-guarded-system-heading span {
+  color: rgba(20, 36, 23, 0.58);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.guided-guarded-system-details p {
   color: rgba(20, 36, 23, 0.7);
-  font-size: 0.86rem;
-  line-height: 1.4;
+  font-size: 0.84rem;
+  line-height: 1.42;
+  margin: 0;
+}
+
+.guided-guarded-system-details b {
+  color: rgba(20, 36, 23, 0.86);
+}
+
+.guided-guarded-system-details p + p {
+  color: rgba(20, 36, 23, 0.58);
+  font-size: 0.78rem;
+  margin-top: 0.08rem;
+}
+
+.guided-guarded-system-details p + p b {
+  color: rgba(20, 36, 23, 0.7);
 }
 
 .guided-guarded-run-form {

@@ -25,25 +25,26 @@ export function GuidedMessySourceIntakeStep({
         <span className="model-route-card__eyebrow">Step 1 · Messy Source Intake</span>
         <h3>What messy information is entering the workflow?</h3>
         <p>
-          This step starts with the kind of operational text a store team might actually
-          receive. The input does not need to be perfect. The workflow should preserve
-          the source meaning, extract usable fields, and keep uncertainty visible.
+          This step starts with user-provided operational text or an optional loaded
+          sample. The input does not need to be perfect. The deterministic parser
+          preserves the source meaning, extracts supported fields, and keeps missing or
+          uncertain information visible.
         </p>
 
         <div className="guided-step-mini-list" aria-label="Source intake explanation">
           <article>
             <strong>Input</strong>
-            <p>Customer messages, counter notes, malformed CSV rows, or system logs.</p>
+            <p>User-provided messages, counter notes, malformed CSV rows, system logs, or loaded samples.</p>
           </article>
 
           <article>
             <strong>Action</strong>
-            <p>Normalize Sources parses the text and identifies candidate trade-in fields.</p>
+            <p>Normalize Sources runs deterministic parsing and identifies supported candidate trade-in fields.</p>
           </article>
 
           <article>
             <strong>Output</strong>
-            <p>Structured records for Step 2, plus missing-field and review signals.</p>
+            <p>Persisted candidate records for Step 2, with missing-field and review signals preserved.</p>
           </article>
         </div>
 
@@ -62,9 +63,9 @@ export function GuidedMessySourceIntakeStep({
             <span className="model-route-card__eyebrow">Do the work</span>
             <h4>Stage source text and run normalization</h4>
             <p>
-              Add source content below, then run normalization. When the workflow
-              finishes, the guided demo moves to Step 2 so you can inspect the AI-ready
-              records it created.
+              Add source content below, then run normalization. When deterministic
+              parsing finishes, the guided workflow moves to Step 2 so you can inspect
+              the persisted candidate records it created.
             </p>
           </div>
         </div>

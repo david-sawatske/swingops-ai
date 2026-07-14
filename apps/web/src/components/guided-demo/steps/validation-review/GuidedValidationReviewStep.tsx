@@ -162,9 +162,11 @@ export function GuidedValidationReviewStep({
         </span>
         <h3>Which records need attention before the final report?</h3>
         <p>
-          After guarded execution, the workflow should show exactly what passed,
-          what still needs review, and which records need a human decision before
-          downstream use.
+          This step organizes the workflow evidence by record so you can see what
+          passed, what still needs review, and which records need a human decision
+          before final output. Deterministic validation identifies the issue.
+          Model-assisted and prior-review suggestions remain proposals until a reviewer
+          saves a correction.
         </p>
 
         <div className="guided-step-mini-list" aria-label="Validation and review explanation">
@@ -175,12 +177,18 @@ export function GuidedValidationReviewStep({
 
           <article>
             <strong>Action</strong>
-            <p>Group the evidence by record so the reviewer can see the work item, not just the trace.</p>
+            <p>
+              Group evidence by record, identify deterministic validation issues, and
+              present suggestions without treating them as approval.
+            </p>
           </article>
 
           <article>
             <strong>Output</strong>
-            <p>A run-scoped review checkpoint that explains what can move forward and what needs attention.</p>
+            <p>
+              A run-scoped checkpoint showing what can move forward, what needs human
+              attention, and which saved corrections became authoritative.
+            </p>
           </article>
         </div>
       </section>
@@ -314,7 +322,11 @@ export function GuidedValidationReviewStep({
                 <div>
                   <h4>Current review handoff</h4>
                   <p>
-                    The record cards make the review work visible before final reporting. Records that require human approval can be opened in the review queue and resolved through the controlled correction flow.
+                    The record cards make review work visible before final reporting.
+                    Records requiring human approval are resolved through the controlled
+                    correction flow. Suggestions remain proposals. Only a saved human
+                    correction becomes authoritative and writes reusable learning
+                    evidence.
                   </p>
                 </div>
                 <span>

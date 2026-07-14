@@ -7,6 +7,7 @@ import type {
 
 import { FinalAuditTrace } from "./FinalAuditTrace";
 import { FinalReadinessSummary } from "./FinalReadinessSummary";
+import { FinalRecordProvenance } from "./FinalRecordProvenance";
 import { FinalizedRecordsTable } from "./FinalizedRecordsTable";
 import { FinalWorkflowRecap } from "./FinalWorkflowRecap";
 import { ReviewChangesSummary } from "./ReviewChangesSummary";
@@ -16,6 +17,7 @@ import {
   getGroupedCorrectionSummaries,
   getRecordSummary,
   getRunSummaryText,
+  getSourceCandidateRecords,
 } from "./finalRunReportUtils";
 
 type GuidedFinalRunReportStepProps = {
@@ -35,13 +37,18 @@ export function GuidedFinalRunReportStep({
 }: GuidedFinalRunReportStepProps) {
   const finalSummary = result?.finalSummary ?? null;
   const qualitySummary = result?.workflowQualitySummary ?? null;
-  const candidateRecords = sourceIntakePersistedRecords.map(getRecordSummary);
+  const sourceCandidateRecords = getSourceCandidateRecords(
+    sourceIntakePersistedRecords,
+    currentRunAiReadyRecords,
+  );
+  const candidateRecords = sourceCandidateRecords.map(getRecordSummary);
   const finalRecords = currentRunAiReadyRecords.map(getRecordSummary);
   const mergedRecords =
     result && candidateRecords.length > 0
       ? candidateRecords.map((candidateRecord, index) =>
           buildMergedRecord({
             candidateRecord,
+            finalRecords,
             index,
             result,
             reviewItems: currentRunReviewQueueItems,
@@ -174,14 +181,16 @@ export function GuidedFinalRunReportStep({
               <div className="guided-final-section__header">
                 <h4>Finalized records</h4>
                 <p>
-                  This table shows the final form of each record after intake cleanup,
-                  guarded enrichment, valuation evidence, and human review corrections.
-                  The preview uses the same columns and layout as the Step 2 snapshot.
-                  Open the full table to see value ranges and how each record was finalized.
+                  This table shows the final form of each record using only the
+                  workflow evidence and saved review decisions that applied to that
+                  record. The preview uses the same columns and layout as the Step 2
+                  snapshot. Open the full table to see value ranges and how each record
+                  was finalized.
                 </p>
               </div>
 
               <FinalizedRecordsTable records={mergedRecords} />
+              <FinalRecordProvenance records={mergedRecords} />
             </section>
 
             <ReviewChangesSummary

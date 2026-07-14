@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type {
+  AiReadyIntakeRecord,
   ExecuteEndToEndAgenticTradeInDemoResponse,
   GlobalReviewQueueItem,
 } from "../../../../types/workflow";
@@ -9,12 +10,19 @@ import {
   buildMergedRecord,
   getCorrectionSummaries,
   getRecordSummary,
+  getSourceCandidateRecords,
 } from "./finalRunReportUtils";
 
 function makeCandidateRecord(overrides: Partial<RecordSummary> = {}): RecordSummary {
   return {
     id: "candidate-1",
     intakeItemId: "intake-item-1",
+    sourceRecordId: "source-record-1",
+    sourceName: "Free text",
+    sourceType: "FREE_TEXT",
+    supersededByAiReadyIntakeRecordId: null,
+    supersededAt: null,
+    supersededReason: null,
     label: "Titleist · TSR2 · Fairway Wood",
     brand: "Titleist",
     productLine: "TSR2",
@@ -35,10 +43,44 @@ function makeCandidateRecord(overrides: Partial<RecordSummary> = {}): RecordSumm
 
 function makeResult(
   valuationEvidenceByItem: unknown = [],
+  overrides: Partial<ExecuteEndToEndAgenticTradeInDemoResponse> = {},
 ): ExecuteEndToEndAgenticTradeInDemoResponse {
   return {
+    parsedItems: [
+      {
+        id: "parsed-item-1",
+        rawLine:
+          "Titleist TSR2 3w Stiff condition 8.0 Average value 145",
+        brand: "Titleist",
+        productLine: "TSR2",
+        model: "TSR2",
+        category: "FAIRWAY_WOOD",
+        loft: null,
+        clubNumber: "3",
+        shaftBrand: null,
+        shaftModel: null,
+        shaftFlex: "STIFF",
+        conditionGrade: "8.0 Average",
+        tradeInValue: 145,
+        conditionNotes: [],
+        accessoriesNotes: [],
+        uncertaintyNotes: [],
+        confidence: 0.94,
+        missingFields: [],
+      },
+    ],
+    knowledgeMatchesByItem: [],
+    inventoryMatchesByItem: [],
     valuationEvidenceByItem,
-  } as ExecuteEndToEndAgenticTradeInDemoResponse;
+    fieldRepairExecution: {
+      modelCallLogId: "model-call-1",
+      suggestions: [],
+      jsonValid: true,
+      validationPassed: true,
+      validationErrors: [],
+    },
+    ...overrides,
+  } as unknown as ExecuteEndToEndAgenticTradeInDemoResponse;
 }
 
 function makeReviewItem(
@@ -73,6 +115,22 @@ function makeReviewItem(
 }
 
 describe("finalRunReportUtils", () => {
+  it("keeps reviewed final records out of the Step 2 candidate lineage", () => {
+    const sourceCandidate = {
+      id: "source-candidate-1",
+    } as AiReadyIntakeRecord;
+    const reviewedFinalRecord = {
+      id: "reviewed-final-1",
+    } as AiReadyIntakeRecord;
+
+    expect(
+      getSourceCandidateRecords(
+        [sourceCandidate, reviewedFinalRecord],
+        [reviewedFinalRecord],
+      ),
+    ).toEqual([sourceCandidate]);
+  });
+
   it("keeps a clear candidate record ready when no review item exists", () => {
     const mergedRecord = buildMergedRecord({
       candidateRecord: makeCandidateRecord(),
@@ -483,6 +541,332 @@ describe("finalRunReportUtils", () => {
 
     expect(mergedRecord.missingFields).toEqual(["tradeInValue"]);
     expect(mergedRecord.status).toBe("NEEDS_REVIEW");
+  });
+
+  it("lists only source normalization and persistence when no other record evidence contributed", () => {
+    const mergedRecord = buildMergedRecord({
+      candidateRecord: makeCandidateRecord(),
+      index: 0,
+      result: makeResult(),
+      reviewItems: [],
+    });
+
+    expect(mergedRecord.provenanceEntries.map((entry) => entry.key)).toEqual([
+      "SOURCE_NORMALIZATION",
+      "PERSISTED_RECORD",
+    ]);
+    expect(mergedRecord.persistenceLabel).toBe("Finalized without review");
+  });
+
+  it("does not attribute evidence by array position when record identity does not match", () => {
+    const mergedRecord = buildMergedRecord({
+      candidateRecord: makeCandidateRecord({
+        id: "candidate-callaway",
+        intakeItemId: "intake-callaway",
+        sourceRecordId: "source-callaway",
+        label: "Callaway · Rogue ST Max · Driver",
+        brand: "Callaway",
+        productLine: "Rogue ST Max",
+        category: "DRIVER",
+        rawText:
+          "Callaway Rogue ST Max driver Stiff condition 8.0 Average",
+        cleanedText:
+          "Callaway Rogue ST Max driver Stiff condition 8.0 Average",
+        tradeInValue: null,
+        valueLabel: "—",
+      }),
+      index: 0,
+      result: makeResult(
+        [
+          {
+            parsedItemId: "parsed-item-1",
+            estimate: {
+              lowValue: 130,
+              highValue: 160,
+            },
+          },
+        ],
+        {
+          knowledgeMatchesByItem: [
+            {
+              parsedItemId: "parsed-item-1",
+              query: "Titleist TSR2 fairway wood",
+              search: {
+                query: "Titleist TSR2 fairway wood",
+                results: [
+                  {
+                    chunkId: "chunk-1",
+                    documentTitle: "Titleist reference",
+                    sourceName: "Seeded reference",
+                    chunkText: "Titleist TSR2 evidence.",
+                    chunkType: "PRODUCT",
+                    brand: "Titleist",
+                    productLine: "TSR2",
+                    category: "FAIRWAY_WOOD",
+                    score: 0.91,
+                    matchedTerms: ["Titleist", "TSR2"],
+                    scoringExplanation: [],
+                  },
+                ],
+                summary: "One unrelated reference match.",
+              },
+            },
+          ],
+          inventoryMatchesByItem: [
+            {
+              parsedItemId: "parsed-item-1",
+              lookup: {
+                productId: "titleist-product",
+                sku: "titleist-sku",
+                displayName: "Titleist TSR2 Fairway Wood",
+                brand: "Titleist",
+                productLine: "TSR2",
+                category: "FAIRWAY_WOOD",
+                year: 2022,
+                confidence: 0.94,
+                matchReasons: ["Unrelated record."],
+                similarProducts: [],
+              },
+            },
+          ],
+          fieldRepairExecution: {
+            modelCallLogId: "model-call-1",
+            suggestions: [
+              {
+                recordId: "parsed-item-1",
+                fieldName: "shaftFlex",
+                sourcePhrase: "Stiff",
+                candidateValue: "STIFF",
+                confidence: 0.9,
+                reason: "Unrelated record suggestion.",
+                reviewRequired: true,
+              },
+            ],
+            jsonValid: true,
+            validationPassed: true,
+            validationErrors: [],
+          },
+        },
+      ),
+      reviewItems: [],
+    });
+
+    expect(mergedRecord.valueLabel).toBe("—");
+    expect(mergedRecord.provenanceEntries.map((entry) => entry.key)).toEqual([
+      "SOURCE_NORMALIZATION",
+      "PERSISTED_RECORD",
+    ]);
+  });
+
+  it("lists knowledge, inventory, and valuation only when each system returned applicable evidence", () => {
+    const mergedRecord = buildMergedRecord({
+      candidateRecord: makeCandidateRecord(),
+      index: 0,
+      result: makeResult(
+        [
+          {
+            parsedItemId: "parsed-item-1",
+            estimate: {
+              productId: "product-1",
+              sku: "sku-1",
+              lowValue: 130,
+              highValue: 160,
+              currency: "USD",
+              confidence: "HIGH",
+              valueFactors: [],
+              adjustments: [],
+              reviewRequired: false,
+              reviewReasons: [],
+            },
+          },
+        ],
+        {
+          knowledgeMatchesByItem: [
+            {
+              parsedItemId: "parsed-item-1",
+              query: "Titleist TSR2 fairway wood",
+              search: {
+                query: "Titleist TSR2 fairway wood",
+                results: [
+                  {
+                    chunkId: "chunk-1",
+                    documentTitle: "Titleist product family",
+                    sourceName: "Seeded reference",
+                    chunkText: "TSR2 fairway wood reference.",
+                    chunkType: "PRODUCT",
+                    brand: "Titleist",
+                    productLine: "TSR2",
+                    category: "FAIRWAY_WOOD",
+                    score: 0.91,
+                    matchedTerms: ["Titleist", "TSR2"],
+                    scoringExplanation: [],
+                  },
+                ],
+                summary: "One reference match.",
+              },
+            },
+          ],
+          inventoryMatchesByItem: [
+            {
+              parsedItemId: "parsed-item-1",
+              lookup: {
+                productId: "product-1",
+                sku: "sku-1",
+                displayName: "Titleist TSR2 Fairway Wood",
+                brand: "Titleist",
+                productLine: "TSR2",
+                category: "FAIRWAY_WOOD",
+                year: 2022,
+                confidence: 0.94,
+                matchReasons: ["Brand and product line matched."],
+                similarProducts: [],
+              },
+            },
+          ],
+        },
+      ),
+      reviewItems: [],
+    });
+
+    expect(mergedRecord.provenanceEntries.map((entry) => entry.key)).toEqual([
+      "SOURCE_NORMALIZATION",
+      "KNOWLEDGE_EVIDENCE",
+      "INVENTORY_MATCH",
+      "VALUATION_EVIDENCE",
+      "PERSISTED_RECORD",
+    ]);
+  });
+
+  it("attributes a model suggestion only when its record id matches", () => {
+    const unrelatedRecord = buildMergedRecord({
+      candidateRecord: makeCandidateRecord(),
+      index: 0,
+      result: makeResult([], {
+        fieldRepairExecution: {
+          modelCallLogId: "model-call-1",
+          suggestions: [
+            {
+              recordId: "another-record",
+              fieldName: "shaftFlex",
+              sourcePhrase: "Stiff",
+              candidateValue: "STIFF",
+              confidence: 0.9,
+              reason: "Possible repair.",
+              reviewRequired: true,
+            },
+          ],
+          jsonValid: true,
+          validationPassed: true,
+          validationErrors: [],
+        },
+      }),
+      reviewItems: [],
+    });
+
+    expect(
+      unrelatedRecord.provenanceEntries.some(
+        (entry) => entry.key === "MODEL_SUGGESTION",
+      ),
+    ).toBe(false);
+
+    const matchingRecord = buildMergedRecord({
+      candidateRecord: makeCandidateRecord(),
+      index: 0,
+      result: makeResult([], {
+        fieldRepairExecution: {
+          modelCallLogId: "model-call-1",
+          suggestions: [
+            {
+              recordId: "parsed-item-1",
+              fieldName: "shaftFlex",
+              sourcePhrase: "Stiff",
+              candidateValue: "STIFF",
+              confidence: 0.9,
+              reason: "Possible repair.",
+              reviewRequired: true,
+            },
+          ],
+          jsonValid: true,
+          validationPassed: true,
+          validationErrors: [],
+        },
+      }),
+      reviewItems: [],
+    });
+
+    expect(
+      matchingRecord.provenanceEntries.some(
+        (entry) => entry.key === "MODEL_SUGGESTION",
+      ),
+    ).toBe(true);
+  });
+
+  it("shows a human-approved correction and active replacement record", () => {
+    const candidateRecord = makeCandidateRecord({
+      status: "SUPERSEDED",
+      supersededByAiReadyIntakeRecordId: "final-record-1",
+      supersededAt: "2026-07-14T00:00:00.000Z",
+      supersededReason: "Human review created the active final record.",
+    });
+    const finalRecord = makeCandidateRecord({
+      id: "final-record-1",
+      status: "READY_FOR_RAG",
+    });
+
+    const mergedRecord = buildMergedRecord({
+      candidateRecord,
+      finalRecords: [finalRecord],
+      index: 0,
+      result: makeResult(),
+      reviewItems: [
+        makeReviewItem({
+          status: "RESOLVED",
+          reviewedTradeInRecord: {
+            id: "reviewed-record-1",
+            reviewQueueItemId: "review-item-1",
+            workflowRunId: "workflow-run-1",
+            intakeItemId: "intake-item-1",
+            originalText:
+              "Titleist TSR2 3w Stiff condition 8.0 Average value 145",
+            correctedBrand: "Titleist",
+            correctedProductLine: "TSR2",
+            correctedCategory: "FAIRWAY_WOOD",
+            correctedShaftFlex: "STIFF",
+            correctedConditionGrade: "8.0 Average",
+            correctedDemoValue: 145,
+            demoValuationNote: null,
+            reviewerNotes: "Approved record.",
+            approvedAt: "2026-07-14T00:00:00.000Z",
+            createdAt: "2026-07-14T00:00:00.000Z",
+            updatedAt: "2026-07-14T00:00:00.000Z",
+          },
+          humanReviewLearningEvents: [
+            {
+              id: "learning-event-1",
+              reviewedTradeInRecordId: "reviewed-record-1",
+              reviewQueueItemId: "review-item-1",
+              workflowRunId: "workflow-run-1",
+              intakeItemId: "intake-item-1",
+              fieldName: "shaftFlex",
+              rawTextMatch: "Stiff",
+              proposedValue: "Stiff",
+              correctedValue: "Stiff",
+              evidenceText: "Reviewer approved Stiff.",
+              confidenceImpact: "HIGH",
+              reviewerNotes: null,
+              createdAt: "2026-07-14T00:00:00.000Z",
+            },
+          ],
+        }),
+      ],
+    });
+
+    expect(mergedRecord.provenanceEntries.map((entry) => entry.key)).toContain(
+      "HUMAN_CORRECTION",
+    );
+    expect(mergedRecord.persistenceLabel).toBe("Finalized after human review");
+    expect(mergedRecord.persistedRecordId).toBe("final-record-1");
+    expect(mergedRecord.replacedRecordId).toBe("candidate-1");
   });
 
   it("builds record summaries from normalized AI-ready intake records", () => {

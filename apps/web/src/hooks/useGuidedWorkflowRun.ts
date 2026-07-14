@@ -79,7 +79,6 @@ export function useGuidedWorkflowRun({
   }
 
   function upsertAiReadyIntakeRecord(record: AiReadyIntakeRecord) {
-    setPersistedAiReadyIntakeRecords((current) => upsertRecord(current, record));
     setCurrentRunAiReadyIntakeRecords((current) => upsertRecord(current, record));
   }
 

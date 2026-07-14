@@ -57,9 +57,10 @@ export function GuidedGuardedAgentExecutionStep({
         </span>
         <h3>How do AI-ready records become a guarded workflow run?</h3>
         <p>
-          The structured records from Step 2 are converted into workflow input. The agent
-          can then plan the run, route the model call, ground decisions with knowledge,
-          use read-only internal tools, and preserve an audit trail for review.
+          The structured records from Step 2 are converted into workflow input. The
+          workflow then plans the run, gathers separate knowledge, inventory, and
+          valuation evidence, routes only permitted repair work through the model
+          execution layer, and preserves an audit trail for review.
         </p>
 
         <div className="guided-step-mini-list" aria-label="Guarded execution explanation">
@@ -70,7 +71,7 @@ export function GuidedGuardedAgentExecutionStep({
 
           <article>
             <strong>Action</strong>
-            <p>Run a controlled agent workflow with model routing, grounding, tools, and validation.</p>
+            <p>Gather distinct knowledge, inventory, valuation, model-repair, and validation evidence.</p>
           </article>
 
           <article>
@@ -101,22 +102,96 @@ export function GuidedGuardedAgentExecutionStep({
           </div>
         </div>
 
-        <div className="guided-guarded-systems-strip" aria-label="Systems touched by the guarded workflow">
+        <div
+          className="guided-guarded-systems-strip"
+          aria-label="System contributions in the guarded workflow"
+        >
           <article>
-            <strong>Model router</strong>
-            <span>Selects the model path for parsing and reasoning.</span>
+            <div className="guided-guarded-system-heading">
+              <strong>Model execution layer</strong>
+              <span>Field repair</span>
+            </div>
+            <div className="guided-guarded-system-details">
+              <p>
+                <b>Implemented here:</b> Routes permitted field-repair work through the
+                configured provider, validates the response contract, and records
+                deterministic fallback evidence.
+              </p>
+              <p>
+                <b>Production connection:</b> Approved provider credentials, execution
+                policies, budgets, and model configurations.
+              </p>
+            </div>
           </article>
+
           <article>
-            <strong>Knowledge base</strong>
-            <span>Grounds product and trade-in policy decisions.</span>
+            <div className="guided-guarded-system-heading">
+              <strong>Seeded knowledge service</strong>
+              <span>Reference context</span>
+            </div>
+            <div className="guided-guarded-system-details">
+              <p>
+                <b>Implemented here:</b> Retrieves terminology and product-family evidence
+                from locally seeded reference documents.
+              </p>
+              <p>
+                <b>Production connection:</b> Authorized internal product knowledge,
+                catalog reference data, or another approved knowledge service.
+              </p>
+            </div>
           </article>
+
           <article>
-            <strong>Read-only tools</strong>
-            <span>Looks up inventory and valuation evidence safely.</span>
+            <div className="guided-guarded-system-heading">
+              <strong>Seeded product catalog</strong>
+              <span>Product matching</span>
+            </div>
+            <div className="guided-guarded-system-details">
+              <p>
+                <b>Implemented here:</b> Matches normalized records against a read-only
+                seeded catalog and returns product-identity evidence. It does not
+                represent live inventory quantities.
+              </p>
+              <p>
+                <b>Production connection:</b> A retailer product catalog, inventory
+                database, PIM, or ERP.
+              </p>
+            </div>
           </article>
+
           <article>
-            <strong>Review gate</strong>
-            <span>Escalates uncertain records before final approval.</span>
+            <div className="guided-guarded-system-heading">
+              <strong>Seeded valuation engine</strong>
+              <span>Trade-in range</span>
+            </div>
+            <div className="guided-guarded-system-details">
+              <p>
+                <b>Implemented here:</b> Produces estimated trade-in ranges using seeded
+                values and deterministic condition adjustments after product
+                identification.
+              </p>
+              <p>
+                <b>Production connection:</b> An authorized valuation guide, internal
+                pricing service, or historical transaction data.
+              </p>
+            </div>
+          </article>
+
+          <article>
+            <div className="guided-guarded-system-heading">
+              <strong>Validation and human review controls</strong>
+              <span>Final authority</span>
+            </div>
+            <div className="guided-guarded-system-details">
+              <p>
+                <b>Implemented here:</b> Applies deterministic validation, retry, and
+                review-routing rules. Saved human corrections remain authoritative.
+              </p>
+              <p>
+                <b>Production connection:</b> A broader operational approval,
+                exception-management, or case-management workflow.
+              </p>
+            </div>
           </article>
         </div>
 
@@ -171,8 +246,9 @@ export function GuidedGuardedAgentExecutionStep({
               <span className="model-route-card__eyebrow">Evidence created for Step 4</span>
               <h4>Guarded workflow evidence is ready</h4>
               <p>
-                The guarded workflow produced the model, grounding, tool, validation, and
-                reviewer-facing suggestions surfaced for Validation and Human Review.
+                The guarded workflow kept knowledge, inventory, valuation, model-repair,
+                validation, and reviewer-facing evidence separate for Validation and
+                Human Review.
               </p>
             </div>
 
