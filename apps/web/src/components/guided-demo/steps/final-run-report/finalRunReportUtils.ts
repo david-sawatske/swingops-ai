@@ -8,6 +8,7 @@ import type {
 
 import type {
   CorrectionSummary,
+  FinalRecordProvenanceEntry,
   MergedRecordSummary,
   RecordSummary,
 } from "./finalRunReportTypes";
@@ -156,6 +157,19 @@ function getNormalizedRecord(record: AiReadyIntakeRecord) {
   return asRecord(record.normalizedJson);
 }
 
+export function getSourceCandidateRecords(
+  sourceRecords: AiReadyIntakeRecord[],
+  currentRunRecords: AiReadyIntakeRecord[],
+) {
+  const currentRunRecordIds = new Set(
+    currentRunRecords.map((record) => record.id),
+  );
+
+  return sourceRecords.filter(
+    (record) => !currentRunRecordIds.has(record.id),
+  );
+}
+
 export function getRecordSummary(record: AiReadyIntakeRecord, index: number): RecordSummary {
   const normalizedRecord = getNormalizedRecord(record);
   const brand = getFirstString(normalizedRecord, ["brand", "correctedBrand"]);
@@ -188,6 +202,13 @@ export function getRecordSummary(record: AiReadyIntakeRecord, index: number): Re
   return {
     id: record.id,
     intakeItemId: record.intakeItemId,
+    sourceRecordId: record.sourceRecordId,
+    sourceName: record.sourceName,
+    sourceType: record.sourceType,
+    supersededByAiReadyIntakeRecordId:
+      record.supersededByAiReadyIntakeRecordId ?? null,
+    supersededAt: record.supersededAt ?? null,
+    supersededReason: record.supersededReason ?? null,
     label: labelParts.length > 0 ? labelParts.join(" · ") : `Record ${index + 1}`,
     brand,
     productLine,
@@ -370,30 +391,292 @@ function getEvidenceEntries(value: unknown): unknown[] {
   return record ? Object.values(record) : [];
 }
 
+function getShortRecordId(value: string) {
+  return value.length > 10 ? `${value.slice(0, 8)}…` : value;
+}
+
+function recordMatchesRecord(
+  candidateRecord: RecordSummary,
+  possibleMatch: RecordSummary,
+) {
+  if (
+    candidateRecord.supersededByAiReadyIntakeRecordId &&
+    candidateRecord.supersededByAiReadyIntakeRecordId === possibleMatch.id
+  ) {
+    return true;
+  }
+
+  if (
+    candidateRecord.sourceRecordId &&
+    possibleMatch.sourceRecordId &&
+    candidateRecord.sourceRecordId === possibleMatch.sourceRecordId
+  ) {
+    return true;
+  }
+
+  if (
+    candidateRecord.intakeItemId &&
+    possibleMatch.intakeItemId &&
+    candidateRecord.intakeItemId === possibleMatch.intakeItemId
+  ) {
+    return true;
+  }
+
+  const candidateSourceTexts = [
+    candidateRecord.rawText,
+    candidateRecord.cleanedText,
+  ]
+    .map(normalizeSourceComparable)
+    .filter(Boolean);
+  const possibleSourceTexts = [
+    possibleMatch.rawText,
+    possibleMatch.cleanedText,
+  ]
+    .map(normalizeSourceComparable)
+    .filter(Boolean);
+
+  if (
+    candidateSourceTexts.some((candidateText) =>
+      possibleSourceTexts.includes(candidateText),
+    )
+  ) {
+    return true;
+  }
+
+  return Boolean(
+    normalizeComparable(candidateRecord.brand) &&
+      normalizeComparable(candidateRecord.brand) ===
+        normalizeComparable(possibleMatch.brand) &&
+      normalizeComparable(candidateRecord.productLine) &&
+      normalizeComparable(candidateRecord.productLine) ===
+        normalizeComparable(possibleMatch.productLine),
+  );
+}
+
+function getParsedItemForRecord(
+  result: ExecuteEndToEndAgenticTradeInDemoResponse,
+  record: RecordSummary,
+  index: number,
+) {
+  const directIdMatch = record.sourceRecordId
+    ? result.parsedItems.find(
+        (item) =>
+          normalizeComparable(item.id) ===
+          normalizeComparable(record.sourceRecordId),
+      )
+    : null;
+
+  if (directIdMatch) {
+    return directIdMatch;
+  }
+
+  const recordSourceTexts = [record.rawText, record.cleanedText]
+    .map(normalizeSourceComparable)
+    .filter(Boolean);
+  const sourceTextMatch = result.parsedItems.find((item) =>
+    recordSourceTexts.includes(normalizeSourceComparable(item.rawLine)),
+  );
+
+  if (sourceTextMatch) {
+    return sourceTextMatch;
+  }
+
+  const identityMatch = result.parsedItems.find(
+    (item) =>
+      normalizeComparable(item.brand) &&
+      normalizeComparable(item.brand) === normalizeComparable(record.brand) &&
+      normalizeComparable(item.productLine ?? item.model) &&
+      normalizeComparable(item.productLine ?? item.model) ===
+        normalizeComparable(record.productLine),
+  );
+
+  return identityMatch ?? null;
+}
+
+function getRecordEvidence(input: {
+  candidateRecord: RecordSummary;
+  finalRecords: RecordSummary[];
+  index: number;
+  result: ExecuteEndToEndAgenticTradeInDemoResponse;
+  reviewItem: GlobalReviewQueueItem | null;
+  valuationRange: string | null;
+}) {
+  const parsedItem = getParsedItemForRecord(
+    input.result,
+    input.candidateRecord,
+    input.index,
+  );
+  const parsedItemId = parsedItem?.id ?? null;
+  const knowledgeEvidence = parsedItemId
+    ? input.result.knowledgeMatchesByItem.find(
+        (item) => item.parsedItemId === parsedItemId,
+      ) ?? null
+    : null;
+  const inventoryEvidence = parsedItemId
+    ? input.result.inventoryMatchesByItem.find(
+        (item) => item.parsedItemId === parsedItemId,
+      ) ?? null
+    : null;
+  const matchingModelSuggestions = parsedItemId
+    ? input.result.fieldRepairExecution.suggestions.filter(
+        (suggestion) => suggestion.recordId === parsedItemId,
+      )
+    : [];
+  const reviewedRecord = input.reviewItem?.reviewedTradeInRecord ?? null;
+  const learningEventCount =
+    input.reviewItem?.humanReviewLearningEvents.length ?? 0;
+  const activePersistedRecord =
+    input.finalRecords.find((record) =>
+      recordMatchesRecord(input.candidateRecord, record),
+    ) ?? null;
+
+  const entries: FinalRecordProvenanceEntry[] = [
+    {
+      key: "SOURCE_NORMALIZATION",
+      label: "Source normalization",
+      detail:
+        `${input.candidateRecord.sourceName} (${formatEnumLabel(input.candidateRecord.sourceType)}) was deterministically normalized and persisted as candidate ${getShortRecordId(input.candidateRecord.id)}.`,
+    },
+  ];
+
+  if ((knowledgeEvidence?.search.results.length ?? 0) > 0) {
+    entries.push({
+      key: "KNOWLEDGE_EVIDENCE",
+      label: "Knowledge evidence",
+      detail:
+        `The seeded knowledge service returned ${knowledgeEvidence?.search.results.length ?? 0} supporting reference match(es).`,
+    });
+  }
+
+  if (inventoryEvidence?.lookup.productId) {
+    const matchedProduct =
+      inventoryEvidence.lookup.displayName ??
+      [inventoryEvidence.lookup.brand, inventoryEvidence.lookup.productLine]
+        .filter(Boolean)
+        .join(" ") ??
+      inventoryEvidence.lookup.productId;
+
+    entries.push({
+      key: "INVENTORY_MATCH",
+      label: "Inventory match",
+      detail:
+        `The seeded product catalog matched ${matchedProduct || inventoryEvidence.lookup.productId} as the product candidate.`,
+    });
+  }
+
+  if (input.valuationRange) {
+    entries.push({
+      key: "VALUATION_EVIDENCE",
+      label: "Valuation evidence",
+      detail:
+        `The seeded valuation engine returned ${input.valuationRange} after product identification.`,
+    });
+  }
+
+  if (matchingModelSuggestions.length > 0) {
+    entries.push({
+      key: "MODEL_SUGGESTION",
+      label: "Model-assisted suggestion",
+      detail:
+        `${matchingModelSuggestions.length} field-repair suggestion(s) were generated for review. They did not approve or overwrite the record automatically.`,
+    });
+  }
+
+  if (reviewedRecord) {
+    entries.push({
+      key: "HUMAN_CORRECTION",
+      label: "Human-approved correction",
+      detail:
+        learningEventCount > 0
+          ? `A saved human correction resolved the review item and wrote ${learningEventCount} reusable learning event(s).`
+          : "A saved human correction resolved the review item and became authoritative for the final record.",
+    });
+  }
+
+  let persistedRecordId = input.candidateRecord.id;
+  let persistenceLabel = "Finalized without review";
+  let replacedRecordId: string | null = null;
+  let persistenceDetail =
+    `Persisted candidate ${getShortRecordId(input.candidateRecord.id)} remains the active record shown in this report.`;
+
+  if (
+    activePersistedRecord &&
+    activePersistedRecord.id !== input.candidateRecord.id
+  ) {
+    persistedRecordId = activePersistedRecord.id;
+    persistenceLabel = "Finalized after human review";
+    replacedRecordId = input.candidateRecord.id;
+    persistenceDetail =
+      `Active record ${getShortRecordId(activePersistedRecord.id)} replaced candidate ${getShortRecordId(input.candidateRecord.id)} in the persisted lifecycle.`;
+  } else if (
+    input.candidateRecord.status === "SUPERSEDED" &&
+    input.candidateRecord.supersededByAiReadyIntakeRecordId
+  ) {
+    persistedRecordId =
+      input.candidateRecord.supersededByAiReadyIntakeRecordId;
+    persistenceLabel = "Finalized after human review";
+    replacedRecordId = input.candidateRecord.id;
+    persistenceDetail =
+      `Candidate ${getShortRecordId(input.candidateRecord.id)} was superseded by persisted record ${getShortRecordId(input.candidateRecord.supersededByAiReadyIntakeRecordId)}.`;
+  }
+
+  entries.push({
+    key: "PERSISTED_RECORD",
+    label: "Persisted record",
+    detail: persistenceDetail,
+  });
+
+  return {
+    entries,
+    persistedRecordId,
+    persistenceLabel,
+    replacedRecordId,
+  };
+}
+
 function getValuationEvidenceForRecord(
   result: ExecuteEndToEndAgenticTradeInDemoResponse,
   record: RecordSummary,
   index: number,
 ) {
   const entries = getEvidenceEntries(result.valuationEvidenceByItem);
+  const parsedItemId =
+    getParsedItemForRecord(result, record, index)?.id ?? null;
 
   return (
-    entries.find((entry, entryIndex) => {
+    entries.find((entry) => {
       const evidence = asRecord(entry);
 
       if (!evidence) {
         return false;
       }
 
+      const evidenceParsedItemId = getFirstString(evidence, [
+        "parsedItemId",
+        "recordId",
+        "itemId",
+      ]);
+
+      if (
+        parsedItemId &&
+        evidenceParsedItemId &&
+        evidenceParsedItemId === parsedItemId
+      ) {
+        return true;
+      }
+
       const indexedValues = [
-        getFirstNumber(evidence, ["recordIndex", "itemIndex", "parsedItemIndex"]),
+        getFirstNumber(evidence, [
+          "recordIndex",
+          "itemIndex",
+          "parsedItemIndex",
+        ]),
         getFirstNumber(evidence, ["sourceRecordIndex"]),
       ].filter((value): value is number => value !== null);
 
       if (
         indexedValues.includes(index) ||
-        indexedValues.includes(index + 1) ||
-        entryIndex === index
+        indexedValues.includes(index + 1)
       ) {
         return true;
       }
@@ -447,6 +730,7 @@ function getValuationRangeLabel(evidence: unknown) {
 
 export function buildMergedRecord(input: {
   candidateRecord: RecordSummary;
+  finalRecords?: RecordSummary[];
   index: number;
   result: ExecuteEndToEndAgenticTradeInDemoResponse;
   reviewItems: GlobalReviewQueueItem[];
@@ -497,6 +781,15 @@ export function buildMergedRecord(input: {
             ? "Valuation evidence checked"
             : "No review item open";
 
+  const recordEvidence = getRecordEvidence({
+    candidateRecord: input.candidateRecord,
+    finalRecords: input.finalRecords ?? [],
+    index: input.index,
+    result: input.result,
+    reviewItem,
+    valuationRange,
+  });
+
   const transformationNotes = [
     valuationRange && input.candidateRecord.tradeInValue === null
       ? `Step 3 added valuation range ${valuationRange}`
@@ -536,7 +829,13 @@ export function buildMergedRecord(input: {
     finalReviewDetail,
     sourceStageLabel: input.candidateRecord.reviewNeeded ? "Needed in Step 2" : "Clear in Step 2",
     transformationNotes:
-      transformationNotes.length > 0 ? transformationNotes : ["No field changes; workflow evidence checked"],
+      transformationNotes.length > 0
+        ? transformationNotes
+        : ["No field changes; workflow evidence checked"],
+    provenanceEntries: recordEvidence.entries,
+    persistedRecordId: recordEvidence.persistedRecordId,
+    persistenceLabel: recordEvidence.persistenceLabel,
+    replacedRecordId: recordEvidence.replacedRecordId,
   };
 
   mergedRecord.label = [

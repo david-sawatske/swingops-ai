@@ -66,10 +66,10 @@ export function FinalizedRecordsTable({
       {isFullTableOpen ? (
         <div
           aria-label="Full finalized records table"
-          className="guided-expanded-table-backdrop"
+          className="guided-expanded-table-backdrop guided-finalized-table-backdrop"
           role="dialog"
         >
-          <div className="guided-expanded-table-panel">
+          <div className="guided-expanded-table-panel guided-finalized-table-panel">
             <div className="guided-expanded-table-header">
               <div>
                 <span className="model-route-card__eyebrow">
@@ -77,18 +77,24 @@ export function FinalizedRecordsTable({
                 </span>
                 <h4>Full finalized records table</h4>
                 <p>
-                  This table shows the final record values after intake cleanup,
-                  guarded enrichment, valuation evidence, and human review corrections.
+                  This table shows the final values assembled from the evidence and
+                  saved review decisions that applied to each record.
                 </p>
               </div>
 
-              <button onClick={() => setIsFullTableOpen(false)} type="button">
-                Close
-              </button>
+              <button
+              aria-label="Close expanded finalized record view"
+              className="guided-expanded-table-close-button"
+              onClick={() => setIsFullTableOpen(false)}
+              title="Close"
+              type="button"
+            >
+              ×
+            </button>
             </div>
 
-            <div className="multi-source-intake-table-wrap guided-expanded-table-wrap">
-              <table className="multi-source-intake-table guided-expanded-table">
+            <div className="multi-source-intake-table-wrap guided-expanded-table-wrap guided-finalized-table-wrap">
+              <table className="multi-source-intake-table guided-expanded-table guided-finalized-table">
                 <thead>
                   <tr>
                     <th>Brand</th>

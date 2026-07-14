@@ -29,7 +29,9 @@ export function GuidedAiReadyRecordsStep({
 
   const previewRecords = result?.cleanedDatasetPreview ?? [];
   const visiblePreviewRecords = previewRecords.slice(0, 6);
-  const readyRecords = previewRecords.filter((record) => !record.reviewNeeded).length;
+  const clearForGuardedProcessingRecords = previewRecords.filter(
+    (record) => !record.reviewNeeded,
+  ).length;
   const reviewRecords = previewRecords.filter((record) => record.reviewNeeded).length;
   const recordsWithMissingFields = previewRecords.filter(
     (record) => record.missingFields.length > 0,
@@ -43,35 +45,35 @@ export function GuidedAiReadyRecordsStep({
         </span>
         <h3>What did intake create?</h3>
         <p>
-          The messy source text becomes normalized records with fields like brand,
-          product, category, shaft flex, condition grade, value, store, and review
-          status. This is the handoff point between source intake and the guarded
-          workflow.
+          The deterministic parser writes normalized candidate records with fields
+          like brand, product, category, shaft flex, condition grade, value, store, and
+          review status. AI-ready means structured enough for guarded processing. It
+          does not mean the record is approved or final.
         </p>
 
         <div className="guided-step-mini-list" aria-label="AI-ready record explanation">
           <article>
             <strong>Input</strong>
-            <p>Normalized source output from Step 1.</p>
+            <p>Deterministically normalized candidate output from Step 1.</p>
           </article>
 
           <article>
             <strong>Action</strong>
-            <p>Map extracted fields into consistent trade-in records with review signals.</p>
+            <p>Persist consistent candidate records while preserving source context, missing fields, and review signals.</p>
           </article>
 
           <article>
             <strong>Output</strong>
-            <p>AI-ready records that can be grounded, validated, and safely handed to tools.</p>
+            <p>Persisted candidates that can enter grounded, validated, and guarded processing in Step 3.</p>
           </article>
         </div>
 
         <details className="guided-workflow-details guided-workflow-details--compact">
           <summary>What makes a record AI-ready?</summary>
           <p className="guided-workflow-details__intro">
-            AI-ready does not mean every record is automatically approved. It means the
-            workflow has a structured schema, preserved source context, known missing
-            fields, and a review flag when human judgment is still needed.
+            AI-ready is a processing-readiness state, not a final approval state. The
+            candidate has a structured schema, preserved source context, known missing
+            fields, and a review flag whenever human judgment is still required.
           </p>
         </details>
       </section>
@@ -82,9 +84,9 @@ export function GuidedAiReadyRecordsStep({
             <span className="model-route-card__eyebrow">Do the work</span>
             <h4>Inspect the records created from source intake</h4>
             <p>
-              Review the normalized output before the guarded workflow uses it. Records
-              with missing fields or uncertainty remain visible instead of being silently
-              treated as complete.
+              Review the persisted candidate output before the guarded workflow uses
+              it. Records with missing fields or uncertainty remain visible and are not
+              silently treated as approved final records.
             </p>
           </div>
         </div>
@@ -97,8 +99,8 @@ export function GuidedAiReadyRecordsStep({
                 <span>Extracted</span>
               </article>
               <article>
-                <strong>{readyRecords}</strong>
-                <span>Ready</span>
+                <strong>{clearForGuardedProcessingRecords}</strong>
+                <span>Clear for Step 3</span>
               </article>
               <article>
                 <strong>{reviewRecords}</strong>
@@ -106,7 +108,7 @@ export function GuidedAiReadyRecordsStep({
               </article>
               <article>
                 <strong>{persistedRecords.length}</strong>
-                <span>Persisted</span>
+                <span>Persisted candidates</span>
               </article>
             </div>
 
@@ -137,7 +139,7 @@ export function GuidedAiReadyRecordsStep({
             <div>
               <div className="guided-ai-ready-preview-header">
                 <div>
-                  <h4>Cleaned record preview</h4>
+                  <h4>Normalized candidate preview</h4>
                   <p>
                     Compact view of the normalized records. Open the full table to inspect
                     every field.
@@ -258,9 +260,9 @@ export function GuidedAiReadyRecordsStep({
             <div className="guided-next-step-note">
               <h4>Next handoff</h4>
               <p>
-                Step 3 converts these records into guarded workflow input and runs the
-                agent through model routing, grounding, read-only tools, validation, and
-                review routing.
+                Step 3 converts these candidates into guarded workflow input, then
+                gathers knowledge, product-match, valuation, permitted model-repair,
+                validation, and review-routing evidence.
               </p>
             </div>
 

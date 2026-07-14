@@ -294,3 +294,215 @@
 .guided-model-execution-metrics dt {
   overflow-wrap: anywhere;
 }
+
+.guided-final-provenance {
+  border-top: 1px solid rgba(39, 57, 44, 0.12);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.guided-final-provenance__header h4 {
+  margin: 0.18rem 0 0.3rem;
+}
+
+.guided-final-provenance__header p {
+  color: rgba(20, 36, 23, 0.66);
+  font-size: 0.84rem;
+  line-height: 1.45;
+  margin: 0;
+  max-width: 74ch;
+}
+
+.guided-final-provenance__records {
+  border-bottom: 1px solid rgba(39, 57, 44, 0.12);
+  border-top: 1px solid rgba(39, 57, 44, 0.12);
+  margin-top: 0.8rem;
+}
+
+.guided-final-provenance-record {
+  padding: 0.8rem 0;
+}
+
+.guided-final-provenance-record + .guided-final-provenance-record {
+  border-top: 1px solid rgba(39, 57, 44, 0.12);
+}
+
+.guided-final-provenance-record__header {
+  align-items: start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.guided-final-provenance-record__header > div {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.guided-final-provenance-record__header strong {
+  color: #142417;
+  font-size: 0.9rem;
+}
+
+.guided-final-provenance-record__header > div span {
+  color: rgba(20, 36, 23, 0.58);
+  font-size: 0.74rem;
+}
+
+.guided-final-provenance-record__status {
+  background: rgba(41, 69, 45, 0.08);
+  border: 1px solid rgba(41, 69, 45, 0.14);
+  border-radius: 999px;
+  color: #29452d;
+  flex: 0 0 auto;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  padding: 0.24rem 0.48rem;
+  text-transform: uppercase;
+}
+
+.guided-final-provenance-list {
+  display: grid;
+  gap: 0;
+  margin: 0.55rem 0 0;
+}
+
+.guided-final-provenance-list > div {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: minmax(145px, 0.25fr) minmax(0, 1fr);
+  padding: 0.42rem 0;
+}
+
+.guided-final-provenance-list > div + div {
+  border-top: 1px solid rgba(39, 57, 44, 0.08);
+}
+
+.guided-final-provenance-list dt {
+  color: #29452d;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.guided-final-provenance-list dd {
+  color: rgba(20, 36, 23, 0.68);
+  font-size: 0.78rem;
+  line-height: 1.42;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .guided-final-provenance-record__header {
+    align-items: start;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .guided-final-provenance-list > div {
+    gap: 0.16rem;
+    grid-template-columns: 1fr;
+  }
+}
+
+.guided-final-provenance-record {
+  padding: 0;
+}
+
+.guided-final-provenance-record__summary {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  list-style: none;
+  padding: 0.68rem 0;
+}
+
+.guided-final-provenance-record__summary::-webkit-details-marker {
+  display: none;
+}
+
+.guided-final-provenance-record__summary::before {
+  color: rgba(20, 36, 23, 0.62);
+  content: "›";
+  flex: 0 0 auto;
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1;
+  transition: transform 120ms ease;
+}
+
+.guided-final-provenance-record[open]
+  > .guided-final-provenance-record__summary::before {
+  transform: rotate(90deg);
+}
+
+.guided-final-provenance-record__identity {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.guided-final-provenance-record__identity strong {
+  color: #142417;
+  font-size: 0.84rem;
+  overflow-wrap: anywhere;
+}
+
+.guided-final-provenance-record__identity > span {
+  color: rgba(20, 36, 23, 0.56);
+  font-size: 0.7rem;
+}
+
+.guided-final-provenance-record[open]
+  > .guided-final-provenance-record__summary {
+  border-bottom: 1px solid rgba(39, 57, 44, 0.08);
+}
+
+.guided-final-provenance-record > .guided-final-provenance-list {
+  margin: 0;
+  padding: 0.2rem 0 0.65rem 1.35rem;
+}
+
+.guided-finalized-table-panel {
+  max-width: min(96vw, 1560px);
+  overflow: hidden;
+  width: min(96vw, 1560px);
+}
+
+.guided-finalized-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  padding-bottom: 0.45rem;
+}
+
+.guided-step-workspace
+  .guided-expanded-table.guided-finalized-table {
+  min-width: 1180px;
+  width: max-content;
+}
+
+.guided-finalized-table th:last-child,
+.guided-finalized-table td:last-child {
+  min-width: 320px;
+  white-space: normal;
+}
+
+@media (max-width: 640px) {
+  .guided-final-provenance-record__summary {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.65rem;
+  }
+
+  .guided-final-provenance-record__status {
+    margin-left: 1.35rem;
+  }
+
+  .guided-final-provenance-record > .guided-final-provenance-list {
+    padding-left: 1.35rem;
+  }
+}
