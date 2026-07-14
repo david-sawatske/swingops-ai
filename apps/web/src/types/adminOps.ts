@@ -23,6 +23,30 @@ export type GetAdminOpsNormalizationMatrixResponse = {
   entries: AdminOpsNormalizationMatrixEntry[];
 };
 
+export type GetAdminOpsWorkflowConfigResponse = {
+  confidenceThresholds: Array<{
+    name: string;
+    value: string;
+    description: string;
+  }>;
+  reviewRoutingRules: Array<{
+    ruleId: string;
+    label: string;
+    effect: string;
+    description: string;
+  }>;
+  providerRoutingPolicy: Array<{
+    taskType: string;
+    primaryProvider: string;
+    fallbackProvider: string;
+    validationRequired: boolean;
+  }>;
+  mutationPolicy: {
+    readOnlyToolsOnly: boolean;
+    blockedMutationsVisible: boolean;
+    description: string;
+  };
+};
 
 export type AdminOpsCountEntry = {
   label: string;

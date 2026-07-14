@@ -6,6 +6,7 @@ import type {
   ExecuteMultiSourceIntakeDemoResponse,
   GetAdminOpsNormalizationMatrixResponse,
   GetAdminOpsSummaryResponse,
+  GetAdminOpsWorkflowConfigResponse,
   ListAiReadyIntakeRecordsResponse,
   ListReviewQueueItemsResponse,
   ListWorkflowRunsResponse,
@@ -143,5 +144,11 @@ export async function getAdminOpsSummary(): Promise<GetAdminOpsSummaryResponse> 
 export async function getAdminOpsNormalizationMatrix(): Promise<GetAdminOpsNormalizationMatrixResponse> {
   return apiGet<GetAdminOpsNormalizationMatrixResponse>(
     "/admin/ops/normalization-matrix",
+  );
+}
+
+export async function getAdminOpsWorkflowConfig(): Promise<GetAdminOpsWorkflowConfigResponse> {
+  return apiGet<GetAdminOpsWorkflowConfigResponse>(
+    "/admin/ops/workflow-config",
   );
 }

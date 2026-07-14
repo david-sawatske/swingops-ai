@@ -3,12 +3,14 @@ import { useEffect, useMemo, useState } from "react";
 import {
   getAdminOpsNormalizationMatrix,
   getAdminOpsSummary,
+  getAdminOpsWorkflowConfig,
   listAiReadyIntakeRecords,
 } from "../../api/workflows";
 import type {
   AdminOpsNormalizationMatrixEntry,
   AiReadyIntakeRecord,
   GetAdminOpsSummaryResponse,
+  GetAdminOpsWorkflowConfigResponse,
   GlobalWorkflowRunSummary,
 } from "../../types/workflow";
 import { WorkflowQualityChecksPage } from "../workflow-evals/WorkflowQualityChecksPage";
@@ -64,62 +66,9 @@ const ADMIN_OPS_SECTIONS = [
     body: "Aliases, negative evidence, and blocked repairs.",
   },
   {
-    id: "admin-ops-config-title",
-    title: "Workflow config",
-    body: "Read-only execution and safety policy.",
-  },
-  {
     id: "admin-ops-knowledge-title",
     title: "Knowledge grounding",
-    body: "Seed data and grounding coverage.",
-  },
-] as const;
-
-const WORKFLOW_CONFIG_ITEMS = [
-  {
-    label: "Model output authority",
-    value: "Secondary",
-    detail:
-      "Model repair can suggest values, but deterministic parsing, reference data, grounding, and review decisions stay higher authority.",
-  },
-  {
-    label: "Fallback behavior",
-    value: "MOCK available",
-    detail:
-      "Provider execution can fall back to deterministic mock behavior when real providers are disabled or fail validation.",
-  },
-  {
-    label: "Mutation policy",
-    value: "Read-only tools",
-    detail:
-      "Admin visibility does not allow unsafe tool mutation or bypass human review requirements.",
-  },
-  {
-    label: "Review routing",
-    value: "Always active",
-    detail:
-      "Missing, ambiguous, low-confidence, or blocked repair evidence stays review-facing.",
-  },
-] as const;
-
-const KNOWLEDGE_STATUS_ITEMS = [
-  {
-    label: "Seed knowledge",
-    value: "Visible through workflow grounding",
-    detail:
-      "Grounding supports matching and explanation, but does not replace deterministic normalization rules.",
-  },
-  {
-    label: "Ingestion",
-    value: "Demo-managed",
-    detail:
-      "Knowledge ingestion remains handled by existing demo routes and workflow setup.",
-  },
-  {
-    label: "Future expansion",
-    value: "Golf term coverage",
-    detail:
-      "Admin Ops can later show seed coverage for utility woods, mini drivers, fairway woods, hybrids, and wedge lofts.",
+    body: "Record readiness and source-level grounding signals.",
   },
 ] as const;
 
@@ -139,6 +88,45 @@ function AdminOpsMetricCard({ metric }: { metric: AdminOpsMetric }) {
         </button>
       ) : null}
     </article>
+  );
+}
+
+function AdminOpsInspectionGuide({
+  showing,
+  attention,
+  inspectNext,
+}: {
+  showing: string;
+  attention: string;
+  inspectNext: string;
+}) {
+  const items = [
+    {
+      label: "What this shows",
+      value: showing,
+    },
+    {
+      label: "Needs attention",
+      value: attention,
+    },
+    {
+      label: "Inspect next",
+      value: inspectNext,
+    },
+  ];
+
+  return (
+    <div
+      className="admin-ops-inspection-guide"
+      aria-label="Section inspection guidance"
+    >
+      {items.map((item) => (
+        <article key={item.label}>
+          <span>{item.label}</span>
+          <p>{item.value}</p>
+        </article>
+      ))}
+    </div>
   );
 }
 
@@ -1539,7 +1527,13 @@ function AdminOpsModelTelemetryPanel({
 
 
 function AdminOpsNormalizationMatrixPanel() {
+  type FieldFilter = "ALL" | AdminOpsNormalizationMatrixEntry["field"];
+  type ActionFilter = "ALL" | AdminOpsNormalizationMatrixEntry["action"];
+
   const [entries, setEntries] = useState<AdminOpsNormalizationMatrixEntry[]>([]);
+  const [searchText, setSearchText] = useState("");
+  const [fieldFilter, setFieldFilter] = useState<FieldFilter>("ALL");
+  const [actionFilter, setActionFilter] = useState<ActionFilter>("ALL");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -1570,15 +1564,68 @@ function AdminOpsNormalizationMatrixPanel() {
     (entry) => entry.action !== "NORMALIZE",
   );
 
+  const fieldOptions = useMemo(
+    () => [...new Set(entries.map((entry) => entry.field))].sort(),
+    [entries],
+  );
+
+  const actionOptions = useMemo(
+    () => [...new Set(entries.map((entry) => entry.action))].sort(),
+    [entries],
+  );
+
+  const filteredEntries = useMemo(() => {
+    const normalizedSearch = searchText.trim().toLocaleLowerCase();
+
+    return entries.filter((entry) => {
+      if (fieldFilter !== "ALL" && entry.field !== fieldFilter) {
+        return false;
+      }
+
+      if (actionFilter !== "ALL" && entry.action !== actionFilter) {
+        return false;
+      }
+
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      const searchableValues = [
+        entry.id,
+        entry.field,
+        entry.action,
+        entry.notes,
+        String(entry.canonicalValue ?? ""),
+        ...entry.aliases,
+      ];
+
+      return searchableValues.some((value) =>
+        value.toLocaleLowerCase().includes(normalizedSearch),
+      );
+    });
+  }, [actionFilter, entries, fieldFilter, searchText]);
+
+  const hasActiveFilters =
+    searchText.length > 0 || fieldFilter !== "ALL" || actionFilter !== "ALL";
+
+  function clearFilters() {
+    setSearchText("");
+    setFieldFilter("ALL");
+    setActionFilter("ALL");
+  }
+
   return (
-    <section className="admin-ops-panel" aria-labelledby="admin-ops-normalization-title">
+    <section
+      className="admin-ops-panel"
+      aria-labelledby="admin-ops-normalization-title"
+    >
       <div className="admin-ops-panel-heading">
         <span className="model-route-card__eyebrow">Normalization matrix</span>
         <h3 id="admin-ops-normalization-title">
           Structured golf term controls
         </h3>
         <p>
-          Displays deterministic aliases, negative evidence, context requirements,
+          Search deterministic aliases, negative evidence, context requirements,
           and repair-blocking rules that stay higher authority than model output.
         </p>
       </div>
@@ -1598,6 +1645,74 @@ function AdminOpsNormalizationMatrixPanel() {
             value: blockedOrReviewEntries.length,
           }}
         />
+        <AdminOpsMetricCard
+          metric={{
+            detail: "Entries matching the current search and filters.",
+            label: "Visible entries",
+            value: filteredEntries.length,
+          }}
+        />
+      </div>
+
+      <AdminOpsInspectionGuide
+        attention={`${blockedOrReviewEntries.length} entries block automatic repair or route evidence to human review.`}
+        inspectNext="Filter by action to inspect blocked repairs, then check context-required aliases before changing parsing behavior."
+        showing={`${entries.length} deterministic normalization and guardrail rules from the active workflow matrix.`}
+      />
+
+      <div className="admin-ops-record-controls admin-ops-normalization-controls">
+        <label className="admin-ops-field admin-ops-field--wide">
+          Search matrix
+          <input
+            onChange={(event) => setSearchText(event.target.value)}
+            placeholder="Search aliases, canonical values, actions, or notes"
+            type="search"
+            value={searchText}
+          />
+        </label>
+
+        <label className="admin-ops-field">
+          Field
+          <select
+            onChange={(event) =>
+              setFieldFilter(event.target.value as FieldFilter)
+            }
+            value={fieldFilter}
+          >
+            <option value="ALL">All fields</option>
+            {fieldOptions.map((field) => (
+              <option key={field} value={field}>
+                {field}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="admin-ops-field">
+          Action
+          <select
+            onChange={(event) =>
+              setActionFilter(event.target.value as ActionFilter)
+            }
+            value={actionFilter}
+          >
+            <option value="ALL">All actions</option>
+            {actionOptions.map((action) => (
+              <option key={action} value={action}>
+                {action}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <button
+          className="admin-ops-clear-button"
+          disabled={!hasActiveFilters}
+          onClick={clearFilters}
+          type="button"
+        >
+          Clear filters
+        </button>
       </div>
 
       {isLoading ? (
@@ -1606,7 +1721,22 @@ function AdminOpsNormalizationMatrixPanel() {
 
       {error ? <p className="admin-ops-error">{error}</p> : null}
 
-      {entries.length > 0 ? (
+      {!isLoading && !error && entries.length === 0 ? (
+        <p className="admin-ops-muted">
+          No normalization entries are currently exposed.
+        </p>
+      ) : null}
+
+      {!isLoading &&
+      !error &&
+      entries.length > 0 &&
+      filteredEntries.length === 0 ? (
+        <p className="admin-ops-muted">
+          No normalization entries match the current search and filters.
+        </p>
+      ) : null}
+
+      {filteredEntries.length > 0 ? (
         <div className="admin-ops-table-wrap">
           <table className="admin-ops-table admin-ops-table--dense">
             <thead>
@@ -1620,7 +1750,7 @@ function AdminOpsNormalizationMatrixPanel() {
               </tr>
             </thead>
             <tbody>
-              {entries.map((entry) => (
+              {filteredEntries.map((entry) => (
                 <tr key={entry.id} className="admin-ops-table-row-card">
                   <td>{entry.field}</td>
                   <td>
@@ -1646,33 +1776,156 @@ function AdminOpsNormalizationMatrixPanel() {
   );
 }
 
-function AdminOpsConfigPanel() {
+function AdminOpsQualitySafeguards() {
+  const [config, setConfig] =
+    useState<GetAdminOpsWorkflowConfigResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function loadConfig() {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const response = await getAdminOpsWorkflowConfig();
+
+      setConfig(response);
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Unable to load active workflow safeguards.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadConfig();
+  }, []);
+
+  const modelAuthority =
+    config?.confidenceThresholds.find(
+      (item) => item.name === "modelAuthority",
+    ) ?? null;
+  const reviewRouting =
+    config?.confidenceThresholds.find(
+      (item) => item.name === "reviewRouting",
+    ) ?? null;
+  const providerPolicy = config?.providerRoutingPolicy[0] ?? null;
+
+  const safeguards = config
+    ? [
+        {
+          label: "Model authority",
+          value: modelAuthority?.value ?? "Not reported",
+        },
+        {
+          label: "Review routing",
+          value: reviewRouting?.value ?? "Not reported",
+        },
+        {
+          label: "Tool access",
+          value: config.mutationPolicy.readOnlyToolsOnly
+            ? "Read-only"
+            : "Mutation enabled",
+        },
+        {
+          label: "Provider output",
+          value: providerPolicy?.validationRequired
+            ? "Validation required"
+            : "Validation not required",
+        },
+      ]
+    : [];
+
   return (
-    <section className="admin-ops-panel" aria-labelledby="admin-ops-config-title">
-      <div className="admin-ops-panel-heading">
-        <span className="model-route-card__eyebrow">Workflow configuration</span>
-        <h3 id="admin-ops-config-title">Read-only guarded workflow policy</h3>
-        <p>
-          This first admin slice displays active safety posture without allowing
-          free-form configuration changes that could bypass review, validation, or
-          tool safety.
-        </p>
+    <div
+      className="admin-ops-quality-safeguards"
+      aria-label="Active workflow safeguards"
+    >
+      <div className="admin-ops-quality-safeguards__heading">
+        <span>Active safeguards</span>
+        <p>Controls applied to the quality-check scenarios below.</p>
       </div>
 
-      <div className="admin-ops-config-grid">
-        {WORKFLOW_CONFIG_ITEMS.map((item) => (
-          <article className="admin-ops-config-card" key={item.label}>
-            <span>{item.label}</span>
-            <strong>{item.value}</strong>
-            <p>{item.detail}</p>
-          </article>
-        ))}
-      </div>
-    </section>
+      {isLoading ? (
+        <p className="admin-ops-muted">Loading active safeguards...</p>
+      ) : null}
+
+      {error ? <p className="admin-ops-error">{error}</p> : null}
+
+      {safeguards.length > 0 ? (
+        <div className="admin-ops-quality-safeguards__list">
+          {safeguards.map((safeguard) => (
+            <div
+              className="admin-ops-quality-safeguard"
+              key={safeguard.label}
+            >
+              <span>{safeguard.label}</span>
+              <strong>{safeguard.value}</strong>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
 function AdminOpsKnowledgePanel() {
+  const [summary, setSummary] = useState<GetAdminOpsSummaryResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function loadKnowledgeSummary() {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const response = await getAdminOpsSummary();
+
+      setSummary(response);
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Unable to load grounding readiness.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadKnowledgeSummary();
+  }, []);
+
+  const aiReadyRecords = summary?.aiReadyRecords ?? null;
+  const activeSourceCount =
+    aiReadyRecords?.sourceQuality.filter((entry) => entry.active > 0).length ?? 0;
+
+  const sourceWithMostReview = aiReadyRecords
+    ? [...aiReadyRecords.sourceQuality]
+        .filter((entry) => entry.active > 0)
+        .sort((left, right) => {
+          const leftRate =
+            left.active > 0 ? left.reviewNeeded / left.active : 0;
+          const rightRate =
+            right.active > 0 ? right.reviewNeeded / right.active : 0;
+
+          return rightRate - leftRate || right.reviewNeeded - left.reviewNeeded;
+        })[0] ?? null
+    : null;
+
+  const attentionText = aiReadyRecords
+    ? aiReadyRecords.reviewNeeded === 0
+      ? "No active AI-ready records are currently marked as requiring review."
+      : sourceWithMostReview
+        ? `${aiReadyRecords.reviewNeeded} active records need review. ${sourceWithMostReview.sourceType} has the highest current source-level review pressure.`
+        : `${aiReadyRecords.reviewNeeded} active records still need review before dependable downstream grounding use.`
+    : "Grounding attention signals will appear after the Admin Ops summary loads.";
+
   return (
     <section
       className="admin-ops-panel"
@@ -1680,22 +1933,54 @@ function AdminOpsKnowledgePanel() {
     >
       <div className="admin-ops-panel-heading">
         <span className="model-route-card__eyebrow">Knowledge grounding</span>
-        <h3 id="admin-ops-knowledge-title">Seed data and grounding visibility</h3>
+        <h3 id="admin-ops-knowledge-title">Grounding readiness visibility</h3>
         <p>
-          Grounding should support evidence and explanations while deterministic
-          normalization and review routing keep final structured values controlled.
+          Uses persisted AI-ready record signals to show what can participate in
+          grounding workflows without claiming seed coverage that is not exposed
+          by the current API.
         </p>
       </div>
 
-      <div className="admin-ops-config-grid">
-        {KNOWLEDGE_STATUS_ITEMS.map((item) => (
-          <article className="admin-ops-config-card" key={item.label}>
-            <span>{item.label}</span>
-            <strong>{item.value}</strong>
-            <p>{item.detail}</p>
-          </article>
-        ))}
+      <div className="admin-ops-mini-metric-grid">
+        <AdminOpsMetricCard
+          metric={{
+            detail: "Active records marked ready for grounding workflows.",
+            label: "Grounding-ready",
+            value: aiReadyRecords?.ragReady ?? "—",
+          }}
+        />
+        <AdminOpsMetricCard
+          metric={{
+            detail: "Share of active records currently marked grounding-ready.",
+            label: "Readiness rate",
+            value: aiReadyRecords
+              ? formatAdminOpsPercent(
+                  aiReadyRecords.ragReady,
+                  aiReadyRecords.active,
+                )
+              : "—",
+          }}
+        />
+        <AdminOpsMetricCard
+          metric={{
+            detail: "Source types represented by at least one active record.",
+            label: "Active source types",
+            value: summary ? activeSourceCount : "—",
+          }}
+        />
       </div>
+
+      <AdminOpsInspectionGuide
+        attention={attentionText}
+        inspectNext="Inspect Source quality and Missing fields in AI-ready records, then review the workflow evidence attached to records that are not grounding-ready."
+        showing="Summary-backed grounding readiness across active AI-ready records and represented source types."
+      />
+
+      {isLoading ? (
+        <p className="admin-ops-muted">Loading grounding readiness...</p>
+      ) : null}
+
+      {error ? <p className="admin-ops-error">{error}</p> : null}
     </section>
   );
 }
@@ -1734,8 +2019,8 @@ export function AdminOpsDashboardPage({
         <h2 id="admin-ops-title">Controlled workflow operations</h2>
         <p>
           Inspect records, quality checks, model execution, normalization rules,
-          workflow configuration, grounding, review routing, and auditability
-          from one read-only control surface.
+          grounding readiness, review routing, and auditability from one
+          read-only control surface.
         </p>
       </div>
 
@@ -1775,11 +2060,13 @@ export function AdminOpsDashboardPage({
             Protected workflow behavior
           </h3>
           <p>
-            Run scenario checks from the Admin Ops surface so parser behavior,
-            review routing, prior correction suggestions, and workflow quality
-            stay connected to the broader control view.
+            Run known scenarios against the active workflow safeguards so parser
+            behavior, review routing, correction suggestions, and protected
+            execution remain verifiable.
           </p>
         </div>
+
+        <AdminOpsQualitySafeguards />
 
         <WorkflowQualityChecksPage />
       </section>
@@ -1787,8 +2074,6 @@ export function AdminOpsDashboardPage({
       <AdminOpsModelTelemetryPanel workflowRuns={workflowRuns} />
 
       <AdminOpsNormalizationMatrixPanel />
-
-      <AdminOpsConfigPanel />
 
       <AdminOpsKnowledgePanel />
     </section>
