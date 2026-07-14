@@ -1,3 +1,4 @@
+import { isShaftFlexApplicable } from "./golf-field-applicability.js";
 import {
   findTextParserEvidence,
   omitEmptyParserEvidence
@@ -117,12 +118,20 @@ const PRODUCT_PATTERNS: {
     aliases: [/\bstealth\b/i]
   },
   {
+    productLine: "TSR2",
+    aliases: [/\btsr\s*2\b/i, /\btsr2\b/i]
+  },
+  {
     productLine: "TSR",
-    aliases: [/\btsr[123]?\b/i]
+    aliases: [/\btsr\b/i]
+  },
+  {
+    productLine: "TS2",
+    aliases: [/\bts\s*2\b/i, /\bts2\b/i]
   },
   {
     productLine: "TS",
-    aliases: [/\bts[123]?\b/i]
+    aliases: [/\bts\b/i]
   },
   {
     productLine: "Rogue ST Max",
@@ -459,8 +468,10 @@ function buildParserEvidence(
     productLine: findTextParserEvidence(line, values.productLine, [
       { value: "Stealth 2", aliases: [/\bstealth\s*2\b/i, /\bstealth2\b/i] },
       { value: "Stealth", aliases: [/\bstealth\b/i] },
-      { value: "TSR", aliases: [/\btsr[123]?\b/i] },
-      { value: "TS", aliases: [/\bts[123]?\b/i] },
+      { value: "TSR2", aliases: [/\btsr\s*2\b/i, /\btsr2\b/i] },
+      { value: "TSR", aliases: [/\btsr\b/i] },
+      { value: "TS2", aliases: [/\bts\s*2\b/i, /\bts2\b/i] },
+      { value: "TS", aliases: [/\bts\b/i] },
       { value: "Rogue ST Max", aliases: [/\brogue\s*st\s*max\b/i] },
       { value: "G425", aliases: [/\bg425\b/i] },
       { value: "G430 Max", aliases: [/\bg430\s*max\b/i] },
@@ -480,7 +491,9 @@ function buildParserEvidence(
       { value: "WEDGE", aliases: [/\bwedge\b/i, /\b\d{2}\s*deg\b/i, /\bWEDGE\b/] },
       { value: "PUTTER", aliases: [/\bputter\b/i, /\bPUTTER\b/] },
     ]),
-    shaftFlex: detectShaftFlexWithEvidence(line).evidence,
+    shaftFlex: isShaftFlexApplicable(values.category)
+      ? detectShaftFlexWithEvidence(line).evidence
+      : undefined,
     conditionGrade: detectApprovedConditionGradeWithEvidence(line).evidence,
     tradeInValue: detectTradeInValueWithEvidence(line).evidence,
   });
@@ -507,7 +520,7 @@ function buildMissingFields(input: {
     missingFields.push("category");
   }
 
-  if (!input.shaftFlex) {
+  if (isShaftFlexApplicable(input.category) && !input.shaftFlex) {
     missingFields.push("shaftFlex");
   }
 
@@ -567,7 +580,9 @@ function parseLine(rawLine: string, index: number): ParsedTradeInDemoItem {
   const category = detectCategory(cleanedLine);
   const shaftBrand = detectShaftBrand(cleanedLine);
   const shaftModel = detectShaftModel(cleanedLine);
-  const shaftFlex = detectShaftFlexWithEvidence(cleanedLine).value;
+  const shaftFlex = isShaftFlexApplicable(category)
+    ? detectShaftFlexWithEvidence(cleanedLine).value
+    : null;
   const conditionGrade = detectApprovedConditionGradeWithEvidence(cleanedLine).value;
   const tradeInValue = detectTradeInValueWithEvidence(cleanedLine).value;
   const parserEvidence = buildParserEvidence(cleanedLine, {

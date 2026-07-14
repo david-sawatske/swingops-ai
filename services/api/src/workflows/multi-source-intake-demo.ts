@@ -43,7 +43,7 @@ const DEFAULT_MULTI_SOURCE_INPUTS: MultiSourceInput[] = [
       "1) TM stealth2 drv 10.5 ventus stiff condition 8.0 Average cust: Mark R.",
       "2) Ping g425 irons 5-pw reg flex condition 7.0 Below Average needs manager look.",
       "3) Cleveland RTX 6 ZipCore wedge senior flex condition 9.0 Above Average value $72 serial CLV-001.",
-      "4) Odyssey White Hot OG putter ladies flex condition 8.0 Average value $95 serial ODS-002.",
+      "4) Odyssey White Hot OG putter condition 8.0 Average value $95 serial ODS-002.",
       "Store 104 / associate jules"
     ].join("\n")
   },
@@ -57,7 +57,7 @@ const DEFAULT_MULTI_SOURCE_INPUTS: MultiSourceInput[] = [
       "Cally,Rogue ST Max driver,HZRDUS X,7.0 Below Average,190,STORE-207",
       "PING|G425 irons|reg|6.0 Poor||104",
       "Cleveland|RTX 6 ZipCore wedge|Senior|9.0 Above Average|$72|104",
-      "Odyssey|White Hot OG putter|Ladies|8.0 Average|$95|104",
+      "Odyssey|White Hot OG putter|putter||8.0 Average|$95|104",
       "Mizuno|JPX 923 Hot Metal irons|Tour X-Stiff|9.0 Above Average|$390|STORE-104",
       "PING|G430 Max driver|Tour X-Stiff|9.5 Mint|$240|STORE-207"
     ].join("\n")
@@ -75,7 +75,7 @@ const DEFAULT_MULTI_SOURCE_INPUTS: MultiSourceInput[] = [
       "Condition grade is 7.0 Below Average.",
       "Also a TaylorMade Stealth 2 10.5 driver with Ventus stiff and condition 8.0 Average.",
       "One more: Cleveland RTX 6 ZipCore wedge with Senior flex, condition 9.0 Above Average, estimated value 72.",
-      "Also Odyssey White Hot OG putter with Ladies flex, condition 8.0 Average, value 95.",
+      "Also Odyssey White Hot OG putter with condition 8.0 Average, value 95.",
       "Attached: trade_sheet_8821.pdf, driver_photos.zip",
       "Preferred store: 207"
     ].join("\n")

@@ -787,7 +787,7 @@ describe("workflow run routes", () => {
             "Callaway Rogue ST Max driver, Senior, 8.0 Average, light bag chatter.",
             "Titleist TSR2 fairway wood, Stiff, 8.0 Average, standard length.",
             "Cleveland RTX 6 ZipCore wedge, Tour X-Stiff, 7.0 Below Average, groove wear noted.",
-            "Odyssey White Hot OG putter, Regular, 8.0 Average, headcover included.",
+            "Odyssey White Hot OG putter, 8.0 Average, headcover included.",
             "Mizuno JPX 923 Hot Metal iron set, Regular, 9.0 Above Average, 5-PW set."
           ].join("\n")
         }

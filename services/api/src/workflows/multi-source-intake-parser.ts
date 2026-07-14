@@ -1,3 +1,4 @@
+import { isShaftFlexApplicable } from "./golf-field-applicability.js";
 import {
   findTextParserEvidence,
   omitEmptyParserEvidence
@@ -70,7 +71,11 @@ function detectProductLine(text: string): string | null {
     return "Stealth 2";
   }
 
-  if (/\btsr2?\b/i.test(text)) {
+  if (/\btsr\s*2\b|\btsr2\b/i.test(text)) {
+    return "TSR2";
+  }
+
+  if (/\btsr\b/i.test(text)) {
     return "TSR";
   }
 
@@ -153,7 +158,8 @@ function buildParserEvidence(
     ]),
     productLine: findTextParserEvidence(text, values.productLine, [
       { value: "Stealth 2", aliases: [/\bstealth\s*2\b/i, /\bstealth2\b/i] },
-      { value: "TSR", aliases: [/\btsr2?\b/i] },
+      { value: "TSR2", aliases: [/\btsr\s*2\b/i, /\btsr2\b/i] },
+      { value: "TSR", aliases: [/\btsr\b/i] },
       { value: "Rogue ST Max", aliases: [/\brogue\s*st\s*max\b/i] },
       { value: "G425", aliases: [/\bg425\b/i] },
       { value: "G430 Max", aliases: [/\bg430\s*max\b/i] },
@@ -172,7 +178,9 @@ function buildParserEvidence(
       { value: "PUTTER", aliases: [/\bputter\b/i] },
       { value: "IRON_SET", aliases: [/\birons?\b/i, /\b[4-9]-pw\b/i] },
     ]),
-    shaftFlex: detectShaftFlexWithEvidence(text).evidence,
+    shaftFlex: isShaftFlexApplicable(values.category)
+      ? detectShaftFlexWithEvidence(text).evidence
+      : undefined,
     conditionGrade: detectApprovedConditionGradeWithEvidence(text).evidence,
     tradeInValue: detectTradeInValueWithEvidence(text).evidence,
   });
@@ -259,7 +267,9 @@ export function buildRecord(source: MultiSourceParserInput, fragment: string, in
   const brand = detectBrand(fragment);
   const productLine = detectProductLine(fragment);
   const category = detectCategory(fragment);
-  const shaftFlex = detectShaftFlexWithEvidence(fragment).value;
+  const shaftFlex = isShaftFlexApplicable(category)
+    ? detectShaftFlexWithEvidence(fragment).value
+    : null;
   const conditionGrade = detectApprovedConditionGradeWithEvidence(fragment).value;
   const tradeInValue = detectTradeInValueWithEvidence(fragment).value;
   const parserEvidence = buildParserEvidence(fragment, {
@@ -280,7 +290,9 @@ export function buildRecord(source: MultiSourceParserInput, fragment: string, in
     brand ? null : "brand",
     productLine ? null : "productLine",
     category ? null : "category",
-    shaftFlex ? null : "shaftFlex",
+    !isShaftFlexApplicable(category) || shaftFlex
+      ? null
+      : "shaftFlex",
     conditionGrade ? null : "conditionGrade",
     tradeInValue === null ? "tradeInValue" : null
   ].filter((field): field is string => Boolean(field));

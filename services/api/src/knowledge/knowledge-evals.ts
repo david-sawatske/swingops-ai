@@ -43,46 +43,182 @@ export type KnowledgeRetrievalEvalSummary = {
 
 const EVAL_CASES: KnowledgeRetrievalEvalCase[] = [
   {
-    name: "TaylorMade Stealth 2 driver shorthand",
-    query: "TM stealth2 drv 10.5 stiff no hc sky mark",
-    expectedBrand: "TaylorMade",
-    expectedProductLine: "Stealth 2",
-    expectedCategory: "DRIVER",
-    expectedTerms: ["stealth2", "drv", "no hc"]
+    "name": "TaylorMade Stealth 2 driver shorthand",
+    "query": "TM stealth2 drv 10.5 stiff no hc sky mark",
+    "expectedBrand": "TaylorMade",
+    "expectedProductLine": "Stealth 2",
+    "expectedCategory": "DRIVER",
+    "expectedTerms": [
+      "stealth2",
+      "drv"
+    ]
   },
   {
-    name: "TaylorMade Stealth 2 semantic wording",
-    query: "stealth two ten five stiff no cover crown mark",
-    expectedBrand: "TaylorMade",
-    expectedProductLine: "Stealth 2",
-    expectedCategory: "DRIVER",
-    expectedTerms: ["stealth", "two", "stiff", "no cover"]
+    "name": "TaylorMade Stealth 2 semantic wording",
+    "query": "stealth two ten five stiff no cover crown mark",
+    "expectedBrand": "TaylorMade",
+    "expectedProductLine": "Stealth 2",
+    "expectedCategory": "DRIVER",
+    "expectedTerms": [
+      "stealth",
+      "two"
+    ]
   },
   {
-    name: "Callaway Ai Smoke fairway shorthand",
-    query: "Cally AiSmoke 3w reg",
-    expectedBrand: "Callaway",
-    expectedProductLine: "Ai Smoke",
-    expectedCategory: "FAIRWAY_WOOD",
-    expectedTerms: ["aismoke", "3w", "reg"]
+    "name": "Callaway Ai Smoke fairway shorthand",
+    "query": "Cally AiSmoke 3w reg",
+    "expectedBrand": "Callaway",
+    "expectedProductLine": "Ai Smoke",
+    "expectedCategory": "FAIRWAY_WOOD",
+    "expectedTerms": [
+      "aismoke",
+      "3w"
+    ]
   },
   {
-    name: "PING G430 Max driver shorthand",
-    query: "Ping g430 max xstiff 9",
-    expectedBrand: "PING",
-    expectedProductLine: "G430 Max",
-    expectedCategory: "DRIVER",
-    expectedTerms: ["g430", "max", "9"]
+    "name": "PING G430 Max driver shorthand",
+    "query": "Ping g430 max xstiff 9",
+    "expectedBrand": "PING",
+    "expectedProductLine": "G430 Max",
+    "expectedCategory": "DRIVER",
+    "expectedTerms": [
+      "g430",
+      "max"
+    ]
   },
   {
-    name: "Titleist TSR2 versus TS2 ambiguity",
-    query: "titleist tsr two driver no cover crown scratch",
-    expectedBrand: "Titleist",
-    expectedProductLine: "TSR2",
-    expectedCategory: "DRIVER",
-    expectedTerms: ["titleist", "driver", "no cover", "crown scratch"]
+    "name": "Titleist TSR2 driver generation",
+    "query": "titleist tsr two driver no cover crown scratch",
+    "expectedBrand": "Titleist",
+    "expectedProductLine": "TSR2",
+    "expectedCategory": "DRIVER",
+    "expectedTerms": [
+      "titleist",
+      "driver"
+    ]
+  },
+  {
+    "name": "PING G430 hybrid shorthand",
+    "query": "PING G430 hybrid senior",
+    "expectedBrand": "PING",
+    "expectedProductLine": "G430 Hybrid",
+    "expectedCategory": "HYBRID",
+    "expectedTerms": [
+      "g430",
+      "hybrid"
+    ]
+  },
+  {
+    "name": "TaylorMade Stealth 2 rescue shorthand",
+    "query": "TM Stealth2 rescue stiff",
+    "expectedBrand": "TaylorMade",
+    "expectedProductLine": "Stealth 2 Rescue",
+    "expectedCategory": "HYBRID",
+    "expectedTerms": [
+      "stealth2",
+      "rescue"
+    ]
+  },
+  {
+    "name": "TaylorMade Qi10 rescue shorthand",
+    "query": "TM Qi10 rescue regular",
+    "expectedBrand": "TaylorMade",
+    "expectedProductLine": "Qi10 Rescue",
+    "expectedCategory": "HYBRID",
+    "expectedTerms": [
+      "qi10",
+      "rescue"
+    ]
+  },
+  {
+    "name": "PING G425 hybrid shorthand",
+    "query": "PING G425 hy regular",
+    "expectedBrand": "PING",
+    "expectedProductLine": "G425 Hybrid",
+    "expectedCategory": "HYBRID",
+    "expectedTerms": [
+      "g425",
+      "hy"
+    ]
+  },
+  {
+    "name": "Mizuno JPX 921 iron generation",
+    "query": "Mizuno JPX921 Hot Metal irons 5-PW",
+    "expectedBrand": "Mizuno",
+    "expectedProductLine": "JPX 921 Hot Metal",
+    "expectedCategory": "IRON_SET",
+    "expectedTerms": [
+      "jpx921",
+      "hot metal"
+    ]
+  },
+  {
+    "name": "Cleveland RTX ZipCore older generation",
+    "query": "Cleveland RTX ZipCore wedge groove wear",
+    "expectedBrand": "Cleveland",
+    "expectedProductLine": "RTX ZipCore",
+    "expectedCategory": "WEDGE",
+    "expectedTerms": [
+      "rtx",
+      "zipcore"
+    ]
+  },
+  {
+    "name": "Titleist Vokey SM9 wedge",
+    "query": "Titleist Vokey SM9 56 degree",
+    "expectedBrand": "Titleist",
+    "expectedProductLine": "Vokey SM9",
+    "expectedCategory": "WEDGE",
+    "expectedTerms": [
+      "vokey",
+      "sm9"
+    ]
+  },
+  {
+    "name": "Odyssey White Hot Versa putter",
+    "query": "Odyssey White Hot Versa putter",
+    "expectedBrand": "Odyssey",
+    "expectedProductLine": "White Hot Versa",
+    "expectedCategory": "PUTTER",
+    "expectedTerms": [
+      "white hot versa",
+      "putter"
+    ]
+  },
+  {
+    "name": "Scotty Cameron Newport 2 putter",
+    "query": "Scotty Cameron Newport 2 putter",
+    "expectedBrand": "Scotty Cameron",
+    "expectedProductLine": "Special Select Newport 2",
+    "expectedCategory": "PUTTER",
+    "expectedTerms": [
+      "newport 2",
+      "putter"
+    ]
+  },
+  {
+    "name": "PING Anser 2 putter spacing",
+    "query": "PING Anser2 putter",
+    "expectedBrand": "PING",
+    "expectedProductLine": "Anser 2",
+    "expectedCategory": "PUTTER",
+    "expectedTerms": [
+      "anser2",
+      "putter"
+    ]
+  },
+  {
+    "name": "TaylorMade Spider Tour putter",
+    "query": "TM Spider Tour mallet",
+    "expectedBrand": "TaylorMade",
+    "expectedProductLine": "Spider Tour",
+    "expectedCategory": "PUTTER",
+    "expectedTerms": [
+      "spider tour",
+      "mallet"
+    ]
   }
-];
+]
 
 function normalize(value: string | null): string {
   return (value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();

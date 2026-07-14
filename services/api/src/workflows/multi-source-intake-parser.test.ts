@@ -68,7 +68,7 @@ describe("multi-source intake parser normalization matrix", () => {
     }
   });
 
-  it("normalizes approved shaft flex variants", () => {
+  it("normalizes approved shaft flex variants and skips putter flex", () => {
     const cases = [
       {
         raw: "PING G425 4-PW shaft reg condition 6.0 Poor value $210",
@@ -89,8 +89,8 @@ describe("multi-source intake parser normalization matrix", () => {
         tradeInValue: 390
       },
       {
-        raw: "Odyssey White Hot OG putter ladies flex condition 8.0 Average value $95",
-        shaftFlex: "LADIES",
+        raw: "Odyssey White Hot OG putter condition 8.0 Average value $95",
+        shaftFlex: null,
         conditionGrade: "8.0 Average",
         tradeInValue: 95
       }
@@ -160,6 +160,24 @@ describe("multi-source intake parser normalization matrix", () => {
     expect(record.parserEvidence?.shaftFlex).toBeUndefined();
     expect(record.parserEvidence?.conditionGrade).toBeUndefined();
     expect(record.parserEvidence?.tradeInValue).toBeUndefined();
+  });
+
+
+  it("treats shaft flex as not applicable for putter records", () => {
+    const record = parseRecord(
+      "Odyssey White Hot OG putter condition 8.0 Average value $95"
+    );
+
+    expect(record).toMatchObject({
+      brand: "Odyssey",
+      productLine: "White Hot OG",
+      category: "PUTTER",
+      shaftFlex: null,
+      conditionGrade: "8.0 Average",
+      tradeInValue: 95,
+      reviewNeeded: false
+    });
+    expect(record.missingFields).not.toContain("shaftFlex");
   });
 
 });

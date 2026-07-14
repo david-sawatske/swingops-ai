@@ -47,6 +47,9 @@ type ScoredProduct = {
   reasons: string[];
 };
 
+const MINIMUM_MATCH_CONFIDENCE = 0.38;
+const AMBIGUOUS_MATCH_SCORE_MARGIN = 0.05;
+
 const brandAliases = new Map<string, string>([
   ["tm", "taylormade"],
   ["taylor made", "taylormade"],
@@ -63,7 +66,12 @@ const categoryAliases = new Map<string, InventoryProductCategory>([
   ["fw", "FAIRWAY_WOOD"],
   ["fwy", "FAIRWAY_WOOD"],
   ["3w", "FAIRWAY_WOOD"],
+  ["5w", "FAIRWAY_WOOD"],
+  ["7w", "FAIRWAY_WOOD"],
+  ["9w", "FAIRWAY_WOOD"],
   ["hybrid", "HYBRID"],
+  ["hy", "HYBRID"],
+  ["rescue", "HYBRID"],
   ["iron", "IRON_SET"],
   ["irons", "IRON_SET"],
   ["iron set", "IRON_SET"],
@@ -101,6 +109,76 @@ function includesNormalized(haystack: string, needle: string): boolean {
   return haystack.includes(needle) || compact(haystack).includes(compact(needle));
 }
 
+function containsNormalizedPhrase(
+  haystack: string,
+  needle: string
+): boolean {
+  const normalizedHaystack = normalizeText(haystack);
+  const normalizedNeedle = normalizeText(needle);
+
+  if (!normalizedNeedle) {
+    return false;
+  }
+
+  return ` ${normalizedHaystack} `.includes(
+    ` ${normalizedNeedle} `
+  );
+}
+
+function getProductIdentifiers(
+  product: DemoInventoryProduct
+): string[] {
+  return [
+    normalizeText(product.productLine),
+    ...product.aliases.map(normalizeText)
+  ];
+}
+
+function inputHasModelUncertainty(
+  input: InventoryLookupInput
+): boolean {
+  const uncertaintyText = normalizeText(
+    [input.productLine, input.rawText]
+      .filter(Boolean)
+      .join(" ")
+  );
+
+  const modelEvidenceText = uncertaintyText
+    .replace(
+      /\b(?:condition|cond|shaft|flex|value|valuation)\s+(?:unknown|unclear|uncertain|pending)\b/g,
+      " "
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const uncertaintyTerms = modelEvidenceText.split(" ");
+
+  return [
+    "maybe",
+    "possibly",
+    "unknown",
+    "unclear",
+    "uncertain"
+  ].some((term) => uncertaintyTerms.includes(term));
+}
+
+function productFamiliesOverlap(
+  first: DemoInventoryProduct,
+  second: DemoInventoryProduct
+): boolean {
+  if (normalizeBrand(first.brand) !== normalizeBrand(second.brand)) {
+    return false;
+  }
+
+  const firstLine = compact(normalizeText(first.productLine));
+  const secondLine = compact(normalizeText(second.productLine));
+
+  return (
+    firstLine.includes(secondLine) ||
+    secondLine.includes(firstLine)
+  );
+}
+
 function roundConfidence(value: number): number {
   return Math.round(Math.min(Math.max(value, 0), 0.99) * 100) / 100;
 }
@@ -108,11 +186,7 @@ function roundConfidence(value: number): number {
 function scoreProduct(input: InventoryLookupInput, product: DemoInventoryProduct): ScoredProduct {
   const reasons: string[] = [];
   let score = 0;
-  const uncertaintyText = normalizeText([input.productLine, input.rawText].filter(Boolean).join(" "));
-  const uncertaintyTerms = uncertaintyText.split(" ");
-  const hasModelUncertainty = ["maybe", "possibly", "unknown", "unclear", "uncertain"].some((term) =>
-    uncertaintyTerms.includes(term)
-  );
+  const hasModelUncertainty = inputHasModelUncertainty(input);
 
   const inputBrand = normalizeBrand(input.brand);
   const productBrand = normalizeBrand(product.brand);
@@ -134,17 +208,42 @@ function scoreProduct(input: InventoryLookupInput, product: DemoInventoryProduct
     reasons.push(`Brand matched ${product.brand}.`);
   }
 
-  const productLine = normalizeText(product.productLine);
-  const productAliases = product.aliases.map(normalizeText);
-  const productLineMatched =
-    includesNormalized(searchableText, productLine) ||
-    productAliases.some((alias) => includesNormalized(searchableText, alias)) ||
-    Boolean(inputProductLine && includesNormalized(productLine, inputProductLine)) ||
-    Boolean(inputProductLine && includesNormalized(inputProductLine, productLine));
+  const productIdentifiers = getProductIdentifiers(product);
+  const compactInputProductLine = compact(inputProductLine);
 
-  if (productLineMatched) {
+  const exactProductLineMatched = inputProductLine
+    ? productIdentifiers.some(
+        (identifier) =>
+          compact(identifier) === compactInputProductLine
+      )
+    : productIdentifiers.some((identifier) =>
+        containsNormalizedPhrase(searchableText, identifier)
+      );
+
+  const partialProductLineMatched =
+    !exactProductLineMatched &&
+    (
+      productIdentifiers.some((identifier) =>
+        includesNormalized(searchableText, identifier)
+      ) ||
+      Boolean(
+        inputProductLine &&
+        productIdentifiers.some(
+          (identifier) =>
+            includesNormalized(identifier, inputProductLine) ||
+            includesNormalized(inputProductLine, identifier)
+        )
+      )
+    );
+
+  if (exactProductLineMatched) {
     score += 0.34;
     reasons.push(`Product line matched ${product.productLine}.`);
+  } else if (partialProductLineMatched) {
+    score += 0.18;
+    reasons.push(
+      `Product family partially matched ${product.productLine}.`
+    );
   }
 
   if (inputCategory && inputCategory === product.category) {
@@ -212,7 +311,7 @@ export function lookupInventoryProduct(
   const scoredProducts = getScoredProducts(input);
   const bestMatch = scoredProducts[0];
 
-  if (!bestMatch || bestMatch.score < 0.38) {
+  if (!bestMatch || bestMatch.score < MINIMUM_MATCH_CONFIDENCE) {
     return {
       productId: null,
       sku: null,
@@ -222,6 +321,53 @@ export function lookupInventoryProduct(
       year: input.year ?? null,
       confidence: 0,
       matchReasons: ["No internal SKU match cleared the minimum demo confidence threshold."],
+      similarProducts: scoredProducts.slice(0, 3).map(toSimilarProduct)
+    };
+  }
+
+  const secondBestMatch = scoredProducts[1];
+  const inputCategory = normalizeCategory(input.category);
+
+  const candidatesAreTied =
+    Boolean(secondBestMatch) &&
+    bestMatch.score - secondBestMatch!.score <=
+      AMBIGUOUS_MATCH_SCORE_MARGIN;
+
+  const uncertainInputHasAlternatives =
+    Boolean(secondBestMatch) &&
+    inputHasModelUncertainty(input);
+
+  const missingCategoryHasFamilyConflict =
+    Boolean(secondBestMatch) &&
+    !inputCategory &&
+    secondBestMatch!.score >= 0.45 &&
+    bestMatch.product.category !==
+      secondBestMatch!.product.category &&
+    productFamiliesOverlap(
+      bestMatch.product,
+      secondBestMatch!.product
+    );
+
+  if (
+    secondBestMatch &&
+    secondBestMatch.score >= MINIMUM_MATCH_CONFIDENCE &&
+    (
+      candidatesAreTied ||
+      uncertainInputHasAlternatives ||
+      missingCategoryHasFamilyConflict
+    )
+  ) {
+    return {
+      productId: null,
+      sku: null,
+      brand: input.brand ?? null,
+      productLine: input.productLine ?? null,
+      category: inputCategory,
+      year: input.year ?? null,
+      confidence: bestMatch.score,
+      matchReasons: [
+        "Multiple internal products had similar evidence and require generation confirmation."
+      ],
       similarProducts: scoredProducts.slice(0, 3).map(toSimilarProduct)
     };
   }

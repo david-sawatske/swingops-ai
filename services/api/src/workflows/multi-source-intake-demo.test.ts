@@ -281,7 +281,7 @@ describe("executeMultiSourceIntakeDemo", () => {
           sourceType: "POORLY_FORMED_CSV",
           sourceName: "QA CSV fixture",
           rawContent:
-            "brand|model|cat|shaft|condition_grade|value|store|serial\nOdyssey|White Hot OG putter|putter|Ladies|8.0 Average|$95|104|ODS-002"
+            "brand|model|cat|shaft|condition_grade|value|store|serial\nOdyssey|White Hot OG putter|putter||8.0 Average|$95|104|ODS-002"
         },
         {
           sourceType: "EMAIL",
@@ -316,7 +316,7 @@ describe("executeMultiSourceIntakeDemo", () => {
         brand: "Odyssey",
         productLine: "White Hot OG",
         category: "PUTTER",
-        shaftFlex: "LADIES",
+        shaftFlex: null,
         conditionGrade: "8.0 Average",
         tradeInValue: 95
       },

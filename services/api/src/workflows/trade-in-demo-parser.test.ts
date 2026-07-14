@@ -65,7 +65,7 @@ describe("parseTradeInDemoText", () => {
   it("parses expanded QA fixture families and fixed condition grades", () => {
     const parsedItems = parseTradeInDemoText([
       "Cleveland RTX 6 ZipCore wedge Senior flex condition 9.0 Above Average",
-      "Odyssey White Hot OG putter Ladies flex condition 8.0 Average",
+      "Odyssey White Hot OG putter condition 8.0 Average",
       "Mizuno JPX 923 Hot Metal irons Tour X-Stiff condition 9.0 Above Average",
       "PING G430 Max driver Tour X-Stiff condition 9.5 Mint"
     ].join("\n"));
@@ -85,7 +85,7 @@ describe("parseTradeInDemoText", () => {
       brand: "Odyssey",
       productLine: "White Hot OG",
       category: "PUTTER",
-      shaftFlex: "LADIES",
+      shaftFlex: null,
       conditionNotes: ["8.0 Average"],
       missingFields: []
     });
@@ -248,12 +248,12 @@ describe("parseTradeInDemoText", () => {
         }
       },
       {
-        raw: "Odyssey White Hot OG putter ladies flex condition 8.0 Average value $95",
+        raw: "Odyssey White Hot OG putter condition 8.0 Average value $95",
         expected: {
           brand: "Odyssey",
           productLine: "White Hot OG",
           category: "PUTTER",
-          shaftFlex: "LADIES",
+          shaftFlex: null,
           conditionGrade: "8.0 Average",
           tradeInValue: 95
         }
@@ -313,14 +313,14 @@ describe("parseTradeInDemoText", () => {
 
     expect(parsedItems[0]).toMatchObject({
       brand: "Titleist",
-      productLine: "TSR",
+      productLine: "TSR2",
       category: "FAIRWAY_WOOD",
       shaftFlex: "STIFF",
       conditionGrade: "8.0 Average",
       tradeInValue: 150,
       parserEvidence: {
         brand: { value: "Titleist", sourceText: "Titleist" },
-        productLine: { value: "TSR", sourceText: "TSR2" },
+        productLine: { value: "TSR2", sourceText: "TSR2" },
         category: { value: "FAIRWAY_WOOD", sourceText: "3w" },
         shaftFlex: { value: "STIFF", sourceText: "shaft stiff" },
         conditionGrade: { value: "8.0 Average", sourceText: "cond avg" },
@@ -369,6 +369,24 @@ describe("parseTradeInDemoText", () => {
       category: null
     });
     expect(parsedItems[0]?.missingFields).toContain("category");
+  });
+
+
+  it("does not require shaft flex for putter records", () => {
+    const parsedItems = parseTradeInDemoText(
+      "Odyssey White Hot OG putter condition 8.0 Average trade value $95"
+    );
+
+    expect(parsedItems).toHaveLength(1);
+    expect(parsedItems[0]).toMatchObject({
+      brand: "Odyssey",
+      productLine: "White Hot OG",
+      category: "PUTTER",
+      shaftFlex: null,
+      conditionGrade: "8.0 Average",
+      tradeInValue: 95
+    });
+    expect(parsedItems[0]?.missingFields).not.toContain("shaftFlex");
   });
 
 });
