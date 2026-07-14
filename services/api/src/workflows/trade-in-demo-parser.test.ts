@@ -389,4 +389,75 @@ describe("parseTradeInDemoText", () => {
     expect(parsedItems[0]?.missingFields).not.toContain("shaftFlex");
   });
 
+
+  it("preserves the specific product families exposed by the Step 2 UI matrix", () => {
+    const parsedItems = parseTradeInDemoText([
+      "TaylorMade Stealth driver, Regular, 8.0 Average.",
+      "TM Stealth2 rescue, Stiff, 8.0 Average.",
+      "PING G425 hy, Regular, 8.0 Average.",
+      "Titleist TS2 fairway wood, Regular, 7.0 Below Average.",
+      "Cleveland RTX ZipCore wedge, Regular, 7.0 Below Average.",
+      "Cleveland RTX 6 ZipCore wedge, Tour X-Stiff, 7.0 Below Average.",
+      "Odyssey White Hot Versa putter, 9.0 Above Average.",
+      "Mizuno Hot Metal iron set, Regular, 8.0 Average, generation not listed."
+    ].join("\n"));
+
+    expect(parsedItems).toHaveLength(8);
+
+    expect(parsedItems[0]).toMatchObject({
+      brand: "TaylorMade",
+      productLine: "Stealth",
+      category: "DRIVER",
+      shaftFlex: "REGULAR"
+    });
+
+    expect(parsedItems[1]).toMatchObject({
+      brand: "TaylorMade",
+      productLine: "Stealth 2 Rescue",
+      category: "HYBRID",
+      shaftFlex: "STIFF"
+    });
+
+    expect(parsedItems[2]).toMatchObject({
+      brand: "PING",
+      productLine: "G425 Hybrid",
+      category: "HYBRID",
+      shaftFlex: "REGULAR"
+    });
+
+    expect(parsedItems[3]).toMatchObject({
+      brand: "Titleist",
+      productLine: "TS2",
+      category: "FAIRWAY_WOOD",
+      shaftFlex: "REGULAR"
+    });
+
+    expect(parsedItems[4]).toMatchObject({
+      brand: "Cleveland",
+      productLine: "RTX ZipCore",
+      category: "WEDGE"
+    });
+
+    expect(parsedItems[5]).toMatchObject({
+      brand: "Cleveland",
+      productLine: "RTX 6 ZipCore",
+      category: "WEDGE"
+    });
+
+    expect(parsedItems[6]).toMatchObject({
+      brand: "Odyssey",
+      productLine: "White Hot Versa",
+      category: "PUTTER",
+      shaftFlex: null
+    });
+    expect(parsedItems[6]?.missingFields).not.toContain("shaftFlex");
+
+    expect(parsedItems[7]).toMatchObject({
+      brand: "Mizuno",
+      productLine: "Hot Metal",
+      category: "IRON_SET",
+      uncertaintyNotes: expect.arrayContaining(["model uncertain"])
+    });
+  });
+
 });

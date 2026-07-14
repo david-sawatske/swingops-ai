@@ -93,7 +93,7 @@ const CATEGORY_PATTERNS: {
   },
   {
     category: "HYBRID",
-    aliases: [/\bhy\b/i, /\bhybrid\b/i, /\bHYBRID\b/]
+    aliases: [/\bhy\b/i, /\bhybrid\b/i, /\brescue\b/i, /\bHYBRID\b/]
   },
   {
     category: "WEDGE",
@@ -109,6 +109,13 @@ const PRODUCT_PATTERNS: {
   productLine: string;
   aliases: RegExp[];
 }[] = [
+  {
+    productLine: "Stealth 2 Rescue",
+    aliases: [
+      /\bstealth\s*2\s*(?:rescue|hybrid|hy)\b/i,
+      /\bstealth2\s*(?:rescue|hybrid|hy)\b/i
+    ]
+  },
   {
     productLine: "Stealth 2",
     aliases: [/\bstealth\s*2\b/i, /\bstealth2\b/i]
@@ -138,6 +145,10 @@ const PRODUCT_PATTERNS: {
     aliases: [/\brogue\s*st\s*max\b/i]
   },
   {
+    productLine: "G425 Hybrid",
+    aliases: [/\bg425\s*(?:hybrid|hy|rescue)\b/i]
+  },
+  {
     productLine: "G425",
     aliases: [/\bg425\b/i]
   },
@@ -151,7 +162,18 @@ const PRODUCT_PATTERNS: {
   },
   {
     productLine: "RTX 6 ZipCore",
-    aliases: [/\brtx\s*6(?:\s*zip\s*core|\s*zipcore)?\b/i, /\brtx6\b/i, /\brtx\s*zip\s*core\b/i]
+    aliases: [
+      /\brtx\s*6(?:\s*zip\s*core|\s*zipcore)?\b/i,
+      /\brtx6(?:\s*zip\s*core|\s*zipcore)?\b/i
+    ]
+  },
+  {
+    productLine: "RTX ZipCore",
+    aliases: [/\brtx\s*zip\s*core\b/i, /\brtx\s*zipcore\b/i]
+  },
+  {
+    productLine: "White Hot Versa",
+    aliases: [/\bwhite\s*hot\s*versa\b/i, /\bwh\s*versa\b/i]
   },
   {
     productLine: "White Hot OG",
@@ -159,7 +181,15 @@ const PRODUCT_PATTERNS: {
   },
   {
     productLine: "JPX 923 Hot Metal",
-    aliases: [/\bjpx\s*923(?:\s*hot\s*metal)?\b/i, /\bhot\s*metal\b/i]
+    aliases: [/\bjpx\s*923(?:\s*hot\s*metal)?\b/i]
+  },
+  {
+    productLine: "JPX 921 Hot Metal",
+    aliases: [/\bjpx\s*921(?:\s*hot\s*metal)?\b/i]
+  },
+  {
+    productLine: "Hot Metal",
+    aliases: [/\bhot\s*metal\b/i]
   }
 ];
 
@@ -466,6 +496,13 @@ function buildParserEvidence(
       { value: "Mizuno", aliases: [/\bmizuno\b/i] },
     ]),
     productLine: findTextParserEvidence(line, values.productLine, [
+      {
+        value: "Stealth 2 Rescue",
+        aliases: [
+          /\bstealth\s*2\s*(?:rescue|hybrid|hy)\b/i,
+          /\bstealth2\s*(?:rescue|hybrid|hy)\b/i
+        ]
+      },
       { value: "Stealth 2", aliases: [/\bstealth\s*2\b/i, /\bstealth2\b/i] },
       { value: "Stealth", aliases: [/\bstealth\b/i] },
       { value: "TSR2", aliases: [/\btsr\s*2\b/i, /\btsr2\b/i] },
@@ -473,21 +510,44 @@ function buildParserEvidence(
       { value: "TS2", aliases: [/\bts\s*2\b/i, /\bts2\b/i] },
       { value: "TS", aliases: [/\bts\b/i] },
       { value: "Rogue ST Max", aliases: [/\brogue\s*st\s*max\b/i] },
+      {
+        value: "G425 Hybrid",
+        aliases: [/\bg425\s*(?:hybrid|hy|rescue)\b/i]
+      },
       { value: "G425", aliases: [/\bg425\b/i] },
       { value: "G430 Max", aliases: [/\bg430\s*max\b/i] },
       { value: "G430", aliases: [/\bg430\b/i] },
       {
         value: "RTX 6 ZipCore",
-        aliases: [/\brtx\s*6(?:\s*zip\s*core|\s*zipcore)?\b/i, /\brtx6\b/i, /\brtx\s*zip\s*core\b/i],
+        aliases: [
+          /\brtx\s*6(?:\s*zip\s*core|\s*zipcore)?\b/i,
+          /\brtx6(?:\s*zip\s*core|\s*zipcore)?\b/i
+        ],
+      },
+      {
+        value: "RTX ZipCore",
+        aliases: [/\brtx\s*zip\s*core\b/i, /\brtx\s*zipcore\b/i]
+      },
+      {
+        value: "White Hot Versa",
+        aliases: [/\bwhite\s*hot\s*versa\b/i, /\bwh\s*versa\b/i]
       },
       { value: "White Hot OG", aliases: [/\bwhite\s*hot\s*og\b/i, /\bwh\s*og\b/i] },
-      { value: "JPX 923 Hot Metal", aliases: [/\bjpx\s*923(?:\s*hot\s*metal)?\b/i, /\bhot\s*metal\b/i] },
+      {
+        value: "JPX 923 Hot Metal",
+        aliases: [/\bjpx\s*923(?:\s*hot\s*metal)?\b/i]
+      },
+      {
+        value: "JPX 921 Hot Metal",
+        aliases: [/\bjpx\s*921(?:\s*hot\s*metal)?\b/i]
+      },
+      { value: "Hot Metal", aliases: [/\bhot\s*metal\b/i] },
     ]),
     category: findTextParserEvidence(line, values.category, [
       { value: "DRIVER", aliases: [/\bdriver\b/i, /\bdrv\b/i, /\bdr\b/i, /\bDRIVER\b/] },
       { value: "FAIRWAY_WOOD", aliases: [/\bfairway\b/i, /\bfw\b/i, /\b3w\b/i, /\b5w\b/i, /\b7w\b/i, /\b9w\b/i, /\bwood\b/i, /\bFAIRWAY_WOOD\b/] },
       { value: "IRON_SET", aliases: [/\birons?\b/i, /\b[4-9]-pw\b/i, /\b[5-9]-gw\b/i, /\bIRON_SET\b/] },
-      { value: "HYBRID", aliases: [/\bhy\b/i, /\bhybrid\b/i, /\bHYBRID\b/] },
+      { value: "HYBRID", aliases: [/\bhy\b/i, /\bhybrid\b/i, /\brescue\b/i, /\bHYBRID\b/] },
       { value: "WEDGE", aliases: [/\bwedge\b/i, /\b\d{2}\s*deg\b/i, /\bWEDGE\b/] },
       { value: "PUTTER", aliases: [/\bputter\b/i, /\bPUTTER\b/] },
     ]),
@@ -598,7 +658,15 @@ function parseLine(rawLine: string, index: number): ParsedTradeInDemoItem {
     ...collectNotes(cleanedLine, CONDITION_NOTE_PATTERNS)
   ]);
   const accessoriesNotes = collectNotes(cleanedLine, ACCESSORY_NOTE_PATTERNS);
-  const uncertaintyNotes = collectNotes(cleanedLine, UNCERTAINTY_PATTERNS);
+  const hasAmbiguousProductLine =
+    productLine === "TSR" ||
+    productLine === "Hot Metal";
+
+  const uncertaintyNotes = unique([
+    ...collectNotes(cleanedLine, UNCERTAINTY_PATTERNS),
+    ...(hasAmbiguousProductLine ? ["model uncertain"] : [])
+  ]);
+
   const missingFields = buildMissingFields({
     brand,
     productLine,

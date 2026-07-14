@@ -180,4 +180,90 @@ describe("multi-source intake parser normalization matrix", () => {
     expect(record.missingFields).not.toContain("shaftFlex");
   });
 
+
+  it("preserves Step 2 product-family specificity without inventing generations", () => {
+    const cases = [
+      {
+        raw: "TaylorMade Stealth driver shaft Regular condition 8.0 Average value $140",
+        expected: {
+          brand: "TaylorMade",
+          productLine: "Stealth",
+          category: "DRIVER",
+          shaftFlex: "REGULAR"
+        }
+      },
+      {
+        raw: "TM Stealth2 rescue shaft Stiff condition 8.0 Average value $115",
+        expected: {
+          brand: "TaylorMade",
+          productLine: "Stealth 2 Rescue",
+          category: "HYBRID",
+          shaftFlex: "STIFF"
+        }
+      },
+      {
+        raw: "PING G425 hy shaft Regular condition 8.0 Average value $120",
+        expected: {
+          brand: "PING",
+          productLine: "G425 Hybrid",
+          category: "HYBRID",
+          shaftFlex: "REGULAR"
+        }
+      },
+      {
+        raw: "Titleist TS2 fairway wood shaft Regular condition 7.0 Below Average value $90",
+        expected: {
+          brand: "Titleist",
+          productLine: "TS2",
+          category: "FAIRWAY_WOOD",
+          shaftFlex: "REGULAR"
+        }
+      },
+      {
+        raw: "Cleveland RTX ZipCore wedge shaft Regular condition 7.0 Below Average value $60",
+        expected: {
+          brand: "Cleveland",
+          productLine: "RTX ZipCore",
+          category: "WEDGE"
+        }
+      },
+      {
+        raw: "Cleveland RTX 6 ZipCore wedge shaft Tour X-Stiff condition 7.0 Below Average value $72",
+        expected: {
+          brand: "Cleveland",
+          productLine: "RTX 6 ZipCore",
+          category: "WEDGE"
+        }
+      },
+      {
+        raw: "Odyssey White Hot Versa putter condition 9.0 Above Average value $110",
+        expected: {
+          brand: "Odyssey",
+          productLine: "White Hot Versa",
+          category: "PUTTER",
+          shaftFlex: null
+        }
+      }
+    ];
+
+    for (const testCase of cases) {
+      const record = parseRecord(testCase.raw);
+
+      expect(record).toMatchObject(testCase.expected);
+    }
+
+    const ambiguousHotMetal = parseRecord(
+      "Mizuno Hot Metal iron set shaft Regular condition 8.0 Average value $350 generation not listed"
+    );
+
+    expect(ambiguousHotMetal).toMatchObject({
+      brand: "Mizuno",
+      productLine: "Hot Metal",
+      category: "IRON_SET",
+      shaftFlex: "REGULAR",
+      reviewNeeded: true
+    });
+    expect(ambiguousHotMetal.sourceText).toContain("generation not listed");
+  });
+
 });

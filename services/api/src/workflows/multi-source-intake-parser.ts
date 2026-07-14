@@ -67,8 +67,20 @@ function detectBrand(text: string): string | null {
 }
 
 function detectProductLine(text: string): string | null {
+  if (
+    /\bstealth\s*2\s*(?:rescue|hybrid|hy)\b|\bstealth2\s*(?:rescue|hybrid|hy)\b/i.test(
+      text
+    )
+  ) {
+    return "Stealth 2 Rescue";
+  }
+
   if (/\bstealth\s*2\b|\bstealth2\b/i.test(text)) {
     return "Stealth 2";
+  }
+
+  if (/\bstealth\b/i.test(text)) {
+    return "Stealth";
   }
 
   if (/\btsr\s*2\b|\btsr2\b/i.test(text)) {
@@ -79,8 +91,20 @@ function detectProductLine(text: string): string | null {
     return "TSR";
   }
 
+  if (/\bts\s*2\b|\bts2\b/i.test(text)) {
+    return "TS2";
+  }
+
+  if (/\bts\b/i.test(text)) {
+    return "TS";
+  }
+
   if (/\brogue\s*st\s*max\b/i.test(text)) {
     return "Rogue ST Max";
+  }
+
+  if (/\bg425\s*(?:hybrid|hy|rescue)\b/i.test(text)) {
+    return "G425 Hybrid";
   }
 
   if (/\bg425\b/i.test(text)) {
@@ -95,16 +119,36 @@ function detectProductLine(text: string): string | null {
     return "G430";
   }
 
-  if (/\brtx\s*6(?:\s*zip\s*core|\s*zipcore)?\b|\brtx6\b|\brtx\s*zip\s*core\b/i.test(text)) {
+  if (
+    /\brtx\s*6(?:\s*zip\s*core|\s*zipcore)?\b|\brtx6(?:\s*zip\s*core|\s*zipcore)?\b/i.test(
+      text
+    )
+  ) {
     return "RTX 6 ZipCore";
+  }
+
+  if (/\brtx\s*zip\s*core\b|\brtx\s*zipcore\b/i.test(text)) {
+    return "RTX ZipCore";
+  }
+
+  if (/\bwhite\s*hot\s*versa\b|\bwh\s*versa\b/i.test(text)) {
+    return "White Hot Versa";
   }
 
   if (/\bwhite\s*hot\s*og\b|\bwh\s*og\b/i.test(text)) {
     return "White Hot OG";
   }
 
-  if (/\bjpx\s*923(?:\s*hot\s*metal)?\b|\bhot\s*metal\b/i.test(text)) {
+  if (/\bjpx\s*923(?:\s*hot\s*metal)?\b/i.test(text)) {
     return "JPX 923 Hot Metal";
+  }
+
+  if (/\bjpx\s*921(?:\s*hot\s*metal)?\b/i.test(text)) {
+    return "JPX 921 Hot Metal";
+  }
+
+  if (/\bhot\s*metal\b/i.test(text)) {
+    return "Hot Metal";
   }
 
   return null;
@@ -117,6 +161,10 @@ function detectCategory(text: string): string | null {
 
   if (/\b(?:3|4|5|7|9)\s*-?\s*(?:w|wood)\b|\bfairway\b/i.test(text)) {
     return "FAIRWAY_WOOD";
+  }
+
+  if (/\b(?:hybrid|hy|rescue)\b/i.test(text)) {
+    return "HYBRID";
   }
 
   if (/\bwedge\b|\b(?:46|48|50|52|54|56|58|60)\s*(?:deg|degree|°)?\b/i.test(text)) {
@@ -157,23 +205,57 @@ function buildParserEvidence(
       { value: "Mizuno", aliases: [/\bmizuno\b/i] },
     ]),
     productLine: findTextParserEvidence(text, values.productLine, [
+      {
+        value: "Stealth 2 Rescue",
+        aliases: [
+          /\bstealth\s*2\s*(?:rescue|hybrid|hy)\b/i,
+          /\bstealth2\s*(?:rescue|hybrid|hy)\b/i
+        ]
+      },
       { value: "Stealth 2", aliases: [/\bstealth\s*2\b/i, /\bstealth2\b/i] },
+      { value: "Stealth", aliases: [/\bstealth\b/i] },
       { value: "TSR2", aliases: [/\btsr\s*2\b/i, /\btsr2\b/i] },
       { value: "TSR", aliases: [/\btsr\b/i] },
+      { value: "TS2", aliases: [/\bts\s*2\b/i, /\bts2\b/i] },
+      { value: "TS", aliases: [/\bts\b/i] },
       { value: "Rogue ST Max", aliases: [/\brogue\s*st\s*max\b/i] },
+      {
+        value: "G425 Hybrid",
+        aliases: [/\bg425\s*(?:hybrid|hy|rescue)\b/i]
+      },
       { value: "G425", aliases: [/\bg425\b/i] },
       { value: "G430 Max", aliases: [/\bg430\s*max\b/i] },
       { value: "G430", aliases: [/\bg430\b/i] },
       {
         value: "RTX 6 ZipCore",
-        aliases: [/\brtx\s*6(?:\s*zip\s*core|\s*zipcore)?\b/i, /\brtx6\b/i, /\brtx\s*zip\s*core\b/i],
+        aliases: [
+          /\brtx\s*6(?:\s*zip\s*core|\s*zipcore)?\b/i,
+          /\brtx6(?:\s*zip\s*core|\s*zipcore)?\b/i
+        ],
+      },
+      {
+        value: "RTX ZipCore",
+        aliases: [/\brtx\s*zip\s*core\b/i, /\brtx\s*zipcore\b/i]
+      },
+      {
+        value: "White Hot Versa",
+        aliases: [/\bwhite\s*hot\s*versa\b/i, /\bwh\s*versa\b/i]
       },
       { value: "White Hot OG", aliases: [/\bwhite\s*hot\s*og\b/i, /\bwh\s*og\b/i] },
-      { value: "JPX 923 Hot Metal", aliases: [/\bjpx\s*923(?:\s*hot\s*metal)?\b/i, /\bhot\s*metal\b/i] },
+      {
+        value: "JPX 923 Hot Metal",
+        aliases: [/\bjpx\s*923(?:\s*hot\s*metal)?\b/i]
+      },
+      {
+        value: "JPX 921 Hot Metal",
+        aliases: [/\bjpx\s*921(?:\s*hot\s*metal)?\b/i]
+      },
+      { value: "Hot Metal", aliases: [/\bhot\s*metal\b/i] },
     ]),
     category: findTextParserEvidence(text, values.category, [
       { value: "DRIVER", aliases: [/\bdriver\b/i, /\bdrv\b/i] },
       { value: "FAIRWAY_WOOD", aliases: [/\b(?:3|4|5|7|9)\s*-?\s*(?:w|wood)\b/i, /\bfairway\b/i] },
+      { value: "HYBRID", aliases: [/\bhybrid\b/i, /\bhy\b/i, /\brescue\b/i] },
       { value: "WEDGE", aliases: [/\bwedge\b/i, /\b(?:46|48|50|52|54|56|58|60)\s*(?:deg|degree|°)?\b/i] },
       { value: "PUTTER", aliases: [/\bputter\b/i] },
       { value: "IRON_SET", aliases: [/\birons?\b/i, /\b[4-9]-pw\b/i] },
@@ -285,6 +367,13 @@ export function buildRecord(source: MultiSourceParserInput, fragment: string, in
   const storeId = detectStoreId(sourceContext);
   const eventTimestamp = detectTimestamps(fragment)[0] ?? null;
   const attachmentsMentioned = detectAttachments(sourceContext);
+  const hasAmbiguousProductLine =
+    productLine === "TSR" ||
+    productLine === "Hot Metal";
+  const hasExplicitUncertainty =
+    /\bmaybe|unclear|malformed|missing|pending review|generation\s+(?:not\s+listed|unknown|unclear)|ERROR\b/i.test(
+      fragment
+    );
 
   const missingFields = [
     brand ? null : "brand",
@@ -299,7 +388,13 @@ export function buildRecord(source: MultiSourceParserInput, fragment: string, in
 
   const confidence = Math.max(
     0.35,
-    Number((1 - missingFields.length * 0.095 - (/\bmaybe|unclear|malformed|missing|pending review|ERROR\b/i.test(fragment) ? 0.12 : 0)).toFixed(2))
+    Number(
+      (
+        1 -
+        missingFields.length * 0.095 -
+        (hasAmbiguousProductLine || hasExplicitUncertainty ? 0.12 : 0)
+      ).toFixed(2)
+    )
   );
 
   return {
@@ -320,7 +415,10 @@ export function buildRecord(source: MultiSourceParserInput, fragment: string, in
     attachmentsMentioned,
     missingFields,
     confidence,
-    reviewNeeded: missingFields.length > 0 || confidence < 0.72,
+    reviewNeeded:
+      missingFields.length > 0 ||
+      hasAmbiguousProductLine ||
+      confidence < 0.72,
     sourceText: fragment,
     normalizedText: [
       brand,
