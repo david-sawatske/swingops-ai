@@ -21,6 +21,20 @@ type AdminOpsMetric = {
   onAction?: () => void;
 };
 
+type AdminOpsModelTelemetryTab =
+  | "PROVIDER_MIX"
+  | "LATENCY_COST"
+  | "VALIDATION";
+
+const ADMIN_OPS_MODEL_TELEMETRY_TABS: {
+  label: string;
+  value: AdminOpsModelTelemetryTab;
+}[] = [
+  { label: "Provider mix", value: "PROVIDER_MIX" },
+  { label: "Latency and cost", value: "LATENCY_COST" },
+  { label: "Validation", value: "VALIDATION" },
+];
+
 type AdminOpsDashboardPageProps = {
   workflowRuns: GlobalWorkflowRunSummary[];
   workflowRunCount: number;
@@ -174,6 +188,14 @@ function formatAdminOpsPercent(numerator: number, denominator: number) {
   }
 
   return `${Math.round((numerator / denominator) * 100)}%`;
+}
+
+function formatAdminOpsCountLabel(
+  count: number,
+  singularLabel: string,
+  pluralLabel = `${singularLabel}s`,
+) {
+  return `${count.toLocaleString()} ${count === 1 ? singularLabel : pluralLabel}`;
 }
 
 function AdminOpsStatusBadge({
@@ -1177,7 +1199,13 @@ function AdminOpsModelTelemetryPanel({
 }: {
   workflowRuns: GlobalWorkflowRunSummary[];
 }) {
-  const modelCalls = workflowRuns
+  const [summary, setSummary] = useState<GetAdminOpsSummaryResponse | null>(null);
+  const [isSummaryLoading, setIsSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] =
+    useState<AdminOpsModelTelemetryTab>("PROVIDER_MIX");
+
+  const recentModelCalls = workflowRuns
     .map((run) =>
       run.latestModelCallLog
         ? {
@@ -1189,96 +1217,284 @@ function AdminOpsModelTelemetryPanel({
     .filter((entry): entry is {
       run: GlobalWorkflowRunSummary;
       modelCall: NonNullable<GlobalWorkflowRunSummary["latestModelCallLog"]>;
-    } => entry !== null);
+    } => entry !== null)
+    .slice(0, 8);
 
-  const totalCost = modelCalls.reduce(
-    (sum, entry) => sum + (entry.modelCall.estimatedCostUsd ?? 0),
-    0,
+  const modelExecutions = summary?.modelExecutions;
+  const providerModelRows = modelExecutions?.byProviderModel ?? [];
+  const latencyRows = [...providerModelRows].sort((left, right) => {
+    const leftLatency = left.averageLatencyMs ?? Number.MAX_SAFE_INTEGER;
+    const rightLatency = right.averageLatencyMs ?? Number.MAX_SAFE_INTEGER;
+
+    return leftLatency - rightLatency;
+  });
+  const validationRows = [...providerModelRows].sort(
+    (left, right) =>
+      right.fallbackCount - left.fallbackCount ||
+      right.failedCallCount - left.failedCallCount ||
+      right.callCount - left.callCount,
   );
-  const trackedLatencyCalls = modelCalls.filter(
-    (entry) => entry.modelCall.latencyMs !== null,
-  );
-  const averageLatency =
-    trackedLatencyCalls.length > 0
-      ? Math.round(
-          trackedLatencyCalls.reduce(
-            (sum, entry) => sum + (entry.modelCall.latencyMs ?? 0),
-            0,
-          ) / trackedLatencyCalls.length,
-        )
-      : null;
-  const failedCalls = modelCalls.filter(
-    (entry) => entry.modelCall.status === "FAILED",
-  ).length;
-  const fallbackAttemptCount = modelCalls.reduce(
-    (count, entry) =>
-      count +
-      (entry.modelCall.attemptLogs?.filter(
-        (attempt) => attempt.status !== "SUCCESS" && attempt.status !== "SUCCEEDED",
-      ).length ?? 0),
-    0,
-  );
+
+  useEffect(() => {
+    async function loadModelTelemetrySummary() {
+      try {
+        setIsSummaryLoading(true);
+        setSummaryError(null);
+        setSummary(await getAdminOpsSummary());
+      } catch (loadError) {
+        setSummaryError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Unable to load model telemetry summary.",
+        );
+      } finally {
+        setIsSummaryLoading(false);
+      }
+    }
+
+    void loadModelTelemetrySummary();
+  }, []);
 
   return (
     <section className="admin-ops-panel" aria-labelledby="admin-ops-model-title">
       <div className="admin-ops-panel-heading">
         <span className="model-route-card__eyebrow">Model telemetry</span>
-        <h3 id="admin-ops-model-title">Cost, latency, fallback, and status</h3>
+        <h3 id="admin-ops-model-title">Execution cost, latency and reliability</h3>
         <p>
-          Uses the latest model call attached to each workflow run so provider
-          execution remains visible before adding deeper aggregate admin routes.
+          Tracks model execution health across recent model calls, then keeps
+          recent workflow call evidence visible for audit.
         </p>
       </div>
 
-      <div className="admin-ops-mini-metric-grid">
+      <div className="admin-ops-model-metric-grid">
         <AdminOpsMetricCard
           metric={{
-            detail: "Runs with a latest persisted model call.",
-            label: "Visible calls",
-            value: modelCalls.length,
+            detail: "Recent executions in the Admin summary.",
+            label: "Total calls",
+            value: modelExecutions?.totalCalls ?? "—",
           }}
         />
         <AdminOpsMetricCard
           metric={{
-            detail: "Average across calls with tracked latency.",
+            detail: "Succeeded executions divided by total calls.",
+            label: "Validation pass rate",
+            value: modelExecutions
+              ? `${modelExecutions.validationPassRate}%`
+              : "—",
+          }}
+        />
+        <AdminOpsMetricCard
+          metric={{
+            detail: "Average across tracked calls.",
             label: "Avg latency",
-            value: averageLatency === null ? "Not tracked" : `${averageLatency} ms`,
+            value:
+              modelExecutions?.averageLatencyMs === null ||
+              modelExecutions?.averageLatencyMs === undefined
+                ? "Not tracked"
+                : formatLatency(modelExecutions.averageLatencyMs),
           }}
         />
         <AdminOpsMetricCard
           metric={{
-            detail: "Estimated provider cost across visible calls.",
+            detail: modelExecutions
+              ? `${formatAdminOpsCountLabel(
+                  modelExecutions.fallbackCount,
+                  "call",
+                )} with fallback or non-success attempts.`
+              : "Calls with fallback or non-success attempts.",
+            label: "Fallback rate",
+            value: modelExecutions ? `${modelExecutions.fallbackRate}%` : "—",
+          }}
+        />
+        <AdminOpsMetricCard
+          metric={{
+            detail: "Estimated spend across recent calls.",
             label: "Estimated cost",
-            value: formatCurrency(totalCost),
+            value: modelExecutions
+              ? formatCurrency(modelExecutions.estimatedCostTotal)
+              : "—",
           }}
         />
         <AdminOpsMetricCard
           metric={{
-            detail: "Failed latest calls across displayed workflow runs.",
-            label: "Failed calls",
-            value: failedCalls,
-          }}
-        />
-        <AdminOpsMetricCard
-          metric={{
-            detail: "Non-success attempts captured inside visible model calls.",
-            label: "Fallback signals",
-            value: fallbackAttemptCount,
+            detail: "Tracked input and output tokens.",
+            label: "Tokens",
+            value: modelExecutions
+              ? modelExecutions.totalTokens.toLocaleString()
+              : "—",
           }}
         />
       </div>
 
-      {modelCalls.length === 0 ? (
+      {isSummaryLoading ? (
+        <p className="admin-ops-muted">Loading model telemetry summary...</p>
+      ) : null}
+
+      {summaryError ? <p className="admin-ops-error">{summaryError}</p> : null}
+
+      {modelExecutions ? (
+        <div className="admin-ops-insight-tabs-card">
+          <div
+            aria-label="Model telemetry tabs"
+            className="admin-ops-insight-tabs"
+            role="tablist"
+          >
+            {ADMIN_OPS_MODEL_TELEMETRY_TABS.map((tab) => (
+              <button
+                aria-selected={activeTab === tab.value}
+                className={
+                  activeTab === tab.value
+                    ? "admin-ops-insight-tab admin-ops-insight-tab--active"
+                    : "admin-ops-insight-tab"
+                }
+                key={tab.value}
+                onClick={() => setActiveTab(tab.value)}
+                role="tab"
+                type="button"
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <article className="admin-ops-insight-card">
+            {activeTab === "PROVIDER_MIX" ? (
+              <>
+                <div className="admin-ops-insight-card__header">
+                  <span>Provider mix</span>
+                  <p>
+                    Provider and model distribution across recent model
+                    executions.
+                  </p>
+                </div>
+
+                <div className="admin-ops-insight-list">
+                  {providerModelRows.length > 0 ? (
+                    providerModelRows.map((entry) => (
+                      <div
+                        className="admin-ops-insight-row"
+                        key={`${entry.provider}-${entry.model}`}
+                      >
+                        <span>
+                          {entry.provider} / {entry.model}
+                        </span>
+                        <strong>{formatAdminOpsCountLabel(entry.callCount, "call")}</strong>
+                        <small>
+                          {entry.failedCallCount} failed / {entry.fallbackCount} fallback
+                        </small>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="admin-ops-muted">
+                      No provider/model execution rows are available yet.
+                    </p>
+                  )}
+                </div>
+              </>
+            ) : null}
+
+            {activeTab === "LATENCY_COST" ? (
+              <>
+                <div className="admin-ops-insight-card__header">
+                  <span>Latency and cost</span>
+                  <p>
+                    Average latency, estimated cost and token usage by provider
+                    model.
+                  </p>
+                </div>
+
+                <div className="admin-ops-insight-list">
+                  {latencyRows.length > 0 ? (
+                    latencyRows.map((entry) => (
+                      <div
+                        className="admin-ops-insight-row"
+                        key={`${entry.provider}-${entry.model}`}
+                      >
+                        <span>
+                          {entry.provider} / {entry.model}
+                        </span>
+                        <strong>{formatLatency(entry.averageLatencyMs)}</strong>
+                        <small>
+                          {formatCurrency(entry.estimatedCostTotal)} estimated ·{" "}
+                          {entry.totalTokens.toLocaleString()} tokens
+                        </small>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="admin-ops-muted">
+                      No latency or cost telemetry is available yet.
+                    </p>
+                  )}
+                </div>
+              </>
+            ) : null}
+
+            {activeTab === "VALIDATION" ? (
+              <>
+                <div className="admin-ops-insight-card__header">
+                  <span>Validation</span>
+                  <p>
+                    Success, failure and fallback behavior for recent model
+                    executions.
+                  </p>
+                </div>
+
+                <div className="admin-ops-insight-list">
+                  <div className="admin-ops-insight-row">
+                    <span>Validation pass rate</span>
+                    <strong>{modelExecutions.validationPassRate}%</strong>
+                    <small>
+                      {modelExecutions.succeededCalls} succeeded /{" "}
+                      {modelExecutions.failedCalls} failed
+                    </small>
+                  </div>
+                  <div className="admin-ops-insight-row">
+                    <span>Fallback rate</span>
+                    <strong>{modelExecutions.fallbackRate}%</strong>
+                    <small>
+                      {formatAdminOpsCountLabel(modelExecutions.fallbackCount, "call")} with fallback or
+                      non-success attempt signals
+                    </small>
+                  </div>
+                  {validationRows.slice(0, 5).map((entry) => (
+                    <div
+                      className="admin-ops-insight-row"
+                      key={`${entry.provider}-${entry.model}`}
+                    >
+                      <span>
+                        {entry.provider} / {entry.model}
+                      </span>
+                      <strong>
+                        {formatAdminOpsPercent(
+                          entry.callCount - entry.failedCallCount,
+                          entry.callCount,
+                        )}{" "}
+                        pass
+                      </strong>
+                      <small>
+                        {entry.failedCallCount} failed / {entry.fallbackCount} fallback
+                      </small>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : null}
+          </article>
+        </div>
+      ) : null}
+
+      {recentModelCalls.length === 0 ? (
         <p className="admin-ops-muted">
-          No model telemetry found yet. Run the main workflow with field repair
-          enabled to capture provider execution evidence.
+          No recent workflow model-call evidence found yet. Run the main
+          workflow with field repair enabled to capture provider execution
+          evidence.
         </p>
       ) : (
         <div className="admin-ops-table-wrap">
           <table className="admin-ops-table admin-ops-table--dense">
             <thead>
               <tr>
-                <th>Run</th>
+                <th>Workflow run</th>
                 <th>Provider / model</th>
                 <th>Status</th>
                 <th>Latency</th>
@@ -1287,12 +1503,12 @@ function AdminOpsModelTelemetryPanel({
               </tr>
             </thead>
             <tbody>
-              {modelCalls.slice(0, 10).map(({ run, modelCall }) => (
+              {recentModelCalls.map(({ run, modelCall }) => (
                 <tr key={modelCall.id} className="admin-ops-table-row-card">
                   <td>
                     <div className="admin-ops-table-stack">
                       <strong>{run.workflowName}</strong>
-                      <small title={run.id}>{formatShortId(run.id)}</small>
+                      <small>{formatShortId(run.id)}</small>
                     </div>
                   </td>
                   <td>
