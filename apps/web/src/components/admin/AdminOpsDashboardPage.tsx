@@ -44,33 +44,56 @@ type AdminOpsDashboardPageProps = {
   toolCallLogCount: number;
 };
 
-const ADMIN_OPS_SECTIONS = [
+type AdminOpsSection =
+  | "AI_READY_RECORDS"
+  | "QUALITY_CHECKS"
+  | "MODEL_TELEMETRY"
+  | "NORMALIZATION_MATRIX"
+  | "KNOWLEDGE_GROUNDING";
+
+const ADMIN_OPS_SECTIONS: Array<{
+  body: string;
+  panelId: string;
+  tabId: string;
+  title: string;
+  value: AdminOpsSection;
+}> = [
   {
-    id: "admin-ops-records-title",
-    title: "AI-ready records",
     body: "Structured output, missing fields, and review state.",
+    panelId: "admin-ops-records-panel",
+    tabId: "admin-ops-records-tab",
+    title: "AI-ready records",
+    value: "AI_READY_RECORDS",
   },
   {
-    id: "admin-ops-quality-checks-title",
-    title: "Quality checks",
     body: "Scenario matrix and protected workflow behavior.",
+    panelId: "admin-ops-quality-checks-panel",
+    tabId: "admin-ops-quality-checks-tab",
+    title: "Quality checks",
+    value: "QUALITY_CHECKS",
   },
   {
-    id: "admin-ops-model-title",
-    title: "Model telemetry",
     body: "Cost, latency, fallback, and validation status.",
+    panelId: "admin-ops-model-panel",
+    tabId: "admin-ops-model-tab",
+    title: "Model telemetry",
+    value: "MODEL_TELEMETRY",
   },
   {
-    id: "admin-ops-normalization-title",
-    title: "Normalization matrix",
     body: "Aliases, negative evidence, and blocked repairs.",
+    panelId: "admin-ops-normalization-panel",
+    tabId: "admin-ops-normalization-tab",
+    title: "Normalization matrix",
+    value: "NORMALIZATION_MATRIX",
   },
   {
-    id: "admin-ops-knowledge-title",
-    title: "Knowledge grounding",
     body: "Record readiness and source-level grounding signals.",
+    panelId: "admin-ops-knowledge-panel",
+    tabId: "admin-ops-knowledge-tab",
+    title: "Knowledge grounding",
+    value: "KNOWLEDGE_GROUNDING",
   },
-] as const;
+];
 
 function AdminOpsMetricCard({ metric }: { metric: AdminOpsMetric }) {
   return (
@@ -685,7 +708,7 @@ function AdminOpsAiReadyRecordsPanel() {
         </p>
       </div>
 
-      <div className="admin-ops-mini-metric-grid">
+      <div className="admin-ops-mini-metric-grid admin-ops-ai-ready-metric-grid">
         <AdminOpsMetricCard
           metric={{
             actionLabel: "Open active records",
@@ -1987,30 +2010,9 @@ function AdminOpsKnowledgePanel() {
 
 export function AdminOpsDashboardPage({
   workflowRuns,
-  workflowRunCount,
-  openReviewQueueItemCount,
-  toolCallLogCount,
 }: AdminOpsDashboardPageProps) {
-  const metrics: AdminOpsMetric[] = useMemo(
-    () => [
-      {
-        label: "Workflow runs",
-        value: workflowRunCount,
-        detail: "Tracked runs available for operational review.",
-      },
-      {
-        label: "Open review items",
-        value: openReviewQueueItemCount,
-        detail: "Records still requiring human validation.",
-      },
-      {
-        label: "Tool calls",
-        value: toolCallLogCount,
-        detail: "Safe connector activity captured in audit traces.",
-      },
-    ],
-    [openReviewQueueItemCount, toolCallLogCount, workflowRunCount],
-  );
+  const [activeSection, setActiveSection] =
+    useState<AdminOpsSection>("AI_READY_RECORDS");
 
   return (
     <section className="admin-ops-page" aria-labelledby="admin-ops-title">
@@ -2024,58 +2026,107 @@ export function AdminOpsDashboardPage({
         </p>
       </div>
 
-      <section className="admin-ops-metric-grid" aria-label="Admin Ops summary">
-        {metrics.map((metric) => (
-          <AdminOpsMetricCard key={metric.label} metric={metric} />
-        ))}
-      </section>
 
       <nav
-        className="admin-ops-section-grid"
         aria-label="Admin Ops dashboard sections"
+        className="admin-ops-section-grid"
+        role="tablist"
       >
-        {ADMIN_OPS_SECTIONS.map((section) => (
-          <a
-            className="admin-ops-section-card"
-            href={`#${section.id}`}
-            key={section.title}
-          >
-            <h3>{section.title}</h3>
-            <p>{section.body}</p>
-          </a>
-        ))}
+        {ADMIN_OPS_SECTIONS.map((section) => {
+          const isActive = activeSection === section.value;
+
+          return (
+            <button
+              aria-controls={section.panelId}
+              aria-selected={isActive}
+              className={
+                isActive
+                  ? "admin-ops-section-card admin-ops-section-card--active"
+                  : "admin-ops-section-card"
+              }
+              id={section.tabId}
+              key={section.value}
+              onClick={() => setActiveSection(section.value)}
+              role="tab"
+              type="button"
+            >
+              <h3>{section.title}</h3>
+              <p>{section.body}</p>
+            </button>
+          );
+        })}
       </nav>
 
-      <AdminOpsAiReadyRecordsPanel />
-
-      <section
-        className="admin-ops-embedded-panel"
-        aria-labelledby="admin-ops-quality-checks-title"
-      >
-        <div className="admin-ops-panel-heading">
-          <span className="model-route-card__eyebrow">
-            Validation & Quality Checks
-          </span>
-          <h3 id="admin-ops-quality-checks-title">
-            Protected workflow behavior
-          </h3>
-          <p>
-            Run known scenarios against the active workflow safeguards so parser
-            behavior, review routing, correction suggestions, and protected
-            execution remain verifiable.
-          </p>
+      {activeSection === "AI_READY_RECORDS" ? (
+        <div
+          aria-labelledby="admin-ops-records-tab"
+          className="admin-ops-tab-panel"
+          id="admin-ops-records-panel"
+          role="tabpanel"
+        >
+          <AdminOpsAiReadyRecordsPanel />
         </div>
+      ) : null}
 
-        <AdminOpsQualitySafeguards />
+      {activeSection === "QUALITY_CHECKS" ? (
+        <section
+          aria-labelledby="admin-ops-quality-checks-tab"
+          className="admin-ops-embedded-panel admin-ops-tab-panel"
+          id="admin-ops-quality-checks-panel"
+          role="tabpanel"
+        >
+          <div className="admin-ops-panel-heading">
+            <span className="model-route-card__eyebrow">
+              Validation & Quality Checks
+            </span>
+            <h3 id="admin-ops-quality-checks-title">
+              Protected workflow behavior
+            </h3>
+            <p>
+              Run known scenarios against the active workflow safeguards so parser
+              behavior, review routing, correction suggestions, and protected
+              execution remain verifiable.
+            </p>
+          </div>
 
-        <WorkflowQualityChecksPage />
-      </section>
+          <AdminOpsQualitySafeguards />
 
-      <AdminOpsModelTelemetryPanel workflowRuns={workflowRuns} />
+          <WorkflowQualityChecksPage />
+        </section>
+      ) : null}
 
-      <AdminOpsNormalizationMatrixPanel />
+      {activeSection === "MODEL_TELEMETRY" ? (
+        <div
+          aria-labelledby="admin-ops-model-tab"
+          className="admin-ops-tab-panel"
+          id="admin-ops-model-panel"
+          role="tabpanel"
+        >
+          <AdminOpsModelTelemetryPanel workflowRuns={workflowRuns} />
+        </div>
+      ) : null}
 
-      <AdminOpsKnowledgePanel />
+      {activeSection === "NORMALIZATION_MATRIX" ? (
+        <div
+          aria-labelledby="admin-ops-normalization-tab"
+          className="admin-ops-tab-panel"
+          id="admin-ops-normalization-panel"
+          role="tabpanel"
+        >
+          <AdminOpsNormalizationMatrixPanel />
+        </div>
+      ) : null}
+
+      {activeSection === "KNOWLEDGE_GROUNDING" ? (
+        <div
+          aria-labelledby="admin-ops-knowledge-tab"
+          className="admin-ops-tab-panel"
+          id="admin-ops-knowledge-panel"
+          role="tabpanel"
+        >
+          <AdminOpsKnowledgePanel />
+        </div>
+      ) : null}
     </section>
   );
 }

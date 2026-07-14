@@ -63,7 +63,13 @@
 }
 
 .admin-ops-section-card {
+  position: relative;
+  width: 100%;
+  appearance: none;
+  cursor: pointer;
   color: inherit;
+  font: inherit;
+  text-align: left;
   text-decoration: none;
   transition:
     border-color 140ms ease,
@@ -75,6 +81,33 @@
   border-color: rgba(37, 99, 235, 0.4);
   background: #eff6ff;
   transform: translateY(-1px);
+}
+
+.admin-ops-section-card--active {
+  border-color: rgba(37, 99, 235, 0.72);
+  background: #eff6ff;
+  box-shadow:
+    0 0 0 2px rgba(37, 99, 235, 0.12),
+    0 14px 30px rgba(37, 99, 235, 0.1);
+  transform: none;
+}
+
+.admin-ops-section-card--active h3 {
+  color: #1d4ed8;
+}
+
+.admin-ops-section-card--active:hover {
+  border-color: rgba(37, 99, 235, 0.78);
+  transform: none;
+}
+
+.admin-ops-section-card:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.24);
+  outline-offset: 3px;
+}
+
+.admin-ops-tab-panel {
+  min-width: 0;
 }
 
 .admin-ops-metric-card span,
@@ -140,6 +173,22 @@
 
 .admin-ops-mini-metric-grid {
   grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.admin-ops-ai-ready-metric-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.admin-ops-ai-ready-metric-grid .admin-ops-metric-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.admin-ops-ai-ready-metric-grid .admin-ops-card-action-button {
+  align-self: flex-start;
+  margin-top: auto;
 }
 
 .admin-ops-table-wrap {

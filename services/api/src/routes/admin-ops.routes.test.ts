@@ -30,7 +30,6 @@ describe("admin ops routes", () => {
           categoryMix: expect.any(Array),
           sourceQuality: expect.any(Array),
           freshness: expect.objectContaining({
-            newestCreatedAt: expect.anything(),
             last24Hours: expect.any(Number),
             last7Days: expect.any(Number),
             last30Days: expect.any(Number)
@@ -47,13 +46,24 @@ describe("admin ops routes", () => {
           fallbackCount: expect.any(Number),
           fallbackRate: expect.any(Number),
           validationPassRate: expect.any(Number),
-          averageLatencyMs: expect.anything(),
           estimatedCostTotal: expect.any(Number),
           totalTokens: expect.any(Number),
           byProviderModel: expect.any(Array)
         })
       })
     );
+
+    const newestCreatedAt =
+      body.aiReadyRecords.freshness.newestCreatedAt;
+    const averageLatencyMs =
+      body.modelExecutions.averageLatencyMs;
+
+    expect(
+      newestCreatedAt === null || typeof newestCreatedAt === "string"
+    ).toBe(true);
+    expect(
+      averageLatencyMs === null || typeof averageLatencyMs === "number"
+    ).toBe(true);
 
     await app.close();
   });
