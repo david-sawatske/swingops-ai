@@ -277,6 +277,116 @@ function detectStoreId(text: string): string | null {
   return null;
 }
 
+type PoorlyFormedCsvRowValues = {
+  tradeInValue: number | null;
+  tradeInValueSourceText: string | null;
+  storeId: string | null;
+};
+
+function normalizeDelimitedHeader(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function stripDelimitedCell(value: string): string {
+  return value
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .trim();
+}
+
+function detectDelimitedSeparator(headerLine: string): string | null {
+  const candidates = ["|", "\t", ";", ","];
+  let selectedSeparator: string | null = null;
+  let selectedCount = 0;
+
+  for (const candidate of candidates) {
+    const count = headerLine.split(candidate).length - 1;
+
+    if (count > selectedCount) {
+      selectedSeparator = candidate;
+      selectedCount = count;
+    }
+  }
+
+  return selectedSeparator;
+}
+
+function parsePoorlyFormedCsvRowValues(
+  source: MultiSourceParserInput,
+  fragment: string
+): PoorlyFormedCsvRowValues | null {
+  if (source.sourceType !== "POORLY_FORMED_CSV") {
+    return null;
+  }
+
+  const lines = source.rawContent
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const headerLine = lines[0];
+  const separator = headerLine
+    ? detectDelimitedSeparator(headerLine)
+    : null;
+
+  if (!headerLine || !separator) {
+    return null;
+  }
+
+  const headers = headerLine
+    .split(separator)
+    .map((header) => normalizeDelimitedHeader(header));
+  const cells = fragment
+    .split(separator)
+    .map(stripDelimitedCell);
+
+  function findCell(headerAliases: string[]): string | null {
+    const index = headers.findIndex((header) =>
+      headerAliases.includes(header)
+    );
+
+    return index >= 0
+      ? cells[index] ?? null
+      : null;
+  }
+
+  const tradeInValueSourceText = findCell([
+    "value",
+    "tradevalue",
+    "tradeinvalue",
+    "estimatedvalue"
+  ]);
+  const normalizedValueText = tradeInValueSourceText
+    ?.replace(/[$,\s]/g, "");
+  const tradeInValue =
+    normalizedValueText &&
+    /^\d+(?:\.\d+)?$/.test(normalizedValueText)
+      ? Number(normalizedValueText)
+      : null;
+
+  const storeSourceText = findCell([
+    "store",
+    "storeid",
+    "location",
+    "locationid"
+  ]);
+  const storeMatch = storeSourceText?.match(
+    /^(STORE[-\s]*)?(\d{3})$/i
+  );
+  const storeId = storeMatch
+    ? storeMatch[1]
+      ? `STORE-${storeMatch[2]}`
+      : storeMatch[2] ?? null
+    : null;
+
+  return {
+    tradeInValue,
+    tradeInValueSourceText,
+    storeId
+  };
+}
+
 function detectCustomerName(text: string): string | null {
   const customerMatch = text.match(/\bCustomer:\s*([A-Za-z ]+)/i);
   if (customerMatch?.[1]) {
@@ -353,8 +463,17 @@ export function buildRecord(source: MultiSourceParserInput, fragment: string, in
     ? detectShaftFlexWithEvidence(fragment).value
     : null;
   const conditionGrade = detectApprovedConditionGradeWithEvidence(fragment).value;
-  const tradeInValue = detectTradeInValueWithEvidence(fragment).value;
-  const parserEvidence = buildParserEvidence(fragment, {
+  const csvRowValues = parsePoorlyFormedCsvRowValues(
+    source,
+    fragment
+  );
+  const detectedTradeInValue =
+    detectTradeInValueWithEvidence(fragment);
+  const tradeInValue =
+    detectedTradeInValue.value ??
+    csvRowValues?.tradeInValue ??
+    null;
+  let parserEvidence = buildParserEvidence(fragment, {
     brand,
     productLine,
     category,
@@ -362,9 +481,27 @@ export function buildRecord(source: MultiSourceParserInput, fragment: string, in
     conditionGrade,
     tradeInValue
   });
+
+  if (
+    !parserEvidence.tradeInValue &&
+    csvRowValues?.tradeInValue !== null &&
+    csvRowValues?.tradeInValue !== undefined &&
+    csvRowValues.tradeInValueSourceText
+  ) {
+    parserEvidence = {
+      ...parserEvidence,
+      tradeInValue: {
+        value: csvRowValues.tradeInValue,
+        sourceText: csvRowValues.tradeInValueSourceText
+      }
+    };
+  }
   const customerName = detectCustomerName(sourceContext);
   const customerEmail = detectCustomerEmail(sourceContext);
-  const storeId = detectStoreId(sourceContext);
+  const storeId =
+    source.sourceType === "POORLY_FORMED_CSV"
+      ? csvRowValues?.storeId ?? detectStoreId(fragment)
+      : detectStoreId(sourceContext);
   const eventTimestamp = detectTimestamps(fragment)[0] ?? null;
   const attachmentsMentioned = detectAttachments(sourceContext);
   const hasAmbiguousProductLine =

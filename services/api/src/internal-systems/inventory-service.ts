@@ -148,6 +148,10 @@ function inputHasModelUncertainty(
       /\b(?:condition|cond|shaft|flex|value|valuation)\s+(?:unknown|unclear|uncertain|pending)\b/g,
       " "
     )
+    .replace(
+      /\bserial(?:\s+number)?(?:\s+is)?\s+(?:unknown|unreadable|unclear|missing|pending)\b/g,
+      " "
+    )
     .replace(/\s+/g, " ")
     .trim();
 

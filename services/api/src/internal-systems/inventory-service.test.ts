@@ -231,4 +231,26 @@ describe("inventory-service", () => {
     );
   });
 
+
+  it("ignores serial uncertainty when the product identity is exact", () => {
+    const result = lookupInventoryProduct({
+      brand: "Odyssey",
+      productLine: "White Hot Versa",
+      category: "PUTTER",
+      rawText:
+        "normalized payload brand=Odyssey model='White Hot Versa' cat=putter condition='9.0 Above Average' value=110 serial=UNKNOWN"
+    });
+
+    expect(result).toMatchObject({
+      productId: "prod_odyssey_white_hot_versa_putter_2023",
+      sku: "ODYSSEY-WHITEHOTVERSA-PUTTER-2023",
+      productLine: "White Hot Versa",
+      category: "PUTTER"
+    });
+    expect(result.confidence).toBeGreaterThanOrEqual(0.86);
+    expect(result.matchReasons).toContain(
+      "Product line matched White Hot Versa."
+    );
+  });
+
 });

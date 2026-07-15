@@ -15,6 +15,23 @@ function parseRecord(rawContent: string) {
   );
 }
 
+function parseCsvRecord(
+  rawContent: string,
+  fragment: string,
+  index = 0
+) {
+  return buildRecord(
+    {
+      id: "csv_matrix_source",
+      sourceType: "POORLY_FORMED_CSV",
+      sourceName: "CSV parser matrix source",
+      rawContent
+    },
+    fragment,
+    index
+  );
+}
+
 describe("multi-source intake parser normalization matrix", () => {
   it("parses the exact source record without review-only missing fields", () => {
     const record = parseRecord(
@@ -264,6 +281,65 @@ describe("multi-source intake parser normalization matrix", () => {
       reviewNeeded: true
     });
     expect(ambiguousHotMetal.sourceText).toContain("generation not listed");
+  });
+
+
+  it("maps positional CSV value and store columns by header", () => {
+    const rawContent = [
+      "brand|model|cat|shaft|condition|value|store",
+      "Titleist|TSR2|fairway wood|Stiff|8.0 Average|145|104",
+      "Odyssey|White Hot Versa|putter||9.0 Above Average|110|207"
+    ].join("\n");
+
+    const titleistRecord = parseCsvRecord(
+      rawContent,
+      "Titleist|TSR2|fairway wood|Stiff|8.0 Average|145|104"
+    );
+    const odysseyRecord = parseCsvRecord(
+      rawContent,
+      "Odyssey|White Hot Versa|putter||9.0 Above Average|110|207",
+      1
+    );
+
+    expect(titleistRecord).toMatchObject({
+      brand: "Titleist",
+      productLine: "TSR2",
+      category: "FAIRWAY_WOOD",
+      shaftFlex: "STIFF",
+      conditionGrade: "8.0 Average",
+      tradeInValue: 145,
+      storeId: "104",
+      reviewNeeded: false,
+      parserEvidence: {
+        tradeInValue: {
+          value: 145,
+          sourceText: "145"
+        }
+      }
+    });
+    expect(titleistRecord.missingFields).not.toContain(
+      "tradeInValue"
+    );
+
+    expect(odysseyRecord).toMatchObject({
+      brand: "Odyssey",
+      productLine: "White Hot Versa",
+      category: "PUTTER",
+      shaftFlex: null,
+      conditionGrade: "9.0 Above Average",
+      tradeInValue: 110,
+      storeId: "207",
+      reviewNeeded: false,
+      parserEvidence: {
+        tradeInValue: {
+          value: 110,
+          sourceText: "110"
+        }
+      }
+    });
+    expect(odysseyRecord.missingFields).not.toEqual(
+      expect.arrayContaining(["shaftFlex", "tradeInValue"])
+    );
   });
 
 });

@@ -296,6 +296,134 @@ function shouldStartCorrectionFieldBlank(card: RecordReviewCard, fieldName: Corr
   );
 }
 
+type InventoryProductLineCandidate = {
+  productId: string | null;
+  sku: string | null;
+  productLine: string;
+  brand: string | null;
+  category: string | null;
+  confidence: number;
+  reason: string | null;
+};
+
+function asUnknownRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function getCandidateConfidence(record: Record<string, unknown>) {
+  const value = record.confidence;
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value);
+
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+export function getInventoryProductLineCandidates(
+  card: RecordReviewCard,
+): InventoryProductLineCandidate[] {
+  const proposedRecord = getProposedRecord(card.reviewItem);
+  const inventoryLookup = asUnknownRecord(card.inventoryEvidence?.lookup);
+  const proposedInventoryMatch = asUnknownRecord(
+    proposedRecord?.inventoryMatch,
+  );
+  const similarProductsValue =
+    inventoryLookup?.similarProducts ??
+    proposedInventoryMatch?.similarProducts;
+  const similarProducts = Array.isArray(similarProductsValue)
+    ? similarProductsValue
+    : [];
+
+  const currentBrand = normalizeComparable(
+    getFirstString(card.parsedRecord, ["brand"]) ??
+      getFirstString(proposedRecord, ["brand"]) ??
+      "",
+  );
+  const currentCategory = normalizeComparable(
+    getFirstString(card.parsedRecord, ["category"]) ??
+      getFirstString(proposedRecord, ["category"]) ??
+      "",
+  );
+
+  const rankedCandidates = similarProducts
+    .map((value): InventoryProductLineCandidate | null => {
+      const candidate = asUnknownRecord(value);
+
+      if (!candidate) {
+        return null;
+      }
+
+      const productLine = getFirstString(candidate, ["productLine"]);
+      const confidence = getCandidateConfidence(candidate);
+
+      if (!productLine || confidence === null) {
+        return null;
+      }
+
+      return {
+        productId: getFirstString(candidate, ["productId"]),
+        sku: getFirstString(candidate, ["sku"]),
+        productLine,
+        brand: getFirstString(candidate, ["brand"]),
+        category: getFirstString(candidate, ["category"]),
+        confidence,
+        reason: getFirstString(candidate, ["reason"]),
+      };
+    })
+    .filter(
+      (candidate): candidate is InventoryProductLineCandidate =>
+        candidate !== null,
+    )
+    .filter((candidate) => {
+      const candidateBrand = normalizeComparable(candidate.brand ?? "");
+      const candidateCategory = normalizeComparable(
+        candidate.category ?? "",
+      );
+
+      const brandMatches =
+        !currentBrand ||
+        !candidateBrand ||
+        candidateBrand === currentBrand;
+      const categoryMatches =
+        !currentCategory ||
+        !candidateCategory ||
+        candidateCategory === currentCategory;
+
+      return brandMatches && categoryMatches;
+    })
+    .sort((first, second) => second.confidence - first.confidence);
+
+  const dedupedCandidates = rankedCandidates.filter(
+    (candidate, index, candidates) =>
+      candidates.findIndex(
+        (otherCandidate) =>
+          normalizeComparable(otherCandidate.productLine) ===
+          normalizeComparable(candidate.productLine),
+      ) === index,
+  );
+  const bestConfidence = dedupedCandidates[0]?.confidence;
+
+  if (bestConfidence === undefined) {
+    return [];
+  }
+
+  return dedupedCandidates
+    .filter(
+      (candidate) =>
+        candidate.confidence >= bestConfidence - 0.05,
+    )
+    .slice(0, 4);
+}
+
 export function buildCorrectionDraft(card: RecordReviewCard): ReviewCorrectionDraft {
   const proposedRecord = getProposedRecord(card.reviewItem);
   const brand =
@@ -321,7 +449,9 @@ export function buildCorrectionDraft(card: RecordReviewCard): ReviewCorrectionDr
 
   return {
     brand,
-    productLine,
+    productLine: shouldStartCorrectionFieldBlank(card, "productLine")
+      ? ""
+      : productLine,
     category: shouldStartCorrectionFieldBlank(card, "category")
       ? ""
       : normalizeCategoryValue(category),
@@ -339,7 +469,7 @@ export function buildCorrectionDraft(card: RecordReviewCard): ReviewCorrectionDr
         : String(demoValue),
     sourceTextMatches: buildSourceTextMatches(card),
     demoValuationNote: "",
-    reviewerNotes: "Confirmed current run review item from the guided validation checkpoint.",
+    reviewerNotes: "Confirmed corrected values in guided review.",
   };
 }
 
@@ -632,13 +762,80 @@ function getRequiredCorrectionFields(card: RecordReviewCard) {
   return requiredFields;
 }
 
-function getBlockingCorrectionFields(
+export function getBlockingCorrectionFields(
   card: RecordReviewCard,
   draft: ReviewCorrectionDraft,
 ) {
   return getRequiredCorrectionFields(card).filter((fieldName) => {
-    return getCorrectedValueForField(draft, fieldName).trim().length === 0;
+    const correctedValue =
+      getCorrectedValueForField(draft, fieldName).trim();
+
+    if (!correctedValue) {
+      return true;
+    }
+
+    if (fieldName !== "productLine") {
+      return false;
+    }
+
+    const currentValue =
+      getCurrentValueForField(card, fieldName).trim();
+
+    if (!currentValue || currentValue === "—") {
+      return false;
+    }
+
+    return (
+      normalizeComparable(correctedValue) ===
+      normalizeComparable(currentValue)
+    );
   });
+}
+
+function hasCurrentCorrectionFieldValue(
+  card: RecordReviewCard,
+  fieldName: string,
+) {
+  const value = getCurrentValueForField(card, fieldName);
+
+  return (
+    value !== null &&
+    value !== undefined &&
+    value !== "" &&
+    value !== "—"
+  );
+}
+
+function isValuationEvidenceSignal(signal: string) {
+  const normalizedSignal = signal.toLowerCase();
+
+  const describesValuationEvidence =
+    normalizedSignal.includes("valuation") ||
+    normalizedSignal.includes("trade-in range") ||
+    normalizedSignal.includes("trade in range");
+
+  const explicitlyDescribesMissingSourceValue =
+    /missing\s+(?:trade\s*-?\s*in\s*)?value|trade\s*-?\s*in\s+value\s+(?:missing|unknown|unclear|pending)|value\s+(?:missing|unknown|unclear|pending)/i.test(
+      signal,
+    );
+
+  return describesValuationEvidence && !explicitlyDescribesMissingSourceValue;
+}
+
+function shouldAddCorrectionFieldFromSignal(
+  card: RecordReviewCard,
+  fieldName: string,
+  signal: string,
+) {
+  if (fieldName !== "demoValue") {
+    return true;
+  }
+
+  if (!hasCurrentCorrectionFieldValue(card, "demoValue")) {
+    return true;
+  }
+
+  return !isValuationEvidenceSignal(signal);
 }
 
 function getCorrectionFocusFields(card: RecordReviewCard) {
@@ -663,12 +860,25 @@ function getCorrectionFocusFields(card: RecordReviewCard) {
       continue;
     }
 
+    const signal = [
+      check.field ?? "",
+      check.label,
+      check.message,
+    ].join(" ");
+
     const correctionField =
       getCorrectionFieldFromSignal(check.field ?? "") ??
       getCorrectionFieldFromSignal(check.label) ??
       getCorrectionFieldFromSignal(check.message);
 
-    if (correctionField) {
+    if (
+      correctionField &&
+      shouldAddCorrectionFieldFromSignal(
+        card,
+        correctionField,
+        signal,
+      )
+    ) {
       fields.add(correctionField);
     }
   }
@@ -678,12 +888,25 @@ function getCorrectionFocusFields(card: RecordReviewCard) {
       continue;
     }
 
+    const signal = [
+      event.targetField ?? "",
+      event.reason,
+      event.message,
+    ].join(" ");
+
     const correctionField =
       getCorrectionFieldFromSignal(event.targetField ?? "") ??
       getCorrectionFieldFromSignal(event.reason) ??
       getCorrectionFieldFromSignal(event.message);
 
-    if (correctionField) {
+    if (
+      correctionField &&
+      shouldAddCorrectionFieldFromSignal(
+        card,
+        correctionField,
+        signal,
+      )
+    ) {
       fields.add(correctionField);
     }
   }
@@ -691,7 +914,14 @@ function getCorrectionFocusFields(card: RecordReviewCard) {
   for (const reason of card.reviewReasons) {
     const correctionField = getCorrectionFieldFromSignal(reason);
 
-    if (correctionField) {
+    if (
+      correctionField &&
+      shouldAddCorrectionFieldFromSignal(
+        card,
+        correctionField,
+        reason,
+      )
+    ) {
       fields.add(correctionField);
     }
   }
@@ -748,7 +978,7 @@ function CorrectionFocusCallout({
     return (
       <div className="guided-correction-focus">
         <strong>Fields needing attention</strong>
-        <p>All suggested values have been applied. Confirm the corrected record before saving.</p>
+        <p>Review the applied correction below before saving.</p>
       </div>
     );
   }
@@ -817,6 +1047,59 @@ function getAppliedSuggestionFieldNames(
   }
 
   return appliedFieldNames;
+}
+
+export function getAppliedCorrectionSummaries(
+  draft: ReviewCorrectionDraft,
+  appliedSuggestionFieldNames: ReadonlySet<string>,
+) {
+  return Array.from(appliedSuggestionFieldNames)
+    .filter(isCorrectionFormFieldName)
+    .map((fieldName) => ({
+      fieldName,
+      label: getCorrectionFieldLabel(fieldName),
+      value: getCorrectedValueForField(draft, fieldName).trim(),
+    }))
+    .filter((summary) => summary.value.length > 0);
+}
+
+function AppliedCorrectionSummary({
+  appliedSuggestionFieldNames,
+  draft,
+}: {
+  appliedSuggestionFieldNames: ReadonlySet<string>;
+  draft: ReviewCorrectionDraft;
+}) {
+  const summaries = getAppliedCorrectionSummaries(
+    draft,
+    appliedSuggestionFieldNames,
+  );
+
+  if (summaries.length === 0) {
+    return null;
+  }
+
+  return (
+    <section
+      aria-label="Applied corrections"
+      className="guided-applied-correction-summary"
+    >
+      <span className="guided-applied-correction-summary__label">
+        {summaries.length === 1
+          ? "Applied correction"
+          : "Applied corrections"}
+      </span>
+
+      <dl>
+        {summaries.map((summary) => (
+          <div key={summary.fieldName}>
+            <dt>{summary.label}</dt>
+            <dd>{summary.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
 }
 
 function getVisibleCorrectionFieldsAfterAppliedSuggestions(
@@ -1226,6 +1509,8 @@ function RecordCorrectionPanel({
     appliedSuggestionFieldNames,
   );
   const secondaryFields = getSecondaryCorrectionFields(visibleFields);
+  const inventoryProductLineCandidates =
+    getInventoryProductLineCandidates(card);
   const hasOpenPriorReviewSuggestions =
     getOpenPriorReviewSuggestions(card.priorReviewSuggestions, handledSuggestionIds).length > 0;
   const hasPriorReviewSuggestions =
@@ -1291,9 +1576,9 @@ function RecordCorrectionPanel({
     <div className="guided-record-correction-form">
       <div className="guided-record-correction-form__header">
         <div>
-          <strong>Resolve current run review item</strong>
+          <strong>Confirm correction</strong>
           <p>
-            These controlled fields are saved through the review queue correction flow.
+            Review the corrected value, add a note if needed, then resolve.
           </p>
         </div>
         <button disabled={isSaving} onClick={onCancelEditing} type="button">
@@ -1301,13 +1586,24 @@ function RecordCorrectionPanel({
         </button>
       </div>
 
-      <CorrectionFocusCallout card={card} focusFieldsOverride={visibleFields} />
+      {visibleFields.length > 0 ? (
+        <CorrectionFocusCallout
+          card={card}
+          focusFieldsOverride={visibleFields}
+        />
+      ) : null}
+
+      <AppliedCorrectionSummary
+        appliedSuggestionFieldNames={appliedSuggestionFieldNames}
+        draft={draft}
+      />
 
       {blockingCorrectionFields.length > 0 ? (
         <div className="guided-correction-focus guided-correction-focus--warning" role="alert">
-          <strong>Complete required fields before resolving</strong>
+          <strong>Complete the required correction before resolving</strong>
           <p>
-            Missing: {blockingCorrectionFields.map(getCorrectionFieldLabel).join(", ")}.
+            Choose or enter a corrected value for:{" "}
+            {blockingCorrectionFields.map(getCorrectionFieldLabel).join(", ")}.
           </p>
         </div>
       ) : null}
@@ -1324,7 +1620,7 @@ function RecordCorrectionPanel({
         ) : null}
 
         {visibleFields.includes("productLine") ? (
-          <label>
+          <label className="guided-product-line-correction-field">
             Product line
             <input
               onChange={(event) =>
@@ -1334,6 +1630,67 @@ function RecordCorrectionPanel({
             />
           </label>
         ) : null}
+
+      {visibleFields.includes("productLine") &&
+      inventoryProductLineCandidates.length > 0 ? (
+        <section
+          aria-label="Inventory product-line candidates"
+          className="guided-inventory-candidate-suggestions"
+        >
+          <div className="guided-inventory-candidate-suggestions__header">
+            <strong>Matching catalog candidates</strong>
+            <p>
+              Select the verified generation. Manual entry remains available.
+            </p>
+          </div>
+
+          <div className="guided-inventory-candidate-suggestions__list">
+            {inventoryProductLineCandidates.map((candidate) => {
+              const isSelected =
+                normalizeComparable(draft.productLine) ===
+                normalizeComparable(candidate.productLine);
+
+              return (
+                <button
+                  aria-pressed={isSelected}
+                  className={
+                    isSelected
+                      ? "guided-inventory-candidate guided-inventory-candidate--selected"
+                      : "guided-inventory-candidate"
+                  }
+                  key={
+                    candidate.productId ??
+                    candidate.sku ??
+                    candidate.productLine
+                  }
+                  onClick={() =>
+                    onDraftChange({
+                      ...draft,
+                      productLine: candidate.productLine,
+                    })
+                  }
+                  title={
+                    candidate.sku
+                      ? candidate.productLine + " · " + candidate.sku
+                      : candidate.productLine
+                  }
+                  type="button"
+                >
+                  <span>{candidate.productLine}</span>
+                  <small>
+                    {Math.round(candidate.confidence * 100)}% catalog match
+                  </small>
+                </button>
+              );
+            })}
+          </div>
+
+          <small className="guided-inventory-candidate-suggestions__note">
+            Selecting a candidate fills the Product line field above.
+          </small>
+        </section>
+      ) : null}
+
 
         {visibleFields.includes("category") ? (
           <label>
@@ -1449,24 +1806,31 @@ function RecordCorrectionPanel({
       />
 
 
-      <label>
-        Valuation note
-        <input
-          onChange={(event) =>
-            onDraftChange({ ...draft, demoValuationNote: event.target.value })
-          }
-          placeholder="Optional note about the corrected value."
-          value={draft.demoValuationNote}
-        />
-      </label>
+      {visibleFields.includes("demoValue") ||
+      appliedSuggestionFieldNames.has("demoValue") ? (
+        <label>
+          Valuation note
+          <input
+            onChange={(event) =>
+              onDraftChange({
+                ...draft,
+                demoValuationNote: event.target.value,
+              })
+            }
+            placeholder="Optional note about the corrected value."
+            value={draft.demoValuationNote}
+          />
+        </label>
+      ) : null}
 
       <label>
-        Reviewer notes
+        Reviewer note
         <textarea
           onChange={(event) =>
             onDraftChange({ ...draft, reviewerNotes: event.target.value })
           }
-          rows={3}
+          placeholder="Optional note about the review decision."
+          rows={2}
           value={draft.reviewerNotes}
         />
       </label>
