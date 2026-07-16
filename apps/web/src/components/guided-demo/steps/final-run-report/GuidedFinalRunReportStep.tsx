@@ -94,7 +94,7 @@ export function GuidedFinalRunReportStep({
 
   const outcomeTitle =
     mergedRecords.length === 0
-      ? "Workflow result loaded, but no finalized records were available."
+      ? "Workflow result loaded, but no current records were available."
       : openReviewItemCount > 0
         ? "Workflow completed with review work still open."
         : "Workflow completed and final output is ready.";
@@ -179,13 +179,13 @@ export function GuidedFinalRunReportStep({
 
             <section className="guided-final-section">
               <div className="guided-final-section__header">
-                <h4>Finalized records</h4>
+                <h4>Current record outcomes</h4>
                 <p>
-                  This table shows the final form of each record using only the
-                  workflow evidence and saved review decisions that applied to that
+                  This table shows the current merged form of each record using only
+                  the workflow evidence and saved review decisions that applied to that
                   record. The preview uses the same columns and layout as the Step 2
-                  snapshot. Open the full table to see value ranges and how each record
-                  was finalized.
+                  snapshot. Open the full table to see value ranges and each record's
+                  current outcome.
                 </p>
               </div>
 

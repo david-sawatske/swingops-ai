@@ -15,7 +15,7 @@ export function FinalizedRecordsTable({
   if (records.length === 0) {
     return (
       <div className="guided-final-review-callout">
-        <strong>No finalized records loaded for this run</strong>
+        <strong>No current records loaded for this run</strong>
         <p>
           Step 5 did not receive any current-run records to merge. Start a new intake run
           or rerun Step 3 after Step 2 records are available.
@@ -65,7 +65,7 @@ export function FinalizedRecordsTable({
 
       {isFullTableOpen ? (
         <div
-          aria-label="Full finalized records table"
+          aria-label="Full record outcomes table"
           className="guided-expanded-table-backdrop guided-finalized-table-backdrop"
           role="dialog"
         >
@@ -73,17 +73,17 @@ export function FinalizedRecordsTable({
             <div className="guided-expanded-table-header">
               <div>
                 <span className="model-route-card__eyebrow">
-                  Expanded finalized record view
+                  Expanded record outcome view
                 </span>
-                <h4>Full finalized records table</h4>
+                <h4>Full record outcomes table</h4>
                 <p>
-                  This table shows the final values assembled from the evidence and
+                  This table shows the current values assembled from the evidence and
                   saved review decisions that applied to each record.
                 </p>
               </div>
 
               <button
-              aria-label="Close expanded finalized record view"
+              aria-label="Close expanded record outcome view"
               className="guided-expanded-table-close-button"
               onClick={() => setIsFullTableOpen(false)}
               title="Close"
@@ -105,7 +105,7 @@ export function FinalizedRecordsTable({
                     <th>Value / range</th>
                     <th>Step 2 status</th>
                     <th>Final status</th>
-                    <th>How finalized</th>
+                    <th>How assembled</th>
                   </tr>
                 </thead>
                 <tbody>

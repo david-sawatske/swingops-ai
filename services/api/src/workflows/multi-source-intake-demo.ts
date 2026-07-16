@@ -2,6 +2,9 @@ import { LEGACY_FREEFORM_NOTES_INTAKE_SOURCE_TYPE } from "../intake/legacy-intak
 import type { AiReadyIntakeRecord, Prisma, ReviewQueueItem, ToolCallLog } from "@prisma/client";
 
 import { prisma } from "../lib/prisma.js";
+import type {
+  ProductReferenceProvider
+} from "../product-reference/product-reference-provider.js";
 import {
   buildRecord,
   cleanText,
@@ -183,11 +186,22 @@ function getOperationalTags(source: MultiSourceInput): string[] {
   ].filter((tag): tag is string => Boolean(tag));
 }
 
-function buildSourceResult(source: MultiSourceInput): MultiSourceIntakeSourceResult {
+function buildSourceResult(
+  source: MultiSourceInput,
+  productReferenceProvider?: ProductReferenceProvider
+): MultiSourceIntakeSourceResult {
   const cleanedText = cleanText(source.rawContent);
-  const fragments = splitSourceIntoRecordFragments(source);
+  const fragments = splitSourceIntoRecordFragments(
+    source,
+    productReferenceProvider
+  );
   const extractedRecords = fragments.map((fragment, index) =>
-    buildRecord(source, fragment, index)
+    buildRecord(
+      source,
+      fragment,
+      index,
+      productReferenceProvider
+    )
   );
 
   const metadata = {
@@ -568,6 +582,7 @@ function buildCustomSourceInputs(sources: MultiSourceIntakeSourceInput[]): Multi
 export async function executeMultiSourceIntakeDemo(input: {
   sourceTypes?: MultiSourceIntakeSourceType[];
   sources?: MultiSourceIntakeSourceInput[];
+  productReferenceProvider?: ProductReferenceProvider;
 } = {}): Promise<MultiSourceIntakeDemoResult> {
   const requestedSourceTypes = input.sourceTypes;
   const selectedInputs =
@@ -579,7 +594,12 @@ export async function executeMultiSourceIntakeDemo(input: {
           )
         : DEFAULT_MULTI_SOURCE_INPUTS;
 
-  const sourceResults = selectedInputs.map(buildSourceResult);
+  const sourceResults = selectedInputs.map((source) =>
+    buildSourceResult(
+      source,
+      input.productReferenceProvider
+    )
+  );
   const cleanedDatasetPreview = sourceResults.flatMap((source) => source.extractedRecords);
   const recordsExtracted = cleanedDatasetPreview.length;
   const reviewRecords = cleanedDatasetPreview.filter((record) => record.reviewNeeded);

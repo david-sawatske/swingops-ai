@@ -1,8 +1,20 @@
 import { describe, expect, it } from "vitest";
 
-import { buildRecord } from "./multi-source-intake-parser.js";
+import {
+  createInMemoryProductReferenceProvider
+} from "../product-reference/product-reference-provider.js";
+import type {
+  ProductReferenceProvider
+} from "../product-reference/product-reference-provider.js";
+import {
+  buildRecord,
+  splitSourceIntoRecordFragments
+} from "./multi-source-intake-parser.js";
 
-function parseRecord(rawContent: string) {
+function parseRecord(
+  rawContent: string,
+  provider?: ProductReferenceProvider
+) {
   return buildRecord(
     {
       id: "matrix_source",
@@ -11,7 +23,8 @@ function parseRecord(rawContent: string) {
       rawContent
     },
     rawContent,
-    0
+    0,
+    provider
   );
 }
 
@@ -340,6 +353,175 @@ describe("multi-source intake parser normalization matrix", () => {
     expect(odysseyRecord.missingFields).not.toEqual(
       expect.arrayContaining(["shaftFlex", "tradeInValue"])
     );
+  });
+
+
+  it("attaches matched, ambiguous, and unresolved product resolution", () => {
+    const matched = parseRecord(
+      "Titleist TSR2 3w shaft stiff condition 8.0 Average value $145"
+    );
+    const ambiguous = parseRecord(
+      "Mizuno Hot Metal iron set shaft Regular condition 8.0 Average value $350 generation not listed"
+    );
+    const unresolved = parseRecord(
+      "Titleist ZX Prototype 11 driver shaft stiff condition 8.0 Average value $125"
+    );
+    const putter = parseRecord(
+      "Odyssey White Hot Versa putter condition 9.0 Above Average value $110 serial=UNKNOWN"
+    );
+
+    expect(matched.productResolution).toMatchObject({
+      status: "MATCHED",
+      match: {
+        productId:
+          "prod_titleist_tsr2_fairway_2023",
+        sku:
+          "TITLEIST-TSR2-FWY-2023"
+      }
+    });
+    expect(matched.reviewNeeded).toBe(false);
+
+    expect(ambiguous).toMatchObject({
+      brand: "Mizuno",
+      productLine: "Hot Metal",
+      category: "IRON_SET",
+      reviewNeeded: true,
+      productResolution: {
+        status: "AMBIGUOUS"
+      }
+    });
+
+    expect(unresolved).toMatchObject({
+      brand: "Titleist",
+      productLine: null,
+      category: "DRIVER",
+      reviewNeeded: true,
+      productResolution: {
+        status: "UNRESOLVED"
+      }
+    });
+    expect(
+      unresolved.missingFields
+    ).toContain("productLine");
+
+    expect(putter).toMatchObject({
+      productLine: "White Hot Versa",
+      category: "PUTTER",
+      shaftFlex: null,
+      reviewNeeded: false,
+      productResolution: {
+        status: "MATCHED"
+      }
+    });
+    expect(
+      putter.missingFields
+    ).not.toContain("shaftFlex");
+  });
+
+  it("recognizes an injected product across every supported source structure", () => {
+    const provider =
+      createInMemoryProductReferenceProvider([
+        {
+          productId:
+            "prod_test_nova_x_driver_2026",
+          sku: "TEST-NOVAX-DRV-2026",
+          brand: "Test Golf",
+          productLine: "Nova X",
+          category: "DRIVER",
+          year: 2026,
+          aliases: [
+            "nx prototype driver"
+          ],
+          shaftFamilies: []
+        }
+      ]);
+
+    const sources = [
+      {
+        id: "injected_free_text",
+        sourceType:
+          "FREE_TEXT" as const,
+        sourceName:
+          "Injected free text",
+        rawContent: [
+          "Counter intake notes",
+          "Test Golf nx prototype driver shaft stiff condition 9.0 Above Average value $225",
+          "Store 104"
+        ].join("\n")
+      },
+      {
+        id: "injected_email",
+        sourceType: "EMAIL" as const,
+        sourceName: "Injected email",
+        rawContent: [
+          "From: customer@example.com",
+          "Subject: Trade request",
+          "Test Golf nx prototype driver shaft stiff condition 9.0 Above Average value $225",
+          "Preferred store: 104"
+        ].join("\n")
+      },
+      {
+        id: "injected_log",
+        sourceType: "LOG" as const,
+        sourceName: "Injected log",
+        rawContent: [
+          "2026-07-15T10:00:00Z INFO import start store=104",
+          "2026-07-15T10:00:01Z INFO normalized payload brand='Test Golf' model='nx prototype driver' cat=driver shaft=stiff condition='9.0 Above Average' value=225"
+        ].join("\n")
+      },
+      {
+        id: "injected_csv",
+        sourceType:
+          "POORLY_FORMED_CSV" as const,
+        sourceName: "Injected CSV",
+        rawContent: [
+          "brand|model|cat|shaft|condition|value|store",
+          "Test Golf|nx prototype driver|driver|stiff|9.0 Above Average|225|104"
+        ].join("\n")
+      }
+    ];
+
+    for (const sourceInput of sources) {
+      const fragments =
+        splitSourceIntoRecordFragments(
+          sourceInput,
+          provider
+        );
+
+      expect(fragments).toHaveLength(1);
+      expect(fragments[0]).toContain(
+        "nx prototype driver"
+      );
+
+      const record = buildRecord(
+        sourceInput,
+        fragments[0]!,
+        0,
+        provider
+      );
+
+      expect(record).toMatchObject({
+        brand: "Test Golf",
+        productLine: "Nova X",
+        category: "DRIVER",
+        shaftFlex: "STIFF",
+        conditionGrade:
+          "9.0 Above Average",
+        tradeInValue: 225,
+        reviewNeeded: false,
+        missingFields: [],
+        productResolution: {
+          status: "MATCHED",
+          providerRecordCount: 1,
+          match: {
+            productId:
+              "prod_test_nova_x_driver_2026",
+            sku:
+              "TEST-NOVAX-DRV-2026"
+          }
+        }
+      });
+    }
   });
 
 });

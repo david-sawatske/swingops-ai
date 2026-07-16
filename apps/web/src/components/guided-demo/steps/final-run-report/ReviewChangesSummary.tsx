@@ -22,7 +22,7 @@ export function ReviewChangesSummary({
         <h4>Review changes written</h4>
         <p>
           Human review changes are summarized here so the report stays readable
-          even when many records are corrected. The finalized records table above
+          even when many records are corrected. The current records table above
           is the primary output.
         </p>
       </div>

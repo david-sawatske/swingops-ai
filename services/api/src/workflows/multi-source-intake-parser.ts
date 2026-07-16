@@ -8,7 +8,19 @@ import {
   detectShaftFlexWithEvidence,
   detectTradeInValueWithEvidence
 } from "./parser-normalizers.js";
-import type { ParserEvidence } from "./parser-evidence.js";
+import type {
+  ProductReferenceProvider
+} from "../product-reference/product-reference-provider.js";
+import {
+  resolveProductReference
+} from "../product-reference/product-reference-resolver.js";
+import {
+  resolveParsedProductIdentity
+} from "./product-resolution-parser.js";
+import type {
+  ParserEvidence,
+  ParserFieldEvidence
+} from "./parser-evidence.js";
 import type {
   MultiSourceIntakeRecord,
   MultiSourceIntakeSourceType
@@ -66,94 +78,6 @@ function detectBrand(text: string): string | null {
   return null;
 }
 
-function detectProductLine(text: string): string | null {
-  if (
-    /\bstealth\s*2\s*(?:rescue|hybrid|hy)\b|\bstealth2\s*(?:rescue|hybrid|hy)\b/i.test(
-      text
-    )
-  ) {
-    return "Stealth 2 Rescue";
-  }
-
-  if (/\bstealth\s*2\b|\bstealth2\b/i.test(text)) {
-    return "Stealth 2";
-  }
-
-  if (/\bstealth\b/i.test(text)) {
-    return "Stealth";
-  }
-
-  if (/\btsr\s*2\b|\btsr2\b/i.test(text)) {
-    return "TSR2";
-  }
-
-  if (/\btsr\b/i.test(text)) {
-    return "TSR";
-  }
-
-  if (/\bts\s*2\b|\bts2\b/i.test(text)) {
-    return "TS2";
-  }
-
-  if (/\bts\b/i.test(text)) {
-    return "TS";
-  }
-
-  if (/\brogue\s*st\s*max\b/i.test(text)) {
-    return "Rogue ST Max";
-  }
-
-  if (/\bg425\s*(?:hybrid|hy|rescue)\b/i.test(text)) {
-    return "G425 Hybrid";
-  }
-
-  if (/\bg425\b/i.test(text)) {
-    return "G425";
-  }
-
-  if (/\bg430\s*max\b/i.test(text)) {
-    return "G430 Max";
-  }
-
-  if (/\bg430\b/i.test(text)) {
-    return "G430";
-  }
-
-  if (
-    /\brtx\s*6(?:\s*zip\s*core|\s*zipcore)?\b|\brtx6(?:\s*zip\s*core|\s*zipcore)?\b/i.test(
-      text
-    )
-  ) {
-    return "RTX 6 ZipCore";
-  }
-
-  if (/\brtx\s*zip\s*core\b|\brtx\s*zipcore\b/i.test(text)) {
-    return "RTX ZipCore";
-  }
-
-  if (/\bwhite\s*hot\s*versa\b|\bwh\s*versa\b/i.test(text)) {
-    return "White Hot Versa";
-  }
-
-  if (/\bwhite\s*hot\s*og\b|\bwh\s*og\b/i.test(text)) {
-    return "White Hot OG";
-  }
-
-  if (/\bjpx\s*923(?:\s*hot\s*metal)?\b/i.test(text)) {
-    return "JPX 923 Hot Metal";
-  }
-
-  if (/\bjpx\s*921(?:\s*hot\s*metal)?\b/i.test(text)) {
-    return "JPX 921 Hot Metal";
-  }
-
-  if (/\bhot\s*metal\b/i.test(text)) {
-    return "Hot Metal";
-  }
-
-  return null;
-}
-
 function detectCategory(text: string): string | null {
   if (/\bdriver\b|\bdrv\b/i.test(text)) {
     return "DRIVER";
@@ -187,7 +111,7 @@ function buildParserEvidence(
   text: string,
   values: {
     brand: string | null;
-    productLine: string | null;
+    productLineEvidence: ParserFieldEvidence | undefined;
     category: string | null;
     shaftFlex: string | null;
     conditionGrade: string | null;
@@ -204,54 +128,12 @@ function buildParserEvidence(
       { value: "Odyssey", aliases: [/\bodyssey\b/i] },
       { value: "Mizuno", aliases: [/\bmizuno\b/i] },
     ]),
-    productLine: findTextParserEvidence(text, values.productLine, [
-      {
-        value: "Stealth 2 Rescue",
-        aliases: [
-          /\bstealth\s*2\s*(?:rescue|hybrid|hy)\b/i,
-          /\bstealth2\s*(?:rescue|hybrid|hy)\b/i
-        ]
-      },
-      { value: "Stealth 2", aliases: [/\bstealth\s*2\b/i, /\bstealth2\b/i] },
-      { value: "Stealth", aliases: [/\bstealth\b/i] },
-      { value: "TSR2", aliases: [/\btsr\s*2\b/i, /\btsr2\b/i] },
-      { value: "TSR", aliases: [/\btsr\b/i] },
-      { value: "TS2", aliases: [/\bts\s*2\b/i, /\bts2\b/i] },
-      { value: "TS", aliases: [/\bts\b/i] },
-      { value: "Rogue ST Max", aliases: [/\brogue\s*st\s*max\b/i] },
-      {
-        value: "G425 Hybrid",
-        aliases: [/\bg425\s*(?:hybrid|hy|rescue)\b/i]
-      },
-      { value: "G425", aliases: [/\bg425\b/i] },
-      { value: "G430 Max", aliases: [/\bg430\s*max\b/i] },
-      { value: "G430", aliases: [/\bg430\b/i] },
-      {
-        value: "RTX 6 ZipCore",
-        aliases: [
-          /\brtx\s*6(?:\s*zip\s*core|\s*zipcore)?\b/i,
-          /\brtx6(?:\s*zip\s*core|\s*zipcore)?\b/i
-        ],
-      },
-      {
-        value: "RTX ZipCore",
-        aliases: [/\brtx\s*zip\s*core\b/i, /\brtx\s*zipcore\b/i]
-      },
-      {
-        value: "White Hot Versa",
-        aliases: [/\bwhite\s*hot\s*versa\b/i, /\bwh\s*versa\b/i]
-      },
-      { value: "White Hot OG", aliases: [/\bwhite\s*hot\s*og\b/i, /\bwh\s*og\b/i] },
-      {
-        value: "JPX 923 Hot Metal",
-        aliases: [/\bjpx\s*923(?:\s*hot\s*metal)?\b/i]
-      },
-      {
-        value: "JPX 921 Hot Metal",
-        aliases: [/\bjpx\s*921(?:\s*hot\s*metal)?\b/i]
-      },
-      { value: "Hot Metal", aliases: [/\bhot\s*metal\b/i] },
-    ]),
+    ...(values.productLineEvidence
+      ? {
+          productLine:
+            values.productLineEvidence
+        }
+      : {}),
     category: findTextParserEvidence(text, values.category, [
       { value: "DRIVER", aliases: [/\bdriver\b/i, /\bdrv\b/i] },
       { value: "FAIRWAY_WOOD", aliases: [/\b(?:3|4|5|7|9)\s*-?\s*(?:w|wood)\b/i, /\bfairway\b/i] },
@@ -425,88 +307,267 @@ export function detectTimestamps(text: string): string[] {
   return text.match(/\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\b/g) ?? [];
 }
 
-export function splitSourceIntoRecordFragments(source: MultiSourceParserInput): string[] {
+function countDelimitedSeparators(
+  line: string
+): number {
+  return ["|", "\t", ";", ","].reduce(
+    (count, separator) =>
+      count +
+      line.split(separator).length -
+      1,
+    0
+  );
+}
+
+function looksLikeDelimitedHeader(
+  line: string
+): boolean {
+  if (countDelimitedSeparators(line) === 0) {
+    return false;
+  }
+
+  const normalizedHeaderTokens = new Set(
+    line
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()
+      .split(/\s+/)
+  );
+  const expectedHeaderTokens = [
+    "brand",
+    "model",
+    "product",
+    "cat",
+    "category",
+    "shaft",
+    "condition",
+    "value",
+    "store"
+  ];
+
+  return expectedHeaderTokens.filter(
+    (token) =>
+      normalizedHeaderTokens.has(token)
+  ).length >= 2;
+}
+
+function resolveLineProductReference(
+  line: string,
+  provider?: ProductReferenceProvider
+) {
+  const resolutionInput = {
+    rawText: line,
+    brand: detectBrand(line),
+    category: detectCategory(line)
+  };
+
+  return provider
+    ? resolveProductReference(
+        resolutionInput,
+        provider
+      )
+    : resolveProductReference(
+        resolutionInput
+      );
+}
+
+function isLikelyEquipmentRecordLine(
+  line: string,
+  provider?: ProductReferenceProvider
+): boolean {
+  const category = detectCategory(line);
+  const resolution =
+    resolveLineProductReference(
+      line,
+      provider
+    );
+
+  if (resolution.status !== "UNRESOLVED") {
+    return true;
+  }
+
+  if (!category) {
+    return false;
+  }
+
+  return /\b(?:brand|model|product|club|shaft|flex|condition|cond|value|trade|driver|fairway|wood|hybrid|rescue|iron|irons|wedge|putter)\b/i.test(
+    line
+  );
+}
+
+function isEmailMetadataLine(
+  line: string
+): boolean {
+  return /^(?:from|to|cc|bcc|subject|attached|preferred store)\s*:/i.test(
+    line
+  ) ||
+    /^(?:hi|hello|thanks|thank you|regards|sincerely)\b/i.test(
+      line
+    );
+}
+
+export function splitSourceIntoRecordFragments(
+  source: MultiSourceParserInput,
+  provider?: ProductReferenceProvider
+): string[] {
   const lines = source.rawContent
-    .split("\n")
+    .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
 
+  if (source.sourceType === "POORLY_FORMED_CSV") {
+    const candidateRows =
+      lines[0] &&
+      looksLikeDelimitedHeader(lines[0])
+        ? lines.slice(1)
+        : lines;
+
+    return candidateRows.filter(
+      (line) =>
+        countDelimitedSeparators(line) >= 2 ||
+        isLikelyEquipmentRecordLine(
+          line,
+          provider
+        )
+    );
+  }
+
   if (source.sourceType === "EMAIL") {
-    return lines.filter((line) =>
-      /\b(callaway|taylormade|titleist|ping|cleveland|odyssey|mizuno|rogue|stealth|tsr|g425|g430|rtx|white hot|jpx|hot metal)\b/i.test(line)
+    return lines.filter(
+      (line) =>
+        !isEmailMetadataLine(line) &&
+        isLikelyEquipmentRecordLine(
+          line,
+          provider
+        )
     );
   }
 
   if (source.sourceType === "LOG") {
-    return lines.filter((line) =>
-      /\b(brand=|payload=|candidate|callaway|titleist|ping|taylormade|cleveland|odyssey|mizuno|rtx|white hot|jpx|hot metal|g430)\b/i.test(line)
-    );
-  }
-
-  if (source.sourceType === "POORLY_FORMED_CSV") {
-    return lines.filter((line) =>
-      /\b(titleist|cally|callaway|ping|taylormade|cleveland|odyssey|mizuno|rogue|tsr|g425|g430|rtx|white hot|jpx|hot metal)\b/i.test(line)
+    return lines.filter(
+      (line) =>
+        isLikelyEquipmentRecordLine(
+          line,
+          provider
+        ) ||
+        (
+          /\b(?:payload|brand|model|candidate|sku|normalized)\b/i.test(
+            line
+          ) &&
+          /\b(?:cat|category|shaft|condition|value|notes)\b/i.test(
+            line
+          )
+        )
     );
   }
 
   return lines.filter((line) =>
-    /\b(tm|taylormade|titleist|cally|callaway|ping|cleveland|odyssey|mizuno|stealth|rogue|tsr|g425|g430|rtx|white hot|jpx|hot metal)\b/i.test(line)
+    isLikelyEquipmentRecordLine(
+      line,
+      provider
+    )
   );
 }
 
-export function buildRecord(source: MultiSourceParserInput, fragment: string, index: number): MultiSourceIntakeRecord {
-  const sourceContext = `${source.rawContent}\n${fragment}`;
-  const brand = detectBrand(fragment);
-  const productLine = detectProductLine(fragment);
-  const category = detectCategory(fragment);
-  const shaftFlex = isShaftFlexApplicable(category)
-    ? detectShaftFlexWithEvidence(fragment).value
-    : null;
-  const conditionGrade = detectApprovedConditionGradeWithEvidence(fragment).value;
-  const csvRowValues = parsePoorlyFormedCsvRowValues(
-    source,
-    fragment
-  );
+export function buildRecord(
+  source: MultiSourceParserInput,
+  fragment: string,
+  index: number,
+  provider?: ProductReferenceProvider
+): MultiSourceIntakeRecord {
+  const sourceContext =
+    `${source.rawContent}\n${fragment}`;
+  const detectedBrand =
+    detectBrand(fragment);
+  const detectedCategory =
+    detectCategory(fragment);
+  const productIdentity =
+    resolveParsedProductIdentity({
+      rawText: fragment,
+      detectedBrand,
+      detectedCategory,
+      ...(provider
+        ? {
+            provider
+          }
+        : {})
+    });
+  const brand = productIdentity.brand;
+  const productLine =
+    productIdentity.productLine;
+  const category =
+    productIdentity.category;
+  const shaftFlex =
+    isShaftFlexApplicable(category)
+      ? detectShaftFlexWithEvidence(
+          fragment
+        ).value
+      : null;
+  const conditionGrade =
+    detectApprovedConditionGradeWithEvidence(
+      fragment
+    ).value;
+  const csvRowValues =
+    parsePoorlyFormedCsvRowValues(
+      source,
+      fragment
+    );
   const detectedTradeInValue =
-    detectTradeInValueWithEvidence(fragment);
+    detectTradeInValueWithEvidence(
+      fragment
+    );
   const tradeInValue =
     detectedTradeInValue.value ??
     csvRowValues?.tradeInValue ??
     null;
-  let parserEvidence = buildParserEvidence(fragment, {
-    brand,
-    productLine,
-    category,
-    shaftFlex,
-    conditionGrade,
-    tradeInValue
-  });
+  let parserEvidence =
+    buildParserEvidence(fragment, {
+      brand,
+      productLineEvidence:
+        productIdentity.productLineEvidence,
+      category,
+      shaftFlex,
+      conditionGrade,
+      tradeInValue
+    });
 
   if (
     !parserEvidence.tradeInValue &&
     csvRowValues?.tradeInValue !== null &&
-    csvRowValues?.tradeInValue !== undefined &&
+    csvRowValues?.tradeInValue !==
+      undefined &&
     csvRowValues.tradeInValueSourceText
   ) {
     parserEvidence = {
       ...parserEvidence,
       tradeInValue: {
-        value: csvRowValues.tradeInValue,
-        sourceText: csvRowValues.tradeInValueSourceText
+        value:
+          csvRowValues.tradeInValue,
+        sourceText:
+          csvRowValues
+            .tradeInValueSourceText
       }
     };
   }
-  const customerName = detectCustomerName(sourceContext);
-  const customerEmail = detectCustomerEmail(sourceContext);
+
+  const customerName =
+    detectCustomerName(sourceContext);
+  const customerEmail =
+    detectCustomerEmail(sourceContext);
   const storeId =
-    source.sourceType === "POORLY_FORMED_CSV"
-      ? csvRowValues?.storeId ?? detectStoreId(fragment)
+    source.sourceType ===
+    "POORLY_FORMED_CSV"
+      ? csvRowValues?.storeId ??
+        detectStoreId(fragment)
       : detectStoreId(sourceContext);
-  const eventTimestamp = detectTimestamps(fragment)[0] ?? null;
-  const attachmentsMentioned = detectAttachments(sourceContext);
-  const hasAmbiguousProductLine =
-    productLine === "TSR" ||
-    productLine === "Hot Metal";
+  const eventTimestamp =
+    detectTimestamps(fragment)[0] ??
+    null;
+  const attachmentsMentioned =
+    detectAttachments(sourceContext);
+  const hasProductResolutionIssue =
+    productIdentity.productResolution
+      .status !== "MATCHED";
   const hasExplicitUncertainty =
     /\bmaybe|unclear|malformed|missing|pending review|generation\s+(?:not\s+listed|unknown|unclear)|ERROR\b/i.test(
       fragment
@@ -516,12 +577,20 @@ export function buildRecord(source: MultiSourceParserInput, fragment: string, in
     brand ? null : "brand",
     productLine ? null : "productLine",
     category ? null : "category",
-    !isShaftFlexApplicable(category) || shaftFlex
+    !isShaftFlexApplicable(category) ||
+    shaftFlex
       ? null
       : "shaftFlex",
-    conditionGrade ? null : "conditionGrade",
-    tradeInValue === null ? "tradeInValue" : null
-  ].filter((field): field is string => Boolean(field));
+    conditionGrade
+      ? null
+      : "conditionGrade",
+    tradeInValue === null
+      ? "tradeInValue"
+      : null
+  ].filter(
+    (field): field is string =>
+      Boolean(field)
+  );
 
   const confidence = Math.max(
     0.35,
@@ -529,13 +598,19 @@ export function buildRecord(source: MultiSourceParserInput, fragment: string, in
       (
         1 -
         missingFields.length * 0.095 -
-        (hasAmbiguousProductLine || hasExplicitUncertainty ? 0.12 : 0)
+        (
+          hasProductResolutionIssue ||
+          hasExplicitUncertainty
+            ? 0.12
+            : 0
+        )
       ).toFixed(2)
     )
   );
 
   return {
-    id: `${source.id}_record_${index + 1}`,
+    id:
+      `${source.id}_record_${index + 1}`,
     sourceId: source.id,
     sourceType: source.sourceType,
     brand,
@@ -545,6 +620,8 @@ export function buildRecord(source: MultiSourceParserInput, fragment: string, in
     conditionGrade,
     tradeInValue,
     parserEvidence,
+    productResolution:
+      productIdentity.productResolution,
     customerName,
     customerEmail,
     storeId,
@@ -554,7 +631,7 @@ export function buildRecord(source: MultiSourceParserInput, fragment: string, in
     confidence,
     reviewNeeded:
       missingFields.length > 0 ||
-      hasAmbiguousProductLine ||
+      hasProductResolutionIssue ||
       confidence < 0.72,
     sourceText: fragment,
     normalizedText: [
@@ -563,8 +640,14 @@ export function buildRecord(source: MultiSourceParserInput, fragment: string, in
       category,
       shaftFlex,
       conditionGrade,
-      tradeInValue === null ? null : `value ${tradeInValue}`,
-      storeId ? `store ${storeId}` : null
-    ].filter(Boolean).join(" | ")
+      tradeInValue === null
+        ? null
+        : `value ${tradeInValue}`,
+      storeId
+        ? `store ${storeId}`
+        : null
+    ]
+      .filter(Boolean)
+      .join(" | ")
   };
 }

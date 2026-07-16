@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import {
+  createInMemoryProductReferenceProvider
+} from "../product-reference/product-reference-provider.js";
 import { parseTradeInDemoText } from "./trade-in-demo-parser.js";
 
 describe("parseTradeInDemoText", () => {
@@ -55,7 +58,11 @@ describe("parseTradeInDemoText", () => {
       category: "FAIRWAY_WOOD",
       clubNumber: "5",
       shaftFlex: null,
-      uncertaintyNotes: ["shaft uncertain", "condition uncertain"]
+      uncertaintyNotes: [
+        "shaft uncertain",
+        "condition uncertain",
+        "product reference unresolved"
+      ]
     });
     expect(thirdItem!.missingFields).toEqual(
       expect.arrayContaining(["brand", "productLine", "shaftFlex", "conditionNotes"])
@@ -458,6 +465,135 @@ describe("parseTradeInDemoText", () => {
       category: "IRON_SET",
       uncertaintyNotes: expect.arrayContaining(["model uncertain"])
     });
+  });
+
+  it("attaches authoritative and ambiguous product resolution evidence", () => {
+    const parsedItems =
+      parseTradeInDemoText([
+        "Titleist TSR2 3w shaft stiff condition 8.0 Average",
+        "Titleist TSR fairway wood generation unclear shaft stiff condition 8.0 Average",
+        "Titleist ZX Prototype 11 driver shaft stiff condition 8.0 Average"
+      ].join("\n"));
+
+    expect(parsedItems[0]).toMatchObject({
+      brand: "Titleist",
+      productLine: "TSR2",
+      category: "FAIRWAY_WOOD",
+      productResolution: {
+        status: "MATCHED",
+        match: {
+          productId:
+            "prod_titleist_tsr2_fairway_2023",
+          sku:
+            "TITLEIST-TSR2-FWY-2023"
+        }
+      }
+    });
+
+    expect(parsedItems[1]).toMatchObject({
+      brand: "Titleist",
+      productLine: "TSR",
+      category: "FAIRWAY_WOOD",
+      productResolution: {
+        status: "AMBIGUOUS"
+      }
+    });
+    expect(
+      parsedItems[1]?.uncertaintyNotes
+    ).toContain("model uncertain");
+
+    expect(parsedItems[2]).toMatchObject({
+      brand: "Titleist",
+      productLine: null,
+      category: "DRIVER",
+      productResolution: {
+        status: "UNRESOLVED",
+        rawText:
+          "Titleist ZX Prototype 11 driver shaft stiff condition 8.0 Average"
+      }
+    });
+    expect(
+      parsedItems[2]?.missingFields
+    ).toContain("productLine");
+  });
+
+  it("recognizes an injected product without adding parser product rules", () => {
+    const provider =
+      createInMemoryProductReferenceProvider([
+        {
+          productId:
+            "prod_test_nova_x_driver_2026",
+          sku: "TEST-NOVAX-DRV-2026",
+          brand: "Test Golf",
+          productLine: "Nova X",
+          category: "DRIVER",
+          year: 2026,
+          aliases: [
+            "nx prototype driver"
+          ],
+          shaftFamilies: []
+        }
+      ]);
+
+    const parsedItems =
+      parseTradeInDemoText(
+        "Test Golf nx prototype driver shaft stiff condition 9.0 Above Average",
+        provider
+      );
+
+    expect(parsedItems).toHaveLength(1);
+    expect(parsedItems[0]).toMatchObject({
+      brand: "Test Golf",
+      productLine: "Nova X",
+      model: "Nova X",
+      category: "DRIVER",
+      missingFields: [],
+      productResolution: {
+        status: "MATCHED",
+        providerRecordCount: 1,
+        match: {
+          productId:
+            "prod_test_nova_x_driver_2026",
+          sku: "TEST-NOVAX-DRV-2026"
+        }
+      },
+      parserEvidence: {
+        productLine: {
+          value: "Nova X",
+          sourceText:
+            "nx prototype driver"
+        }
+      }
+    });
+  });
+
+  it("keeps putter shaft flex not applicable after reference resolution", () => {
+    const parsedItems =
+      parseTradeInDemoText(
+        "Odyssey White Hot Versa putter condition 9.0 Above Average trade value $110 serial=UNKNOWN"
+      );
+
+    expect(parsedItems[0]).toMatchObject({
+      brand: "Odyssey",
+      productLine: "White Hot Versa",
+      category: "PUTTER",
+      shaftFlex: null,
+      productResolution: {
+        status: "MATCHED",
+        match: {
+          productId:
+            "prod_odyssey_white_hot_versa_putter_2023"
+        }
+      }
+    });
+    expect(
+      parsedItems[0]?.missingFields
+    ).not.toContain("shaftFlex");
+    expect(
+      parsedItems[0]?.uncertaintyNotes
+    ).not.toContain(
+      "product reference unresolved"
+    );
   });
 
 });

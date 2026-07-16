@@ -17,7 +17,7 @@ export function FinalRecordProvenance({
       <div className="guided-final-provenance__header">
         <span className="model-route-card__eyebrow">Record provenance</span>
         <h4 id="guided-final-provenance-title">
-          Where each final result came from
+          Where each current result came from
         </h4>
         <p>
           Expand a record to see only the workflow systems that returned
@@ -30,7 +30,7 @@ export function FinalRecordProvenance({
           <details className="guided-final-provenance-record" key={record.id}>
             <summary className="guided-final-provenance-record__summary">
               <span className="guided-final-provenance-record__identity">
-                <strong>{record.label || "Unnamed finalized record"}</strong>
+                <strong>{record.label || "Unnamed record"}</strong>
                 <span>
                   {record.sourceName} · {record.provenanceEntries.length} contributing
                   source{record.provenanceEntries.length === 1 ? "" : "s"}

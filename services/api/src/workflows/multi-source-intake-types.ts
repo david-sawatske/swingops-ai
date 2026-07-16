@@ -1,4 +1,7 @@
 import type { ParserEvidence } from "./parser-evidence.js";
+import type {
+  ProductResolution
+} from "../product-reference/product-reference-resolver.js";
 
 export type MultiSourceIntakeSourceType =
   | "FREE_TEXT"
@@ -17,6 +20,7 @@ export type MultiSourceIntakeRecord = {
   conditionGrade: string | null;
   tradeInValue: number | null;
   parserEvidence?: ParserEvidence;
+  productResolution: ProductResolution;
   customerName: string | null;
   customerEmail: string | null;
   storeId: string | null;

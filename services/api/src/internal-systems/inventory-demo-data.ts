@@ -1,21 +1,13 @@
-export type InventoryProductCategory =
-  | "DRIVER"
-  | "FAIRWAY_WOOD"
-  | "HYBRID"
-  | "IRON_SET"
-  | "WEDGE"
-  | "PUTTER";
+import type {
+  ProductReferenceCategory,
+  ProductReferenceRecord
+} from "../product-reference/product-reference-types.js";
 
-export type DemoInventoryProduct = {
-  productId: string;
-  sku: string;
-  brand: string;
-  productLine: string;
-  category: InventoryProductCategory;
-  year: number;
-  aliases: string[];
-  shaftFamilies: string[];
-};
+export type InventoryProductCategory =
+  ProductReferenceCategory;
+
+export type DemoInventoryProduct =
+  ProductReferenceRecord;
 
 export const demoInventoryProducts: DemoInventoryProduct[] = [
   {
