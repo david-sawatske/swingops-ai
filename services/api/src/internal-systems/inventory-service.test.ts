@@ -82,7 +82,7 @@ describe("inventory-service", () => {
           productLine: "White Hot OG",
           category: "putter",
           shaftBrand: "Odyssey Stroke Lab",
-          rawText: "Odyssey White Hot OG putter Ladies flex condition 8.0 Average"
+          rawText: "Odyssey White Hot OG putter condition 8.0 Average"
         },
         productId: "prod_odyssey_white_hot_og_putter_2021",
         sku: "ODYSSEY-WHITEHOTOG-PUTTER-2021"
@@ -107,6 +107,150 @@ describe("inventory-service", () => {
       expect(result.sku).toBe(testCase.sku);
       expect(result.confidence).toBeGreaterThanOrEqual(0.86);
     }
+  });
+
+
+  it("does not select an arbitrary product for a broad shared family", () => {
+    const result = lookupInventoryProduct({
+      brand: "Titleist",
+      productLine: "TSR",
+      category: "fairway wood",
+      rawText: "Titleist TSR fairway wood"
+    });
+
+    expect(result.productId).toBeNull();
+    expect(result.sku).toBeNull();
+    expect(result.matchReasons).toContain(
+      "Multiple internal products had similar evidence and require generation confirmation."
+    );
+    expect(result.similarProducts.map((product) => product.productId)).toEqual(
+      expect.arrayContaining([
+        "prod_titleist_tsr2_fairway_2023",
+        "prod_titleist_tsr3_fairway_2023"
+      ])
+    );
+  });
+
+  it("still automatically matches explicitly identified similar products", () => {
+    const cases = [
+      {
+        productLine: "TSR2",
+        rawText: "Titleist TSR2 3w",
+        expectedProductId: "prod_titleist_tsr2_fairway_2023"
+      },
+      {
+        productLine: "TSR3",
+        rawText: "Titleist TSR3 fairway wood",
+        expectedProductId: "prod_titleist_tsr3_fairway_2023"
+      },
+      {
+        productLine: "TS2",
+        rawText: "Titleist TS2 3w",
+        expectedProductId: "prod_titleist_ts2_fairway_2019"
+      }
+    ];
+
+    for (const testCase of cases) {
+      const result = lookupInventoryProduct({
+        brand: "Titleist",
+        productLine: testCase.productLine,
+        category: "fairway wood",
+        rawText: testCase.rawText
+      });
+
+      expect(result.productId).toBe(testCase.expectedProductId);
+      expect(result.confidence).toBeGreaterThanOrEqual(0.86);
+    }
+  });
+
+
+  it("matches a curated hybrid alias to the correct internal product", () => {
+    const result = lookupInventoryProduct({
+      brand: "PING",
+      productLine: "G430 Hybrid",
+      category: "hy",
+      shaftBrand: "PING Alta",
+      rawText: "PING G430 hybrid Senior flex condition 8.0 Average"
+    });
+
+    expect(result).toMatchObject({
+      productId: "prod_ping_g430_hybrid_2023",
+      sku: "PING-G430-HYB-2023",
+      category: "HYBRID"
+    });
+    expect(result.confidence).toBeGreaterThanOrEqual(0.86);
+  });
+
+  it("keeps a broad multi-category G430 family query ambiguous", () => {
+    const result = lookupInventoryProduct({
+      brand: "PING",
+      productLine: "G430",
+      rawText: "PING G430 condition 8.0 Average"
+    });
+
+    expect(result.productId).toBeNull();
+    expect(result.similarProducts.length).toBeGreaterThanOrEqual(2);
+  });
+
+
+  it("keeps an exact product match when only condition is unclear", () => {
+    const result = lookupInventoryProduct({
+      brand: "PING",
+      productLine: "G425",
+      category: "irons",
+      rawText:
+        "PING G425 irons 5-PW regular flex condition unclear"
+    });
+
+    expect(result).toMatchObject({
+      productId: "prod_ping_g425_iron_set_2021",
+      sku: "PING-G425-IRONSET-2021",
+      category: "IRON_SET"
+    });
+  });
+
+
+  it("prefers an explicit parsed Stealth 2 model over the shorter Stealth family", () => {
+    const result = lookupInventoryProduct({
+      brand: "TaylorMade",
+      productLine: "Stealth 2",
+      category: "DRIVER",
+      shaftBrand: "Fujikura",
+      shaftModel: "Ventus",
+      rawText:
+        "TM stealth2 drv 10.5 Ventus stiff, no hc, sky mark on crown"
+    });
+
+    expect(result).toMatchObject({
+      productId: "prod_taylormade_stealth2_driver_2023",
+      sku: "TM-STEALTH2-DRV-2023",
+      category: "DRIVER"
+    });
+    expect(result.matchReasons).toContain(
+      "Product line matched Stealth 2."
+    );
+  });
+
+
+  it("ignores serial uncertainty when the product identity is exact", () => {
+    const result = lookupInventoryProduct({
+      brand: "Odyssey",
+      productLine: "White Hot Versa",
+      category: "PUTTER",
+      rawText:
+        "normalized payload brand=Odyssey model='White Hot Versa' cat=putter condition='9.0 Above Average' value=110 serial=UNKNOWN"
+    });
+
+    expect(result).toMatchObject({
+      productId: "prod_odyssey_white_hot_versa_putter_2023",
+      sku: "ODYSSEY-WHITEHOTVERSA-PUTTER-2023",
+      productLine: "White Hot Versa",
+      category: "PUTTER"
+    });
+    expect(result.confidence).toBeGreaterThanOrEqual(0.86);
+    expect(result.matchReasons).toContain(
+      "Product line matched White Hot Versa."
+    );
   });
 
 });

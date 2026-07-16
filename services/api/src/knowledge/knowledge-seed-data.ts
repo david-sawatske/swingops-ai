@@ -23,13 +23,13 @@ export const DEMO_KNOWLEDGE_SOURCE_NAME = "swingops-demo-golf-trade-in-knowledge
 export const DEMO_KNOWLEDGE_DOCUMENTS: KnowledgeSeedDocument[] = [
   {
     sourceType: "FREE_TEXT",
-    title: "Driver and fairway wood alias notes",
+    title: "Golf product alias and category notes",
     sourceName: DEMO_KNOWLEDGE_SOURCE_NAME,
     rawText: `
       Demo/local alias notes for messy golf trade-in intake.
-      TaylorMade Stealth 2, Qi10, SIM2, M6, Callaway Paradym Ai Smoke,
-      Rogue ST, Epic Speed, PING G430 Max, G425 Max, G410, Titleist TSR2,
-      TSi2, TS2, and 917 shorthand appear often in trade-in notes.
+      Golf product aliases, generation distinctions and category evidence
+      appear frequently in messy trade-in notes. Coverage includes drivers,
+      fairway woods, hybrids, iron sets, wedges and putters.
     `,
     chunks: [
       {
@@ -164,10 +164,10 @@ export const DEMO_KNOWLEDGE_DOCUMENTS: KnowledgeSeedDocument[] = [
         brand: "Cleveland",
         productLine: "RTX 6 ZipCore",
         category: "WEDGE",
-        aliases: ["Cleveland RTX 6 ZipCore", "RTX 6 ZipCore", "RTX6 ZipCore", "RTX ZipCore", "Cleveland RTX6 wedge"],
+        aliases: ["Cleveland RTX 6 ZipCore", "RTX 6 ZipCore", "RTX6 ZipCore", "Cleveland RTX6 wedge"],
         conditionFlags: ["tour x-stiff", "groove wear", "wedge"],
         text:
-          "Cleveland RTX 6 ZipCore wedge may appear as RTX 6 ZipCore, RTX6 ZipCore, RTX ZipCore, or Cleveland RTX6 wedge. Groove wear should be preserved as a condition note while the normalized grade stays in the fixed condition-grade scale."
+          "Cleveland RTX 6 ZipCore wedge may appear as RTX 6 ZipCore, RTX6 ZipCore, or Cleveland RTX6 wedge. Groove wear should be preserved as a condition note while the normalized grade stays in the fixed condition-grade scale."
       },
       {
         chunkType: "BRAND_ALIAS",
@@ -175,7 +175,7 @@ export const DEMO_KNOWLEDGE_DOCUMENTS: KnowledgeSeedDocument[] = [
         productLine: "White Hot OG",
         category: "PUTTER",
         aliases: ["Odyssey White Hot OG", "White Hot OG", "WH OG", "Odyssey WH OG", "White Hot OG putter"],
-        conditionFlags: ["regular", "headcover included"],
+        conditionFlags: ["headcover included"],
         text:
           "Odyssey White Hot OG putter may appear as Odyssey White Hot OG, White Hot OG, WH OG, or Odyssey WH OG. Putter records may include headcover status as accessory evidence."
       },
@@ -225,6 +225,239 @@ export const DEMO_KNOWLEDGE_DOCUMENTS: KnowledgeSeedDocument[] = [
         aliases: ["TS2 3w", "Titleist TS2 fairway", "TS 2 FW", "ts2 wood"],
         text:
           "Titleist TS2 fairway wood may be written TS2 3w, Titleist TS2 fairway, TS 2 FW, or ts2 wood. Distinguish TS2 from TSR2 when handwriting or OCR is unclear."
+      },
+      {
+        "chunkType": "BRAND_ALIAS",
+        "brand": "TaylorMade",
+        "productLine": "Stealth",
+        "category": "DRIVER",
+        "aliases": [
+          "TM Stealth driver",
+          "TaylorMade Stealth drv",
+          "Stealth driver 2022"
+        ],
+        "text": "TaylorMade Stealth driver is a separate generation from Stealth 2. A note containing only Stealth should not be upgraded to Stealth 2 without explicit generation evidence."
+      },
+      {
+        "chunkType": "BRAND_ALIAS",
+        "brand": "TaylorMade",
+        "productLine": "Stealth 2 Rescue",
+        "category": "HYBRID",
+        "aliases": [
+          "TM Stealth2 rescue",
+          "Stealth 2 hybrid",
+          "TaylorMade Stealth2 hy"
+        ],
+        "conditionFlags": [
+          "stiff",
+          "regular",
+          "hybrid",
+          "rescue"
+        ],
+        "text": "TaylorMade Stealth 2 Rescue is a hybrid. Rescue, hybrid, and hy identify the hybrid category rather than a fairway wood."
+      },
+      {
+        "chunkType": "BRAND_ALIAS",
+        "brand": "TaylorMade",
+        "productLine": "Qi10 Rescue",
+        "category": "HYBRID",
+        "aliases": [
+          "TM Qi10 rescue",
+          "Qi10 hybrid",
+          "TaylorMade Qi 10 hy"
+        ],
+        "text": "TaylorMade Qi10 Rescue may appear as TM Qi10 rescue, Qi10 hybrid, or TaylorMade Qi 10 hy. Rescue terminology maps to the hybrid category."
+      },
+      {
+        "chunkType": "BRAND_ALIAS",
+        "brand": "PING",
+        "productLine": "G430 Hybrid",
+        "category": "HYBRID",
+        "aliases": [
+          "PING G430 hybrid",
+          "G430 hy",
+          "PING 430 rescue"
+        ],
+        "text": "PING G430 Hybrid must remain distinct from G430 Max driver, G430 Max fairway wood, and G430 iron set records. Hybrid, hy, or rescue supplies category evidence."
+      },
+      {
+        "chunkType": "BRAND_ALIAS",
+        "brand": "PING",
+        "productLine": "G425 Hybrid",
+        "category": "HYBRID",
+        "aliases": [
+          "PING G425 hybrid",
+          "G425 hy",
+          "PING 425 rescue"
+        ],
+        "conditionFlags": [
+          "regular",
+          "senior",
+          "hybrid",
+          "rescue"
+        ],
+        "text": "PING G425 Hybrid may appear as G425 hy or PING 425 rescue. Do not confuse it with the G425 iron set or G425 Max fairway wood."
+      },
+      {
+        "chunkType": "BRAND_ALIAS",
+        "brand": "Callaway",
+        "productLine": "Paradym Hybrid",
+        "category": "HYBRID",
+        "aliases": [
+          "Callaway Paradym hybrid",
+          "Cally Paradym hy",
+          "Paradym rescue"
+        ],
+        "text": "Callaway Paradym Hybrid may use hybrid, hy, or rescue terminology. It is distinct from Paradym Ai Smoke driver and fairway products."
+      },
+      {
+        "chunkType": "BRAND_ALIAS",
+        "brand": "PING",
+        "productLine": "G430",
+        "category": "IRON_SET",
+        "aliases": [
+          "PING G430 irons",
+          "G430 iron set",
+          "G430 5-PW"
+        ],
+        "text": "PING G430 iron set notes commonly include irons, iron set, or set makeup such as 5-PW. Category evidence distinguishes it from G430 woods and hybrids."
+      },
+      {
+        "chunkType": "BRAND_ALIAS",
+        "brand": "Mizuno",
+        "productLine": "JPX 921 Hot Metal",
+        "category": "IRON_SET",
+        "aliases": [
+          "Mizuno JPX 921 Hot Metal",
+          "JPX921 Hot Metal irons",
+          "JPX 921 iron set"
+        ],
+        "text": "Mizuno JPX 921 Hot Metal is an older iron generation than JPX 923 Hot Metal. Preserve the explicit 921 or 923 generation number."
+      },
+      {
+        "chunkType": "BRAND_ALIAS",
+        "brand": "TaylorMade",
+        "productLine": "P790",
+        "category": "IRON_SET",
+        "aliases": [
+          "TaylorMade P790 irons",
+          "TM P790 iron set",
+          "P790 4-PW"
+        ],
+        "text": "TaylorMade P790 notes may include P790 irons, P790 iron set, or set makeup such as 4-PW."
+      },
+      {
+        "chunkType": "BRAND_ALIAS",
+        "brand": "Titleist",
+        "productLine": "T200",
+        "category": "IRON_SET",
+        "aliases": [
+          "Titleist T200 irons",
+          "T200 iron set",
+          "Titleist T 200 5-PW"
+        ],
+        "text": "Titleist T200 is an iron set. Irons, iron set, and set makeup such as 5-PW provide category evidence."
+      },
+      {
+        "chunkType": "BRAND_ALIAS",
+        "brand": "Cleveland",
+        "productLine": "RTX ZipCore",
+        "category": "WEDGE",
+        "aliases": [
+          "Cleveland RTX ZipCore",
+          "RTX ZipCore wedge",
+          "Cleveland ZipCore wedge"
+        ],
+        "conditionFlags": [
+          "groove wear",
+          "wedge",
+          "older generation"
+        ],
+        "text": "Cleveland RTX ZipCore is an older wedge generation than RTX 6 ZipCore. Do not infer the number 6 unless it is explicitly present."
+      },
+      {
+        "chunkType": "BRAND_ALIAS",
+        "brand": "Titleist",
+        "productLine": "Vokey SM9",
+        "category": "WEDGE",
+        "aliases": [
+          "Titleist Vokey SM9",
+          "Vokey SM 9 wedge",
+          "SM9 56 degree"
+        ],
+        "text": "Titleist Vokey SM9 is a wedge. A two-digit loft such as 52, 54, 56, 58, or 60 degrees can support wedge category evidence."
+      },
+      {
+        "chunkType": "BRAND_ALIAS",
+        "brand": "Callaway",
+        "productLine": "Jaws Raw",
+        "category": "WEDGE",
+        "aliases": [
+          "Callaway Jaws Raw",
+          "Cally Jaws Raw wedge",
+          "Jaws Raw 54 degree"
+        ],
+        "text": "Callaway Jaws Raw is a wedge family. Preserve loft and groove-wear details as evidence rather than placing them in the normalized condition-grade field."
+      },
+      {
+        "chunkType": "BRAND_ALIAS",
+        "brand": "TaylorMade",
+        "productLine": "MG4",
+        "category": "WEDGE",
+        "aliases": [
+          "TaylorMade MG4",
+          "TM MG 4 wedge",
+          "Milled Grind 4 wedge"
+        ],
+        "text": "TaylorMade MG4 may be written MG 4 or Milled Grind 4. Explicit wedge or loft evidence confirms the wedge category."
+      },
+      {
+        "chunkType": "BRAND_ALIAS",
+        "brand": "Odyssey",
+        "productLine": "White Hot Versa",
+        "category": "PUTTER",
+        "aliases": [
+          "Odyssey White Hot Versa",
+          "White Hot Versa putter",
+          "Odyssey Versa putter"
+        ],
+        "text": "Odyssey White Hot Versa is distinct from White Hot OG. Putter records do not require shaft-flex data."
+      },
+      {
+        "chunkType": "BRAND_ALIAS",
+        "brand": "Scotty Cameron",
+        "productLine": "Special Select Newport 2",
+        "category": "PUTTER",
+        "aliases": [
+          "Scotty Cameron Newport 2",
+          "Special Select Newport 2",
+          "Scotty NP2 putter"
+        ],
+        "text": "Scotty Cameron Special Select Newport 2 is a putter and may be shortened to Newport 2 or NP2. Shaft flex is not applicable."
+      },
+      {
+        "chunkType": "BRAND_ALIAS",
+        "brand": "PING",
+        "productLine": "Anser 2",
+        "category": "PUTTER",
+        "aliases": [
+          "PING Anser 2",
+          "Anser2 putter",
+          "PING Anser two"
+        ],
+        "text": "PING Anser 2 is a putter. Spacing variants such as Anser2 should normalize to Anser 2 without requiring shaft flex."
+      },
+      {
+        "chunkType": "BRAND_ALIAS",
+        "brand": "TaylorMade",
+        "productLine": "Spider Tour",
+        "category": "PUTTER",
+        "aliases": [
+          "TaylorMade Spider Tour",
+          "TM Spider Tour putter",
+          "Spider Tour mallet"
+        ],
+        "text": "TaylorMade Spider Tour is a putter family. Mallet wording can support putter category evidence, and shaft flex is not applicable."
       }
     ]
   },
@@ -234,9 +467,9 @@ export const DEMO_KNOWLEDGE_DOCUMENTS: KnowledgeSeedDocument[] = [
     sourceName: DEMO_KNOWLEDGE_SOURCE_NAME,
     rawText: `
       Demo/local condition notes for trade-in intake. Sky marks, crown scratches,
-      face wear, dents, missing headcovers, worn grips, missing serial numbers,
-      uncertain model families, and newer high-value drivers should be handled
-      consistently by the agent and escalated when ambiguity is high.
+      face wear, dents, missing headcovers, worn grips, uncertain model
+      families and newer high-value products should be handled consistently.
+      Serial-number text is outside the demo workflow and should be ignored.
     `,
     chunks: [
       {
@@ -279,9 +512,9 @@ export const DEMO_KNOWLEDGE_DOCUMENTS: KnowledgeSeedDocument[] = [
       },
       {
         chunkType: "TRADE_IN_POLICY",
-        conditionFlags: ["missing serial number", "serial missing", "no serial", "uncertain serial"],
+        conditionFlags: ["serial number", "serial present", "serial missing", "serial unreadable"],
         text:
-          "Human review is required when the serial number is missing, removed, unreadable, or uncertain. Serial ambiguity should not be auto-resolved by the agent."
+          "Serial numbers are outside the SwingOps demo normalization workflow. Ignore serial-number text whether it is present, missing, unreadable, or uncertain, and do not create a review issue for it."
       },
       {
         chunkType: "TRADE_IN_POLICY",
@@ -491,7 +724,7 @@ export const DEMO_KNOWLEDGE_DOCUMENTS: KnowledgeSeedDocument[] = [
         brand: "Cleveland",
         productLine: "RTX 6 ZipCore",
         category: "WEDGE",
-        aliases: ["Cleveland RTX 6 ZipCore wedge Tour X-Stiff", "RTX6 ZipCore wedge tour x", "RTX ZipCore groove wear"],
+        aliases: ["Cleveland RTX 6 ZipCore wedge Tour X-Stiff", "RTX6 ZipCore wedge tour x"],
         conditionFlags: ["tour x-stiff", "groove wear", "7.0 Below Average"],
         text:
           "Guided demo example: Cleveland RTX 6 ZipCore wedge, Tour X-Stiff, 7.0 Below Average, groove wear noted maps to Cleveland RTX 6 ZipCore wedge with Tour X-Stiff shaft flex and groove wear evidence."
@@ -501,10 +734,10 @@ export const DEMO_KNOWLEDGE_DOCUMENTS: KnowledgeSeedDocument[] = [
         brand: "Odyssey",
         productLine: "White Hot OG",
         category: "PUTTER",
-        aliases: ["Odyssey White Hot OG putter regular", "White Hot OG putter headcover included", "WH OG putter"],
-        conditionFlags: ["regular", "headcover included", "8.0 Average"],
+        aliases: ["Odyssey White Hot OG putter", "White Hot OG putter headcover included", "WH OG putter"],
+        conditionFlags: ["headcover included", "8.0 Average"],
         text:
-          "Guided demo example: Odyssey White Hot OG putter, Regular, 8.0 Average, headcover included maps to Odyssey White Hot OG putter with regular shaft flex and headcover accessory evidence."
+          "Guided demo example: Odyssey White Hot OG putter, 8.0 Average, headcover included maps to Odyssey White Hot OG putter with no shaft-flex requirement and headcover accessory evidence."
       },
       {
         chunkType: "CLUB_REFERENCE",

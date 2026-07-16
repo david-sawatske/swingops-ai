@@ -2,10 +2,12 @@ import { LEGACY_FREEFORM_NOTES_INTAKE_SOURCE_TYPE } from "../intake/legacy-intak
 import type { ModelCallLog, Prisma, ReviewQueueItem, ToolCallLog } from "@prisma/client";
 
 import type { ModelRouteDecision } from "../ai/model-router.js";
-import {
-  lookupInventoryProduct,
-  type InventoryProductLookupResult
+import type {
+  InventoryProductLookupResult
 } from "../internal-systems/inventory-service.js";
+import type {
+  ProductReferenceProvider
+} from "../product-reference/product-reference-provider.js";
 import {
   estimateTradeInValuation,
   type TradeInValuationResult
@@ -41,6 +43,9 @@ import {
   buildWorkflowQualityBundle,
   type WorkflowQualityBundle
 } from "./workflow-quality.js";
+import {
+  buildInventoryLookupFromProductResolution
+} from "./product-resolution-inventory-adapter.js";
 import {
   parseTradeInDemoText,
   type ParsedTradeInDemoItem
@@ -556,13 +561,17 @@ function buildAuditTrail(input: {
 
 export async function executeEndToEndAgenticTradeInDemo(input: {
   rawInput: string;
+  productReferenceProvider?: ProductReferenceProvider;
 }): Promise<EndToEndAgenticTradeInDemoResult> {
   const rawInput = input.rawInput.trim() || DEFAULT_AGENTIC_TRADE_IN_DEMO_INPUT;
   const parseReadyInput = stripNonRecordDemoHeaderLines(rawInput);
 
   await ensureDemoKnowledgeBaseReady();
 
-  const parsedItems = parseTradeInDemoText(parseReadyInput);
+  const parsedItems = parseTradeInDemoText(
+    parseReadyInput,
+    input.productReferenceProvider
+  );
 
   const intakeBatch = await prisma.intakeBatch.create({
     data: {
@@ -645,7 +654,17 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
 
   const inventoryMatchesByItem = parsedItems.map((item) => ({
     parsedItemId: item.id,
-    lookup: lookupInventoryProduct(buildInventoryLookupInput(item))
+    lookup:
+      buildInventoryLookupFromProductResolution({
+        resolution: item.productResolution,
+        fallback: {
+          brand: item.brand,
+          productLine: item.productLine,
+          category:
+            item.productResolution
+              .normalizedInput.category
+        }
+      })
   }));
 
   const valuationEvidenceByItem = parsedItems.map((item) => {
@@ -764,7 +783,13 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     reviewQueueItemsCreated.push(reviewQueueItem);
   }
 
-  const plannedCalls = [
+  const firstParsedItem = parsedItems[0]!;
+  const canExecuteDemoInventoryTools =
+    input.productReferenceProvider === undefined &&
+    firstParsedItem.productResolution.status === "MATCHED";
+
+  const plannedCalls:
+    EndToEndAgenticTradeInDemoResult["toolCallingPlan"]["plannedCalls"] = [
     {
       orderIndex: 1,
       toolName: "swingops.workflowRuns.get",
@@ -773,7 +798,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
       inputJson: {
         id: workflowRun.id
       },
-      expectedRiskLevel: "LOW" as const,
+      expectedRiskLevel: "LOW",
       expectedMutatesData: false,
       expectedRequiresHumanApproval: false
     },
@@ -783,46 +808,70 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
       reason:
         "Run a read-only grounded search using the first parsed trade-in record.",
       inputJson: {
-        query: knowledgeMatchesByItem[0]?.query ?? rawInput,
+        query:
+          knowledgeMatchesByItem[0]?.query ??
+          rawInput,
         maxResults: 5
       },
-      expectedRiskLevel: "LOW" as const,
+      expectedRiskLevel: "LOW",
       expectedMutatesData: false,
       expectedRequiresHumanApproval: false
     },
-    {
-      orderIndex: 3,
-      toolName: "swingops.inventory.lookupProduct",
-      reason:
-        "Use a read-only internal inventory lookup to match the first parsed record to a product and SKU.",
-      inputJson: buildInventoryLookupInput(parsedItems[0]!),
-      expectedRiskLevel: "LOW" as const,
-      expectedMutatesData: false,
-      expectedRequiresHumanApproval: false
-    },
-    {
-      orderIndex: 4,
-      toolName: "swingops.tradeInValuation.estimate",
-      reason:
-        "Use a read-only valuation lookup to estimate a seeded demo trade-in range for the first parsed record.",
-      inputJson: {
-        ...buildInventoryLookupInput(parsedItems[0]!),
-        conditionNotes: parsedItems[0]!.conditionNotes.join("|"),
-        accessoriesNotes: parsedItems[0]!.accessoriesNotes.join("|")
-      },
-      expectedRiskLevel: "LOW" as const,
-      expectedMutatesData: false,
-      expectedRequiresHumanApproval: false
-    },
+    ...(canExecuteDemoInventoryTools
+      ? [
+          {
+            orderIndex: 3,
+            toolName:
+              "swingops.inventory.lookupProduct",
+            reason:
+              "Use a read-only internal inventory lookup to corroborate the default reference-provider match for the first parsed record.",
+            inputJson:
+              buildInventoryLookupInput(
+                firstParsedItem
+              ),
+            expectedRiskLevel:
+              "LOW" as const,
+            expectedMutatesData: false,
+            expectedRequiresHumanApproval:
+              false
+          },
+          {
+            orderIndex: 4,
+            toolName:
+              "swingops.tradeInValuation.estimate",
+            reason:
+              "Use a read-only valuation lookup after the default reference provider authoritatively identified the first parsed record.",
+            inputJson: {
+              ...buildInventoryLookupInput(
+                firstParsedItem
+              ),
+              conditionNotes:
+                firstParsedItem.conditionNotes.join(
+                  "|"
+                ),
+              accessoriesNotes:
+                firstParsedItem.accessoriesNotes.join(
+                  "|"
+                )
+            },
+            expectedRiskLevel:
+              "LOW" as const,
+            expectedMutatesData: false,
+            expectedRequiresHumanApproval:
+              false
+          }
+        ]
+      : []),
     {
       orderIndex: 5,
-      toolName: "swingops.reviewQueueItems.list",
+      toolName:
+        "swingops.reviewQueueItems.list",
       reason:
         "Inspect open human-review work created by low-confidence parsing or valuation uncertainty.",
       inputJson: {
         status: "OPEN"
       },
-      expectedRiskLevel: "LOW" as const,
+      expectedRiskLevel: "LOW",
       expectedMutatesData: false,
       expectedRequiresHumanApproval: false
     },
@@ -833,10 +882,11 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         "Demonstrate that the agent can see a mutation-style inventory tool but cannot create SKUs without approval.",
       inputJson: {
         productId:
-          inventoryMatchesByItem[0]?.lookup.productId ??
+          inventoryMatchesByItem[0]
+            ?.lookup.productId ??
           "blocked-demo-product"
       },
-      expectedRiskLevel: "HIGH" as const,
+      expectedRiskLevel: "HIGH",
       expectedMutatesData: true,
       expectedRequiresHumanApproval: true
     }

@@ -437,6 +437,14 @@ describe("finalRunReportUtils", () => {
 
     expect(mergedRecord.finalReviewLabel).toBe("Needs review");
     expect(mergedRecord.finalReviewDetail).toBe("Review item still open");
+    expect(mergedRecord.persistenceLabel).toBe("Pending human review");
+    expect(
+      mergedRecord.provenanceEntries.find(
+        (entry) => entry.key === "PERSISTED_RECORD",
+      )?.detail,
+    ).toBe(
+      "The persisted candidate remains visible in this report, but it is not finalized while human review is still required.",
+    );
     expect(mergedRecord.status).toBe("NEEDS_REVIEW");
     expect(mergedRecord.reviewNeeded).toBe(true);
     expect(mergedRecord.ragReady).toBe(false);

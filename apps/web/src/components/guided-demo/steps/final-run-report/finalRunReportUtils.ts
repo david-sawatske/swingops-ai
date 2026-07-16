@@ -789,6 +789,22 @@ export function buildMergedRecord(input: {
     reviewItem,
     valuationRange,
   });
+  const persistenceLabel =
+    !reviewedRecord && finalReviewNeeded
+      ? "Pending human review"
+      : recordEvidence.persistenceLabel;
+  const provenanceEntries =
+    !reviewedRecord && finalReviewNeeded
+      ? recordEvidence.entries.map((entry) =>
+          entry.key === "PERSISTED_RECORD"
+            ? {
+                ...entry,
+                detail:
+                  "The persisted candidate remains visible in this report, but it is not finalized while human review is still required.",
+              }
+            : entry,
+        )
+      : recordEvidence.entries;
 
   const transformationNotes = [
     valuationRange && input.candidateRecord.tradeInValue === null
@@ -832,9 +848,9 @@ export function buildMergedRecord(input: {
       transformationNotes.length > 0
         ? transformationNotes
         : ["No field changes; workflow evidence checked"],
-    provenanceEntries: recordEvidence.entries,
+    provenanceEntries,
     persistedRecordId: recordEvidence.persistedRecordId,
-    persistenceLabel: recordEvidence.persistenceLabel,
+    persistenceLabel,
     replacedRecordId: recordEvidence.replacedRecordId,
   };
 

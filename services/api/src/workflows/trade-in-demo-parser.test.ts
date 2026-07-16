@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import {
+  createInMemoryProductReferenceProvider
+} from "../product-reference/product-reference-provider.js";
 import { parseTradeInDemoText } from "./trade-in-demo-parser.js";
 
 describe("parseTradeInDemoText", () => {
@@ -55,7 +58,11 @@ describe("parseTradeInDemoText", () => {
       category: "FAIRWAY_WOOD",
       clubNumber: "5",
       shaftFlex: null,
-      uncertaintyNotes: ["shaft uncertain", "condition uncertain"]
+      uncertaintyNotes: [
+        "shaft uncertain",
+        "condition uncertain",
+        "product reference unresolved"
+      ]
     });
     expect(thirdItem!.missingFields).toEqual(
       expect.arrayContaining(["brand", "productLine", "shaftFlex", "conditionNotes"])
@@ -65,7 +72,7 @@ describe("parseTradeInDemoText", () => {
   it("parses expanded QA fixture families and fixed condition grades", () => {
     const parsedItems = parseTradeInDemoText([
       "Cleveland RTX 6 ZipCore wedge Senior flex condition 9.0 Above Average",
-      "Odyssey White Hot OG putter Ladies flex condition 8.0 Average",
+      "Odyssey White Hot OG putter condition 8.0 Average",
       "Mizuno JPX 923 Hot Metal irons Tour X-Stiff condition 9.0 Above Average",
       "PING G430 Max driver Tour X-Stiff condition 9.5 Mint"
     ].join("\n"));
@@ -85,7 +92,7 @@ describe("parseTradeInDemoText", () => {
       brand: "Odyssey",
       productLine: "White Hot OG",
       category: "PUTTER",
-      shaftFlex: "LADIES",
+      shaftFlex: null,
       conditionNotes: ["8.0 Average"],
       missingFields: []
     });
@@ -248,12 +255,12 @@ describe("parseTradeInDemoText", () => {
         }
       },
       {
-        raw: "Odyssey White Hot OG putter ladies flex condition 8.0 Average value $95",
+        raw: "Odyssey White Hot OG putter condition 8.0 Average value $95",
         expected: {
           brand: "Odyssey",
           productLine: "White Hot OG",
           category: "PUTTER",
-          shaftFlex: "LADIES",
+          shaftFlex: null,
           conditionGrade: "8.0 Average",
           tradeInValue: 95
         }
@@ -313,14 +320,14 @@ describe("parseTradeInDemoText", () => {
 
     expect(parsedItems[0]).toMatchObject({
       brand: "Titleist",
-      productLine: "TSR",
+      productLine: "TSR2",
       category: "FAIRWAY_WOOD",
       shaftFlex: "STIFF",
       conditionGrade: "8.0 Average",
       tradeInValue: 150,
       parserEvidence: {
         brand: { value: "Titleist", sourceText: "Titleist" },
-        productLine: { value: "TSR", sourceText: "TSR2" },
+        productLine: { value: "TSR2", sourceText: "TSR2" },
         category: { value: "FAIRWAY_WOOD", sourceText: "3w" },
         shaftFlex: { value: "STIFF", sourceText: "shaft stiff" },
         conditionGrade: { value: "8.0 Average", sourceText: "cond avg" },
@@ -369,6 +376,224 @@ describe("parseTradeInDemoText", () => {
       category: null
     });
     expect(parsedItems[0]?.missingFields).toContain("category");
+  });
+
+
+  it("does not require shaft flex for putter records", () => {
+    const parsedItems = parseTradeInDemoText(
+      "Odyssey White Hot OG putter condition 8.0 Average trade value $95"
+    );
+
+    expect(parsedItems).toHaveLength(1);
+    expect(parsedItems[0]).toMatchObject({
+      brand: "Odyssey",
+      productLine: "White Hot OG",
+      category: "PUTTER",
+      shaftFlex: null,
+      conditionGrade: "8.0 Average",
+      tradeInValue: 95
+    });
+    expect(parsedItems[0]?.missingFields).not.toContain("shaftFlex");
+  });
+
+
+  it("preserves the specific product families exposed by the Step 2 UI matrix", () => {
+    const parsedItems = parseTradeInDemoText([
+      "TaylorMade Stealth driver, Regular, 8.0 Average.",
+      "TM Stealth2 rescue, Stiff, 8.0 Average.",
+      "PING G425 hy, Regular, 8.0 Average.",
+      "Titleist TS2 fairway wood, Regular, 7.0 Below Average.",
+      "Cleveland RTX ZipCore wedge, Regular, 7.0 Below Average.",
+      "Cleveland RTX 6 ZipCore wedge, Tour X-Stiff, 7.0 Below Average.",
+      "Odyssey White Hot Versa putter, 9.0 Above Average.",
+      "Mizuno Hot Metal iron set, Regular, 8.0 Average, generation not listed."
+    ].join("\n"));
+
+    expect(parsedItems).toHaveLength(8);
+
+    expect(parsedItems[0]).toMatchObject({
+      brand: "TaylorMade",
+      productLine: "Stealth",
+      category: "DRIVER",
+      shaftFlex: "REGULAR"
+    });
+
+    expect(parsedItems[1]).toMatchObject({
+      brand: "TaylorMade",
+      productLine: "Stealth 2 Rescue",
+      category: "HYBRID",
+      shaftFlex: "STIFF"
+    });
+
+    expect(parsedItems[2]).toMatchObject({
+      brand: "PING",
+      productLine: "G425 Hybrid",
+      category: "HYBRID",
+      shaftFlex: "REGULAR"
+    });
+
+    expect(parsedItems[3]).toMatchObject({
+      brand: "Titleist",
+      productLine: "TS2",
+      category: "FAIRWAY_WOOD",
+      shaftFlex: "REGULAR"
+    });
+
+    expect(parsedItems[4]).toMatchObject({
+      brand: "Cleveland",
+      productLine: "RTX ZipCore",
+      category: "WEDGE"
+    });
+
+    expect(parsedItems[5]).toMatchObject({
+      brand: "Cleveland",
+      productLine: "RTX 6 ZipCore",
+      category: "WEDGE"
+    });
+
+    expect(parsedItems[6]).toMatchObject({
+      brand: "Odyssey",
+      productLine: "White Hot Versa",
+      category: "PUTTER",
+      shaftFlex: null
+    });
+    expect(parsedItems[6]?.missingFields).not.toContain("shaftFlex");
+
+    expect(parsedItems[7]).toMatchObject({
+      brand: "Mizuno",
+      productLine: "Hot Metal",
+      category: "IRON_SET",
+      uncertaintyNotes: expect.arrayContaining(["model uncertain"])
+    });
+  });
+
+  it("attaches authoritative and ambiguous product resolution evidence", () => {
+    const parsedItems =
+      parseTradeInDemoText([
+        "Titleist TSR2 3w shaft stiff condition 8.0 Average",
+        "Titleist TSR fairway wood generation unclear shaft stiff condition 8.0 Average",
+        "Titleist ZX Prototype 11 driver shaft stiff condition 8.0 Average"
+      ].join("\n"));
+
+    expect(parsedItems[0]).toMatchObject({
+      brand: "Titleist",
+      productLine: "TSR2",
+      category: "FAIRWAY_WOOD",
+      productResolution: {
+        status: "MATCHED",
+        match: {
+          productId:
+            "prod_titleist_tsr2_fairway_2023",
+          sku:
+            "TITLEIST-TSR2-FWY-2023"
+        }
+      }
+    });
+
+    expect(parsedItems[1]).toMatchObject({
+      brand: "Titleist",
+      productLine: "TSR",
+      category: "FAIRWAY_WOOD",
+      productResolution: {
+        status: "AMBIGUOUS"
+      }
+    });
+    expect(
+      parsedItems[1]?.uncertaintyNotes
+    ).toContain("model uncertain");
+
+    expect(parsedItems[2]).toMatchObject({
+      brand: "Titleist",
+      productLine: null,
+      category: "DRIVER",
+      productResolution: {
+        status: "UNRESOLVED",
+        rawText:
+          "Titleist ZX Prototype 11 driver shaft stiff condition 8.0 Average"
+      }
+    });
+    expect(
+      parsedItems[2]?.missingFields
+    ).toContain("productLine");
+  });
+
+  it("recognizes an injected product without adding parser product rules", () => {
+    const provider =
+      createInMemoryProductReferenceProvider([
+        {
+          productId:
+            "prod_test_nova_x_driver_2026",
+          sku: "TEST-NOVAX-DRV-2026",
+          brand: "Test Golf",
+          productLine: "Nova X",
+          category: "DRIVER",
+          year: 2026,
+          aliases: [
+            "nx prototype driver"
+          ],
+          shaftFamilies: []
+        }
+      ]);
+
+    const parsedItems =
+      parseTradeInDemoText(
+        "Test Golf nx prototype driver shaft stiff condition 9.0 Above Average",
+        provider
+      );
+
+    expect(parsedItems).toHaveLength(1);
+    expect(parsedItems[0]).toMatchObject({
+      brand: "Test Golf",
+      productLine: "Nova X",
+      model: "Nova X",
+      category: "DRIVER",
+      missingFields: [],
+      productResolution: {
+        status: "MATCHED",
+        providerRecordCount: 1,
+        match: {
+          productId:
+            "prod_test_nova_x_driver_2026",
+          sku: "TEST-NOVAX-DRV-2026"
+        }
+      },
+      parserEvidence: {
+        productLine: {
+          value: "Nova X",
+          sourceText:
+            "nx prototype driver"
+        }
+      }
+    });
+  });
+
+  it("keeps putter shaft flex not applicable after reference resolution", () => {
+    const parsedItems =
+      parseTradeInDemoText(
+        "Odyssey White Hot Versa putter condition 9.0 Above Average trade value $110 serial=UNKNOWN"
+      );
+
+    expect(parsedItems[0]).toMatchObject({
+      brand: "Odyssey",
+      productLine: "White Hot Versa",
+      category: "PUTTER",
+      shaftFlex: null,
+      productResolution: {
+        status: "MATCHED",
+        match: {
+          productId:
+            "prod_odyssey_white_hot_versa_putter_2023"
+        }
+      }
+    });
+    expect(
+      parsedItems[0]?.missingFields
+    ).not.toContain("shaftFlex");
+    expect(
+      parsedItems[0]?.uncertaintyNotes
+    ).not.toContain(
+      "product reference unresolved"
+    );
   });
 
 });

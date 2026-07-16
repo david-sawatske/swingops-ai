@@ -1047,3 +1047,239 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Inventory candidates for ambiguous product-line review */
+.guided-product-line-correction-field,
+.guided-record-correction-grid--focused
+  > .guided-inventory-candidate-suggestions {
+  grid-column: 1 / -1;
+}
+
+.guided-inventory-candidate-suggestions {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.7rem;
+  border: 1px solid rgba(43, 78, 52, 0.18);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.guided-inventory-candidate-suggestions__header {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.guided-inventory-candidate-suggestions__header p {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.guided-inventory-candidate-suggestions__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.guided-record-correction-form .guided-inventory-candidate {
+  display: grid;
+  justify-items: start;
+  gap: 0.15rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid rgba(43, 78, 52, 0.22);
+  border-radius: 0.65rem;
+  background: rgba(255, 255, 255, 0.94);
+  color: #142116;
+  text-align: left;
+  box-shadow: none;
+}
+
+.guided-record-correction-form .guided-inventory-candidate:hover,
+.guided-record-correction-form .guided-inventory-candidate:focus-visible {
+  border-color: rgba(43, 78, 52, 0.58);
+  background: rgba(240, 253, 244, 0.9);
+}
+
+.guided-record-correction-form
+  .guided-inventory-candidate--selected {
+  border-color: rgba(22, 101, 52, 0.72);
+  background: rgba(220, 252, 231, 0.8);
+  box-shadow: inset 0 0 0 1px rgba(22, 101, 52, 0.32);
+}
+
+.guided-inventory-candidate span {
+  font-weight: 800;
+}
+
+.guided-inventory-candidate small,
+.guided-inventory-candidate-suggestions__note {
+  font-size: 0.7rem;
+  line-height: 1.35;
+  opacity: 0.72;
+}
+
+@media (max-width: 640px) {
+  .guided-inventory-candidate-suggestions__list {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Keep prior-review suggestion actions visually aligned */
+.guided-prior-review-suggestion__actions {
+  align-items: stretch;
+}
+
+.guided-prior-review-suggestion__actions .guided-step-primary-action,
+.guided-prior-review-suggestion__actions .guided-review-secondary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  margin: 0;
+  line-height: 1.2;
+  text-align: center;
+}
+
+
+/* Applied prior-review correction confirmation */
+.guided-applied-correction-summary {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(22, 101, 52, 0.22);
+  border-radius: 0.75rem;
+  background: rgba(220, 252, 231, 0.72);
+}
+
+.guided-applied-correction-summary dl {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.guided-applied-correction-summary dl > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid rgba(22, 101, 52, 0.14);
+  border-radius: 0.6rem;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.guided-applied-correction-summary dt {
+  color: rgba(20, 33, 22, 0.66);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.guided-applied-correction-summary dd {
+  margin: 0;
+  font-weight: 850;
+  text-align: right;
+}
+
+.guided-applied-correction-summary small {
+  color: rgba(20, 33, 22, 0.68);
+}
+
+@media (max-width: 640px) {
+  .guided-applied-correction-summary dl > div {
+    display: grid;
+    gap: 0.2rem;
+  }
+
+  .guided-applied-correction-summary dd {
+    text-align: left;
+  }
+}
+
+
+/* Simplified completed-correction review */
+.guided-record-correction-form {
+  gap: 0.7rem;
+  padding: 0.85rem;
+  background: rgba(248, 250, 247, 0.96);
+}
+
+.guided-record-correction-form__header p {
+  max-width: 34rem;
+}
+
+.guided-applied-correction-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid rgba(22, 101, 52, 0.18);
+  border-radius: 0.7rem;
+  background: rgba(240, 253, 244, 0.82);
+}
+
+.guided-applied-correction-summary__label {
+  flex: 0 0 auto;
+  color: rgba(20, 33, 22, 0.66);
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.guided-applied-correction-summary dl {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.guided-applied-correction-summary dl > div {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.guided-applied-correction-summary dt {
+  color: rgba(20, 33, 22, 0.62);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.guided-applied-correction-summary dt::after {
+  content: " →";
+}
+
+.guided-applied-correction-summary dd {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 850;
+  text-align: left;
+}
+
+.guided-record-correction-form__actions {
+  padding-top: 0.1rem;
+}
+
+@media (max-width: 640px) {
+  .guided-applied-correction-summary {
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .guided-applied-correction-summary dl {
+    justify-content: flex-start;
+  }
+}

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import { prisma } from "../lib/prisma.js";
+import {
+  createInMemoryProductReferenceProvider
+} from "../product-reference/product-reference-provider.js";
 import { executeMultiSourceIntakeDemo } from "./multi-source-intake-demo.js";
 
 describe("executeMultiSourceIntakeDemo", () => {
@@ -281,7 +284,7 @@ describe("executeMultiSourceIntakeDemo", () => {
           sourceType: "POORLY_FORMED_CSV",
           sourceName: "QA CSV fixture",
           rawContent:
-            "brand|model|cat|shaft|condition_grade|value|store|serial\nOdyssey|White Hot OG putter|putter|Ladies|8.0 Average|$95|104|ODS-002"
+            "brand|model|cat|shaft|condition_grade|value|store|serial\nOdyssey|White Hot OG putter|putter||8.0 Average|$95|104|ODS-002"
         },
         {
           sourceType: "EMAIL",
@@ -316,7 +319,7 @@ describe("executeMultiSourceIntakeDemo", () => {
         brand: "Odyssey",
         productLine: "White Hot OG",
         category: "PUTTER",
-        shaftFlex: "LADIES",
+        shaftFlex: null,
         conditionGrade: "8.0 Average",
         tradeInValue: 95
       },
@@ -367,6 +370,96 @@ describe("executeMultiSourceIntakeDemo", () => {
         id: result.persistedIds.workflowRunId
       }
     });
+  });
+
+
+  it("resolves an injected reference product through the multi-source workflow", async () => {
+    const provider =
+      createInMemoryProductReferenceProvider([
+        {
+          productId:
+            "prod_test_nova_x_driver_2026",
+          sku: "TEST-NOVAX-DRV-2026",
+          brand: "Test Golf",
+          productLine: "Nova X",
+          category: "DRIVER",
+          year: 2026,
+          aliases: [
+            "nx prototype driver"
+          ],
+          shaftFamilies: []
+        }
+      ]);
+
+    const result =
+      await executeMultiSourceIntakeDemo({
+        sources: [
+          {
+            sourceType: "FREE_TEXT",
+            sourceName:
+              "Injected reference fixture",
+            rawContent:
+              "Test Golf nx prototype driver shaft stiff condition 9.0 Above Average value $225 store 104"
+          }
+        ],
+        productReferenceProvider: provider
+      });
+
+    try {
+      expect(result.sourcesProcessed).toBe(1);
+      expect(result.recordsExtracted).toBe(1);
+      expect(result.cleanedDatasetPreview).toHaveLength(1);
+
+      expect(
+        result.cleanedDatasetPreview[0]
+      ).toMatchObject({
+        brand: "Test Golf",
+        productLine: "Nova X",
+        category: "DRIVER",
+        shaftFlex: "STIFF",
+        conditionGrade:
+          "9.0 Above Average",
+        tradeInValue: 225,
+        storeId: "104",
+        reviewNeeded: false,
+        missingFields: [],
+        productResolution: {
+          status: "MATCHED",
+          providerRecordCount: 1,
+          match: {
+            productId:
+              "prod_test_nova_x_driver_2026",
+            sku: "TEST-NOVAX-DRV-2026"
+          }
+        }
+      });
+
+      expect(result.reviewNeeded).toBe(0);
+      expect(
+        result.persistedIds
+          .reviewQueueItemIds
+      ).toHaveLength(0);
+      expect(
+        result.persistedIds
+          .aiReadyIntakeRecordIds
+      ).toHaveLength(1);
+    } finally {
+      await prisma.intakeBatch.delete({
+        where: {
+          id:
+            result.persistedIds
+              .intakeBatchId
+        }
+      });
+
+      await prisma.workflowRun.delete({
+        where: {
+          id:
+            result.persistedIds
+              .workflowRunId
+        }
+      });
+    }
   });
 
 });

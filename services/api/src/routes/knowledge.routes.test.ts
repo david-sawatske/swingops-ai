@@ -38,7 +38,7 @@ describe("knowledge routes", () => {
       status: "SUCCEEDED",
       sourceName: DEMO_KNOWLEDGE_SOURCE_NAME,
       documentsCreated: 3,
-      chunksCreated: 53
+      chunksCreated: 71
     });
 
     const searchResponse = await app.inject({
@@ -130,8 +130,8 @@ describe("knowledge routes", () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
-      casesEvaluated: 5,
-      passCount: 5,
+      casesEvaluated: 16,
+      passCount: 16,
       failedCases: []
     });
 

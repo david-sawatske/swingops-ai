@@ -2,6 +2,9 @@ import { LEGACY_FREEFORM_NOTES_INTAKE_SOURCE_TYPE } from "../intake/legacy-intak
 import type { AiReadyIntakeRecord, Prisma, ReviewQueueItem, ToolCallLog } from "@prisma/client";
 
 import { prisma } from "../lib/prisma.js";
+import type {
+  ProductReferenceProvider
+} from "../product-reference/product-reference-provider.js";
 import {
   buildRecord,
   cleanText,
@@ -43,7 +46,7 @@ const DEFAULT_MULTI_SOURCE_INPUTS: MultiSourceInput[] = [
       "1) TM stealth2 drv 10.5 ventus stiff condition 8.0 Average cust: Mark R.",
       "2) Ping g425 irons 5-pw reg flex condition 7.0 Below Average needs manager look.",
       "3) Cleveland RTX 6 ZipCore wedge senior flex condition 9.0 Above Average value $72 serial CLV-001.",
-      "4) Odyssey White Hot OG putter ladies flex condition 8.0 Average value $95 serial ODS-002.",
+      "4) Odyssey White Hot OG putter condition 8.0 Average value $95 serial ODS-002.",
       "Store 104 / associate jules"
     ].join("\n")
   },
@@ -57,7 +60,7 @@ const DEFAULT_MULTI_SOURCE_INPUTS: MultiSourceInput[] = [
       "Cally,Rogue ST Max driver,HZRDUS X,7.0 Below Average,190,STORE-207",
       "PING|G425 irons|reg|6.0 Poor||104",
       "Cleveland|RTX 6 ZipCore wedge|Senior|9.0 Above Average|$72|104",
-      "Odyssey|White Hot OG putter|Ladies|8.0 Average|$95|104",
+      "Odyssey|White Hot OG putter|putter||8.0 Average|$95|104",
       "Mizuno|JPX 923 Hot Metal irons|Tour X-Stiff|9.0 Above Average|$390|STORE-104",
       "PING|G430 Max driver|Tour X-Stiff|9.5 Mint|$240|STORE-207"
     ].join("\n")
@@ -75,7 +78,7 @@ const DEFAULT_MULTI_SOURCE_INPUTS: MultiSourceInput[] = [
       "Condition grade is 7.0 Below Average.",
       "Also a TaylorMade Stealth 2 10.5 driver with Ventus stiff and condition 8.0 Average.",
       "One more: Cleveland RTX 6 ZipCore wedge with Senior flex, condition 9.0 Above Average, estimated value 72.",
-      "Also Odyssey White Hot OG putter with Ladies flex, condition 8.0 Average, value 95.",
+      "Also Odyssey White Hot OG putter with condition 8.0 Average, value 95.",
       "Attached: trade_sheet_8821.pdf, driver_photos.zip",
       "Preferred store: 207"
     ].join("\n")
@@ -183,11 +186,22 @@ function getOperationalTags(source: MultiSourceInput): string[] {
   ].filter((tag): tag is string => Boolean(tag));
 }
 
-function buildSourceResult(source: MultiSourceInput): MultiSourceIntakeSourceResult {
+function buildSourceResult(
+  source: MultiSourceInput,
+  productReferenceProvider?: ProductReferenceProvider
+): MultiSourceIntakeSourceResult {
   const cleanedText = cleanText(source.rawContent);
-  const fragments = splitSourceIntoRecordFragments(source);
+  const fragments = splitSourceIntoRecordFragments(
+    source,
+    productReferenceProvider
+  );
   const extractedRecords = fragments.map((fragment, index) =>
-    buildRecord(source, fragment, index)
+    buildRecord(
+      source,
+      fragment,
+      index,
+      productReferenceProvider
+    )
   );
 
   const metadata = {
@@ -568,6 +582,7 @@ function buildCustomSourceInputs(sources: MultiSourceIntakeSourceInput[]): Multi
 export async function executeMultiSourceIntakeDemo(input: {
   sourceTypes?: MultiSourceIntakeSourceType[];
   sources?: MultiSourceIntakeSourceInput[];
+  productReferenceProvider?: ProductReferenceProvider;
 } = {}): Promise<MultiSourceIntakeDemoResult> {
   const requestedSourceTypes = input.sourceTypes;
   const selectedInputs =
@@ -579,7 +594,12 @@ export async function executeMultiSourceIntakeDemo(input: {
           )
         : DEFAULT_MULTI_SOURCE_INPUTS;
 
-  const sourceResults = selectedInputs.map(buildSourceResult);
+  const sourceResults = selectedInputs.map((source) =>
+    buildSourceResult(
+      source,
+      input.productReferenceProvider
+    )
+  );
   const cleanedDatasetPreview = sourceResults.flatMap((source) => source.extractedRecords);
   const recordsExtracted = cleanedDatasetPreview.length;
   const reviewRecords = cleanedDatasetPreview.filter((record) => record.reviewNeeded);

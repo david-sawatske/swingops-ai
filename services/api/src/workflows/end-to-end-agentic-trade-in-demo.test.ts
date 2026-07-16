@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 
 import { prisma } from "../lib/prisma.js";
 import {
+  createInMemoryProductReferenceProvider
+} from "../product-reference/product-reference-provider.js";
+import {
   executeEndToEndAgenticTradeInDemo,
   type EndToEndAgenticTradeInDemoResult
 } from "./end-to-end-agentic-trade-in-demo.js";
@@ -37,6 +40,32 @@ async function cleanupResult(result: EndToEndAgenticTradeInDemoResult): Promise<
       id: result.persisted.intakeBatchId
     }
   });
+}
+
+function expectNoIndependentInventoryOrValuationToolCalls(
+  result: EndToEndAgenticTradeInDemoResult
+): void {
+  const plannedToolNames =
+    result.toolCallingPlan.plannedCalls.map(
+      (call) => call.toolName
+    );
+  const executedToolNames =
+    result.toolCallResults.map(
+      (toolResult) => toolResult.toolName
+    );
+
+  expect(plannedToolNames).not.toContain(
+    "swingops.inventory.lookupProduct"
+  );
+  expect(plannedToolNames).not.toContain(
+    "swingops.tradeInValuation.estimate"
+  );
+  expect(executedToolNames).not.toContain(
+    "swingops.inventory.lookupProduct"
+  );
+  expect(executedToolNames).not.toContain(
+    "swingops.tradeInValuation.estimate"
+  );
 }
 
 describe("executeEndToEndAgenticTradeInDemo", () => {
@@ -188,5 +217,216 @@ describe("executeEndToEndAgenticTradeInDemo", () => {
     );
   });
 
+
+
+  it("does not assign inventory identity or valuation to an ambiguous product family", async () => {
+    const result = await executeEndToEndAgenticTradeInDemo({
+      rawInput:
+        "Titleist TSR fairway wood generation unclear shaft stiff condition 8.0 Average trade value $145"
+    });
+
+    try {
+      expect(result.parsedItems).toHaveLength(1);
+      expect(
+        result.parsedItems[0]?.productResolution.status
+      ).toBe("AMBIGUOUS");
+
+      expect(
+        result.inventoryMatchesByItem[0]?.lookup
+      ).toMatchObject({
+        productId: null,
+        sku: null,
+        brand: "Titleist",
+        productLine: "TSR",
+        category: "FAIRWAY_WOOD"
+      });
+
+      expect(
+        result.inventoryMatchesByItem[0]
+          ?.lookup.similarProducts.length
+      ).toBeGreaterThanOrEqual(2);
+
+      expect(
+        result.valuationEvidenceByItem[0]?.estimate
+      ).toMatchObject({
+        lowValue: 0,
+        highValue: 0,
+        confidence: "LOW",
+        reviewRequired: true
+      });
+
+      expect(
+        result.reviewQueueItemsCreated
+      ).toHaveLength(1);
+      expect(
+        result.finalSummary.inventoryMatchCount
+      ).toBe(0);
+      expect(
+        result.finalSummary.valuationRangeCount
+      ).toBe(0);
+
+      expectNoIndependentInventoryOrValuationToolCalls(
+        result
+      );
+    } finally {
+      await cleanupResult(result);
+    }
+  });
+
+
+  it("does not invent inventory identity or valuation for an unresolved product", async () => {
+    const sourceText =
+      "Titleist ZX Prototype 11 driver shaft stiff condition 8.0 Average trade value $125";
+
+    const result =
+      await executeEndToEndAgenticTradeInDemo({
+        rawInput: sourceText
+      });
+
+    try {
+      expect(result.parsedItems).toHaveLength(1);
+      expect(result.parsedItems[0]).toMatchObject({
+        rawLine: sourceText,
+        brand: "Titleist",
+        productLine: null,
+        category: "DRIVER",
+        productResolution: {
+          status: "UNRESOLVED"
+        }
+      });
+
+      expect(
+        result.inventoryMatchesByItem[0]?.lookup
+      ).toMatchObject({
+        productId: null,
+        sku: null,
+        brand: "Titleist",
+        productLine: null,
+        category: "DRIVER",
+        confidence: 0,
+        similarProducts: []
+      });
+
+      expect(
+        result.valuationEvidenceByItem[0]?.estimate
+      ).toMatchObject({
+        lowValue: 0,
+        highValue: 0,
+        confidence: "LOW",
+        reviewRequired: true
+      });
+
+      expect(
+        result.reviewQueueItemsCreated
+      ).toHaveLength(1);
+      expect(
+        result.finalSummary.inventoryMatchCount
+      ).toBe(0);
+      expect(
+        result.finalSummary.valuationRangeCount
+      ).toBe(0);
+
+      const proposedRecord =
+        result.reviewQueueItemsCreated[0]
+          ?.proposedGolfClubJson as {
+            rawLine?: string;
+            productResolution?: {
+              status?: string;
+            };
+            inventoryMatch?: {
+              productId?: string | null;
+              sku?: string | null;
+            };
+            demoValuationRange?: {
+              highValue?: number;
+            };
+          };
+
+      expect(proposedRecord).toMatchObject({
+        rawLine: sourceText,
+        productResolution: {
+          status: "UNRESOLVED"
+        },
+        inventoryMatch: {
+          productId: null,
+          sku: null
+        },
+        demoValuationRange: {
+          highValue: 0
+        }
+      });
+
+      expectNoIndependentInventoryOrValuationToolCalls(
+        result
+      );
+    } finally {
+      await cleanupResult(result);
+    }
+  });
+
+
+  it("resolves an injected reference product through the guarded workflow", async () => {
+    const provider =
+      createInMemoryProductReferenceProvider([
+        {
+          productId:
+            "prod_test_nova_x_driver_2026",
+          sku: "TEST-NOVAX-DRV-2026",
+          brand: "Test Golf",
+          productLine: "Nova X",
+          category: "DRIVER",
+          year: 2026,
+          aliases: [
+            "nx prototype driver"
+          ],
+          shaftFamilies: []
+        }
+      ]);
+
+    const result =
+      await executeEndToEndAgenticTradeInDemo({
+        rawInput:
+          "Test Golf nx prototype driver shaft stiff condition 9.0 Above Average trade value $225",
+        productReferenceProvider: provider
+      });
+
+    try {
+      expect(result.parsedItems).toHaveLength(1);
+      expect(result.parsedItems[0]).toMatchObject({
+        brand: "Test Golf",
+        productLine: "Nova X",
+        category: "DRIVER",
+        productResolution: {
+          status: "MATCHED",
+          match: {
+            productId:
+              "prod_test_nova_x_driver_2026",
+            sku: "TEST-NOVAX-DRV-2026"
+          }
+        }
+      });
+
+      expect(
+        result.inventoryMatchesByItem[0]?.lookup
+      ).toMatchObject({
+        productId:
+          "prod_test_nova_x_driver_2026",
+        sku: "TEST-NOVAX-DRV-2026",
+        brand: "Test Golf",
+        productLine: "Nova X",
+        category: "DRIVER"
+      });
+
+      expect(
+        result.finalSummary.inventoryMatchCount
+      ).toBe(1);
+
+      expectNoIndependentInventoryOrValuationToolCalls(
+        result
+      );
+    } finally {
+      await cleanupResult(result);
+    }
+  });
 
 });

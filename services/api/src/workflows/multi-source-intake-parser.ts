@@ -1,3 +1,4 @@
+import { isShaftFlexApplicable } from "./golf-field-applicability.js";
 import {
   findTextParserEvidence,
   omitEmptyParserEvidence
@@ -7,7 +8,19 @@ import {
   detectShaftFlexWithEvidence,
   detectTradeInValueWithEvidence
 } from "./parser-normalizers.js";
-import type { ParserEvidence } from "./parser-evidence.js";
+import type {
+  ProductReferenceProvider
+} from "../product-reference/product-reference-provider.js";
+import {
+  resolveProductReference
+} from "../product-reference/product-reference-resolver.js";
+import {
+  resolveParsedProductIdentity
+} from "./product-resolution-parser.js";
+import type {
+  ParserEvidence,
+  ParserFieldEvidence
+} from "./parser-evidence.js";
 import type {
   MultiSourceIntakeRecord,
   MultiSourceIntakeSourceType
@@ -65,46 +78,6 @@ function detectBrand(text: string): string | null {
   return null;
 }
 
-function detectProductLine(text: string): string | null {
-  if (/\bstealth\s*2\b|\bstealth2\b/i.test(text)) {
-    return "Stealth 2";
-  }
-
-  if (/\btsr2?\b/i.test(text)) {
-    return "TSR";
-  }
-
-  if (/\brogue\s*st\s*max\b/i.test(text)) {
-    return "Rogue ST Max";
-  }
-
-  if (/\bg425\b/i.test(text)) {
-    return "G425";
-  }
-
-  if (/\bg430\s*max\b/i.test(text)) {
-    return "G430 Max";
-  }
-
-  if (/\bg430\b/i.test(text)) {
-    return "G430";
-  }
-
-  if (/\brtx\s*6(?:\s*zip\s*core|\s*zipcore)?\b|\brtx6\b|\brtx\s*zip\s*core\b/i.test(text)) {
-    return "RTX 6 ZipCore";
-  }
-
-  if (/\bwhite\s*hot\s*og\b|\bwh\s*og\b/i.test(text)) {
-    return "White Hot OG";
-  }
-
-  if (/\bjpx\s*923(?:\s*hot\s*metal)?\b|\bhot\s*metal\b/i.test(text)) {
-    return "JPX 923 Hot Metal";
-  }
-
-  return null;
-}
-
 function detectCategory(text: string): string | null {
   if (/\bdriver\b|\bdrv\b/i.test(text)) {
     return "DRIVER";
@@ -112,6 +85,10 @@ function detectCategory(text: string): string | null {
 
   if (/\b(?:3|4|5|7|9)\s*-?\s*(?:w|wood)\b|\bfairway\b/i.test(text)) {
     return "FAIRWAY_WOOD";
+  }
+
+  if (/\b(?:hybrid|hy|rescue)\b/i.test(text)) {
+    return "HYBRID";
   }
 
   if (/\bwedge\b|\b(?:46|48|50|52|54|56|58|60)\s*(?:deg|degree|°)?\b/i.test(text)) {
@@ -134,7 +111,7 @@ function buildParserEvidence(
   text: string,
   values: {
     brand: string | null;
-    productLine: string | null;
+    productLineEvidence: ParserFieldEvidence | undefined;
     category: string | null;
     shaftFlex: string | null;
     conditionGrade: string | null;
@@ -151,28 +128,23 @@ function buildParserEvidence(
       { value: "Odyssey", aliases: [/\bodyssey\b/i] },
       { value: "Mizuno", aliases: [/\bmizuno\b/i] },
     ]),
-    productLine: findTextParserEvidence(text, values.productLine, [
-      { value: "Stealth 2", aliases: [/\bstealth\s*2\b/i, /\bstealth2\b/i] },
-      { value: "TSR", aliases: [/\btsr2?\b/i] },
-      { value: "Rogue ST Max", aliases: [/\brogue\s*st\s*max\b/i] },
-      { value: "G425", aliases: [/\bg425\b/i] },
-      { value: "G430 Max", aliases: [/\bg430\s*max\b/i] },
-      { value: "G430", aliases: [/\bg430\b/i] },
-      {
-        value: "RTX 6 ZipCore",
-        aliases: [/\brtx\s*6(?:\s*zip\s*core|\s*zipcore)?\b/i, /\brtx6\b/i, /\brtx\s*zip\s*core\b/i],
-      },
-      { value: "White Hot OG", aliases: [/\bwhite\s*hot\s*og\b/i, /\bwh\s*og\b/i] },
-      { value: "JPX 923 Hot Metal", aliases: [/\bjpx\s*923(?:\s*hot\s*metal)?\b/i, /\bhot\s*metal\b/i] },
-    ]),
+    ...(values.productLineEvidence
+      ? {
+          productLine:
+            values.productLineEvidence
+        }
+      : {}),
     category: findTextParserEvidence(text, values.category, [
       { value: "DRIVER", aliases: [/\bdriver\b/i, /\bdrv\b/i] },
       { value: "FAIRWAY_WOOD", aliases: [/\b(?:3|4|5|7|9)\s*-?\s*(?:w|wood)\b/i, /\bfairway\b/i] },
+      { value: "HYBRID", aliases: [/\bhybrid\b/i, /\bhy\b/i, /\brescue\b/i] },
       { value: "WEDGE", aliases: [/\bwedge\b/i, /\b(?:46|48|50|52|54|56|58|60)\s*(?:deg|degree|°)?\b/i] },
       { value: "PUTTER", aliases: [/\bputter\b/i] },
       { value: "IRON_SET", aliases: [/\birons?\b/i, /\b[4-9]-pw\b/i] },
     ]),
-    shaftFlex: detectShaftFlexWithEvidence(text).evidence,
+    shaftFlex: isShaftFlexApplicable(values.category)
+      ? detectShaftFlexWithEvidence(text).evidence
+      : undefined,
     conditionGrade: detectApprovedConditionGradeWithEvidence(text).evidence,
     tradeInValue: detectTradeInValueWithEvidence(text).evidence,
   });
@@ -185,6 +157,116 @@ function detectStoreId(text: string): string | null {
   }
 
   return null;
+}
+
+type PoorlyFormedCsvRowValues = {
+  tradeInValue: number | null;
+  tradeInValueSourceText: string | null;
+  storeId: string | null;
+};
+
+function normalizeDelimitedHeader(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function stripDelimitedCell(value: string): string {
+  return value
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .trim();
+}
+
+function detectDelimitedSeparator(headerLine: string): string | null {
+  const candidates = ["|", "\t", ";", ","];
+  let selectedSeparator: string | null = null;
+  let selectedCount = 0;
+
+  for (const candidate of candidates) {
+    const count = headerLine.split(candidate).length - 1;
+
+    if (count > selectedCount) {
+      selectedSeparator = candidate;
+      selectedCount = count;
+    }
+  }
+
+  return selectedSeparator;
+}
+
+function parsePoorlyFormedCsvRowValues(
+  source: MultiSourceParserInput,
+  fragment: string
+): PoorlyFormedCsvRowValues | null {
+  if (source.sourceType !== "POORLY_FORMED_CSV") {
+    return null;
+  }
+
+  const lines = source.rawContent
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const headerLine = lines[0];
+  const separator = headerLine
+    ? detectDelimitedSeparator(headerLine)
+    : null;
+
+  if (!headerLine || !separator) {
+    return null;
+  }
+
+  const headers = headerLine
+    .split(separator)
+    .map((header) => normalizeDelimitedHeader(header));
+  const cells = fragment
+    .split(separator)
+    .map(stripDelimitedCell);
+
+  function findCell(headerAliases: string[]): string | null {
+    const index = headers.findIndex((header) =>
+      headerAliases.includes(header)
+    );
+
+    return index >= 0
+      ? cells[index] ?? null
+      : null;
+  }
+
+  const tradeInValueSourceText = findCell([
+    "value",
+    "tradevalue",
+    "tradeinvalue",
+    "estimatedvalue"
+  ]);
+  const normalizedValueText = tradeInValueSourceText
+    ?.replace(/[$,\s]/g, "");
+  const tradeInValue =
+    normalizedValueText &&
+    /^\d+(?:\.\d+)?$/.test(normalizedValueText)
+      ? Number(normalizedValueText)
+      : null;
+
+  const storeSourceText = findCell([
+    "store",
+    "storeid",
+    "location",
+    "locationid"
+  ]);
+  const storeMatch = storeSourceText?.match(
+    /^(STORE[-\s]*)?(\d{3})$/i
+  );
+  const storeId = storeMatch
+    ? storeMatch[1]
+      ? `STORE-${storeMatch[2]}`
+      : storeMatch[2] ?? null
+    : null;
+
+  return {
+    tradeInValue,
+    tradeInValueSourceText,
+    storeId
+  };
 }
 
 function detectCustomerName(text: string): string | null {
@@ -225,73 +307,310 @@ export function detectTimestamps(text: string): string[] {
   return text.match(/\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\b/g) ?? [];
 }
 
-export function splitSourceIntoRecordFragments(source: MultiSourceParserInput): string[] {
+function countDelimitedSeparators(
+  line: string
+): number {
+  return ["|", "\t", ";", ","].reduce(
+    (count, separator) =>
+      count +
+      line.split(separator).length -
+      1,
+    0
+  );
+}
+
+function looksLikeDelimitedHeader(
+  line: string
+): boolean {
+  if (countDelimitedSeparators(line) === 0) {
+    return false;
+  }
+
+  const normalizedHeaderTokens = new Set(
+    line
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()
+      .split(/\s+/)
+  );
+  const expectedHeaderTokens = [
+    "brand",
+    "model",
+    "product",
+    "cat",
+    "category",
+    "shaft",
+    "condition",
+    "value",
+    "store"
+  ];
+
+  return expectedHeaderTokens.filter(
+    (token) =>
+      normalizedHeaderTokens.has(token)
+  ).length >= 2;
+}
+
+function resolveLineProductReference(
+  line: string,
+  provider?: ProductReferenceProvider
+) {
+  const resolutionInput = {
+    rawText: line,
+    brand: detectBrand(line),
+    category: detectCategory(line)
+  };
+
+  return provider
+    ? resolveProductReference(
+        resolutionInput,
+        provider
+      )
+    : resolveProductReference(
+        resolutionInput
+      );
+}
+
+function isLikelyEquipmentRecordLine(
+  line: string,
+  provider?: ProductReferenceProvider
+): boolean {
+  const category = detectCategory(line);
+  const resolution =
+    resolveLineProductReference(
+      line,
+      provider
+    );
+
+  if (resolution.status !== "UNRESOLVED") {
+    return true;
+  }
+
+  if (!category) {
+    return false;
+  }
+
+  return /\b(?:brand|model|product|club|shaft|flex|condition|cond|value|trade|driver|fairway|wood|hybrid|rescue|iron|irons|wedge|putter)\b/i.test(
+    line
+  );
+}
+
+function isEmailMetadataLine(
+  line: string
+): boolean {
+  return /^(?:from|to|cc|bcc|subject|attached|preferred store)\s*:/i.test(
+    line
+  ) ||
+    /^(?:hi|hello|thanks|thank you|regards|sincerely)\b/i.test(
+      line
+    );
+}
+
+export function splitSourceIntoRecordFragments(
+  source: MultiSourceParserInput,
+  provider?: ProductReferenceProvider
+): string[] {
   const lines = source.rawContent
-    .split("\n")
+    .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
 
+  if (source.sourceType === "POORLY_FORMED_CSV") {
+    const candidateRows =
+      lines[0] &&
+      looksLikeDelimitedHeader(lines[0])
+        ? lines.slice(1)
+        : lines;
+
+    return candidateRows.filter(
+      (line) =>
+        countDelimitedSeparators(line) >= 2 ||
+        isLikelyEquipmentRecordLine(
+          line,
+          provider
+        )
+    );
+  }
+
   if (source.sourceType === "EMAIL") {
-    return lines.filter((line) =>
-      /\b(callaway|taylormade|titleist|ping|cleveland|odyssey|mizuno|rogue|stealth|tsr|g425|g430|rtx|white hot|jpx|hot metal)\b/i.test(line)
+    return lines.filter(
+      (line) =>
+        !isEmailMetadataLine(line) &&
+        isLikelyEquipmentRecordLine(
+          line,
+          provider
+        )
     );
   }
 
   if (source.sourceType === "LOG") {
-    return lines.filter((line) =>
-      /\b(brand=|payload=|candidate|callaway|titleist|ping|taylormade|cleveland|odyssey|mizuno|rtx|white hot|jpx|hot metal|g430)\b/i.test(line)
-    );
-  }
-
-  if (source.sourceType === "POORLY_FORMED_CSV") {
-    return lines.filter((line) =>
-      /\b(titleist|cally|callaway|ping|taylormade|cleveland|odyssey|mizuno|rogue|tsr|g425|g430|rtx|white hot|jpx|hot metal)\b/i.test(line)
+    return lines.filter(
+      (line) =>
+        isLikelyEquipmentRecordLine(
+          line,
+          provider
+        ) ||
+        (
+          /\b(?:payload|brand|model|candidate|sku|normalized)\b/i.test(
+            line
+          ) &&
+          /\b(?:cat|category|shaft|condition|value|notes)\b/i.test(
+            line
+          )
+        )
     );
   }
 
   return lines.filter((line) =>
-    /\b(tm|taylormade|titleist|cally|callaway|ping|cleveland|odyssey|mizuno|stealth|rogue|tsr|g425|g430|rtx|white hot|jpx|hot metal)\b/i.test(line)
+    isLikelyEquipmentRecordLine(
+      line,
+      provider
+    )
   );
 }
 
-export function buildRecord(source: MultiSourceParserInput, fragment: string, index: number): MultiSourceIntakeRecord {
-  const sourceContext = `${source.rawContent}\n${fragment}`;
-  const brand = detectBrand(fragment);
-  const productLine = detectProductLine(fragment);
-  const category = detectCategory(fragment);
-  const shaftFlex = detectShaftFlexWithEvidence(fragment).value;
-  const conditionGrade = detectApprovedConditionGradeWithEvidence(fragment).value;
-  const tradeInValue = detectTradeInValueWithEvidence(fragment).value;
-  const parserEvidence = buildParserEvidence(fragment, {
-    brand,
-    productLine,
-    category,
-    shaftFlex,
-    conditionGrade,
-    tradeInValue
-  });
-  const customerName = detectCustomerName(sourceContext);
-  const customerEmail = detectCustomerEmail(sourceContext);
-  const storeId = detectStoreId(sourceContext);
-  const eventTimestamp = detectTimestamps(fragment)[0] ?? null;
-  const attachmentsMentioned = detectAttachments(sourceContext);
+export function buildRecord(
+  source: MultiSourceParserInput,
+  fragment: string,
+  index: number,
+  provider?: ProductReferenceProvider
+): MultiSourceIntakeRecord {
+  const sourceContext =
+    `${source.rawContent}\n${fragment}`;
+  const detectedBrand =
+    detectBrand(fragment);
+  const detectedCategory =
+    detectCategory(fragment);
+  const productIdentity =
+    resolveParsedProductIdentity({
+      rawText: fragment,
+      detectedBrand,
+      detectedCategory,
+      ...(provider
+        ? {
+            provider
+          }
+        : {})
+    });
+  const brand = productIdentity.brand;
+  const productLine =
+    productIdentity.productLine;
+  const category =
+    productIdentity.category;
+  const shaftFlex =
+    isShaftFlexApplicable(category)
+      ? detectShaftFlexWithEvidence(
+          fragment
+        ).value
+      : null;
+  const conditionGrade =
+    detectApprovedConditionGradeWithEvidence(
+      fragment
+    ).value;
+  const csvRowValues =
+    parsePoorlyFormedCsvRowValues(
+      source,
+      fragment
+    );
+  const detectedTradeInValue =
+    detectTradeInValueWithEvidence(
+      fragment
+    );
+  const tradeInValue =
+    detectedTradeInValue.value ??
+    csvRowValues?.tradeInValue ??
+    null;
+  let parserEvidence =
+    buildParserEvidence(fragment, {
+      brand,
+      productLineEvidence:
+        productIdentity.productLineEvidence,
+      category,
+      shaftFlex,
+      conditionGrade,
+      tradeInValue
+    });
+
+  if (
+    !parserEvidence.tradeInValue &&
+    csvRowValues?.tradeInValue !== null &&
+    csvRowValues?.tradeInValue !==
+      undefined &&
+    csvRowValues.tradeInValueSourceText
+  ) {
+    parserEvidence = {
+      ...parserEvidence,
+      tradeInValue: {
+        value:
+          csvRowValues.tradeInValue,
+        sourceText:
+          csvRowValues
+            .tradeInValueSourceText
+      }
+    };
+  }
+
+  const customerName =
+    detectCustomerName(sourceContext);
+  const customerEmail =
+    detectCustomerEmail(sourceContext);
+  const storeId =
+    source.sourceType ===
+    "POORLY_FORMED_CSV"
+      ? csvRowValues?.storeId ??
+        detectStoreId(fragment)
+      : detectStoreId(sourceContext);
+  const eventTimestamp =
+    detectTimestamps(fragment)[0] ??
+    null;
+  const attachmentsMentioned =
+    detectAttachments(sourceContext);
+  const hasProductResolutionIssue =
+    productIdentity.productResolution
+      .status !== "MATCHED";
+  const hasExplicitUncertainty =
+    /\bmaybe|unclear|malformed|missing|pending review|generation\s+(?:not\s+listed|unknown|unclear)|ERROR\b/i.test(
+      fragment
+    );
 
   const missingFields = [
     brand ? null : "brand",
     productLine ? null : "productLine",
     category ? null : "category",
-    shaftFlex ? null : "shaftFlex",
-    conditionGrade ? null : "conditionGrade",
-    tradeInValue === null ? "tradeInValue" : null
-  ].filter((field): field is string => Boolean(field));
+    !isShaftFlexApplicable(category) ||
+    shaftFlex
+      ? null
+      : "shaftFlex",
+    conditionGrade
+      ? null
+      : "conditionGrade",
+    tradeInValue === null
+      ? "tradeInValue"
+      : null
+  ].filter(
+    (field): field is string =>
+      Boolean(field)
+  );
 
   const confidence = Math.max(
     0.35,
-    Number((1 - missingFields.length * 0.095 - (/\bmaybe|unclear|malformed|missing|pending review|ERROR\b/i.test(fragment) ? 0.12 : 0)).toFixed(2))
+    Number(
+      (
+        1 -
+        missingFields.length * 0.095 -
+        (
+          hasProductResolutionIssue ||
+          hasExplicitUncertainty
+            ? 0.12
+            : 0
+        )
+      ).toFixed(2)
+    )
   );
 
   return {
-    id: `${source.id}_record_${index + 1}`,
+    id:
+      `${source.id}_record_${index + 1}`,
     sourceId: source.id,
     sourceType: source.sourceType,
     brand,
@@ -301,6 +620,8 @@ export function buildRecord(source: MultiSourceParserInput, fragment: string, in
     conditionGrade,
     tradeInValue,
     parserEvidence,
+    productResolution:
+      productIdentity.productResolution,
     customerName,
     customerEmail,
     storeId,
@@ -308,7 +629,10 @@ export function buildRecord(source: MultiSourceParserInput, fragment: string, in
     attachmentsMentioned,
     missingFields,
     confidence,
-    reviewNeeded: missingFields.length > 0 || confidence < 0.72,
+    reviewNeeded:
+      missingFields.length > 0 ||
+      hasProductResolutionIssue ||
+      confidence < 0.72,
     sourceText: fragment,
     normalizedText: [
       brand,
@@ -316,8 +640,14 @@ export function buildRecord(source: MultiSourceParserInput, fragment: string, in
       category,
       shaftFlex,
       conditionGrade,
-      tradeInValue === null ? null : `value ${tradeInValue}`,
-      storeId ? `store ${storeId}` : null
-    ].filter(Boolean).join(" | ")
+      tradeInValue === null
+        ? null
+        : `value ${tradeInValue}`,
+      storeId
+        ? `store ${storeId}`
+        : null
+    ]
+      .filter(Boolean)
+      .join(" | ")
   };
 }

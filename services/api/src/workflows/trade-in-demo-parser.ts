@@ -1,3 +1,4 @@
+import { isShaftFlexApplicable } from "./golf-field-applicability.js";
 import {
   findTextParserEvidence,
   omitEmptyParserEvidence
@@ -7,7 +8,19 @@ import {
   detectShaftFlexWithEvidence,
   detectTradeInValueWithEvidence
 } from "./parser-normalizers.js";
-import type { ParserEvidence } from "./parser-evidence.js";
+import type {
+  ProductReferenceProvider
+} from "../product-reference/product-reference-provider.js";
+import type {
+  ProductResolution
+} from "../product-reference/product-reference-resolver.js";
+import {
+  resolveParsedProductIdentity
+} from "./product-resolution-parser.js";
+import type {
+  ParserEvidence,
+  ParserFieldEvidence
+} from "./parser-evidence.js";
 
 export type ParsedTradeInDemoItem = {
   id: string;
@@ -24,6 +37,7 @@ export type ParsedTradeInDemoItem = {
   conditionGrade: string | null;
   tradeInValue: number | null;
   parserEvidence?: ParserEvidence;
+  productResolution: ProductResolution;
   conditionNotes: string[];
   accessoriesNotes: string[];
   uncertaintyNotes: string[];
@@ -92,7 +106,7 @@ const CATEGORY_PATTERNS: {
   },
   {
     category: "HYBRID",
-    aliases: [/\bhy\b/i, /\bhybrid\b/i, /\bHYBRID\b/]
+    aliases: [/\bhy\b/i, /\bhybrid\b/i, /\brescue\b/i, /\bHYBRID\b/]
   },
   {
     category: "WEDGE",
@@ -101,56 +115,6 @@ const CATEGORY_PATTERNS: {
   {
     category: "PUTTER",
     aliases: [/\bputter\b/i, /\bPUTTER\b/]
-  }
-];
-
-const PRODUCT_PATTERNS: {
-  productLine: string;
-  aliases: RegExp[];
-}[] = [
-  {
-    productLine: "Stealth 2",
-    aliases: [/\bstealth\s*2\b/i, /\bstealth2\b/i]
-  },
-  {
-    productLine: "Stealth",
-    aliases: [/\bstealth\b/i]
-  },
-  {
-    productLine: "TSR",
-    aliases: [/\btsr[123]?\b/i]
-  },
-  {
-    productLine: "TS",
-    aliases: [/\bts[123]?\b/i]
-  },
-  {
-    productLine: "Rogue ST Max",
-    aliases: [/\brogue\s*st\s*max\b/i]
-  },
-  {
-    productLine: "G425",
-    aliases: [/\bg425\b/i]
-  },
-  {
-    productLine: "G430 Max",
-    aliases: [/\bg430\s*max\b/i]
-  },
-  {
-    productLine: "G430",
-    aliases: [/\bg430\b/i]
-  },
-  {
-    productLine: "RTX 6 ZipCore",
-    aliases: [/\brtx\s*6(?:\s*zip\s*core|\s*zipcore)?\b/i, /\brtx6\b/i, /\brtx\s*zip\s*core\b/i]
-  },
-  {
-    productLine: "White Hot OG",
-    aliases: [/\bwhite\s*hot\s*og\b/i, /\bwh\s*og\b/i]
-  },
-  {
-    productLine: "JPX 923 Hot Metal",
-    aliases: [/\bjpx\s*923(?:\s*hot\s*metal)?\b/i, /\bhot\s*metal\b/i]
   }
 ];
 
@@ -345,18 +309,6 @@ function detectCategory(line: string): string | null {
   return null;
 }
 
-function detectProductLine(line: string): string | null {
-  for (const pattern of PRODUCT_PATTERNS) {
-    const match = firstPatternMatch(line, pattern, "productLine");
-
-    if (match) {
-      return match;
-    }
-  }
-
-  return null;
-}
-
 function detectShaftBrand(line: string): string | null {
   for (const pattern of SHAFT_BRAND_PATTERNS) {
     const match = firstPatternMatch(line, pattern, "shaftBrand");
@@ -439,7 +391,7 @@ function buildParserEvidence(
   line: string,
   values: {
     brand: string | null;
-    productLine: string | null;
+    productLineEvidence: ParserFieldEvidence | undefined;
     category: string | null;
     shaftFlex: string | null;
     conditionGrade: string | null;
@@ -456,31 +408,23 @@ function buildParserEvidence(
       { value: "Odyssey", aliases: [/\bodyssey\b/i] },
       { value: "Mizuno", aliases: [/\bmizuno\b/i] },
     ]),
-    productLine: findTextParserEvidence(line, values.productLine, [
-      { value: "Stealth 2", aliases: [/\bstealth\s*2\b/i, /\bstealth2\b/i] },
-      { value: "Stealth", aliases: [/\bstealth\b/i] },
-      { value: "TSR", aliases: [/\btsr[123]?\b/i] },
-      { value: "TS", aliases: [/\bts[123]?\b/i] },
-      { value: "Rogue ST Max", aliases: [/\brogue\s*st\s*max\b/i] },
-      { value: "G425", aliases: [/\bg425\b/i] },
-      { value: "G430 Max", aliases: [/\bg430\s*max\b/i] },
-      { value: "G430", aliases: [/\bg430\b/i] },
-      {
-        value: "RTX 6 ZipCore",
-        aliases: [/\brtx\s*6(?:\s*zip\s*core|\s*zipcore)?\b/i, /\brtx6\b/i, /\brtx\s*zip\s*core\b/i],
-      },
-      { value: "White Hot OG", aliases: [/\bwhite\s*hot\s*og\b/i, /\bwh\s*og\b/i] },
-      { value: "JPX 923 Hot Metal", aliases: [/\bjpx\s*923(?:\s*hot\s*metal)?\b/i, /\bhot\s*metal\b/i] },
-    ]),
+    ...(values.productLineEvidence
+      ? {
+          productLine:
+            values.productLineEvidence
+        }
+      : {}),
     category: findTextParserEvidence(line, values.category, [
       { value: "DRIVER", aliases: [/\bdriver\b/i, /\bdrv\b/i, /\bdr\b/i, /\bDRIVER\b/] },
       { value: "FAIRWAY_WOOD", aliases: [/\bfairway\b/i, /\bfw\b/i, /\b3w\b/i, /\b5w\b/i, /\b7w\b/i, /\b9w\b/i, /\bwood\b/i, /\bFAIRWAY_WOOD\b/] },
       { value: "IRON_SET", aliases: [/\birons?\b/i, /\b[4-9]-pw\b/i, /\b[5-9]-gw\b/i, /\bIRON_SET\b/] },
-      { value: "HYBRID", aliases: [/\bhy\b/i, /\bhybrid\b/i, /\bHYBRID\b/] },
+      { value: "HYBRID", aliases: [/\bhy\b/i, /\bhybrid\b/i, /\brescue\b/i, /\bHYBRID\b/] },
       { value: "WEDGE", aliases: [/\bwedge\b/i, /\b\d{2}\s*deg\b/i, /\bWEDGE\b/] },
       { value: "PUTTER", aliases: [/\bputter\b/i, /\bPUTTER\b/] },
     ]),
-    shaftFlex: detectShaftFlexWithEvidence(line).evidence,
+    shaftFlex: isShaftFlexApplicable(values.category)
+      ? detectShaftFlexWithEvidence(line).evidence
+      : undefined,
     conditionGrade: detectApprovedConditionGradeWithEvidence(line).evidence,
     tradeInValue: detectTradeInValueWithEvidence(line).evidence,
   });
@@ -507,7 +451,7 @@ function buildMissingFields(input: {
     missingFields.push("category");
   }
 
-  if (!input.shaftFlex) {
+  if (isShaftFlexApplicable(input.category) && !input.shaftFlex) {
     missingFields.push("shaftFlex");
   }
 
@@ -560,30 +504,84 @@ function calculateConfidence(input: {
   return Math.max(0.2, Math.min(0.98, Number(score.toFixed(2))));
 }
 
-function parseLine(rawLine: string, index: number): ParsedTradeInDemoItem {
-  const cleanedLine = rawLine.replace(/^[-*•\d.)\s]+/, "").trim();
-  const brand = detectBrand(cleanedLine);
-  const productLine = detectProductLine(cleanedLine);
-  const category = detectCategory(cleanedLine);
-  const shaftBrand = detectShaftBrand(cleanedLine);
-  const shaftModel = detectShaftModel(cleanedLine);
-  const shaftFlex = detectShaftFlexWithEvidence(cleanedLine).value;
-  const conditionGrade = detectApprovedConditionGradeWithEvidence(cleanedLine).value;
-  const tradeInValue = detectTradeInValueWithEvidence(cleanedLine).value;
-  const parserEvidence = buildParserEvidence(cleanedLine, {
-    brand,
-    productLine,
-    category,
-    shaftFlex,
-    conditionGrade,
-    tradeInValue
-  });
+function parseLine(
+  rawLine: string,
+  index: number,
+  provider?: ProductReferenceProvider
+): ParsedTradeInDemoItem {
+  const cleanedLine = rawLine
+    .replace(/^[-*•\d.)\s]+/, "")
+    .trim();
+  const detectedBrand =
+    detectBrand(cleanedLine);
+  const detectedCategory =
+    detectCategory(cleanedLine);
+  const productIdentity =
+    resolveParsedProductIdentity({
+      rawText: cleanedLine,
+      detectedBrand,
+      detectedCategory,
+      ...(provider
+        ? {
+            provider
+          }
+        : {})
+    });
+  const brand = productIdentity.brand;
+  const productLine =
+    productIdentity.productLine;
+  const category =
+    productIdentity.category;
+  const shaftBrand =
+    detectShaftBrand(cleanedLine);
+  const shaftModel =
+    detectShaftModel(cleanedLine);
+  const shaftFlex =
+    isShaftFlexApplicable(category)
+      ? detectShaftFlexWithEvidence(
+          cleanedLine
+        ).value
+      : null;
+  const conditionGrade =
+    detectApprovedConditionGradeWithEvidence(
+      cleanedLine
+    ).value;
+  const tradeInValue =
+    detectTradeInValueWithEvidence(
+      cleanedLine
+    ).value;
+  const parserEvidence =
+    buildParserEvidence(cleanedLine, {
+      brand,
+      productLineEvidence:
+        productIdentity.productLineEvidence,
+      category,
+      shaftFlex,
+      conditionGrade,
+      tradeInValue
+    });
   const conditionNotes = unique([
-    ...(conditionGrade ? [conditionGrade] : []),
-    ...collectNotes(cleanedLine, CONDITION_NOTE_PATTERNS)
+    ...(conditionGrade
+      ? [conditionGrade]
+      : []),
+    ...collectNotes(
+      cleanedLine,
+      CONDITION_NOTE_PATTERNS
+    )
   ]);
-  const accessoriesNotes = collectNotes(cleanedLine, ACCESSORY_NOTE_PATTERNS);
-  const uncertaintyNotes = collectNotes(cleanedLine, UNCERTAINTY_PATTERNS);
+  const accessoriesNotes = collectNotes(
+    cleanedLine,
+    ACCESSORY_NOTE_PATTERNS
+  );
+
+  const uncertaintyNotes = unique([
+    ...collectNotes(
+      cleanedLine,
+      UNCERTAINTY_PATTERNS
+    ),
+    ...productIdentity.uncertaintyNotes
+  ]);
+
   const missingFields = buildMissingFields({
     brand,
     productLine,
@@ -610,13 +608,16 @@ function parseLine(rawLine: string, index: number): ParsedTradeInDemoItem {
     model: productLine,
     category,
     loft: detectLoft(cleanedLine),
-    clubNumber: detectClubNumber(cleanedLine),
+    clubNumber:
+      detectClubNumber(cleanedLine),
     shaftBrand,
     shaftModel,
     shaftFlex,
     conditionGrade,
     tradeInValue,
     parserEvidence,
+    productResolution:
+      productIdentity.productResolution,
     conditionNotes,
     accessoriesNotes,
     uncertaintyNotes,
@@ -625,10 +626,15 @@ function parseLine(rawLine: string, index: number): ParsedTradeInDemoItem {
   };
 }
 
-export function parseTradeInDemoText(rawInput: string): ParsedTradeInDemoItem[] {
+export function parseTradeInDemoText(
+  rawInput: string,
+  provider?: ProductReferenceProvider
+): ParsedTradeInDemoItem[] {
   return rawInput
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
-    .map(parseLine);
+    .map((line, index) =>
+      parseLine(line, index, provider)
+    );
 }

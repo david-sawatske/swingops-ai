@@ -9,7 +9,7 @@ export function FinalReadinessSummary({
 }) {
   const title =
     mergedRecordCount === 0
-      ? "No finalized records were loaded for this run"
+      ? "No current records were loaded for this run"
       : openReviewItemCount === 0
         ? "No current-run review items remain open"
         : `${openReviewItemCount} item(s) still need human review`;

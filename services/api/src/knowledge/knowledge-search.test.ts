@@ -28,7 +28,7 @@ describe("knowledge base ingestion and search", () => {
       status: "SUCCEEDED",
       sourceName: TEST_KNOWLEDGE_SOURCE_NAME,
       documentsCreated: 3,
-      chunksCreated: 53,
+      chunksCreated: 71,
       errorMessage: null
     });
 
@@ -156,7 +156,7 @@ describe("knowledge base ingestion and search", () => {
         category: "WEDGE"
       },
       {
-        query: "Odyssey White Hot OG putter Regular headcover included",
+        query: "Odyssey White Hot OG putter headcover included",
         brand: "Odyssey",
         productLine: "White Hot OG",
         category: "PUTTER"
@@ -205,8 +205,8 @@ describe("knowledge base ingestion and search", () => {
     });
 
     expect(evalSummary).toMatchObject({
-      casesEvaluated: 5,
-      passCount: 5,
+      casesEvaluated: 16,
+      passCount: 16,
       failedCases: [],
       evalMetadata: {
         evaluator: "deterministic.swingops.knowledge-retrieval-eval.v2",

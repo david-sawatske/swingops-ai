@@ -1,3 +1,4 @@
+import { isShaftFlexApplicable } from "./golf-field-applicability.js";
 import type { ReviewQueueItem } from "@prisma/client";
 
 import type { ParsedTradeInDemoItem } from "./trade-in-demo-parser.js";
@@ -84,6 +85,7 @@ export function buildValidationChecks(input: {
       hasUncertainty: boolean;
       missingMessage: string;
       presentMessage: string;
+      notApplicable?: boolean;
     }[] = [
       {
         idSuffix: "brand",
@@ -120,16 +122,23 @@ export function buildValidationChecks(input: {
         hasUncertainty: item.uncertaintyNotes.includes("shaft uncertain"),
         missingMessage:
           "Shaft flex is missing or uncertain after the initial extraction.",
-        presentMessage: `Shaft flex parsed as ${item.shaftFlex}.`
+        presentMessage: isShaftFlexApplicable(item.category)
+          ? `Shaft flex parsed as ${item.shaftFlex}.`
+          : "Shaft flex is not applicable to putters.",
+        notApplicable: !isShaftFlexApplicable(item.category)
       }
     ];
 
     for (const fieldCheck of fieldChecks) {
-      const status = validationStatusForRequiredField(
-        fieldCheck.value,
-        fieldCheck.hasUncertainty
-      );
-      const checkReviewRequired = status !== "PASS" || reviewRequired;
+      const status = fieldCheck.notApplicable
+        ? "PASS"
+        : validationStatusForRequiredField(
+            fieldCheck.value,
+            fieldCheck.hasUncertainty
+          );
+      const checkReviewRequired = fieldCheck.notApplicable
+        ? false
+        : status !== "PASS" || reviewRequired;
 
       checks.push({
         id: `${item.id}-${fieldCheck.idSuffix}`,
@@ -267,9 +276,12 @@ export function buildValidationChecks(input: {
 export function buildRetryEvents(parsedItems: ParsedTradeInDemoItem[]): RetryEvent[] {
   const retryCandidate = parsedItems.find(
     (item) =>
-      item.missingFields.includes("shaftFlex") ||
-      item.uncertaintyNotes.includes("shaft uncertain") ||
-      item.rawLine.toLowerCase().includes("shaft unknown")
+      isShaftFlexApplicable(item.category) &&
+      (
+        item.missingFields.includes("shaftFlex") ||
+        item.uncertaintyNotes.includes("shaft uncertain") ||
+        item.rawLine.toLowerCase().includes("shaft unknown")
+      )
   );
 
   if (!retryCandidate) {

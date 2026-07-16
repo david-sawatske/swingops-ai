@@ -120,7 +120,7 @@ describe("trade-in-valuation-service", () => {
           brand: "Odyssey",
           productLine: "White Hot OG",
           category: "putter",
-          rawText: "Odyssey White Hot OG putter Ladies flex condition 8.0 Average"
+          rawText: "Odyssey White Hot OG putter condition 8.0 Average"
         },
         expectedLowValue: 80,
         expectedHighValue: 120
@@ -149,6 +149,27 @@ describe("trade-in-valuation-service", () => {
       expect(estimate.highValue).toBe(testCase.expectedHighValue);
       expect(estimate.reviewRequired).toBe(false);
     }
+  });
+
+
+  it("estimates a successful valuation for a curated hybrid", () => {
+    const estimate = estimateTradeInValuation({
+      brand: "PING",
+      productLine: "G430 Hybrid",
+      category: "hybrid",
+      rawText: "PING G430 hybrid Senior flex condition 8.0 Average",
+      conditionNotes: ["8.0 Average"],
+      accessoriesNotes: []
+    });
+
+    expect(estimate).toMatchObject({
+      lowValue: 100,
+      highValue: 140,
+      reviewRequired: false
+    });
+    expect(estimate.valueFactors.join(" ")).toContain(
+      "PING G430 Hybrid"
+    );
   });
 
 });

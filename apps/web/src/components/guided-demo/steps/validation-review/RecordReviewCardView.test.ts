@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { buildCorrectionDraft } from "./RecordReviewCardView";
+import {
+  buildCorrectionDraft,
+  getAppliedCorrectionSummaries,
+  getBlockingCorrectionFields,
+  getInventoryProductLineCandidates,
+} from "./RecordReviewCardView";
 import type { RecordReviewCard } from "./validationReviewTypes";
 
 function buildReviewCard(overrides: Partial<RecordReviewCard> = {}): RecordReviewCard {
@@ -121,4 +126,210 @@ describe("buildCorrectionDraft", () => {
 
     expect(draft.conditionGrade).toBe("");
   });
+
+  it("keeps an entered trade-in value when only valuation evidence needs review", () => {
+    const draft = buildCorrectionDraft(
+      buildReviewCard({
+        parsedRecord: {
+          brand: "Titleist",
+          productLine: "TSR",
+          category: "FAIRWAY_WOOD",
+          shaftFlex: "STIFF",
+          conditionGrade: "8.0 Average",
+          tradeInValue: 135,
+        },
+        reviewItem: {
+          id: "review-valuation",
+          workflowRunId: "workflow-1",
+          intakeItemId: "intake-item-valuation",
+          status: "OPEN",
+          golfClubId: null,
+          reason: "AMBIGUOUS_INPUT",
+          resolvedAt: null,
+          proposedGolfClubJson: {
+            brand: "Titleist",
+            productLine: "TSR",
+            category: "FAIRWAY_WOOD",
+            shaftFlex: "STIFF",
+            conditionGrade: "8.0 Average",
+            tradeInValue: 135,
+            missingFields: [],
+          },
+          originalText:
+            "Titleist TSR fairway wood, Stiff, 8.0 Average, trade value $135, generation unclear.",
+          reviewerNotes: null,
+          createdAt: "2026-07-14T00:00:00.000Z",
+          updatedAt: "2026-07-14T00:00:00.000Z",
+        },
+        sourceEvidence:
+          "Titleist TSR fairway wood, Stiff, 8.0 Average, trade value $135, generation unclear.",
+        missingFields: [],
+        reviewReasons: [
+          "No internal product match was available for valuation.",
+        ],
+        validationChecks: [
+          {
+            id: "valuation-warning",
+            label: "Demo valuation range generated",
+            status: "WARNING",
+            severity: "MEDIUM",
+            message: "No demo valuation range was generated.",
+            field: "demoValuationRange",
+            recordId: "parsed-item-1",
+            reviewRequired: true,
+          },
+        ],
+      }),
+    );
+
+    expect(draft.demoValue).toBe("135");
+  });
+
+
+  it("returns only the strongest same-brand inventory candidates", () => {
+    const card = buildReviewCard({
+      parsedRecord: {
+        brand: "Titleist",
+        productLine: "TSR",
+        category: "FAIRWAY_WOOD",
+        shaftFlex: "STIFF",
+        conditionGrade: "8.0 Average",
+        tradeInValue: 135,
+      },
+      inventoryEvidence: {
+        parsedItemId: "parsed-item-1",
+        lookup: {
+          similarProducts: [
+            {
+              productId: "tsr2",
+              sku: "TITLEIST-TSR2-FWY-2023",
+              brand: "Titleist",
+              productLine: "TSR2",
+              category: "FAIRWAY_WOOD",
+              confidence: 0.58,
+              reason: "Brand matched Titleist.",
+            },
+            {
+              productId: "tsr3",
+              sku: "TITLEIST-TSR3-FWY-2023",
+              brand: "Titleist",
+              productLine: "TSR3",
+              category: "FAIRWAY_WOOD",
+              confidence: 0.58,
+              reason: "Brand matched Titleist.",
+            },
+            {
+              productId: "ts2",
+              sku: "TITLEIST-TS2-FWY-2019",
+              brand: "Titleist",
+              productLine: "TS2",
+              category: "FAIRWAY_WOOD",
+              confidence: 0.4,
+              reason: "Brand matched Titleist.",
+            },
+            {
+              productId: "other-brand",
+              sku: "OTHER-FWY",
+              brand: "Other",
+              productLine: "Other Fairway",
+              category: "FAIRWAY_WOOD",
+              confidence: 0.58,
+              reason: "Category matched.",
+            },
+          ],
+        },
+      },
+    });
+
+    expect(
+      getInventoryProductLineCandidates(card).map(
+        (candidate) => candidate.productLine,
+      ),
+    ).toEqual(["TSR2", "TSR3"]);
+  });
+
+
+  it("requires an ambiguous product line to be replaced before resolution", () => {
+    const card = buildReviewCard({
+      parsedRecord: {
+        brand: "Titleist",
+        productLine: "TSR",
+        category: "FAIRWAY_WOOD",
+        shaftFlex: "STIFF",
+        conditionGrade: "8.0 Average",
+        tradeInValue: 135,
+      },
+      reviewItem: {
+        id: "review-tsr",
+        workflowRunId: "workflow-1",
+        intakeItemId: "intake-item-tsr",
+        status: "OPEN",
+        golfClubId: null,
+        reason: "AMBIGUOUS_INPUT",
+        resolvedAt: null,
+        proposedGolfClubJson: {
+          brand: "Titleist",
+          productLine: "TSR",
+          category: "FAIRWAY_WOOD",
+          shaftFlex: "STIFF",
+          conditionGrade: "8.0 Average",
+          tradeInValue: 135,
+          missingFields: [],
+          uncertaintyNotes: ["model uncertain"],
+        },
+        originalText:
+          "Titleist TSR fairway wood, Stiff, 8.0 Average, trade value $135, generation unclear.",
+        reviewerNotes: null,
+        createdAt: "2026-07-15T00:00:00.000Z",
+        updatedAt: "2026-07-15T00:00:00.000Z",
+      },
+      sourceEvidence:
+        "Titleist TSR fairway wood, Stiff, 8.0 Average, trade value $135, generation unclear.",
+      missingFields: [],
+      reviewReasons: ["uncertainty: model uncertain"],
+    });
+
+    const initialDraft = buildCorrectionDraft(card);
+
+    expect(initialDraft.productLine).toBe("");
+    expect(
+      getBlockingCorrectionFields(card, initialDraft),
+    ).toEqual(["productLine"]);
+
+    expect(
+      getBlockingCorrectionFields(card, {
+        ...initialDraft,
+        productLine: "TSR",
+      }),
+    ).toEqual(["productLine"]);
+
+    expect(
+      getBlockingCorrectionFields(card, {
+        ...initialDraft,
+        productLine: "TSR2",
+      }),
+    ).toEqual([]);
+  });
+
+
+  it("summarizes the value applied from a prior review suggestion", () => {
+    const draft = {
+      ...buildCorrectionDraft(buildReviewCard()),
+      productLine: "TSR2",
+    };
+
+    expect(
+      getAppliedCorrectionSummaries(
+        draft,
+        new Set(["productLine"]),
+      ),
+    ).toEqual([
+      {
+        fieldName: "productLine",
+        label: "Product line",
+        value: "TSR2",
+      },
+    ]);
+  });
+
 });
