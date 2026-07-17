@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildCorrectionDraft,
+  buildLearningEvents,
   getAppliedCorrectionSummaries,
   getBlockingCorrectionFields,
   getInventoryProductLineCandidates,
+  getRecordCardSummary,
 } from "./RecordReviewCardView";
 import type { RecordReviewCard } from "./validationReviewTypes";
 
@@ -406,6 +408,112 @@ describe("buildCorrectionDraft", () => {
       }),
     ).toEqual([]);
   });
+
+  it("treats a source-supported unresolved product as catalog confirmation instead of a missing-field correction", () => {
+    const card = buildReviewCard({
+      label: "PING G430 · Driver",
+      parsedRecord: {
+        brand: "PING",
+        productLine: "G430",
+        category: "DRIVER",
+        shaftFlex: "REGULAR",
+        conditionGrade: "8.0 Average",
+        tradeInValue: 180,
+      },
+      reviewItem: {
+        id: "review-g430-unresolved",
+        workflowRunId: "workflow-1",
+        intakeItemId: "intake-item-g430",
+        status: "OPEN",
+        golfClubId: null,
+        reason: "PRODUCT_UNRESOLVED",
+        resolvedAt: null,
+        proposedGolfClubJson: {
+          brand: "PING",
+          productLine: "G430",
+          category: "DRIVER",
+          shaftFlex: "REGULAR",
+          conditionGrade: "8.0 Average",
+          tradeInValue: 180,
+          missingFields: [],
+        },
+        originalText:
+          "PING G430 DRIVER — shaft flex REGULAR; condition 8.0 Average; trade value $180; store 207; source evidence: PING,G430,driver,R,8.0 Average,$180,207",
+        reviewerNotes: null,
+        createdAt: "2026-07-17T00:00:00.000Z",
+        updatedAt: "2026-07-17T00:00:00.000Z",
+      },
+      modelReviewOutcome: {
+        outcomeType: "NO_SAFE_REPAIR",
+        recordId: "parsed_item_2",
+        summary:
+          "Product resolution is unresolved but the source-supported product text is G430.",
+        evidenceIds: [
+          "parsed_item_2:parser",
+          "parsed_item_2:product-resolution",
+        ],
+        reviewerQuestion:
+          "Can the catalog identity for the source-supported PING G430 be confirmed?",
+        reasonCodes: [
+          "PRODUCT_UNRESOLVED",
+          "VALUATION_REVIEW_REQUIRED",
+        ],
+      },
+      sourceEvidence:
+        "PING G430 DRIVER — shaft flex REGULAR; condition 8.0 Average; trade value $180; store 207; source evidence: PING,G430,driver,R,8.0 Average,$180,207",
+      missingFields: [],
+      reviewReasons: [
+        "Product resolution is unresolved.",
+        "No internal product match was available for valuation.",
+      ],
+      inventoryEvidence: {
+        parsedItemId: "parsed_item_2",
+        lookup: {
+          similarProducts: [
+            {
+              productId: "prod_ping_g430_max_driver",
+              sku: "PING-G430-MAX-DRV",
+              brand: "PING",
+              productLine: "G430 Max",
+              category: "DRIVER",
+              confidence: 0.58,
+              reason:
+                "Brand and category matched, but the source did not specify Max.",
+            },
+          ],
+        },
+      },
+    });
+
+    const draft =
+      buildCorrectionDraft(card);
+
+    expect(
+      getRecordCardSummary(card),
+    ).toBe(
+      "Catalog identity confirmation: G430",
+    );
+
+    expect(draft.productLine).toBe(
+      "G430",
+    );
+
+    expect(
+      getBlockingCorrectionFields(
+        card,
+        draft,
+      ),
+    ).toEqual([]);
+
+    expect(
+      buildLearningEvents(
+        card,
+        draft,
+      ),
+    ).toEqual([]);
+  });
+
+
 
   it("summarizes the value applied from a prior review suggestion", () => {
     const draft = {

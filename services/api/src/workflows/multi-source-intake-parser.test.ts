@@ -193,6 +193,166 @@ describe("multi-source intake parser normalization matrix", () => {
   });
 
 
+  it("preserves meaningful incomplete records while excluding source noise", () => {
+    const cases = [
+      {
+        sourceType: "FREE_TEXT" as const,
+        sourceName: "Real-world counter notes",
+        lines: [
+          "Counter intake notes",
+          "PING G425 4-PW, shaft firm, condition 8.0 Average, trade value $210, store 207.",
+          "Titleist TSR fairway wood, maybe TSR2 or TSR3, stiff shaft, condition 9.0 Above Average, trade value $185, store 114.",
+          "Callaway mystery club, shaft unknown, condition 7.0 Below Average, trade value $80, store 301.",
+          "Customer brought an unbranded club, shaft unknown, condition 6.0 Poor, value $20.",
+          "TaylorMade equipment, exact model and category pending review, condition 8.0 Average, value $100.",
+          "Possible Titleist trade item, model unclear, shaft stiff, condition 7.0 Below Average, value $90.",
+          "Odyssey White Hot putter, condition 8.0 Average, trade value $65, store 207.",
+          "Store 207",
+          "Thanks"
+        ],
+        expectedFragments: [
+          "PING G425 4-PW, shaft firm, condition 8.0 Average, trade value $210, store 207.",
+          "Titleist TSR fairway wood, maybe TSR2 or TSR3, stiff shaft, condition 9.0 Above Average, trade value $185, store 114.",
+          "Callaway mystery club, shaft unknown, condition 7.0 Below Average, trade value $80, store 301.",
+          "Customer brought an unbranded club, shaft unknown, condition 6.0 Poor, value $20.",
+          "TaylorMade equipment, exact model and category pending review, condition 8.0 Average, value $100.",
+          "Possible Titleist trade item, model unclear, shaft stiff, condition 7.0 Below Average, value $90.",
+          "Odyssey White Hot putter, condition 8.0 Average, trade value $65, store 207."
+        ]
+      },
+      {
+        sourceType: "EMAIL" as const,
+        sourceName: "Customer trade-in email",
+        lines: [
+          "From: customer@example.com",
+          "Subject: Trade-in request",
+          "Hi team,",
+          "I have a Callaway club but I do not know the model or category. Shaft is unknown, condition 7.0 Below Average and value may be $80.",
+          "Also bringing a PING G425 iron set with Regular flex, condition 8.0 Average and value $210.",
+          "Please let me know what else you need.",
+          "Regards,"
+        ],
+        expectedFragments: [
+          "I have a Callaway club but I do not know the model or category. Shaft is unknown, condition 7.0 Below Average and value may be $80.",
+          "Also bringing a PING G425 iron set with Regular flex, condition 8.0 Average and value $210."
+        ]
+      },
+      {
+        sourceType: "LOG" as const,
+        sourceName: "Import worker log",
+        lines: [
+          "2026-07-17T10:00:00Z INFO import start store=104 batch=nightly",
+          "2026-07-17T10:00:01Z ERROR row=18 payload brand=Callaway model='mystery club' shaft=unknown condition='7.0 Below Average' value=80 store=301",
+          "2026-07-17T10:00:02Z WARN candidate equipment record model unknown condition='6.0 Poor' value=25",
+          "2026-07-17T10:00:03Z INFO heartbeat healthy"
+        ],
+        expectedFragments: [
+          "2026-07-17T10:00:01Z ERROR row=18 payload brand=Callaway model='mystery club' shaft=unknown condition='7.0 Below Average' value=80 store=301",
+          "2026-07-17T10:00:02Z WARN candidate equipment record model unknown condition='6.0 Poor' value=25"
+        ]
+      },
+      {
+        sourceType: "POORLY_FORMED_CSV" as const,
+        sourceName: "Incomplete CSV export",
+        lines: [
+          "brand|model|category|shaft|condition|value|store",
+          "Callaway|mystery club||unknown|7.0 Below Average|80|301",
+          "|unknown item||unknown|6.0 Poor|20|104"
+        ],
+        expectedFragments: [
+          "Callaway|mystery club||unknown|7.0 Below Average|80|301",
+          "|unknown item||unknown|6.0 Poor|20|104"
+        ]
+      }
+    ];
+
+    for (const [index, testCase] of cases.entries()) {
+      const fragments =
+        splitSourceIntoRecordFragments({
+          id:
+            "segmentation_matrix_" +
+            String(index + 1),
+          sourceType:
+            testCase.sourceType,
+          sourceName:
+            testCase.sourceName,
+          rawContent:
+            testCase.lines.join("\n")
+        });
+
+      expect(
+        fragments,
+        testCase.sourceName
+      ).toEqual(
+        testCase.expectedFragments
+      );
+    }
+  });
+
+
+
+  it("scopes store IDs to the current record or one unambiguous source store", () => {
+    const multiStoreSource = {
+      id: "multi_store_source",
+      sourceType: "FREE_TEXT" as const,
+      sourceName: "Multiple store intake",
+      rawContent: [
+        "PING G425 irons shaft Regular condition 8.0 Average value $210 store 207",
+        "Callaway mystery club shaft unknown condition 7.0 Below Average value $80 store 301",
+        "Unbranded club shaft unknown condition 6.0 Poor value $20"
+      ].join("\n")
+    };
+
+    const pingRecord = buildRecord(
+      multiStoreSource,
+      "PING G425 irons shaft Regular condition 8.0 Average value $210 store 207",
+      0
+    );
+    const callawayRecord = buildRecord(
+      multiStoreSource,
+      "Callaway mystery club shaft unknown condition 7.0 Below Average value $80 store 301",
+      1
+    );
+    const noLocalStoreRecord = buildRecord(
+      multiStoreSource,
+      "Unbranded club shaft unknown condition 6.0 Poor value $20",
+      2
+    );
+
+    expect(pingRecord.storeId).toBe("207");
+    expect(callawayRecord.storeId).toBe("301");
+    expect(noLocalStoreRecord.storeId).toBeNull();
+
+    const sharedStoreSource = {
+      id: "shared_store_source",
+      sourceType: "EMAIL" as const,
+      sourceName: "Shared preferred store",
+      rawContent: [
+        "From: customer@example.com",
+        "Subject: Trade request",
+        "PING G425 irons shaft Regular condition 8.0 Average value $210",
+        "Odyssey White Hot OG putter condition 8.0 Average value $95",
+        "Preferred store: 104"
+      ].join("\n")
+    };
+
+    const sharedStorePing = buildRecord(
+      sharedStoreSource,
+      "PING G425 irons shaft Regular condition 8.0 Average value $210",
+      0
+    );
+    const sharedStorePutter = buildRecord(
+      sharedStoreSource,
+      "Odyssey White Hot OG putter condition 8.0 Average value $95",
+      1
+    );
+
+    expect(sharedStorePing.storeId).toBe("104");
+    expect(sharedStorePutter.storeId).toBe("104");
+  });
+
+
+
   it("treats shaft flex as not applicable for putter records", () => {
     const record = parseRecord(
       "Odyssey White Hot OG putter condition 8.0 Average value $95"
@@ -356,6 +516,231 @@ describe("multi-source intake parser normalization matrix", () => {
   });
 
 
+  it("uses CSV headers as context for source-supported product and flex values", () => {
+    const rawContent = [
+      "Brand,Product,Category,Flex,Condition,Trade Value,Store",
+      "TaylorMade,Stealth 2,driver,S,9.0 Above Average,$195,104",
+      "PING,G430,driver,R,8.0 Average,$180,207",
+      "Callaway,mystery club,,unknown,7.0 Below Average,$80,301",
+      "Odyssey,White Hot,putter,,6.0 Poor,$45,207",
+      "PING,G425,iron set,TX,8.0 Average,$210,104"
+    ].join("\n");
+
+    const fragments =
+      rawContent
+        .split("\n")
+        .slice(1);
+
+    const records =
+      fragments.map(
+        (fragment, index) =>
+          parseCsvRecord(
+            rawContent,
+            fragment,
+            index
+          )
+      );
+
+    const stealth = records[0];
+    const g430 = records[1];
+    const callaway = records[2];
+    const odyssey = records[3];
+    const g425 = records[4];
+
+    expect(stealth).toMatchObject({
+      brand: "TaylorMade",
+      productLine: "Stealth 2",
+      category: "DRIVER",
+      shaftFlex: "STIFF",
+      conditionGrade:
+        "9.0 Above Average",
+      tradeInValue: 195,
+      storeId: "104"
+    });
+    expect(
+      stealth?.parserEvidence
+        ?.shaftFlex
+    ).toEqual({
+      value: "STIFF",
+      sourceText: "S"
+    });
+    expect(
+      stealth?.missingFields
+    ).not.toContain("shaftFlex");
+
+    expect(g430).toMatchObject({
+      brand: "PING",
+      productLine: "G430",
+      category: "DRIVER",
+      shaftFlex: "REGULAR",
+      conditionGrade: "8.0 Average",
+      tradeInValue: 180,
+      storeId: "207"
+    });
+    expect(
+      g430?.parserEvidence
+        ?.productLine
+    ).toEqual({
+      value: "G430",
+      sourceText: "G430"
+    });
+    expect(
+      g430?.parserEvidence
+        ?.shaftFlex
+    ).toEqual({
+      value: "REGULAR",
+      sourceText: "R"
+    });
+    expect(
+      g430?.missingFields
+    ).not.toEqual(
+      expect.arrayContaining([
+        "productLine",
+        "shaftFlex"
+      ])
+    );
+
+    expect(callaway).toMatchObject({
+      brand: "Callaway",
+      productLine: null,
+      category: null,
+      shaftFlex: null,
+      conditionGrade:
+        "7.0 Below Average",
+      tradeInValue: 80,
+      storeId: "301"
+    });
+
+    expect(odyssey).toMatchObject({
+      brand: "Odyssey",
+      productLine: "White Hot",
+      category: "PUTTER",
+      shaftFlex: null,
+      conditionGrade: "6.0 Poor",
+      tradeInValue: 45,
+      storeId: "207"
+    });
+    expect(
+      odyssey?.missingFields
+    ).not.toContain("shaftFlex");
+
+    expect(g425).toMatchObject({
+      brand: "PING",
+      productLine: "G425",
+      category: "IRON_SET",
+      shaftFlex: "TOUR_X_STIFF",
+      conditionGrade: "8.0 Average",
+      tradeInValue: 210,
+      storeId: "104"
+    });
+    expect(
+      g425?.parserEvidence
+        ?.shaftFlex
+    ).toEqual({
+      value: "TOUR_X_STIFF",
+      sourceText: "TX"
+    });
+    expect(
+      g425?.missingFields
+    ).not.toContain("shaftFlex");
+  });
+
+
+
+  it("preserves meaningful unresolved product text for non-CSV records without preserving placeholders", () => {
+    const emailSource = {
+      id: "email-unresolved-products",
+      sourceType: "EMAIL" as const,
+      sourceName: "Unresolved product email",
+      rawContent: [
+        "Subject: Trade-in request",
+        "PING G430 driver, Regular shaft, condition 8.0 Average, trade value $180, store 207.",
+        "Callaway mystery club, shaft unknown, condition 7.0 Below Average, trade value $80, store 301."
+      ].join("\n")
+    };
+    const freeTextSource = {
+      id: "free-text-unresolved-product",
+      sourceType: "FREE_TEXT" as const,
+      sourceName: "Unresolved product note",
+      rawContent:
+        "Titleist ZX Prototype 11 driver, Stiff shaft, condition 9.0 Above Average, trade value $140, store 114."
+    };
+
+    const g430 = buildRecord(
+      emailSource,
+      "PING G430 driver, Regular shaft, condition 8.0 Average, trade value $180, store 207.",
+      0
+    );
+    const mysteryClub = buildRecord(
+      emailSource,
+      "Callaway mystery club, shaft unknown, condition 7.0 Below Average, trade value $80, store 301.",
+      1
+    );
+    const prototype = buildRecord(
+      freeTextSource,
+      freeTextSource.rawContent,
+      0
+    );
+
+    expect(g430).toMatchObject({
+      brand: "PING",
+      productLine: "G430",
+      category: "DRIVER",
+      shaftFlex: "REGULAR",
+      productResolution: {
+        status: "UNRESOLVED"
+      },
+      parserEvidence: {
+        productLine: {
+          value: "G430",
+          sourceText: "G430"
+        }
+      }
+    });
+    expect(
+      g430.missingFields
+    ).not.toContain("productLine");
+
+    expect(prototype).toMatchObject({
+      brand: "Titleist",
+      productLine: "ZX Prototype 11",
+      category: "DRIVER",
+      shaftFlex: "STIFF",
+      productResolution: {
+        status: "UNRESOLVED"
+      },
+      parserEvidence: {
+        productLine: {
+          value: "ZX Prototype 11",
+          sourceText: "ZX Prototype 11"
+        }
+      }
+    });
+    expect(
+      prototype.missingFields
+    ).not.toContain("productLine");
+
+    expect(mysteryClub).toMatchObject({
+      brand: "Callaway",
+      productLine: null,
+      category: null,
+      shaftFlex: null,
+      productResolution: {
+        status: "UNRESOLVED"
+      }
+    });
+    expect(
+      mysteryClub.missingFields
+    ).toEqual(
+      expect.arrayContaining([
+        "productLine",
+        "category",
+        "shaftFlex"
+      ])
+    );
+  });
+
+
   it("attaches matched, ambiguous, and unresolved product resolution", () => {
     const matched = parseRecord(
       "Titleist TSR2 3w shaft stiff condition 8.0 Average value $145"
@@ -393,16 +778,25 @@ describe("multi-source intake parser normalization matrix", () => {
 
     expect(unresolved).toMatchObject({
       brand: "Titleist",
-      productLine: null,
+      productLine:
+        "ZX Prototype 11",
       category: "DRIVER",
       reviewNeeded: true,
       productResolution: {
         status: "UNRESOLVED"
+      },
+      parserEvidence: {
+        productLine: {
+          value:
+            "ZX Prototype 11",
+          sourceText:
+            "ZX Prototype 11"
+        }
       }
     });
     expect(
       unresolved.missingFields
-    ).toContain("productLine");
+    ).not.toContain("productLine");
 
     expect(putter).toMatchObject({
       productLine: "White Hot Versa",

@@ -107,6 +107,139 @@ function detectCategory(text: string): string | null {
 }
 
 
+function getDetectedBrandSourcePattern(
+  brand: string
+): RegExp | null {
+  if (brand === "TaylorMade") {
+    return /\b(?:taylormade|tm)\b/i;
+  }
+
+  if (brand === "Titleist") {
+    return /\btitleist\b/i;
+  }
+
+  if (brand === "Callaway") {
+    return /\b(?:callaway|cally)\b/i;
+  }
+
+  if (brand === "PING") {
+    return /\bping\b/i;
+  }
+
+  if (brand === "Cleveland") {
+    return /\bcleveland\b/i;
+  }
+
+  if (brand === "Odyssey") {
+    return /\bodyssey\b/i;
+  }
+
+  if (brand === "Mizuno") {
+    return /\bmizuno\b/i;
+  }
+
+  return null;
+}
+
+function getDetectedCategorySourcePattern(
+  category: string
+): RegExp | null {
+  if (category === "DRIVER") {
+    return /\b(?:driver|drv)\b/i;
+  }
+
+  if (category === "FAIRWAY_WOOD") {
+    return /\b(?:(?:3|4|5|7|9)\s*-?\s*(?:w|wood)|fairway)\b/i;
+  }
+
+  if (category === "HYBRID") {
+    return /\b(?:hybrid|hy|rescue)\b/i;
+  }
+
+  if (category === "WEDGE") {
+    return /\b(?:wedge|(?:46|48|50|52|54|56|58|60)\s*(?:deg|degree|°)?)\b/i;
+  }
+
+  if (category === "PUTTER") {
+    return /\bputter\b/i;
+  }
+
+  if (category === "IRON_SET") {
+    return /\b(?:irons?|[4-9]-pw)\b/i;
+  }
+
+  return null;
+}
+
+function detectSourceSupportedProductText(input: {
+  sourceType: MultiSourceIntakeSourceType;
+  text: string;
+  detectedBrand: string | null;
+  detectedCategory: string | null;
+}): string | null {
+  if (
+    input.sourceType ===
+      "POORLY_FORMED_CSV" ||
+    !input.detectedBrand ||
+    !input.detectedCategory
+  ) {
+    return null;
+  }
+
+  const brandPattern =
+    getDetectedBrandSourcePattern(
+      input.detectedBrand
+    );
+  const categoryPattern =
+    getDetectedCategorySourcePattern(
+      input.detectedCategory
+    );
+
+  if (!brandPattern || !categoryPattern) {
+    return null;
+  }
+
+  const brandMatch =
+    input.text.match(brandPattern);
+  const categoryMatch =
+    input.text.match(categoryPattern);
+
+  if (
+    !brandMatch?.[0] ||
+    brandMatch.index === undefined ||
+    !categoryMatch?.[0] ||
+    categoryMatch.index === undefined
+  ) {
+    return null;
+  }
+
+  const productStart =
+    brandMatch.index +
+    brandMatch[0].length;
+  const productEnd =
+    categoryMatch.index;
+
+  if (productEnd <= productStart) {
+    return null;
+  }
+
+  const candidate =
+    input.text
+      .slice(
+        productStart,
+        productEnd
+      )
+      .replace(
+        /^[\s,;:|/\-]+|[\s,;:|/\-]+$/g,
+        ""
+      )
+      .trim();
+
+  return normalizeDelimitedProductText(
+    candidate
+  );
+}
+
 function buildParserEvidence(
   text: string,
   values: {
@@ -150,16 +283,77 @@ function buildParserEvidence(
   });
 }
 
-function detectStoreId(text: string): string | null {
-  const storeMatch = text.match(/\bstore(?:=|:|\s)?\s*(STORE-)?(\d{3})\b/i);
-  if (storeMatch) {
-    return storeMatch[1] ? `${storeMatch[1].toUpperCase()}${storeMatch[2]}` : storeMatch[2] ?? null;
+function detectStoreIds(
+  text: string
+): string[] {
+  const storePattern =
+    /\bstore(?:=|:|\s)?\s*(STORE-)?(\d{3})\b/gi;
+  const storeIds = new Set<string>();
+
+  for (
+    const match of text.matchAll(
+      storePattern
+    )
+  ) {
+    const numericStoreId =
+      match[2];
+
+    if (!numericStoreId) {
+      continue;
+    }
+
+    storeIds.add(
+      match[1]
+        ? `STORE-${numericStoreId}`
+        : numericStoreId
+    );
   }
 
-  return null;
+  return [...storeIds];
+}
+
+function detectStoreId(
+  text: string
+): string | null {
+  return detectStoreIds(text)[0] ?? null;
+}
+
+function resolveRecordStoreId(input: {
+  source: MultiSourceParserInput;
+  fragment: string;
+  csvStoreId: string | null;
+}): string | null {
+  if (
+    input.source.sourceType ===
+    "POORLY_FORMED_CSV"
+  ) {
+    return (
+      input.csvStoreId ??
+      detectStoreId(input.fragment)
+    );
+  }
+
+  const fragmentStoreId =
+    detectStoreId(input.fragment);
+
+  if (fragmentStoreId) {
+    return fragmentStoreId;
+  }
+
+  const sourceStoreIds =
+    detectStoreIds(
+      input.source.rawContent
+    );
+
+  return sourceStoreIds.length === 1
+    ? sourceStoreIds[0] ?? null
+    : null;
 }
 
 type PoorlyFormedCsvRowValues = {
+  productText: string | null;
+  shaftFlex: string | null;
+  shaftFlexSourceText: string | null;
   tradeInValue: number | null;
   tradeInValueSourceText: string | null;
   storeId: string | null;
@@ -176,6 +370,24 @@ function stripDelimitedCell(value: string): string {
     .trim()
     .replace(/^["']|["']$/g, "")
     .trim();
+}
+
+function normalizeDelimitedProductText(
+  value: string | null
+): string | null {
+  const productText =
+    value?.trim() ?? "";
+
+  if (
+    !productText ||
+    /^(?:unknown(?:\s+(?:item|club|model))?|mystery\s+club|n\/?a|none|null|tbd|\?)$/i.test(
+      productText
+    )
+  ) {
+    return null;
+  }
+
+  return productText;
 }
 
 function detectDelimitedSeparator(headerLine: string): string | null {
@@ -233,6 +445,28 @@ function parsePoorlyFormedCsvRowValues(
       : null;
   }
 
+  const productText =
+    normalizeDelimitedProductText(
+      findCell([
+        "product",
+        "productline",
+        "model",
+        "clubmodel"
+      ])
+    );
+  const shaftFlexSourceText =
+    findCell([
+      "shaft",
+      "shaftflex",
+      "flex"
+    ]) || null;
+  const shaftFlex =
+    shaftFlexSourceText
+      ? detectShaftFlexWithEvidence(
+          `shaft flex ${shaftFlexSourceText}`
+        ).value
+      : null;
+
   const tradeInValueSourceText = findCell([
     "value",
     "tradevalue",
@@ -263,6 +497,9 @@ function parsePoorlyFormedCsvRowValues(
     : null;
 
   return {
+    productText,
+    shaftFlex,
+    shaftFlexSourceText,
     tradeInValue,
     tradeInValueSourceText,
     storeId
@@ -375,6 +612,7 @@ function isLikelyEquipmentRecordLine(
   line: string,
   provider?: ProductReferenceProvider
 ): boolean {
+  const brand = detectBrand(line);
   const category = detectCategory(line);
   const resolution =
     resolveLineProductReference(
@@ -386,12 +624,51 @@ function isLikelyEquipmentRecordLine(
     return true;
   }
 
-  if (!category) {
-    return false;
+  const hasEquipmentLanguage =
+    /\b(?:equipment|club|clubs|driver|fairway|wood|hybrid|rescue|iron|irons|wedge|putter)\b/i.test(
+      line
+    );
+  const hasRecordContext =
+    /\b(?:brought|bringing|trade(?:-?in)?|trade item|candidate equipment record|payload|row\s*=|pending review)\b/i.test(
+      line
+    );
+  const hasShaftEvidence =
+    detectShaftFlexWithEvidence(
+      line
+    ).value !== null ||
+    /\b(?:shaft|flex)\b[^.,;|]*(?:unknown|unclear|missing|not known)\b/i.test(
+      line
+    );
+  const hasConditionEvidence =
+    detectApprovedConditionGradeWithEvidence(
+      line
+    ).value !== null;
+  const hasTradeValueEvidence =
+    detectTradeInValueWithEvidence(
+      line
+    ).value !== null;
+
+  if (
+    category &&
+    hasEquipmentLanguage
+  ) {
+    return true;
   }
 
-  return /\b(?:brand|model|product|club|shaft|flex|condition|cond|value|trade|driver|fairway|wood|hybrid|rescue|iron|irons|wedge|putter)\b/i.test(
-    line
+  const fieldSignalCount = [
+    Boolean(brand),
+    Boolean(category),
+    hasShaftEvidence,
+    hasConditionEvidence,
+    hasTradeValueEvidence
+  ].filter(Boolean).length;
+
+  return (
+    (
+      hasEquipmentLanguage ||
+      hasRecordContext
+    ) &&
+    fieldSignalCount >= 2
   );
 }
 
@@ -477,15 +754,35 @@ export function buildRecord(
 ): MultiSourceIntakeRecord {
   const sourceContext =
     `${source.rawContent}\n${fragment}`;
+  const csvRowValues =
+    parsePoorlyFormedCsvRowValues(
+      source,
+      fragment
+    );
   const detectedBrand =
     detectBrand(fragment);
   const detectedCategory =
     detectCategory(fragment);
+  const sourceSupportedProductText =
+    csvRowValues?.productText ??
+    detectSourceSupportedProductText({
+      sourceType:
+        source.sourceType,
+      text: fragment,
+      detectedBrand,
+      detectedCategory
+    });
   const productIdentity =
     resolveParsedProductIdentity({
       rawText: fragment,
       detectedBrand,
       detectedCategory,
+      ...(sourceSupportedProductText
+        ? {
+            productText:
+              sourceSupportedProductText
+          }
+        : {}),
       ...(provider
         ? {
             provider
@@ -497,21 +794,20 @@ export function buildRecord(
     productIdentity.productLine;
   const category =
     productIdentity.category;
+  const detectedShaftFlex =
+    detectShaftFlexWithEvidence(
+      fragment
+    );
   const shaftFlex =
     isShaftFlexApplicable(category)
-      ? detectShaftFlexWithEvidence(
-          fragment
-        ).value
+      ? detectedShaftFlex.value ??
+        csvRowValues?.shaftFlex ??
+        null
       : null;
   const conditionGrade =
     detectApprovedConditionGradeWithEvidence(
       fragment
     ).value;
-  const csvRowValues =
-    parsePoorlyFormedCsvRowValues(
-      source,
-      fragment
-    );
   const detectedTradeInValue =
     detectTradeInValueWithEvidence(
       fragment
@@ -530,6 +826,24 @@ export function buildRecord(
       conditionGrade,
       tradeInValue
     });
+
+  if (
+    !parserEvidence.shaftFlex &&
+    csvRowValues?.shaftFlex &&
+    csvRowValues.shaftFlexSourceText &&
+    isShaftFlexApplicable(category)
+  ) {
+    parserEvidence = {
+      ...parserEvidence,
+      shaftFlex: {
+        value:
+          csvRowValues.shaftFlex,
+        sourceText:
+          csvRowValues
+            .shaftFlexSourceText
+      }
+    };
+  }
 
   if (
     !parserEvidence.tradeInValue &&
@@ -555,11 +869,12 @@ export function buildRecord(
   const customerEmail =
     detectCustomerEmail(sourceContext);
   const storeId =
-    source.sourceType ===
-    "POORLY_FORMED_CSV"
-      ? csvRowValues?.storeId ??
-        detectStoreId(fragment)
-      : detectStoreId(sourceContext);
+    resolveRecordStoreId({
+      source,
+      fragment,
+      csvStoreId:
+        csvRowValues?.storeId ?? null
+    });
   const eventTimestamp =
     detectTimestamps(fragment)[0] ??
     null;

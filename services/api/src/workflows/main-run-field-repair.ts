@@ -486,6 +486,11 @@ export type FieldRepairValidationResult =
 export function buildMainRunFieldRepairExecutionInput(
   input: BuildMainRunFieldRepairExecutionInput
 ): Record<string, unknown> {
+  const requiredRecordIds =
+    input.records.map(
+      (record) => record.recordId
+    );
+
   return {
     policyKey: MAIN_RUN_FIELD_REPAIR_POLICY_KEY,
     agentName: MAIN_RUN_FIELD_REPAIR_AGENT_NAME,
@@ -504,6 +509,13 @@ export function buildMainRunFieldRepairExecutionInput(
         record.advisoryCandidates ?? [],
       evidence: record.evidence
     })),
+    outcomeCompleteness: {
+      expectedRecordCount:
+        requiredRecordIds.length,
+      requiredRecordIds,
+      requirement:
+        "Return exactly one recordOutcomes entry for every requiredRecordId, preserving this order."
+    },
     authorityOrder: [
       "HUMAN_CORRECTION",
       "DETERMINISTIC_POLICY",
@@ -628,6 +640,7 @@ export function buildMainRunFieldRepairExecutionInput(
     },
     validationRules: [
       "Return JSON only.",
+      "Return exactly one recordOutcomes entry for every record in records, preserving input order. Do not stop after processing records with advisoryCandidates.",
       "Only suggest fields supported by source evidence.",
       "Every suggestion must include a non-empty sourcePhrase.",
       "For shaftFlex, candidateValue must be one of LADIES, SENIOR, REGULAR, STIFF, X_STIFF, TOUR_X_STIFF.",

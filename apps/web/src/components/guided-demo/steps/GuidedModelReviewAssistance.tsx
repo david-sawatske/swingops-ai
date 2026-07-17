@@ -7,7 +7,6 @@ import {
 
 type GuidedModelReviewAssistanceProps = {
   outcomes: FieldRepairRecordOutcome[];
-  visibleOutcomeLimit?: number;
 };
 
 export function getModelReviewOutcomeLabel(
@@ -51,7 +50,6 @@ export function getModelReviewAssistanceSummary(
 
 export function GuidedModelReviewAssistance({
   outcomes,
-  visibleOutcomeLimit = 4,
 }: GuidedModelReviewAssistanceProps) {
   if (outcomes.length === 0) {
     return (
@@ -62,8 +60,6 @@ export function GuidedModelReviewAssistance({
       </p>
     );
   }
-
-  const visibleOutcomes = outcomes.slice(0, visibleOutcomeLimit);
 
   return (
     <section
@@ -79,7 +75,7 @@ export function GuidedModelReviewAssistance({
       </div>
 
       <div className="guided-model-assistance__list">
-        {visibleOutcomes.map((outcome, index) => (
+        {outcomes.map((outcome, index) => (
           <article
             className={`guided-model-assistance-card guided-model-assistance-card--${getOutcomeModifier(
               outcome.outcomeType,
@@ -169,12 +165,6 @@ export function GuidedModelReviewAssistance({
         ))}
       </div>
 
-      {outcomes.length > visibleOutcomeLimit ? (
-        <p className="guided-validation-empty-note">
-          Showing {visibleOutcomeLimit} of {outcomes.length} validated record
-          outcomes.
-        </p>
-      ) : null}
     </section>
   );
 }

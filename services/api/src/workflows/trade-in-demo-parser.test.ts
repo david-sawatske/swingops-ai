@@ -151,6 +151,254 @@ describe("parseTradeInDemoText", () => {
     expect(parsedItems[2]?.missingFields).not.toContain("shaftFlex");
   });
 
+  it("preserves source-supported product text when normalized handoff reference resolution is unresolved", () => {
+    const parsedItems =
+      parseTradeInDemoText(
+        [
+          "1. PING G430 DRIVER — shaft flex REGULAR; condition 8.0 Average; trade value $180; store 207; review needed; source evidence: PING,G430,driver,R,8.0 Average,$180,207",
+          "2. Titleist ZX Prototype 11 DRIVER — shaft flex STIFF; condition 9.0 Above Average; trade value $140; store 114; review needed; source evidence: Titleist,ZX Prototype 11,driver,stiff,9.0 Above Average,$140,114",
+          "3. Callaway — condition 7.0 Below Average; trade value $80; store 301; review needed; missing productLine, category, shaftFlex; source evidence: Callaway,mystery club,,unknown,7.0 Below Average,$80,301"
+        ].join("\n")
+      );
+
+    expect(parsedItems).toHaveLength(3);
+
+    expect(parsedItems[0]).toMatchObject({
+      id: "parsed_item_1",
+      brand: "PING",
+      productLine: "G430",
+      category: "DRIVER",
+      shaftFlex: "REGULAR",
+      conditionGrade: "8.0 Average",
+      tradeInValue: 180,
+      storeId: "207",
+      productResolution: {
+        status: "UNRESOLVED"
+      },
+      parserEvidence: {
+        productLine: {
+          value: "G430",
+          sourceText: "G430"
+        }
+      }
+    });
+    expect(
+      parsedItems[0]?.missingFields
+    ).not.toEqual(
+      expect.arrayContaining([
+        "productLine",
+        "shaftFlex"
+      ])
+    );
+
+    expect(parsedItems[1]).toMatchObject({
+      id: "parsed_item_2",
+      brand: "Titleist",
+      productLine: "ZX Prototype 11",
+      category: "DRIVER",
+      shaftFlex: "STIFF",
+      conditionGrade: "9.0 Above Average",
+      tradeInValue: 140,
+      storeId: "114",
+      productResolution: {
+        status: "UNRESOLVED"
+      },
+      parserEvidence: {
+        productLine: {
+          value: "ZX Prototype 11",
+          sourceText: "ZX Prototype 11"
+        }
+      }
+    });
+    expect(
+      parsedItems[1]?.missingFields
+    ).not.toEqual(
+      expect.arrayContaining([
+        "productLine",
+        "shaftFlex"
+      ])
+    );
+
+    expect(parsedItems[2]).toMatchObject({
+      id: "parsed_item_3",
+      brand: "Callaway",
+      productLine: null,
+      category: null,
+      shaftFlex: null,
+      conditionGrade: "7.0 Below Average",
+      tradeInValue: 80,
+      storeId: "301",
+      productResolution: {
+        status: "UNRESOLVED"
+      }
+    });
+    expect(
+      parsedItems[2]?.missingFields
+    ).toEqual(
+      expect.arrayContaining([
+        "productLine",
+        "category",
+        "shaftFlex"
+      ])
+    );
+  });
+
+
+  it("does not treat a category-only normalized identity as product text", () => {
+    const parsedItems =
+      parseTradeInDemoText(
+        "1. PING DRIVER — shaft flex REGULAR; condition 8.0 Average; trade value $180; store 207; review needed; missing productLine; source evidence: PING mystery club driver, Regular shaft, condition 8.0 Average, trade value $180, store 207."
+      );
+
+    expect(parsedItems).toHaveLength(1);
+    expect(parsedItems[0]).toMatchObject({
+      id: "parsed_item_1",
+      brand: "PING",
+      productLine: null,
+      category: "DRIVER",
+      shaftFlex: "REGULAR",
+      conditionGrade: "8.0 Average",
+      tradeInValue: 180,
+      storeId: "207",
+      productResolution: {
+        status: "UNRESOLVED"
+      }
+    });
+    expect(
+      parsedItems[0]?.missingFields
+    ).toContain("productLine");
+    expect(
+      parsedItems[0]?.parserEvidence
+        ?.productLine
+    ).toBeUndefined();
+  });
+
+
+  it("preserves normalized-intake records and record-local stores through the guarded parser", () => {
+    const sourceLines = [
+      "PING G425 4-PW, shaft firm, condition 8.0 Average, trade value $210, store 207.",
+      "Titleist TSR fairway wood, maybe TSR2 or TSR3, stiff shaft, condition 9.0 Above Average, trade value $185, store 114.",
+      "Callaway mystery club, shaft unknown, condition 7.0 Below Average, trade value $80, store 301.",
+      "Odyssey White Hot putter, condition 8.0 Average, trade value $65, store 207."
+    ];
+
+    const parsedItems =
+      parseTradeInDemoText(
+        sourceLines.join("\n")
+      );
+
+    expect(parsedItems).toHaveLength(4);
+    expect(
+      parsedItems.map(
+        (item) => item.rawLine
+      )
+    ).toEqual(sourceLines);
+
+    expect(parsedItems[0]).toMatchObject({
+      id: "parsed_item_1",
+      brand: "PING",
+      productLine: "G425",
+      category: "IRON_SET",
+      shaftFlex: null,
+      conditionGrade: "8.0 Average",
+      tradeInValue: 210,
+      storeId: "207"
+    });
+
+    const ambiguousTitleist =
+      parsedItems[1];
+
+    expect(ambiguousTitleist).toMatchObject({
+      id: "parsed_item_2",
+      brand: "Titleist",
+      category: "FAIRWAY_WOOD",
+      shaftFlex: "STIFF",
+      conditionGrade: "9.0 Above Average",
+      tradeInValue: 185,
+      storeId: "114",
+      productResolution: {
+        status: "AMBIGUOUS"
+      }
+    });
+
+    if (
+      !ambiguousTitleist ||
+      ambiguousTitleist.productResolution
+        .status !== "AMBIGUOUS"
+    ) {
+      throw new Error(
+        "Expected the Titleist record to remain ambiguous."
+      );
+    }
+
+    const candidateProductLines =
+      ambiguousTitleist
+        .productResolution
+        .candidates
+        .map(
+          (candidate) =>
+            candidate.productLine
+        );
+
+    expect(
+      candidateProductLines
+    ).toEqual(
+      expect.arrayContaining([
+        "TSR2",
+        "TSR3"
+      ])
+    );
+    expect(
+      candidateProductLines
+    ).toContain(
+      ambiguousTitleist.productLine
+    );
+    expect(
+      ambiguousTitleist
+        .uncertaintyNotes
+    ).toContain(
+      "model uncertain"
+    );
+
+    expect(parsedItems[2]).toMatchObject({
+      id: "parsed_item_3",
+      brand: "Callaway",
+      productLine: null,
+      category: null,
+      shaftFlex: null,
+      conditionGrade: "7.0 Below Average",
+      tradeInValue: 80,
+      storeId: "301",
+      productResolution: {
+        status: "UNRESOLVED"
+      }
+    });
+    expect(
+      parsedItems[2]?.missingFields
+    ).toEqual(
+      expect.arrayContaining([
+        "productLine",
+        "category",
+        "shaftFlex"
+      ])
+    );
+
+    expect(parsedItems[3]).toMatchObject({
+      id: "parsed_item_4",
+      brand: "Odyssey",
+      category: "PUTTER",
+      shaftFlex: null,
+      conditionGrade: "8.0 Average",
+      tradeInValue: 65,
+      storeId: "207"
+    });
+    expect(
+      parsedItems[3]?.missingFields
+    ).not.toContain("shaftFlex");
+  });
+
+
+
   it("parses guarded workflow source values before review validation", () => {
     const parsedItems = parseTradeInDemoText([
       "TaylorMade Stealth 2 driver shaft stiff condition 8.0 Average trade value $150",

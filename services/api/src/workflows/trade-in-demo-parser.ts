@@ -36,6 +36,7 @@ export type ParsedTradeInDemoItem = {
   shaftFlex: string | null;
   conditionGrade: string | null;
   tradeInValue: number | null;
+  storeId: string | null;
   parserEvidence?: ParserEvidence;
   productResolution: ProductResolution;
   conditionNotes: string[];
@@ -375,6 +376,23 @@ function detectClubNumber(line: string): string | null {
   return null;
 }
 
+function detectStoreId(
+  line: string
+): string | null {
+  const match = line.match(
+    /\bstore(?:=|:|\s)?\s*(STORE-)?(\d{3})\b/i
+  );
+
+  if (!match?.[2]) {
+    return null;
+  }
+
+  return match[1]
+    ? "STORE-" + match[2]
+    : match[2];
+}
+
+
 function collectNotes(
   line: string,
   patterns: { note: string; aliases: RegExp[] }[]
@@ -504,6 +522,102 @@ function calculateConfidence(input: {
   return Math.max(0.2, Math.min(0.98, Number(score.toFixed(2))));
 }
 
+function detectNormalizedHandoffProductText(input: {
+  line: string;
+  detectedBrand: string | null;
+  detectedCategory: string | null;
+}): string | null {
+  if (
+    !/\bsource evidence\s*:/i.test(
+      input.line
+    )
+  ) {
+    return null;
+  }
+
+  const identitySeparatorIndex =
+    input.line.indexOf("—");
+
+  if (identitySeparatorIndex < 0) {
+    return null;
+  }
+
+  let identityText =
+    input.line
+      .slice(
+        0,
+        identitySeparatorIndex
+      )
+      .trim();
+
+  if (input.detectedBrand) {
+    const normalizedIdentity =
+      identityText.toLocaleLowerCase();
+    const normalizedBrand =
+      input.detectedBrand.toLocaleLowerCase();
+
+    if (
+      normalizedIdentity ===
+      normalizedBrand
+    ) {
+      return null;
+    }
+
+    if (
+      normalizedIdentity.startsWith(
+        normalizedBrand + " "
+      )
+    ) {
+      identityText =
+        identityText
+          .slice(
+            input.detectedBrand.length
+          )
+          .trim();
+    }
+  }
+
+  if (input.detectedCategory) {
+    if (
+      identityText.toLocaleUpperCase() ===
+      input.detectedCategory.toLocaleUpperCase()
+    ) {
+      return null;
+    }
+
+    const categorySuffix =
+      " " + input.detectedCategory;
+
+    if (
+      identityText
+        .toLocaleUpperCase()
+        .endsWith(
+          categorySuffix
+            .toLocaleUpperCase()
+        )
+    ) {
+      identityText =
+        identityText
+          .slice(
+            0,
+            -categorySuffix.length
+          )
+          .trim();
+    }
+  }
+
+  if (
+    !identityText ||
+    /^(?:unknown(?:\s+(?:item|club|model))?|mystery\s+club|n\/?a|none|null|tbd|\?)$/i.test(
+      identityText
+    )
+  ) {
+    return null;
+  }
+
+  return identityText;
+}
+
 function parseLine(
   rawLine: string,
   index: number,
@@ -516,11 +630,23 @@ function parseLine(
     detectBrand(cleanedLine);
   const detectedCategory =
     detectCategory(cleanedLine);
+  const normalizedHandoffProductText =
+    detectNormalizedHandoffProductText({
+      line: cleanedLine,
+      detectedBrand,
+      detectedCategory
+    });
   const productIdentity =
     resolveParsedProductIdentity({
       rawText: cleanedLine,
       detectedBrand,
       detectedCategory,
+      ...(normalizedHandoffProductText
+        ? {
+            productText:
+              normalizedHandoffProductText
+          }
+        : {}),
       ...(provider
         ? {
             provider
@@ -550,6 +676,10 @@ function parseLine(
     detectTradeInValueWithEvidence(
       cleanedLine
     ).value;
+  const storeId =
+    detectStoreId(
+      cleanedLine
+    );
   const parserEvidence =
     buildParserEvidence(cleanedLine, {
       brand,
@@ -615,6 +745,7 @@ function parseLine(
     shaftFlex,
     conditionGrade,
     tradeInValue,
+    storeId,
     parserEvidence,
     productResolution:
       productIdentity.productResolution,
