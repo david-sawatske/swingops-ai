@@ -373,6 +373,258 @@ describe("executeMultiSourceIntakeDemo", () => {
   });
 
 
+  it("preserves every meaningful source record through preview and persistence", async () => {
+    const sourceLines = [
+      "PING G425 4-PW, shaft firm, condition 8.0 Average, trade value $210, store 207.",
+      "Titleist TSR fairway wood, maybe TSR2 or TSR3, stiff shaft, condition 9.0 Above Average, trade value $185, store 114.",
+      "Callaway mystery club, shaft unknown, condition 7.0 Below Average, trade value $80, store 301.",
+      "Odyssey White Hot putter, condition 8.0 Average, trade value $65, store 207."
+    ];
+
+    const result =
+      await executeMultiSourceIntakeDemo({
+        sources: [
+          {
+            sourceType: "FREE_TEXT",
+            sourceName:
+              "Intake preservation lifecycle fixture",
+            rawContent:
+              sourceLines.join("\n")
+          }
+        ]
+      });
+
+    try {
+      expect(result.sourcesProcessed).toBe(1);
+      expect(result.recordsExtracted).toBe(4);
+      expect(
+        result.cleanedDatasetPreview
+      ).toHaveLength(4);
+      expect(
+        result.ragReadinessSummary
+          .totalRecordCount
+      ).toBe(4);
+
+      expect(
+        result.cleanedDatasetPreview.map(
+          (record) => record.id
+        )
+      ).toEqual([
+        "custom_source_1_record_1",
+        "custom_source_1_record_2",
+        "custom_source_1_record_3",
+        "custom_source_1_record_4"
+      ]);
+
+      expect(
+        result.cleanedDatasetPreview.map(
+          (record) => record.sourceText
+        )
+      ).toEqual(sourceLines);
+
+      const unresolvedCallaway =
+        result.cleanedDatasetPreview.find(
+          (record) =>
+            record.sourceText ===
+            sourceLines[2]
+        );
+
+      expect(
+        unresolvedCallaway
+      ).toMatchObject({
+        brand: "Callaway",
+        productLine: null,
+        category: null,
+        shaftFlex: null,
+        conditionGrade:
+          "7.0 Below Average",
+        tradeInValue: 80,
+        storeId: "301",
+        reviewNeeded: true,
+        productResolution: {
+          status: "UNRESOLVED"
+        }
+      });
+      expect(
+        unresolvedCallaway?.missingFields
+      ).toEqual(
+        expect.arrayContaining([
+          "productLine",
+          "category",
+          "shaftFlex"
+        ])
+      );
+
+      const putter =
+        result.cleanedDatasetPreview.find(
+          (record) =>
+            record.sourceText ===
+            sourceLines[3]
+        );
+
+      expect(putter).toMatchObject({
+        brand: "Odyssey",
+        category: "PUTTER",
+        shaftFlex: null,
+        conditionGrade: "8.0 Average",
+        tradeInValue: 65
+      });
+      expect(
+        putter?.missingFields
+      ).not.toContain("shaftFlex");
+
+      expect(
+        result.persistedIds
+          .intakeItemIds
+      ).toHaveLength(4);
+      expect(
+        result.persistedIds
+          .aiReadyIntakeRecordIds
+      ).toHaveLength(4);
+      expect(
+        result.persistedIds
+          .reviewQueueItemIds
+      ).toHaveLength(
+        result.reviewNeeded
+      );
+
+      const intakeItems =
+        await prisma.intakeItem.findMany({
+          where: {
+            intakeBatchId:
+              result.persistedIds
+                .intakeBatchId
+          },
+          orderBy: {
+            sourceRowNumber: "asc"
+          }
+        });
+
+      expect(
+        intakeItems.map(
+          (item) => ({
+            sourceRowNumber:
+              item.sourceRowNumber,
+            rawText: item.rawText
+          })
+        )
+      ).toEqual(
+        sourceLines.map(
+          (rawText, index) => ({
+            sourceRowNumber: index + 1,
+            rawText
+          })
+        )
+      );
+
+      const persistedRecords =
+        await prisma
+          .aiReadyIntakeRecord
+          .findMany({
+            where: {
+              workflowRunId:
+                result.persistedIds
+                  .workflowRunId
+            },
+            orderBy: {
+              createdAt: "asc"
+            }
+          });
+
+      expect(
+        persistedRecords
+      ).toHaveLength(4);
+      expect(
+        persistedRecords.map(
+          (record) =>
+            record.sourceRecordId
+        )
+      ).toEqual(
+        result.cleanedDatasetPreview.map(
+          (record) => record.id
+        )
+      );
+      expect(
+        persistedRecords.map(
+          (record) => record.rawText
+        )
+      ).toEqual(sourceLines);
+
+      const persistedCallaway =
+        persistedRecords.find(
+          (record) =>
+            record.sourceRecordId ===
+            unresolvedCallaway?.id
+        );
+
+      expect(
+        persistedCallaway
+      ).toMatchObject({
+        sourceType: "FREE_TEXT",
+        reviewNeeded: true,
+        status: "NEEDS_REVIEW",
+        rawText: sourceLines[2]
+      });
+      expect(
+        persistedCallaway
+          ?.normalizedJson
+      ).toEqual(
+        expect.objectContaining({
+          brand: "Callaway",
+          productLine: null,
+          category: null,
+          sourceText: sourceLines[2],
+          reviewNeeded: true
+        })
+      );
+
+      const persistedReviewItems =
+        await prisma
+          .reviewQueueItem
+          .findMany({
+            where: {
+              workflowRunId:
+                result.persistedIds
+                  .workflowRunId
+            },
+            orderBy: {
+              createdAt: "asc"
+            }
+          });
+
+      expect(
+        persistedReviewItems
+      ).toHaveLength(
+        result.reviewNeeded
+      );
+      expect(
+        persistedReviewItems.some(
+          (item) =>
+            item.originalText ===
+            sourceLines[2]
+        )
+      ).toBe(true);
+    } finally {
+      await prisma.intakeBatch.delete({
+        where: {
+          id:
+            result.persistedIds
+              .intakeBatchId
+        }
+      });
+
+      await prisma.workflowRun.delete({
+        where: {
+          id:
+            result.persistedIds
+              .workflowRunId
+        }
+      });
+    }
+  });
+
+
+
   it("resolves an injected reference product through the multi-source workflow", async () => {
     const provider =
       createInMemoryProductReferenceProvider([

@@ -294,7 +294,73 @@ function getSourceTextMatchValue(
   return draft.sourceTextMatches[fieldName]?.trim() ?? "";
 }
 
+function isSourceSupportedProductCatalogConfirmation(
+  card: RecordReviewCard,
+) {
+  const currentProductLine =
+    getCurrentValueForField(
+      card,
+      "productLine",
+    ).trim();
+
+  if (
+    !currentProductLine ||
+    currentProductLine === "—"
+  ) {
+    return false;
+  }
+
+  const productLineIsMissing =
+    getUnresolvedMissingFields(card).some(
+      (fieldName) =>
+        normalizeComparable(fieldName) ===
+        "productline",
+    );
+
+  if (productLineIsMissing) {
+    return false;
+  }
+
+  const modelReasonCodes =
+    card.modelReviewOutcome?.outcomeType ===
+    "NO_SAFE_REPAIR"
+      ? card.modelReviewOutcome.reasonCodes
+      : [];
+
+  const signals = [
+    card.reviewItem?.reason ?? "",
+    ...card.reviewReasons,
+    ...modelReasonCodes,
+  ];
+
+  return signals.some((signal) => {
+    const normalizedSignal =
+      normalizeComparable(signal);
+
+    return (
+      normalizedSignal.includes(
+        "productunresolved",
+      ) ||
+      normalizedSignal.includes(
+        "unresolvedproduct",
+      ) ||
+      normalizedSignal.includes(
+        "productresolutionisunresolved",
+      )
+    );
+  });
+}
+
 function shouldStartCorrectionFieldBlank(card: RecordReviewCard, fieldName: CorrectionFormFieldName) {
+  if (
+    fieldName === "productLine" &&
+    isSourceSupportedProductCatalogConfirmation(
+      card,
+    )
+  ) {
+    return false;
+  }
+
   return getCorrectionFocusFields(card).some(
     (focusField) => normalizeComparable(focusField) === normalizeComparable(fieldName),
   );
@@ -782,6 +848,19 @@ export function getBlockingCorrectionFields(
       return false;
     }
 
+    const currentValue =
+      getCurrentValueForField(card, fieldName).trim();
+
+    if (
+      isSourceSupportedProductCatalogConfirmation(
+        card,
+      ) &&
+      normalizeComparable(correctedValue) ===
+        normalizeComparable(currentValue)
+    ) {
+      return false;
+    }
+
     const inventoryCandidates =
       getInventoryProductLineCandidates(card);
 
@@ -792,9 +871,6 @@ export function getBlockingCorrectionFields(
           normalizeComparable(correctedValue),
       );
     }
-
-    const currentValue =
-      getCurrentValueForField(card, fieldName).trim();
 
     if (!currentValue || currentValue === "—") {
       return false;
@@ -946,7 +1022,7 @@ function getCorrectionFocusFields(card: RecordReviewCard) {
   return Array.from(fields);
 }
 
-function getRecordCardSummary(card: RecordReviewCard) {
+export function getRecordCardSummary(card: RecordReviewCard) {
   if (!cardHasActiveCorrectionWork(card)) {
     if (card.status === "resolved") {
       return "Review item resolved.";
@@ -955,6 +1031,20 @@ function getRecordCardSummary(card: RecordReviewCard) {
     if (card.status === "ready") {
       return "No action required. This record passed the current review gates.";
     }
+  }
+
+  if (
+    isSourceSupportedProductCatalogConfirmation(
+      card,
+    )
+  ) {
+    const currentProductLine =
+      getCurrentValueForField(
+        card,
+        "productLine",
+      );
+
+    return `Catalog identity confirmation: ${currentProductLine}`;
   }
 
   const focusFields = getCorrectionFocusFields(card);
@@ -988,6 +1078,29 @@ function CorrectionFocusCallout({
   focusFieldsOverride?: string[];
 }) {
   const focusFields = focusFieldsOverride ?? getCorrectionFocusFields(card);
+
+  if (
+    isSourceSupportedProductCatalogConfirmation(
+      card,
+    ) &&
+    focusFields.includes("productLine")
+  ) {
+    const currentProductLine =
+      getCurrentValueForField(
+        card,
+        "productLine",
+      );
+
+    return (
+      <div className="guided-correction-focus">
+        <strong>Catalog identity to confirm</strong>
+        <p>
+          The source-supported product line is {currentProductLine}. Keep this value
+          unless the available evidence verifies a more specific catalog product.
+        </p>
+      </div>
+    );
+  }
 
   if (focusFields.length === 0) {
     return (
@@ -1638,6 +1751,10 @@ function RecordCorrectionPanel({
   const secondaryFields = getSecondaryCorrectionFields(visibleFields);
   const inventoryProductLineCandidates =
     getInventoryProductLineCandidates(card);
+  const isCatalogIdentityConfirmation =
+    isSourceSupportedProductCatalogConfirmation(
+      card,
+    );
   const hasOpenPriorReviewSuggestions =
     getOpenPriorReviewSuggestions(card.priorReviewSuggestions, handledSuggestionIds).length > 0;
   const hasPriorReviewSuggestions =
@@ -1647,8 +1764,16 @@ function RecordCorrectionPanel({
     return (
       <div className="guided-record-correction-panel">
         <div>
-          <strong>Ready for human correction</strong>
-          <p>Focus on {visibleFields.map(getCorrectionFieldLabel).join(", ")}.</p>
+          <strong>
+            {isCatalogIdentityConfirmation
+              ? "Ready for catalog confirmation"
+              : "Ready for human correction"}
+          </strong>
+          <p>
+            {isCatalogIdentityConfirmation
+              ? "Confirm the preserved source product line or select a catalog candidate only when the evidence supports it."
+              : `Focus on ${visibleFields.map(getCorrectionFieldLabel).join(", ")}.`}
+          </p>
         </div>
         {hasOpenPriorReviewSuggestions ? null : (
           <CorrectionFocusCallout card={card} focusFieldsOverride={visibleFields} />
@@ -1662,7 +1787,11 @@ function RecordCorrectionPanel({
         />
         {hasOpenPriorReviewSuggestions ? null : (
           <button className="guided-step-primary-action" onClick={onStartEditing} type="button">
-            {hasPriorReviewSuggestions ? "Review remaining fields" : "Review and correct"}
+            {hasPriorReviewSuggestions
+              ? "Review remaining fields"
+              : isCatalogIdentityConfirmation
+                ? "Review catalog identity"
+                : "Review and correct"}
           </button>
         )}
       </div>
@@ -1703,9 +1832,15 @@ function RecordCorrectionPanel({
     <div className="guided-record-correction-form">
       <div className="guided-record-correction-form__header">
         <div>
-          <strong>Confirm correction</strong>
+          <strong>
+            {isCatalogIdentityConfirmation
+              ? "Confirm catalog identity"
+              : "Confirm correction"}
+          </strong>
           <p>
-            Review the corrected value, add a note if needed, then resolve.
+            {isCatalogIdentityConfirmation
+              ? "Keep the source-supported product line or select a verified catalog candidate, then resolve."
+              : "Review the corrected value, add a note if needed, then resolve."}
           </p>
         </div>
         <button disabled={isSaving} onClick={onCancelEditing} type="button">
@@ -1767,7 +1902,9 @@ function RecordCorrectionPanel({
           <div className="guided-inventory-candidate-suggestions__header">
             <strong>Matching catalog candidates</strong>
             <p>
-              Select the verified generation. Manual entry remains available.
+              {isCatalogIdentityConfirmation
+                ? "Keep the source-supported value unless a candidate is verified by the available evidence."
+                : "Select the verified generation. Manual entry remains available."}
             </p>
           </div>
 
@@ -2033,6 +2170,12 @@ function getSourceMatchFieldsForForm(
 ) {
   return getCorrectionFocusFields(card).filter((fieldName) =>
     isCorrectionFormFieldName(fieldName) &&
+    !(
+      fieldName === "productLine" &&
+      isSourceSupportedProductCatalogConfirmation(
+        card,
+      )
+    ) &&
     !appliedSuggestionFieldNames.has(fieldName as CorrectionFormFieldName) &&
     REVIEW_LEARNING_SOURCE_MATCH_FIELDS.includes(
       fieldName as ReviewLearningSourceMatchField,

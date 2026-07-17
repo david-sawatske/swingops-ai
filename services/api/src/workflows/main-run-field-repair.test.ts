@@ -278,6 +278,59 @@ describe("main run field repair contract", () => {
     });
   });
 
+  it("serializes an explicit one-outcome-per-record batch contract", () => {
+    const inputJson =
+      buildMainRunFieldRepairExecutionInput({
+        workflowRunId:
+          "workflow-run-mixed-batch",
+        records: [
+          buildAdvisoryCandidateRecord(),
+          buildValidationRecord({
+            recordId: "record-2",
+            sourceText:
+              "Titleist fairway wood with multiple supplied candidates"
+          }),
+          buildValidationRecord({
+            recordId: "record-3",
+            sourceText:
+              "Unresolved equipment record with missing required fields"
+          }),
+          buildValidationRecord({
+            recordId: "record-4",
+            sourceText:
+              "Odyssey putter with an unresolved product generation",
+            fieldApplicability: {
+              shaftFlex: "NOT_APPLICABLE"
+            }
+          })
+        ]
+      });
+
+    expect(inputJson).toMatchObject({
+      outcomeCompleteness: {
+        expectedRecordCount: 4,
+        requiredRecordIds: [
+          "record-1",
+          "record-2",
+          "record-3",
+          "record-4"
+        ],
+        requirement:
+          "Return exactly one recordOutcomes entry for every requiredRecordId, preserving this order."
+      }
+    });
+
+    expect(
+      inputJson.validationRules
+    ).toEqual(
+      expect.arrayContaining([
+        "Return exactly one recordOutcomes entry for every record in records, preserving input order. Do not stop after processing records with advisoryCandidates."
+      ])
+    );
+  });
+
+
+
   it("publishes a strict provider-neutral field-repair output schema", () => {
     expect(MAIN_RUN_FIELD_REPAIR_OUTPUT_SCHEMA).toMatchObject({
       name: "main_run_field_repair",

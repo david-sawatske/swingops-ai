@@ -15,10 +15,6 @@ export function formatGuidedWorkflowInputFromRecords(
     .map((record, index) => {
       const sourceText = record.sourceText?.trim();
 
-      if (sourceText) {
-        return sourceText;
-      }
-
       const identity = [record.brand, record.productLine, record.category]
         .filter(Boolean)
         .join(" ");
@@ -32,6 +28,7 @@ export function formatGuidedWorkflowInputFromRecords(
         options.includeMissingFields && record.missingFields.length > 0
           ? "missing " + record.missingFields.join(", ")
           : null,
+        sourceText ? "source evidence: " + sourceText : null,
       ].filter(Boolean);
 
       return (

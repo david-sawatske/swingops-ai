@@ -186,17 +186,12 @@ export function FinalAuditTrace({
         {fieldRepairOutcomes.length > 0 ? (
           <div className="guided-final-review-callout">
             <strong>Validated model review outcomes</strong>
-            {fieldRepairOutcomes.slice(0, 4).map((outcome) => (
+            {fieldRepairOutcomes.map((outcome) => (
               <p key={`${outcome.recordId}-${outcome.outcomeType}`}>
                 <b>{getModelReviewOutcomeLabel(outcome.outcomeType)}:</b>{" "}
                 {outcome.summary}
               </p>
             ))}
-            {fieldRepairOutcomes.length > 4 ? (
-              <p className="guided-validation-empty-note">
-                Showing 4 of {fieldRepairOutcomes.length} validated record outcomes.
-              </p>
-            ) : null}
           </div>
         ) : null}
 
