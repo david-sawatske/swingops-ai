@@ -122,6 +122,383 @@ describe("executeEndToEndAgenticTradeInDemo", () => {
       await cleanupResult(result);
     }
   });
+  it("keeps deterministically resolved records out of model review assistance", async () => {
+    const rawInput = [
+      "Titleist TSR fairway wood, Stiff, 8.0 Average, trade value $135, store 104, generation unclear.",
+      "PING G425 4-PW, shaft marked TX, condition 8.0 Average, trade value $210, store 207.",
+      "Callaway mystery driver, shaft unknown, condition 7.0 Below Average, trade value pending, store 104.",
+      "Odyssey White Hot OG #7 putter, 8.0 Average, trade value $85, store 207.",
+      "Callaway Rogue ST Max driver, Regular, 9.0 Above Average, trade value $190, store 104."
+    ].join("\n");
+
+    const result =
+      await executeEndToEndAgenticTradeInDemo({
+        rawInput
+      });
+
+    try {
+      expect(result.parsedItems).toHaveLength(5);
+
+      const ambiguousItem = result.parsedItems.find(
+        (item) =>
+          item.rawLine.includes(
+            "Titleist TSR fairway wood"
+          )
+      );
+      const deterministicPingItem =
+        result.parsedItems.find((item) =>
+          item.rawLine.includes(
+            "PING G425 4-PW"
+          )
+        );
+      const unresolvedItem = result.parsedItems.find(
+        (item) =>
+          item.rawLine.includes(
+            "Callaway mystery driver"
+          )
+      );
+
+      expect(ambiguousItem).toMatchObject({
+        missingFields: [],
+        productResolution: {
+          status: "AMBIGUOUS"
+        }
+      });
+
+      expect(deterministicPingItem).toMatchObject({
+        shaftFlex: "TOUR_X_STIFF",
+        missingFields: [],
+        confidence: 0.93,
+        uncertaintyNotes: [],
+        productResolution: {
+          status: "MATCHED"
+        },
+        parserEvidence: {
+          shaftFlex: {
+            value: "TOUR_X_STIFF",
+            sourceText: "shaft marked TX"
+          }
+        }
+      });
+
+      expect(unresolvedItem).toMatchObject({
+        productLine: null,
+        shaftFlex: null,
+        missingFields: expect.arrayContaining([
+          "productLine",
+          "shaftFlex"
+        ]),
+        productResolution: {
+          status: "UNRESOLVED"
+        }
+      });
+
+      const modelCallLog =
+        await prisma.modelCallLog.findUniqueOrThrow({
+          where: {
+            id:
+              result.fieldRepairExecution
+                .modelCallLogId
+          }
+        });
+      const requestJson =
+        modelCallLog.requestJson as {
+          inputJson?: {
+            records?: Array<{
+              recordId?: string;
+              currentFields?: {
+                shaftFlex?: string | null;
+              };
+            }>;
+          };
+        };
+      const selectedRecords =
+        requestJson.inputJson?.records ?? [];
+      const selectedRecordIds =
+        selectedRecords.map(
+          (record) => record.recordId
+        );
+
+      expect(selectedRecords).toHaveLength(2);
+      expect(selectedRecordIds).toEqual([
+        ambiguousItem?.id,
+        unresolvedItem?.id
+      ]);
+      expect(selectedRecordIds).not.toContain(
+        deterministicPingItem?.id
+      );
+
+      expect(
+        result.fieldRepairExecution.recordOutcomes
+      ).toHaveLength(2);
+      expect(
+        result.fieldRepairExecution.recordOutcomes
+      ).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            recordId: ambiguousItem?.id,
+            outcomeType:
+              "CANDIDATE_COMPARISON"
+          }),
+          expect.objectContaining({
+            recordId: unresolvedItem?.id,
+            outcomeType: "NO_SAFE_REPAIR"
+          })
+        ])
+      );
+      expect(
+        result.fieldRepairExecution.recordOutcomes.map(
+          (outcome) => outcome.recordId
+        )
+      ).not.toContain(deterministicPingItem?.id);
+      expect(
+        result.fieldRepairExecution.suggestions
+      ).toEqual([]);
+      expect(
+        result.fieldRepairExecution.validationPassed
+      ).toBe(true);
+    } finally {
+      await cleanupResult(result);
+    }
+  });
+
+  it("surfaces an approved prior correction as model review assistance without applying it", async () => {
+    const priorWorkflowRun =
+      await prisma.workflowRun.create({
+        data: {
+          workflowName:
+            "prior-review-advisory-candidate-source",
+          status: "COMPLETED"
+        }
+      });
+
+    const priorReviewQueueItem =
+      await prisma.reviewQueueItem.create({
+        data: {
+          workflowRunId: priorWorkflowRun.id,
+          reason: "MISSING_REQUIRED_FIELDS",
+          status: "RESOLVED",
+          originalText:
+            "Prior reviewed PING record with shaft firm",
+          proposedGolfClubJson: {
+            brand: "PING",
+            productLine: "G425",
+            category: "IRON_SET",
+            shaftFlex: null,
+            missingFields: ["shaftFlex"]
+          }
+        }
+      });
+
+    const reviewedTradeInRecord =
+      await prisma.reviewedTradeInRecord.create({
+        data: {
+          reviewQueueItemId:
+            priorReviewQueueItem.id,
+          workflowRunId: priorWorkflowRun.id,
+          originalText:
+            "Prior reviewed PING record with shaft firm",
+          correctedBrand: "PING",
+          correctedProductLine: "G425",
+          correctedCategory: "IRON_SET",
+          correctedShaftFlex: "STIFF",
+          reviewerNotes:
+            "Reviewer confirmed shaft firm means STIFF."
+        }
+      });
+
+    const learningEvent =
+      await prisma.humanReviewLearningEvent.create({
+        data: {
+          reviewedTradeInRecordId:
+            reviewedTradeInRecord.id,
+          reviewQueueItemId:
+            priorReviewQueueItem.id,
+          workflowRunId: priorWorkflowRun.id,
+          fieldName: "shaftFlex",
+          rawTextMatch: "shaft firm",
+          proposedValue: "Missing",
+          correctedValue: "STIFF",
+          evidenceText:
+            "Reviewer corrected shaft firm to STIFF.",
+          confidenceImpact:
+            "Require reviewer confirmation before applying."
+        }
+      });
+
+    let result:
+      EndToEndAgenticTradeInDemoResult | null =
+      null;
+
+    try {
+      const sourceText =
+        "PING G425 4-PW shaft firm condition 8.0 Average trade value $210";
+
+      result =
+        await executeEndToEndAgenticTradeInDemo({
+          rawInput: sourceText
+        });
+
+      expect(result.parsedItems).toHaveLength(1);
+
+      const parsedItem = result.parsedItems[0]!;
+
+      expect(parsedItem).toMatchObject({
+        rawLine: sourceText,
+        brand: "PING",
+        productLine: "G425",
+        category: "IRON_SET",
+        shaftFlex: null,
+        missingFields:
+          expect.arrayContaining([
+            "shaftFlex"
+          ]),
+        productResolution: {
+          status: "MATCHED"
+        }
+      });
+
+      const priorSuggestions =
+        result
+          .priorReviewLearningSuggestionsByItem
+          .find(
+            (item) =>
+              item.parsedItemId === parsedItem.id
+          )?.suggestions ?? [];
+
+      expect(priorSuggestions).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            fieldName: "shaftFlex",
+            rawTextMatch: "shaft firm",
+            suggestedValue: "STIFF",
+            strength: "STRONG",
+            sourceLearningEventId:
+              learningEvent.id,
+            status: "SUGGESTED"
+          })
+        ])
+      );
+
+      const modelCallLog =
+        await prisma.modelCallLog.findUniqueOrThrow({
+          where: {
+            id:
+              result.fieldRepairExecution
+                .modelCallLogId
+          }
+        });
+      const requestJson =
+        modelCallLog.requestJson as {
+          inputJson?: {
+            records?: Array<{
+              recordId?: string;
+              currentFields?: {
+                shaftFlex?: string | null;
+              };
+              advisoryCandidates?: Array<{
+                candidateId?: string;
+                sourceType?: string;
+                sourceEvidenceId?: string;
+                sourceReferenceId?: string;
+                suggestion?: {
+                  recordId?: string;
+                  fieldName?: string;
+                  sourcePhrase?: string;
+                  candidateValue?:
+                    string | number;
+                  confidence?: number;
+                  reviewRequired?: boolean;
+                };
+              }>;
+            }>;
+          };
+        };
+
+      const selectedRecord =
+        requestJson.inputJson?.records?.find(
+          (record) =>
+            record.recordId === parsedItem.id
+        );
+
+      expect(selectedRecord).toMatchObject({
+        currentFields: {
+          shaftFlex: null
+        },
+        advisoryCandidates: [
+          {
+            candidateId:
+              `prior-review:${learningEvent.id}:shaftFlex`,
+            sourceType: "PRIOR_REVIEW",
+            sourceEvidenceId:
+              `${parsedItem.id}:prior-review`,
+            sourceReferenceId:
+              learningEvent.id,
+            suggestion: {
+              recordId: parsedItem.id,
+              fieldName: "shaftFlex",
+              sourcePhrase: "shaft firm",
+              candidateValue: "STIFF",
+              reviewRequired: true
+            }
+          }
+        ]
+      });
+
+      expect(
+        result.fieldRepairExecution
+          .validationPassed
+      ).toBe(true);
+      expect(
+        result.fieldRepairExecution.recordOutcomes
+      ).toEqual([
+        expect.objectContaining({
+          outcomeType: "REPAIR_SUGGESTED",
+          recordId: parsedItem.id,
+          evidenceIds:
+            expect.arrayContaining([
+              `${parsedItem.id}:prior-review`
+            ]),
+          suggestions: [
+            expect.objectContaining({
+              recordId: parsedItem.id,
+              fieldName: "shaftFlex",
+              sourcePhrase: "shaft firm",
+              candidateValue: "STIFF",
+              reviewRequired: true
+            })
+          ]
+        })
+      ]);
+      expect(
+        result.fieldRepairExecution.suggestions
+      ).toEqual([
+        expect.objectContaining({
+          recordId: parsedItem.id,
+          fieldName: "shaftFlex",
+          sourcePhrase: "shaft firm",
+          candidateValue: "STIFF",
+          reviewRequired: true
+        })
+      ]);
+
+      expect(parsedItem.shaftFlex).toBeNull();
+      expect(parsedItem.missingFields).toContain(
+        "shaftFlex"
+      );
+    } finally {
+      if (result) {
+        await cleanupResult(result);
+      }
+
+      await prisma.workflowRun.deleteMany({
+        where: {
+          id: priorWorkflowRun.id
+        }
+      });
+    }
+  });
+
   it("resolves matching upstream intake review markers when the guarded workflow owns the review", async () => {
     const sourceText =
       "PING G425 4-PW shaft unknown condition unclear value pending review store 207";

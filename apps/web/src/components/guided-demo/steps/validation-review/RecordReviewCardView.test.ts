@@ -42,6 +42,7 @@ function buildReviewCard(overrides: Partial<RecordReviewCard> = {}): RecordRevie
       updatedAt: "2026-07-04T00:00:00.000Z",
     },
     reviewOutcome: null,
+    modelReviewOutcome: null,
     inventoryEvidence: null,
     valuationEvidence: null,
     sourceEvidence: "PING G425 4-PW shaft unknown condition unclear value pending review",
@@ -311,6 +312,100 @@ describe("buildCorrectionDraft", () => {
     ).toEqual([]);
   });
 
+
+  it("allows explicit confirmation of a provisional value when it is a supplied catalog candidate", () => {
+    const card = buildReviewCard({
+      parsedRecord: {
+        brand: "Titleist",
+        productLine: "TSR2",
+        category: "FAIRWAY_WOOD",
+        shaftFlex: "STIFF",
+        conditionGrade: "9.0 Above Average",
+        tradeInValue: 185,
+      },
+      reviewItem: {
+        id: "review-tsr-confirmation",
+        workflowRunId: "workflow-1",
+        intakeItemId: "intake-item-tsr-confirmation",
+        status: "OPEN",
+        golfClubId: null,
+        reason: "AMBIGUOUS_INPUT",
+        resolvedAt: null,
+        proposedGolfClubJson: {
+          brand: "Titleist",
+          productLine: "TSR2",
+          category: "FAIRWAY_WOOD",
+          shaftFlex: "STIFF",
+          conditionGrade: "9.0 Above Average",
+          tradeInValue: 185,
+          missingFields: [],
+          uncertaintyNotes: ["model uncertain"],
+        },
+        originalText:
+          "Titleist TSR fairway wood, maybe TSR2 or TSR3, stiff shaft, condition 9.0 Above Average, trade value $185.",
+        reviewerNotes: null,
+        createdAt: "2026-07-17T00:00:00.000Z",
+        updatedAt: "2026-07-17T00:00:00.000Z",
+      },
+      sourceEvidence:
+        "Titleist TSR fairway wood, maybe TSR2 or TSR3, stiff shaft, condition 9.0 Above Average, trade value $185.",
+      missingFields: [],
+      reviewReasons: ["uncertainty: model uncertain"],
+      inventoryEvidence: {
+        parsedItemId: "parsed-item-tsr-confirmation",
+        lookup: {
+          similarProducts: [
+            {
+              productId: "tsr2",
+              sku: "TITLEIST-TSR2-FWY-2023",
+              brand: "Titleist",
+              productLine: "TSR2",
+              category: "FAIRWAY_WOOD",
+              confidence: 0.58,
+              reason: "Brand and category matched.",
+            },
+            {
+              productId: "tsr3",
+              sku: "TITLEIST-TSR3-FWY-2023",
+              brand: "Titleist",
+              productLine: "TSR3",
+              category: "FAIRWAY_WOOD",
+              confidence: 0.58,
+              reason: "Brand and category matched.",
+            },
+          ],
+        },
+      },
+    });
+
+    const initialDraft = buildCorrectionDraft(card);
+
+    expect(initialDraft.productLine).toBe("");
+    expect(
+      getBlockingCorrectionFields(card, initialDraft),
+    ).toEqual(["productLine"]);
+
+    expect(
+      getBlockingCorrectionFields(card, {
+        ...initialDraft,
+        productLine: "TSR",
+      }),
+    ).toEqual(["productLine"]);
+
+    expect(
+      getBlockingCorrectionFields(card, {
+        ...initialDraft,
+        productLine: "TSR2",
+      }),
+    ).toEqual([]);
+
+    expect(
+      getBlockingCorrectionFields(card, {
+        ...initialDraft,
+        productLine: "TSR3",
+      }),
+    ).toEqual([]);
+  });
 
   it("summarizes the value applied from a prior review suggestion", () => {
     const draft = {

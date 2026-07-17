@@ -77,6 +77,117 @@ function calculateRate(numerator: number, denominator: number): number {
   return Math.round((numerator / denominator) * 1000) / 10;
 }
 
+type AdminOpsProviderAttemptInput = {
+  provider: string;
+  model: string;
+  status: string;
+  reason: string | null;
+  errorMessage: string | null;
+  latencyMs: number | null;
+  estimatedCostUsd: number | null;
+};
+
+export function getAdminOpsProviderAttemptTelemetry(
+  attempts: AdminOpsProviderAttemptInput[]
+) {
+  const successfulAttempts = attempts.filter((attempt) =>
+    SUCCESSFUL_MODEL_ATTEMPT_STATUSES.has(attempt.status)
+  ).length;
+  const byProviderModelMap = new Map<
+    string,
+    {
+      provider: string;
+      model: string;
+      attemptCount: number;
+      successfulAttemptCount: number;
+      nonSuccessfulAttemptCount: number;
+      totalLatencyMs: number;
+      latencyAttemptCount: number;
+      estimatedCostTotal: number;
+      latestFailureMessage: string | null;
+    }
+  >();
+
+  for (const attempt of attempts) {
+    const key = `${attempt.provider}:${attempt.model}`;
+    const successful =
+      SUCCESSFUL_MODEL_ATTEMPT_STATUSES.has(attempt.status);
+    const existing = byProviderModelMap.get(key) ?? {
+      provider: attempt.provider,
+      model: attempt.model,
+      attemptCount: 0,
+      successfulAttemptCount: 0,
+      nonSuccessfulAttemptCount: 0,
+      totalLatencyMs: 0,
+      latencyAttemptCount: 0,
+      estimatedCostTotal: 0,
+      latestFailureMessage: null
+    };
+
+    existing.attemptCount += 1;
+    existing.successfulAttemptCount += successful ? 1 : 0;
+    existing.nonSuccessfulAttemptCount += successful ? 0 : 1;
+    existing.estimatedCostTotal += safeNumber(
+      attempt.estimatedCostUsd
+    );
+
+    if (attempt.latencyMs !== null) {
+      existing.totalLatencyMs += attempt.latencyMs;
+      existing.latencyAttemptCount += 1;
+    }
+
+    if (!successful && existing.latestFailureMessage === null) {
+      existing.latestFailureMessage =
+        attempt.errorMessage ??
+        attempt.reason ??
+        `Provider attempt ended with status ${attempt.status}.`;
+    }
+
+    byProviderModelMap.set(key, existing);
+  }
+
+  return {
+    totalAttempts: attempts.length,
+    successfulAttempts,
+    nonSuccessfulAttempts:
+      attempts.length - successfulAttempts,
+    attemptSuccessRate: calculateRate(
+      successfulAttempts,
+      attempts.length
+    ),
+    byProviderModel: Array.from(
+      byProviderModelMap.values()
+    )
+      .map((entry) => ({
+        provider: entry.provider,
+        model: entry.model,
+        attemptCount: entry.attemptCount,
+        successfulAttemptCount:
+          entry.successfulAttemptCount,
+        nonSuccessfulAttemptCount:
+          entry.nonSuccessfulAttemptCount,
+        averageLatencyMs:
+          entry.latencyAttemptCount > 0
+            ? Math.round(
+                entry.totalLatencyMs /
+                  entry.latencyAttemptCount
+              )
+            : null,
+        estimatedCostTotal:
+          Math.round(
+            entry.estimatedCostTotal * 1_000_000
+          ) / 1_000_000,
+        latestFailureMessage:
+          entry.latestFailureMessage
+      }))
+      .sort(
+        (left, right) =>
+          left.provider.localeCompare(right.provider) ||
+          left.model.localeCompare(right.model)
+      )
+  };
+}
+
 function getStringFromNormalizedJson(
   normalizedJson: unknown,
   fieldName: string
@@ -93,6 +204,147 @@ function getStringFromNormalizedJson(
   }
 
   return null;
+}
+
+type AdminOpsModelAssistanceTelemetry = {
+  isAssistanceCall: boolean;
+  validationPassed: boolean | null;
+  selectedRecordCount: number;
+  recordOutcomeCount: number;
+  repairSuggestedCount: number;
+  candidateComparisonCount: number;
+  noSafeRepairCount: number;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function getRecordField(
+  value: unknown,
+  fieldName: string
+): Record<string, unknown> | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const fieldValue = value[fieldName];
+
+  return isRecord(fieldValue) ? fieldValue : null;
+}
+
+function getArrayField(value: unknown, fieldName: string): unknown[] {
+  if (!isRecord(value)) {
+    return [];
+  }
+
+  const fieldValue = value[fieldName];
+
+  return Array.isArray(fieldValue) ? fieldValue : [];
+}
+
+function getStringField(value: unknown, fieldName: string): string | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const fieldValue = value[fieldName];
+
+  return typeof fieldValue === "string" ? fieldValue : null;
+}
+
+function getBooleanField(
+  value: unknown,
+  fieldName: string
+): boolean | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const fieldValue = value[fieldName];
+
+  return typeof fieldValue === "boolean" ? fieldValue : null;
+}
+
+export function getAdminOpsModelAssistanceTelemetry(
+  requestJson: unknown,
+  responseJson: unknown
+): AdminOpsModelAssistanceTelemetry {
+  const request = isRecord(requestJson) ? requestJson : null;
+  const response = isRecord(responseJson) ? responseJson : null;
+  const outputSchema = getRecordField(request, "outputSchema");
+  const isAssistanceCall =
+    getStringField(request, "policyKey") === "MAIN_RUN_FIELD_REPAIR" ||
+    getStringField(request, "agentName") === "main-run-field-repair-agent" ||
+    getStringField(outputSchema, "name") === "main_run_field_repair";
+
+  if (!isAssistanceCall) {
+    return {
+      isAssistanceCall: false,
+      validationPassed: null,
+      selectedRecordCount: 0,
+      recordOutcomeCount: 0,
+      repairSuggestedCount: 0,
+      candidateComparisonCount: 0,
+      noSafeRepairCount: 0
+    };
+  }
+
+  const executionInput = getRecordField(request, "inputJson");
+  const selectedRecordCount = getArrayField(
+    executionInput,
+    "records"
+  ).length;
+  const validation = getRecordField(response, "validation");
+  const validationPassed = getBooleanField(
+    validation,
+    "validationPassed"
+  );
+  const providerExecution = getRecordField(
+    response,
+    "providerExecution"
+  );
+  const providerOutput = getRecordField(
+    providerExecution,
+    "outputJson"
+  );
+  const parsedProviderOutput =
+    getRecordField(providerOutput, "parsedJson") ?? providerOutput;
+  const acceptedOutcomes =
+    validationPassed === true
+      ? getArrayField(parsedProviderOutput, "recordOutcomes").filter(
+          isRecord
+        )
+      : [];
+
+  const repairSuggestedCount = acceptedOutcomes.filter(
+    (outcome) =>
+      getStringField(outcome, "outcomeType") ===
+      "REPAIR_SUGGESTED"
+  ).length;
+  const candidateComparisonCount = acceptedOutcomes.filter(
+    (outcome) =>
+      getStringField(outcome, "outcomeType") ===
+      "CANDIDATE_COMPARISON"
+  ).length;
+  const noSafeRepairCount = acceptedOutcomes.filter(
+    (outcome) =>
+      getStringField(outcome, "outcomeType") ===
+      "NO_SAFE_REPAIR"
+  ).length;
+
+  return {
+    isAssistanceCall: true,
+    validationPassed,
+    selectedRecordCount,
+    recordOutcomeCount:
+      repairSuggestedCount +
+      candidateComparisonCount +
+      noSafeRepairCount,
+    repairSuggestedCount,
+    candidateComparisonCount,
+    noSafeRepairCount
+  };
 }
 
 function incrementCount(counts: Record<string, number>, key: string): void {
@@ -159,9 +411,17 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
           estimatedCostUsd: true,
           totalTokens: true,
           errorMessage: true,
+          requestJson: true,
+          responseJson: true,
           attemptLogs: {
             select: {
-              status: true
+              provider: true,
+              model: true,
+              status: true,
+              reason: true,
+              errorMessage: true,
+              latencyMs: true,
+              estimatedCostUsd: true
             },
             orderBy: {
               attemptOrder: "asc"
@@ -248,10 +508,64 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
     const callsWithLatency = modelCallLogs.filter((call) => call.latencyMs !== null);
     const failedModelCalls = modelCallLogs.filter((call) => call.status === "FAILED").length;
     const succeededModelCalls = modelCallLogs.filter((call) => call.status === "SUCCEEDED").length;
+    const modelCallTelemetry = modelCallLogs.map((call) => ({
+      call,
+      assistance: getAdminOpsModelAssistanceTelemetry(
+        call.requestJson,
+        call.responseJson
+      )
+    }));
+    const validationTrackedCalls = modelCallTelemetry.filter(
+      ({ assistance }) => assistance.validationPassed !== null
+    );
+    const validationPassedCalls = validationTrackedCalls.filter(
+      ({ assistance }) => assistance.validationPassed === true
+    ).length;
+    const validationFailedCalls =
+      validationTrackedCalls.length - validationPassedCalls;
+    const assistanceCalls = modelCallTelemetry.filter(
+      ({ assistance }) => assistance.isAssistanceCall
+    );
+    const assistanceValidationTrackedCalls = assistanceCalls.filter(
+      ({ assistance }) => assistance.validationPassed !== null
+    );
+    const assistanceValidationPassedCalls =
+      assistanceValidationTrackedCalls.filter(
+        ({ assistance }) => assistance.validationPassed === true
+      ).length;
+    const selectedRecordCount = assistanceCalls.reduce(
+      (total, { assistance }) =>
+        total + assistance.selectedRecordCount,
+      0
+    );
+    const recordOutcomeCount = assistanceCalls.reduce(
+      (total, { assistance }) =>
+        total + assistance.recordOutcomeCount,
+      0
+    );
+    const repairSuggestedCount = assistanceCalls.reduce(
+      (total, { assistance }) =>
+        total + assistance.repairSuggestedCount,
+      0
+    );
+    const candidateComparisonCount = assistanceCalls.reduce(
+      (total, { assistance }) =>
+        total + assistance.candidateComparisonCount,
+      0
+    );
+    const noSafeRepairCount = assistanceCalls.reduce(
+      (total, { assistance }) =>
+        total + assistance.noSafeRepairCount,
+      0
+    );
     const fallbackCount = modelCallLogs.filter((call) =>
       call.attemptLogs.length > 1 ||
       call.attemptLogs.some((attempt) => !SUCCESSFUL_MODEL_ATTEMPT_STATUSES.has(attempt.status))
     ).length;
+    const providerAttemptTelemetry =
+      getAdminOpsProviderAttemptTelemetry(
+        modelCallLogs.flatMap((call) => call.attemptLogs)
+      );
     const estimatedCostTotal = modelCallLogs.reduce(
       (total, call) => total + safeNumber(call.estimatedCostUsd),
       0
@@ -280,6 +594,14 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
         latencyCallCount: number;
         estimatedCostTotal: number;
         totalTokens: number;
+        validationTrackedCallCount: number;
+        validationPassedCallCount: number;
+        assistanceCallCount: number;
+        selectedRecordCount: number;
+        recordOutcomeCount: number;
+        repairSuggestedCount: number;
+        candidateComparisonCount: number;
+        noSafeRepairCount: number;
       }
     >();
 
@@ -294,17 +616,45 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
         totalLatencyMs: 0,
         latencyCallCount: 0,
         estimatedCostTotal: 0,
-        totalTokens: 0
+        totalTokens: 0,
+        validationTrackedCallCount: 0,
+        validationPassedCallCount: 0,
+        assistanceCallCount: 0,
+        selectedRecordCount: 0,
+        recordOutcomeCount: 0,
+        repairSuggestedCount: 0,
+        candidateComparisonCount: 0,
+        noSafeRepairCount: 0
       };
       const hasFallbackSignal =
         call.attemptLogs.length > 1 ||
         call.attemptLogs.some((attempt) => !SUCCESSFUL_MODEL_ATTEMPT_STATUSES.has(attempt.status));
+      const assistance = getAdminOpsModelAssistanceTelemetry(
+        call.requestJson,
+        call.responseJson
+      );
 
       existing.callCount += 1;
       existing.failedCallCount += call.status === "FAILED" ? 1 : 0;
       existing.fallbackCount += hasFallbackSignal ? 1 : 0;
       existing.estimatedCostTotal += safeNumber(call.estimatedCostUsd);
       existing.totalTokens += safeNumber(call.totalTokens);
+      existing.validationTrackedCallCount +=
+        assistance.validationPassed === null ? 0 : 1;
+      existing.validationPassedCallCount +=
+        assistance.validationPassed === true ? 1 : 0;
+      existing.assistanceCallCount +=
+        assistance.isAssistanceCall ? 1 : 0;
+      existing.selectedRecordCount +=
+        assistance.selectedRecordCount;
+      existing.recordOutcomeCount +=
+        assistance.recordOutcomeCount;
+      existing.repairSuggestedCount +=
+        assistance.repairSuggestedCount;
+      existing.candidateComparisonCount +=
+        assistance.candidateComparisonCount;
+      existing.noSafeRepairCount +=
+        assistance.noSafeRepairCount;
 
       if (call.latencyMs !== null) {
         existing.totalLatencyMs += call.latencyMs;
@@ -325,7 +675,23 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
           ? Math.round(entry.totalLatencyMs / entry.latencyCallCount)
           : null,
       estimatedCostTotal: Math.round(entry.estimatedCostTotal * 1_000_000) / 1_000_000,
-      totalTokens: entry.totalTokens
+      totalTokens: entry.totalTokens,
+      validationTrackedCallCount: entry.validationTrackedCallCount,
+      validationPassedCallCount: entry.validationPassedCallCount,
+      validationPassRate: calculateRate(
+        entry.validationPassedCallCount,
+        entry.validationTrackedCallCount
+      ),
+      assistanceCallCount: entry.assistanceCallCount,
+      selectedRecordCount: entry.selectedRecordCount,
+      recordOutcomeCount: entry.recordOutcomeCount,
+      outcomeCoverageRate: calculateRate(
+        entry.recordOutcomeCount,
+        entry.selectedRecordCount
+      ),
+      repairSuggestedCount: entry.repairSuggestedCount,
+      candidateComparisonCount: entry.candidateComparisonCount,
+      noSafeRepairCount: entry.noSafeRepairCount
     }));
 
     return {
@@ -353,7 +719,41 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
         failedCalls: failedModelCalls,
         fallbackCount,
         fallbackRate: calculateRate(fallbackCount, modelCallLogs.length),
-        validationPassRate: calculateRate(succeededModelCalls, modelCallLogs.length),
+        executionSuccessRate: calculateRate(
+          succeededModelCalls,
+          modelCallLogs.length
+        ),
+        validationTrackedCalls: validationTrackedCalls.length,
+        validationPassedCalls,
+        validationFailedCalls,
+        validationPassRate: calculateRate(
+          validationPassedCalls,
+          validationTrackedCalls.length
+        ),
+        assistance: {
+          totalCalls: assistanceCalls.length,
+          validationTrackedCalls:
+            assistanceValidationTrackedCalls.length,
+          validationPassedCalls:
+            assistanceValidationPassedCalls,
+          validationFailedCalls:
+            assistanceValidationTrackedCalls.length -
+            assistanceValidationPassedCalls,
+          validationPassRate: calculateRate(
+            assistanceValidationPassedCalls,
+            assistanceValidationTrackedCalls.length
+          ),
+          selectedRecords: selectedRecordCount,
+          recordOutcomes: recordOutcomeCount,
+          outcomeCoverageRate: calculateRate(
+            recordOutcomeCount,
+            selectedRecordCount
+          ),
+          repairSuggested: repairSuggestedCount,
+          candidateComparison: candidateComparisonCount,
+          noSafeRepair: noSafeRepairCount
+        },
+        attempts: providerAttemptTelemetry,
         averageLatencyMs,
         estimatedCostTotal: Math.round(estimatedCostTotal * 1_000_000) / 1_000_000,
         totalTokens,

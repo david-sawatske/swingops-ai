@@ -13,10 +13,27 @@ type TextParserMatchCandidate<T extends string> = {
   aliases: RegExp[];
 };
 
+function createContextualShaftCodePattern(
+  ...codes: string[]
+): RegExp {
+  const codeAlternatives = codes.join("|");
+
+  return new RegExp(
+    "\\b(?:shaft(?:\\s+flex)?|flex)" +
+      "(?:\\s+(?:marked|marking|label(?:ed)?|code(?:d)?|listed|noted|is))?" +
+      "\\s*(?:[:=]|as)?\\s*" +
+      "(?:" +
+      codeAlternatives +
+      ")\\b",
+    "i"
+  );
+}
+
 const SHAFT_FLEX_CANDIDATES: TextParserMatchCandidate<string>[] = [
   {
     value: "TOUR_X_STIFF",
     aliases: [
+      createContextualShaftCodePattern("TX"),
       /\bshaft\s+(?:flex\s+)?tour\s*x\s*-?\s*stiff\b/i,
       /\btour\s*x\s*-?\s*stiff\b/i,
       /\btx\s*flex\b/i,
@@ -27,6 +44,7 @@ const SHAFT_FLEX_CANDIDATES: TextParserMatchCandidate<string>[] = [
   {
     value: "X_STIFF",
     aliases: [
+      createContextualShaftCodePattern("X"),
       /\bshaft\s+(?:flex\s+)?x\s*-?\s*stiff\b/i,
       /\bx\s*-?\s*stiff\b/i,
       /\bx\s*flex\b/i,
@@ -36,6 +54,7 @@ const SHAFT_FLEX_CANDIDATES: TextParserMatchCandidate<string>[] = [
   {
     value: "STIFF",
     aliases: [
+      createContextualShaftCodePattern("S"),
       /\bshaft\s+(?:flex\s+)?(?:stf|stiff)\b/i,
       /\bstf\b/i,
       /\bstiff\b/i,
@@ -47,6 +66,7 @@ const SHAFT_FLEX_CANDIDATES: TextParserMatchCandidate<string>[] = [
   {
     value: "REGULAR",
     aliases: [
+      createContextualShaftCodePattern("R"),
       /\bshaft\s+(?:flex\s+)?(?:reg|regular)\b/i,
       /\breg\s*flex\b/i,
       /\br\s*flex\b/i,
@@ -58,6 +78,7 @@ const SHAFT_FLEX_CANDIDATES: TextParserMatchCandidate<string>[] = [
   {
     value: "SENIOR",
     aliases: [
+      createContextualShaftCodePattern("SR", "A"),
       /\bshaft\s+(?:flex\s+)?senior\b/i,
       /\bsenior\s*flex\b/i,
       /\bsenior\b/i,
@@ -69,6 +90,7 @@ const SHAFT_FLEX_CANDIDATES: TextParserMatchCandidate<string>[] = [
   {
     value: "LADIES",
     aliases: [
+      createContextualShaftCodePattern("L"),
       /\bshaft\s+(?:flex\s+)?lad(?:y|ies)\b/i,
       /\blad(?:y|ies)\s*flex\b/i,
       /\blad(y|ies)\b/i,
@@ -121,54 +143,202 @@ const TRADE_IN_VALUE_ALIASES = [
   /\$(\d{2,4})\b/
 ];
 
-function findTextParserMatch<T extends string>(
-  text: string,
-  candidates: TextParserMatchCandidate<T>[]
-): NormalizedParserFieldResult<T> {
-  for (const candidate of candidates) {
-    for (const alias of candidate.aliases) {
-      const match = text.match(alias);
+type ParserMatch<T extends NormalizedParserFieldValue> = {
+  value: T;
+  sourceText: string;
+  index: number;
+  end: number;
+};
 
-      if (match?.[0]) {
-        return {
-          value: candidate.value,
-          evidence: {
-            value: candidate.value,
-            sourceText: compactParserEvidenceSourceText(match[0])
-          }
-        };
+const SHAFT_FLEX_NEGATIVE_EVIDENCE_PATTERN =
+  /(?:\b(?:shaft(?:\s+flex)?|flex)\b[^.,;|]{0,48}\b(?:unknown|unclear|pending|not\s+listed|tbd|not\s+sure)\b)|(?:\b(?:unknown|unclear|pending|not\s+listed|tbd|not\s+sure)\b[^.,;|]{0,48}\b(?:shaft(?:\s+flex)?|flex)\b)/i;
+
+const CONDITION_GRADE_NEGATIVE_EVIDENCE_PATTERN =
+  /(?:\b(?:condition|cond|grade)\b[^.,;|]{0,48}\b(?:unknown|unclear|pending|not\s+listed|tbd|not\s+sure)\b)|(?:\b(?:unknown|unclear|pending|not\s+listed|tbd|not\s+sure)\b[^.,;|]{0,48}\b(?:condition|cond|grade)\b)/i;
+
+function getAllPatternMatches(
+  text: string,
+  pattern: RegExp
+): RegExpExecArray[] {
+  const flags = pattern.flags.includes("g")
+    ? pattern.flags
+    : `${pattern.flags}g`;
+  const matcher = new RegExp(pattern.source, flags);
+
+  return Array.from(text.matchAll(matcher));
+}
+
+function getParserMatches<
+  T extends NormalizedParserFieldValue
+>(
+  text: string,
+  pattern: RegExp,
+  value: T
+): ParserMatch<T>[] {
+  return getAllPatternMatches(
+    text,
+    pattern
+  ).flatMap((match) => {
+    if (!match[0] || match.index === undefined) {
+      return [];
+    }
+
+    return [
+      {
+        value,
+        sourceText:
+          compactParserEvidenceSourceText(match[0]),
+        index: match.index,
+        end: match.index + match[0].length
       }
+    ];
+  });
+}
+
+function selectNonOverlappingParserMatches<
+  T extends NormalizedParserFieldValue
+>(
+  matches: ParserMatch<T>[]
+): ParserMatch<T>[] {
+  const selected: ParserMatch<T>[] = [];
+
+  for (
+    const match of [...matches].sort(
+      (left, right) =>
+        right.sourceText.length - left.sourceText.length ||
+        left.index - right.index
+    )
+  ) {
+    const overlapsSelectedMatch = selected.some(
+      (selectedMatch) =>
+        match.index < selectedMatch.end &&
+        match.end > selectedMatch.index
+    );
+
+    if (!overlapsSelectedMatch) {
+      selected.push(match);
     }
   }
 
-  return { value: null };
+  return selected.sort(
+    (left, right) =>
+      left.index - right.index ||
+      right.sourceText.length - left.sourceText.length
+  );
+}
+
+function findTextParserMatch<T extends string>(
+  text: string,
+  candidates: TextParserMatchCandidate<T>[],
+  negativeEvidencePattern?: RegExp
+): NormalizedParserFieldResult<T> {
+  if (negativeEvidencePattern?.test(text)) {
+    return { value: null };
+  }
+
+  const matches = candidates.flatMap((candidate) =>
+    candidate.aliases.flatMap((alias) =>
+      getParserMatches(
+        text,
+        alias,
+        candidate.value
+      )
+    )
+  );
+  const selectedMatches =
+    selectNonOverlappingParserMatches(matches);
+  const uniqueValues = new Set(
+    selectedMatches.map((match) => match.value)
+  );
+
+  if (
+    selectedMatches.length === 0 ||
+    uniqueValues.size !== 1
+  ) {
+    return { value: null };
+  }
+
+  const selectedMatch = selectedMatches[0]!;
+
+  return {
+    value: selectedMatch.value,
+    evidence: {
+      value: selectedMatch.value,
+      sourceText: selectedMatch.sourceText
+    }
+  };
 }
 
 export function detectShaftFlexWithEvidence(text: string): NormalizedParserFieldResult<string> {
-  return findTextParserMatch(text, SHAFT_FLEX_CANDIDATES);
+  return findTextParserMatch(
+    text,
+    SHAFT_FLEX_CANDIDATES,
+    SHAFT_FLEX_NEGATIVE_EVIDENCE_PATTERN
+  );
 }
 
 export function detectApprovedConditionGradeWithEvidence(text: string): NormalizedParserFieldResult<string> {
-  return findTextParserMatch(text, APPROVED_CONDITION_GRADE_CANDIDATES);
+  return findTextParserMatch(
+    text,
+    APPROVED_CONDITION_GRADE_CANDIDATES,
+    CONDITION_GRADE_NEGATIVE_EVIDENCE_PATTERN
+  );
 }
 
 export function detectTradeInValueWithEvidence(text: string): NormalizedParserFieldResult<number> {
-  for (const alias of TRADE_IN_VALUE_ALIASES) {
-    const match = text.match(alias);
-    const numberText = match?.[1] ?? match?.[0]?.match(/\d{2,4}/)?.[0];
+  const matches = TRADE_IN_VALUE_ALIASES.flatMap(
+    (alias) =>
+      getAllPatternMatches(
+        text,
+        alias
+      ).flatMap((match) => {
+        const numberText =
+          match[1] ??
+          match[0]?.match(/\d{2,4}/)?.[0];
 
-    if (match?.[0] && numberText) {
-      const value = Number(numberText);
-
-      return {
-        value,
-        evidence: {
-          value,
-          sourceText: compactParserEvidenceSourceText(match[0])
+        if (
+          !match[0] ||
+          match.index === undefined ||
+          !numberText
+        ) {
+          return [];
         }
-      };
-    }
+
+        const value = Number(numberText);
+
+        return [
+          {
+            value,
+            sourceText:
+              compactParserEvidenceSourceText(
+                match[0]
+              ),
+            index: match.index,
+            end: match.index + match[0].length
+          }
+        ];
+      })
+  );
+  const selectedMatches =
+    selectNonOverlappingParserMatches(matches);
+  const uniqueValues = new Set(
+    selectedMatches.map((match) => match.value)
+  );
+
+  if (
+    selectedMatches.length === 0 ||
+    uniqueValues.size !== 1
+  ) {
+    return { value: null };
   }
 
-  return { value: null };
+  const selectedMatch = selectedMatches[0]!;
+
+  return {
+    value: selectedMatch.value,
+    evidence: {
+      value: selectedMatch.value,
+      sourceText: selectedMatch.sourceText
+    }
+  };
 }

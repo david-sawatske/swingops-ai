@@ -11,6 +11,7 @@ import {
 } from "./validationReviewOptions";
 import type {
   DemoResult,
+  ModelReviewOutcome,
   ParsedItem,
   PriorReviewLearningSuggestion,
   RecordReviewCard,
@@ -294,6 +295,21 @@ export function getReviewOutcomeForItem(
 
   return (
     reviewOutcomes.find((outcome) => outcome.reviewQueueItemId === reviewItem.id) ?? null
+  );
+}
+
+export function getModelReviewOutcomeForRecord(
+  recordOutcomes: ModelReviewOutcome[] | undefined,
+  recordIdentity: string | null,
+): ModelReviewOutcome | null {
+  if (!recordIdentity) {
+    return null;
+  }
+
+  return (
+    recordOutcomes?.find(
+      (outcome) => outcome.recordId === recordIdentity,
+    ) ?? null
   );
 }
 
@@ -635,6 +651,10 @@ export function buildRecordReviewCards(
       recordIdentity,
     });
     const reviewOutcome = getReviewOutcomeForItem(reviewItem, result.reviewOutcomes);
+    const modelReviewOutcome = getModelReviewOutcomeForRecord(
+      result.fieldRepairExecution.recordOutcomes,
+      recordIdentity,
+    );
     const missingFields = getMissingFields({ parsedRecord, reviewItem });
     const reviewReasons = getReviewReasons({ parsedRecord, reviewItem, valuationEvidence });
 
@@ -659,6 +679,7 @@ export function buildRecordReviewCards(
       parsedRecord,
       reviewItem,
       reviewOutcome,
+      modelReviewOutcome,
       inventoryEvidence,
       valuationEvidence,
       sourceEvidence: getSourceEvidence({ parsedRecord, reviewItem }),
@@ -682,7 +703,12 @@ export function buildRecordReviewCards(
 
     const parsedRecord = getProposedRecord(reviewItem) ?? {};
     const index = cards.length;
+    const recordIdentity = getRecordIdentity(parsedRecord);
     const reviewOutcome = getReviewOutcomeForItem(reviewItem, result.reviewOutcomes);
+    const modelReviewOutcome = getModelReviewOutcomeForRecord(
+      result.fieldRepairExecution.recordOutcomes,
+      recordIdentity,
+    );
     const missingFields = getMissingFields({ parsedRecord, reviewItem });
     const valuationEvidence = null;
     const reviewReasons = getReviewReasons({ parsedRecord, reviewItem, valuationEvidence });
@@ -704,6 +730,7 @@ export function buildRecordReviewCards(
       parsedRecord,
       reviewItem,
       reviewOutcome,
+      modelReviewOutcome,
       inventoryEvidence: null,
       valuationEvidence,
       sourceEvidence: getSourceEvidence({ parsedRecord, reviewItem }),

@@ -1,13 +1,16 @@
-import type { ModelProviderAdapter } from "../model-provider.types.js";
+import type {
+  ModelProviderAdapter,
+  ModelProviderExecuteInput
+} from "../model-provider.types.js";
 import {
   assertConfiguredString,
   assertRealModelCallsEnabled,
   assertSuccessfulResponse,
   buildProviderPrompt,
+  buildUsage,
   getFetch,
   getModelProviderRuntimeConfig,
   normalizeTextModelOutput,
-  buildUsage,
   readObject
 } from "../model-provider-runtime-config.js";
 
@@ -52,7 +55,7 @@ export const openAiProvider: ModelProviderAdapter = {
 
     const model = config.openAiModel ?? input.model;
     const response = await getFetch(input.fetchFn)(
-      "https://api.openai.com/v1/chat/completions",
+      "https://api.openai.com/v1/responses",
       {
         method: "POST",
         headers: {
@@ -61,23 +64,16 @@ export const openAiProvider: ModelProviderAdapter = {
         },
         body: JSON.stringify({
           model,
-          response_format: {
-            type: "json_object"
-          },
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are a SwingOps AI provider adapter. Return valid JSON only."
-            },
-            {
-              role: "user",
-              content: buildProviderPrompt({
-                ...input,
-                model
-              })
-            }
-          ]
+          store: false,
+          instructions:
+            "You are a SwingOps AI provider adapter. Return JSON matching the requested output format.",
+          input: buildProviderPrompt({
+            ...input,
+            model
+          }),
+          text: {
+            format: buildOpenAiTextFormat(input)
+          }
         })
       }
     );
@@ -88,17 +84,15 @@ export const openAiProvider: ModelProviderAdapter = {
     });
 
     const body = readObject(await response.json(), "OPENAI");
-    const choices = Array.isArray(body.choices) ? body.choices : [];
-    const firstChoice = readObject(choices[0], "OPENAI");
-    const message = readObject(firstChoice.message, "OPENAI");
-    const text = typeof message.content === "string" ? message.content : "";
-    const usage = body.usage && typeof body.usage === "object"
-      ? (body.usage as {
-          prompt_tokens?: number;
-          completion_tokens?: number;
-          total_tokens?: number;
-        })
-      : undefined;
+    const text = readOpenAiResponseText(body);
+    const usage =
+      body.usage && typeof body.usage === "object" && !Array.isArray(body.usage)
+        ? (body.usage as {
+            input_tokens?: number;
+            output_tokens?: number;
+            total_tokens?: number;
+          })
+        : undefined;
 
     return normalizeTextModelOutput({
       provider: "OPENAI",
@@ -108,8 +102,8 @@ export const openAiProvider: ModelProviderAdapter = {
       ...(usage
         ? {
             usage: buildUsage({
-              promptTokens: usage.prompt_tokens,
-              completionTokens: usage.completion_tokens,
+              promptTokens: usage.input_tokens,
+              completionTokens: usage.output_tokens,
               totalTokens: usage.total_tokens
             })
           }
@@ -117,3 +111,52 @@ export const openAiProvider: ModelProviderAdapter = {
     });
   }
 };
+
+function buildOpenAiTextFormat(
+  input: ModelProviderExecuteInput
+): Record<string, unknown> {
+  if (!input.outputSchema) {
+    return {
+      type: "json_object"
+    };
+  }
+
+  return {
+    type: "json_schema",
+    name: input.outputSchema.name,
+    schema: input.outputSchema.schema,
+    strict: input.outputSchema.strict
+  };
+}
+
+function readOpenAiResponseText(
+  body: Record<string, unknown>
+): string {
+  if (typeof body.output_text === "string") {
+    return body.output_text;
+  }
+
+  const outputItems = Array.isArray(body.output) ? body.output : [];
+
+  for (const outputItem of outputItems) {
+    if (!isRecord(outputItem) || !Array.isArray(outputItem.content)) {
+      continue;
+    }
+
+    for (const contentItem of outputItem.content) {
+      if (
+        isRecord(contentItem) &&
+        contentItem.type === "output_text" &&
+        typeof contentItem.text === "string"
+      ) {
+        return contentItem.text;
+      }
+    }
+  }
+
+  return "";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}

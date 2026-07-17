@@ -124,29 +124,91 @@ describe("model provider adapters", () => {
     });
   });
 
-  it("normalizes an injected OpenAI response without external network access", async () => {
+  it("uses Responses with strict structured output and normalizes typed output items", async () => {
+    const requests: {
+      url: string;
+      body: Record<string, unknown>;
+    }[] = [];
     const result = await openAiProvider.execute({
       ...baseInput,
       model: "gpt-4.1-mini",
+      outputSchema: {
+        name: "inventory_record",
+        version: "1.0.0",
+        strict: true,
+        schema: {
+          type: "object",
+          properties: {
+            brand: { type: "string" },
+            model: { type: "string" }
+          },
+          required: ["brand", "model"],
+          additionalProperties: false
+        }
+      },
       runtimeConfig: enabledConfig({
         openAiApiKey: "test-openai-key"
       }),
-      fetchFn: jsonFetch({
-        choices: [
-          {
-            message: {
-              content: "{\"brand\":\"TaylorMade\",\"model\":\"Stealth 2\"}"
-            }
+      fetchFn: async (url, init) => {
+        requests.push({
+          url,
+          body: JSON.parse(init.body) as Record<string, unknown>
+        });
+
+        return {
+          ok: true,
+          status: 200,
+          statusText: "OK",
+          async json() {
+            return {
+              output: [
+                {
+                  type: "message",
+                  status: "completed",
+                  content: [
+                    {
+                      type: "output_text",
+                      text:
+                        "{\"brand\":\"TaylorMade\",\"model\":\"Stealth 2\"}"
+                    }
+                  ],
+                  role: "assistant"
+                }
+              ],
+              usage: {
+                input_tokens: 20,
+                output_tokens: 8,
+                total_tokens: 28
+              }
+            };
           }
-        ],
-        usage: {
-          prompt_tokens: 20,
-          completion_tokens: 8,
-          total_tokens: 28
-        }
-      })
+        };
+      }
     });
 
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({
+      url: "https://api.openai.com/v1/responses",
+      body: {
+        model: "gpt-4.1-mini",
+        store: false,
+        text: {
+          format: {
+            type: "json_schema",
+            name: "inventory_record",
+            strict: true,
+            schema: {
+              type: "object",
+              required: ["brand", "model"],
+              additionalProperties: false
+            }
+          }
+        }
+      }
+    });
+    expect(requests[0]?.body.input).toEqual(
+      expect.stringContaining("Task type: INTAKE_PARSING")
+    );
     expect(result.outputJson).toMatchObject({
       provider: "OPENAI",
       model: "gpt-4.1-mini",

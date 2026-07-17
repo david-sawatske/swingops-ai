@@ -1,7 +1,10 @@
 import type { ExecuteEndToEndAgenticTradeInDemoResponse } from "../../../../types/workflow";
 import {
+  getModelReviewAssistanceSummary,
+  getModelReviewOutcomeLabel,
+} from "../GuidedModelReviewAssistance";
+import {
   formatCostEstimate,
-  formatFieldRepairValue,
   formatLatencyMs,
   formatProvider,
   formatQualityStatus,
@@ -31,7 +34,8 @@ export function FinalAuditTrace({
   const priorReviewSuggestions = result.priorReviewLearningSuggestionsByItem.flatMap(
     (item) => item.suggestions,
   );
-  const fieldRepairSuggestions = result.fieldRepairExecution.suggestions;
+  const fieldRepairOutcomes =
+    result.fieldRepairExecution.recordOutcomes ?? [];
   const finalProviderAttempt = result.providerFallbackTrace.attempts.at(-1) ?? null;
 
   return (
@@ -62,12 +66,8 @@ export function FinalAuditTrace({
             </p>
           </article>
           <article>
-            <strong>Field repair</strong>
-            <p>
-              {fieldRepairSuggestions.length > 0
-                ? `${fieldRepairSuggestions.length} review-facing suggestion(s) generated.`
-                : "No model field-repair suggestions were needed."}
-            </p>
+            <strong>Model review assistance</strong>
+            <p>{getModelReviewAssistanceSummary(fieldRepairOutcomes)}</p>
           </article>
           <article>
             <strong>Knowledge / RAG</strong>
@@ -147,8 +147,12 @@ export function FinalAuditTrace({
             <dd>{formatCostEstimate(finalProviderAttempt?.estimatedCostUsd ?? null)}</dd>
           </div>
           <div>
-            <dt>Field repair validation</dt>
+            <dt>Model assistance validation</dt>
             <dd>{getModelExecutionValidationLabel(result.fieldRepairExecution)}</dd>
+          </div>
+          <div>
+            <dt>Record outcomes</dt>
+            <dd>{fieldRepairOutcomes.length}</dd>
           </div>
           <div>
             <dt>Tool logs</dt>
@@ -169,34 +173,28 @@ export function FinalAuditTrace({
         </dl>
 
         <div className="guided-final-review-callout guided-model-execution-note">
-          <strong>Model output is secondary to validation and review</strong>
+          <strong>Model assistance is advisory and evidence-bound</strong>
           <p>
-            Deterministic parsing, reference data, internal tools, and prior approved corrections remain
-            the stronger evidence sources. Model output is only displayed here after the field-repair
-            contract validates it, and low-confidence suggestions remain review-facing.
+            Deterministic parsing, product resolution, reference data, internal tools,
+            and prior approved corrections remain stronger evidence sources. The model
+            can suggest a repair, compare supplied candidates, or explain why no safe
+            repair is available. Every displayed outcome passed the record-aware
+            contract.
           </p>
         </div>
 
-        {fieldRepairSuggestions.length > 0 ? (
+        {fieldRepairOutcomes.length > 0 ? (
           <div className="guided-final-review-callout">
-            <strong>Field repair suggestions generated for review</strong>
-            <ol className="guided-field-repair-suggestion-list">
-              {fieldRepairSuggestions.slice(0, 4).map((suggestion, index) => (
-                <li key={`${suggestion.recordId ?? "record"}-${suggestion.fieldName}-${suggestion.sourcePhrase}-${index}`}>
-                  <strong>
-                    {suggestion.fieldName}: {formatFieldRepairValue(suggestion.candidateValue)}
-                  </strong>
-                  <p>
-                    Source phrase “{suggestion.sourcePhrase}” · confidence{" "}
-                    {Math.round(suggestion.confidence * 100)}% ·{" "}
-                    {suggestion.reviewRequired ? "review required" : "review optional"}
-                  </p>
-                </li>
-              ))}
-            </ol>
-            {fieldRepairSuggestions.length > 4 ? (
+            <strong>Validated model review outcomes</strong>
+            {fieldRepairOutcomes.slice(0, 4).map((outcome) => (
+              <p key={`${outcome.recordId}-${outcome.outcomeType}`}>
+                <b>{getModelReviewOutcomeLabel(outcome.outcomeType)}:</b>{" "}
+                {outcome.summary}
+              </p>
+            ))}
+            {fieldRepairOutcomes.length > 4 ? (
               <p className="guided-validation-empty-note">
-                Showing 4 of {fieldRepairSuggestions.length} field repair suggestion(s).
+                Showing 4 of {fieldRepairOutcomes.length} validated record outcomes.
               </p>
             ) : null}
           </div>
@@ -204,7 +202,7 @@ export function FinalAuditTrace({
 
         {result.fieldRepairExecution.validationErrors.length > 0 ? (
           <div className="guided-final-review-callout">
-            <strong>Field repair validation errors</strong>
+            <strong>Model assistance validation errors</strong>
             {result.fieldRepairExecution.validationErrors.slice(0, 4).map((error) => (
               <p key={error}>{error}</p>
             ))}

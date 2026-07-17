@@ -9,6 +9,7 @@ import {
 import type {
   ModelProviderExecuteResult,
   ModelProviderName,
+  ModelProviderOutputSchema,
   ModelTaskType
 } from "./model-provider.types.js";
 import {
@@ -49,6 +50,7 @@ export type ExecuteModelWithProviderFallbackInput = {
   taskType: ModelTaskType;
   goal: ModelRoutingGoal;
   inputJson: Record<string, unknown>;
+  outputSchema?: ModelProviderOutputSchema;
   requireJson?: boolean;
   allowDisabledProvidersForSimulation?: boolean;
   runtimeConfig?: ModelProviderRuntimeConfig;
@@ -120,6 +122,9 @@ export async function executeModelWithProviderFallback(
         model: candidate.model,
         taskType: input.taskType,
         inputJson: input.inputJson,
+        ...(input.outputSchema !== undefined
+          ? { outputSchema: input.outputSchema }
+          : {}),
         runtimeConfig,
         ...(input.fetchFn !== undefined ? { fetchFn: input.fetchFn } : {})
       });

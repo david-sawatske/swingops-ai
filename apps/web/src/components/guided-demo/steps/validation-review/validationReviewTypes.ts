@@ -1,5 +1,6 @@
 import type {
   ExecuteEndToEndAgenticTradeInDemoResponse,
+  FieldRepairRecordOutcome,
   GlobalReviewQueueItem,
   ResolveReviewQueueItemWithCorrectionsRequest,
   ReviewConditionGrade,
@@ -34,7 +35,7 @@ export type DemoReviewQueueItem = DemoResult["reviewQueueItemsCreated"][number];
 export type ReviewQueueItem = DemoReviewQueueItem | GlobalReviewQueueItem;
 export type PriorReviewLearningSuggestion =
   DemoResult["priorReviewLearningSuggestionsByItem"][number]["suggestions"][number];
-
+export type ModelReviewOutcome = FieldRepairRecordOutcome;
 
 export type ReviewCorrectionDraft = {
   brand: string;
@@ -57,6 +58,7 @@ export type RecordReviewCard = {
   parsedRecord: Record<string, unknown>;
   reviewItem: ReviewQueueItem | null;
   reviewOutcome: ReviewOutcome | null;
+  modelReviewOutcome: ModelReviewOutcome | null;
   inventoryEvidence: Record<string, unknown> | null;
   valuationEvidence: Record<string, unknown> | null;
   sourceEvidence: string;

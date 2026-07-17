@@ -259,14 +259,8 @@ describe("workflow run routes", () => {
         workflowRunId: workflowRun.id,
         toolName: "inventory.reserveTradeInSlot",
         status: "STARTED",
-        outputJson: {
-          previewOnly: true,
-          executionAttempted: false,
-          policyDecision: "REQUIRES_HUMAN_APPROVAL",
-          policyReasonCodes: ["MUTATION_TOOL", "HUMAN_APPROVAL_REQUIRED"],
-          invocationStatus: "BLOCKED",
-          requestedBy: "operator@example.com"
-        }
+        inputJson: null,
+        outputJson: null
       });
       expect(listedRun.totalToolCallLogCount).toBe(2);
       expect(listedRun.auditOnlyToolCallLogCount).toBe(1);
