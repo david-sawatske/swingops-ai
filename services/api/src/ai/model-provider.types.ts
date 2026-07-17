@@ -36,6 +36,13 @@ export type ModelProviderModelConfig = {
   reason: string;
 };
 
+export type ModelProviderOutputSchema = {
+  name: string;
+  version: string;
+  strict: boolean;
+  schema: Record<string, unknown>;
+};
+
 export type ModelProviderAdapter = {
   provider: ModelProviderName;
   displayName: string;
@@ -49,6 +56,7 @@ export type ModelProviderExecuteInput = {
   model: string;
   taskType: ModelTaskType;
   inputJson: Record<string, unknown>;
+  outputSchema?: ModelProviderOutputSchema;
   runtimeConfig?: ModelProviderRuntimeConfig;
   fetchFn?: ModelProviderFetch;
 };

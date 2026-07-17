@@ -13,11 +13,15 @@ import {
   SHAFT_FLEX_OPTIONS,
 } from "./validationReviewOptions";
 import type {
+  ModelReviewOutcome,
   PriorReviewLearningSuggestion,
   RecordReviewCard,
   ReviewCorrectionDraft,
   ReviewQueueItem,
 } from "./validationReviewTypes";
+import {
+  getModelReviewOutcomeLabel,
+} from "../GuidedModelReviewAssistance";
 import {
   formatDisplayValue,
   formatEnumLabel,
@@ -778,6 +782,17 @@ export function getBlockingCorrectionFields(
       return false;
     }
 
+    const inventoryCandidates =
+      getInventoryProductLineCandidates(card);
+
+    if (inventoryCandidates.length > 0) {
+      return !inventoryCandidates.some(
+        (candidate) =>
+          normalizeComparable(candidate.productLine) ===
+          normalizeComparable(correctedValue),
+      );
+    }
+
     const currentValue =
       getCurrentValueForField(card, fieldName).trim();
 
@@ -1424,6 +1439,118 @@ function RecordValidationDetails({ card }: { card: RecordReviewCard }) {
   );
 }
 
+function ModelReviewAssistancePanel({
+  outcome,
+}: {
+  outcome: ModelReviewOutcome;
+}) {
+  const outcomeModifier = outcome.outcomeType
+    .toLowerCase()
+    .replace(/_/g, "-");
+
+  return (
+    <section
+      aria-label="Model review assistance for this record"
+      className={`guided-record-model-assistance guided-record-model-assistance--${outcomeModifier}`}
+    >
+      <div className="guided-record-model-assistance__header">
+        <div>
+          <span className="model-route-card__eyebrow">
+            Advisory evidence
+          </span>
+          <strong>Model review assistance</strong>
+        </div>
+
+        <span className="guided-record-model-assistance__outcome">
+          {getModelReviewOutcomeLabel(outcome.outcomeType)}
+        </span>
+      </div>
+
+      <p className="guided-record-model-assistance__summary">
+        {outcome.summary}
+      </p>
+
+      {outcome.outcomeType === "REPAIR_SUGGESTED" ? (
+        <div className="guided-record-model-assistance__items">
+          {outcome.suggestions.map((suggestion, index) => (
+            <article
+              key={`${suggestion.fieldName}-${suggestion.sourcePhrase}-${index}`}
+            >
+              <dl>
+                <div>
+                  <dt>Field</dt>
+                  <dd>{formatFieldLabel(suggestion.fieldName)}</dd>
+                </div>
+                <div>
+                  <dt>Suggested value</dt>
+                  <dd>
+                    {formatDisplayValue(suggestion.candidateValue, {
+                      currency: suggestion.fieldName === "tradeInValue",
+                    })}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Source phrase</dt>
+                  <dd>“{suggestion.sourcePhrase}”</dd>
+                </div>
+                <div>
+                  <dt>Confidence</dt>
+                  <dd>{Math.round(suggestion.confidence * 100)}%</dd>
+                </div>
+              </dl>
+
+              <p>{suggestion.reason}</p>
+            </article>
+          ))}
+        </div>
+      ) : null}
+
+      {outcome.outcomeType === "CANDIDATE_COMPARISON" ? (
+        <div className="guided-record-model-assistance__candidate-list">
+          <strong>Supplied product candidates</strong>
+          <div>
+            {outcome.candidateProductIds.map((candidateId) => (
+              <code key={candidateId}>{candidateId}</code>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {outcome.outcomeType === "NO_SAFE_REPAIR" ? (
+        <div className="guided-record-model-assistance__reason-list">
+          <strong>Why the model withheld a repair</strong>
+          <ul>
+            {outcome.reasonCodes.map((reasonCode) => (
+              <li key={reasonCode}>
+                {formatEnumLabel(reasonCode)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      <div className="guided-record-model-assistance__question">
+        <strong>Reviewer question</strong>
+        <p>{outcome.reviewerQuestion}</p>
+      </div>
+
+      <details className="guided-record-model-assistance__evidence">
+        <summary>Cited evidence</summary>
+        <div>
+          {outcome.evidenceIds.map((evidenceId) => (
+            <code key={evidenceId}>{evidenceId}</code>
+          ))}
+        </div>
+      </details>
+
+      <small className="guided-record-model-assistance__advisory">
+        Advisory only. Deterministic systems, approved reference data and saved
+        human corrections remain authoritative.
+      </small>
+    </section>
+  );
+}
+
 function RecordCorrectionPanel({
   activeReviewQueueItemId,
   card,
@@ -2022,6 +2149,12 @@ export function RecordReviewCardView({
       </summary>
 
       <div className="guided-record-review-card__content">
+        {card.modelReviewOutcome ? (
+          <ModelReviewAssistancePanel
+            outcome={card.modelReviewOutcome}
+          />
+        ) : null}
+
         {card.status === "ready" ? (
           <PassedRecordReviewSummary card={card} />
         ) : (

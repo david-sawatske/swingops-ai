@@ -95,7 +95,40 @@ export type AdminOpsModelExecutionsSummary = {
   failedCalls: number;
   fallbackCount: number;
   fallbackRate: number;
+  executionSuccessRate: number;
+  validationTrackedCalls: number;
+  validationPassedCalls: number;
+  validationFailedCalls: number;
   validationPassRate: number;
+  assistance: {
+    totalCalls: number;
+    validationTrackedCalls: number;
+    validationPassedCalls: number;
+    validationFailedCalls: number;
+    validationPassRate: number;
+    selectedRecords: number;
+    recordOutcomes: number;
+    outcomeCoverageRate: number;
+    repairSuggested: number;
+    candidateComparison: number;
+    noSafeRepair: number;
+  };
+  attempts: {
+    totalAttempts: number;
+    successfulAttempts: number;
+    nonSuccessfulAttempts: number;
+    attemptSuccessRate: number;
+    byProviderModel: Array<{
+      provider: string;
+      model: string;
+      attemptCount: number;
+      successfulAttemptCount: number;
+      nonSuccessfulAttemptCount: number;
+      averageLatencyMs: number | null;
+      estimatedCostTotal: number;
+      latestFailureMessage: string | null;
+    }>;
+  };
   averageLatencyMs: number | null;
   estimatedCostTotal: number;
   totalTokens: number;
@@ -108,6 +141,16 @@ export type AdminOpsModelExecutionsSummary = {
     averageLatencyMs: number | null;
     estimatedCostTotal: number;
     totalTokens: number;
+    validationTrackedCallCount: number;
+    validationPassedCallCount: number;
+    validationPassRate: number;
+    assistanceCallCount: number;
+    selectedRecordCount: number;
+    recordOutcomeCount: number;
+    outcomeCoverageRate: number;
+    repairSuggestedCount: number;
+    candidateComparisonCount: number;
+    noSafeRepairCount: number;
   }>;
 };
 

@@ -50,17 +50,25 @@ export const mockProvider: ModelProviderAdapter = {
 function buildDeterministicFieldRepairOutput(
   inputJson: Record<string, unknown>
 ): Record<string, unknown> {
-  const records = Array.isArray(inputJson.records) ? inputJson.records : [];
-  const suggestions = records.flatMap((record) => {
-    if (!isRecord(record)) {
-      return [];
-    }
+  const records = Array.isArray(inputJson.records)
+    ? inputJson.records.filter(isRecord)
+    : [];
+  const recordResults = records.map((record) => {
+    const suggestions = buildRecordSuggestions(record);
 
-    return buildRecordSuggestions(record);
+    return {
+      suggestions,
+      outcome: buildRecordOutcome(record, suggestions)
+    };
   });
 
   return {
-    suggestions
+    recordOutcomes: recordResults.map((result) => result.outcome),
+    suggestions: recordResults.flatMap((result) =>
+      result.outcome.outcomeType === "REPAIR_SUGGESTED"
+        ? result.suggestions
+        : []
+    )
   };
 }
 
@@ -72,6 +80,13 @@ function buildRecordSuggestions(record: Record<string, unknown>) {
     getString(record.originalText) ??
     "";
   const missingFields = getStringArray(record.missingFields);
+  const advisorySuggestions =
+    getRecordAdvisorySuggestions(record);
+
+  if (advisorySuggestions.length > 0) {
+    return advisorySuggestions;
+  }
+
   const suggestions: Record<string, unknown>[] = [];
 
   if (missingFields.includes("shaftFlex")) {
@@ -111,6 +126,148 @@ function buildRecordSuggestions(record: Record<string, unknown>) {
   }
 
   return suggestions;
+}
+
+function getRecordAdvisorySuggestions(
+  record: Record<string, unknown>
+): Record<string, unknown>[] {
+  if (!Array.isArray(record.advisoryCandidates)) {
+    return [];
+  }
+
+  return record.advisoryCandidates
+    .filter(isRecord)
+    .flatMap((candidate) => {
+      const suggestion = isRecord(candidate.suggestion)
+        ? candidate.suggestion
+        : null;
+
+      if (!suggestion) {
+        return [];
+      }
+
+      const recordId = getString(suggestion.recordId);
+      const fieldName = getString(suggestion.fieldName);
+      const sourcePhrase =
+        getString(suggestion.sourcePhrase);
+      const reason = getString(suggestion.reason);
+      const candidateValue =
+        suggestion.candidateValue;
+      const confidence = suggestion.confidence;
+      const reviewRequired =
+        suggestion.reviewRequired;
+
+      if (
+        !recordId ||
+        !fieldName ||
+        !sourcePhrase ||
+        !reason ||
+        (
+          typeof candidateValue !== "string" &&
+          typeof candidateValue !== "number"
+        ) ||
+        (
+          typeof candidateValue === "number" &&
+          !Number.isFinite(candidateValue)
+        ) ||
+        typeof confidence !== "number" ||
+        !Number.isFinite(confidence) ||
+        typeof reviewRequired !== "boolean"
+      ) {
+        return [];
+      }
+
+      return [
+        {
+          recordId,
+          fieldName,
+          sourcePhrase,
+          candidateValue,
+          confidence,
+          reason,
+          reviewRequired
+        }
+      ];
+    });
+}
+
+function buildRecordOutcome(
+  record: Record<string, unknown>,
+  suggestions: Record<string, unknown>[]
+): Record<string, unknown> {
+  const recordId = getString(record.recordId) ?? "unknown-record";
+  const evidenceIds = getRecordEvidenceIds(record);
+  const productResolution = isRecord(record.productResolution)
+    ? record.productResolution
+    : null;
+  const productResolutionStatus = getString(productResolution?.status);
+  const candidateProductIds = getStringArray(
+    productResolution?.candidateProductIds
+  );
+
+  if (
+    productResolutionStatus === "AMBIGUOUS" &&
+    candidateProductIds.length >= 2
+  ) {
+    return {
+      outcomeType: "CANDIDATE_COMPARISON",
+      recordId,
+      summary:
+        "Deterministic product resolution returned multiple candidates that require reviewer confirmation.",
+      evidenceIds,
+      reviewerQuestion:
+        "Which supplied product candidate matches the club generation shown in the source?",
+      candidateProductIds
+    };
+  }
+
+  if (suggestions.length > 0) {
+    return {
+      outcomeType: "REPAIR_SUGGESTED",
+      recordId,
+      summary:
+        `${suggestions.length} source-supported field repair suggestion(s) are available for review.`,
+      evidenceIds,
+      reviewerQuestion:
+        "Which source-supported field repair should be applied to this record?",
+      suggestions
+    };
+  }
+
+  return {
+    outcomeType: "NO_SAFE_REPAIR",
+    recordId,
+    summary:
+      "The supplied evidence did not support a policy-safe field repair.",
+    evidenceIds,
+    reviewerQuestion:
+      "Which missing or uncertain value can be confirmed from the original source?",
+    reasonCodes: getRecordReviewReasonCodes(record)
+  };
+}
+
+function getRecordEvidenceIds(record: Record<string, unknown>): string[] {
+  if (!Array.isArray(record.evidence)) {
+    return [];
+  }
+
+  return record.evidence
+    .filter(isRecord)
+    .map((evidence) => getString(evidence.evidenceId))
+    .filter((evidenceId): evidenceId is string => evidenceId !== null);
+}
+
+function getRecordReviewReasonCodes(
+  record: Record<string, unknown>
+): string[] {
+  const selectionReason = isRecord(record.selectionReason)
+    ? record.selectionReason
+    : null;
+  const reasonCodes = getStringArray(selectionReason?.reviewReasonCodes);
+
+  return reasonCodes.length > 0
+    ? reasonCodes
+    : ["INSUFFICIENT_EVIDENCE"];
 }
 
 function findMockShaftFlexSuggestion(sourceText: string) {

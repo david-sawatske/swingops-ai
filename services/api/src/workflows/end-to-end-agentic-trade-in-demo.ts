@@ -29,15 +29,24 @@ import {
   type ReadOnlyToolInvocationResult
 } from "../tools/read-only-tool-invocation.js";
 import {
+  buildPriorReviewFieldRepairAdvisoryCandidates
+} from "./field-repair-advisory-candidates.js";
+import {
+  isShaftFlexApplicable
+} from "./golf-field-applicability.js";
+import {
   createModelExecutionLogForWorkflowRun
 } from "./workflow-model-logging.js";
 import {
   MAIN_RUN_FIELD_REPAIR_AGENT_NAME,
+  MAIN_RUN_FIELD_REPAIR_OUTPUT_SCHEMA,
   MAIN_RUN_FIELD_REPAIR_POLICY_KEY,
   MAIN_RUN_FIELD_REPAIR_TASK_TYPE,
   buildMainRunFieldRepairExecutionInput,
   validateMainRunFieldRepairModelOutput,
-  type FieldRepairSuggestion
+  type FieldRepairRecordOutcome,
+  type FieldRepairSuggestion,
+  type MainRunFieldRepairRecordInput
 } from "./main-run-field-repair.js";
 import {
   buildWorkflowQualityBundle,
@@ -87,6 +96,7 @@ export type EndToEndAgenticTradeInDemoResult = {
   modelCallLog: ModelCallLog;
   fieldRepairExecution: {
     modelCallLogId: string;
+    recordOutcomes: FieldRepairRecordOutcome[];
     suggestions: FieldRepairSuggestion[];
     jsonValid: boolean;
     validationPassed: boolean;
@@ -607,7 +617,8 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     }
   });
 
-  const priorReviewLearningEvidenceByItem = [];
+  const priorReviewLearningEvidenceByItem:
+    EndToEndAgenticTradeInDemoResult["priorReviewLearningEvidenceByItem"] = [];
 
   for (const item of parsedItems) {
     const evidence = await findPriorReviewLearningEvidence({
@@ -634,7 +645,8 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
       suggestions: buildPriorReviewLearningSuggestionsFromEvidence(item.evidence)
     }));
 
-  const knowledgeMatchesByItem = [];
+  const knowledgeMatchesByItem:
+    EndToEndAgenticTradeInDemoResult["knowledgeMatchesByItem"] = [];
 
   for (const item of parsedItems) {
     const query = buildKnowledgeQuery(item);
@@ -683,23 +695,154 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     };
   });
 
+  const selectedFieldRepairItems =
+    parsedItems.filter(shouldRunFieldRepair);
+
+  const fieldRepairRecords: MainRunFieldRepairRecordInput[] =
+    selectedFieldRepairItems.map((item) => {
+      const knowledgeEvidence = knowledgeMatchesByItem.find(
+        (evidence) => evidence.parsedItemId === item.id
+      );
+      const inventoryEvidence = inventoryMatchesByItem.find(
+        (evidence) => evidence.parsedItemId === item.id
+      );
+      const valuationEvidence = valuationEvidenceByItem.find(
+        (evidence) => evidence.parsedItemId === item.id
+      );
+      const priorReviewEvidence = priorReviewLearningEvidenceByItem.find(
+        (evidence) => evidence.parsedItemId === item.id
+      );
+      const priorReviewSuggestions =
+        priorReviewLearningSuggestionsByItem.find(
+          (suggestions) =>
+            suggestions.parsedItemId === item.id
+        );
+      const fieldApplicability = {
+        shaftFlex: isShaftFlexApplicable(item.category)
+          ? "REQUIRED" as const
+          : "NOT_APPLICABLE" as const
+      };
+      const advisoryCandidates =
+        buildPriorReviewFieldRepairAdvisoryCandidates({
+          recordId: item.id,
+          sourceText: item.rawLine,
+          missingFields: item.missingFields,
+          fieldApplicability,
+          productResolutionStatus:
+            item.productResolution.status,
+          sourceEvidenceId:
+            `${item.id}:prior-review`,
+          priorReviewSuggestions:
+            priorReviewSuggestions?.suggestions ?? []
+        });
+      const reviewReasonCodes = [
+        item.confidence < 0.72 ? "LOW_CONFIDENCE" : null,
+        item.missingFields.length > 0 ? "MISSING_REQUIRED_FIELDS" : null,
+        item.uncertaintyNotes.length > 0 ? "UNCERTAINTY_NOTES" : null,
+        item.productResolution.status === "AMBIGUOUS"
+          ? "PRODUCT_AMBIGUOUS"
+          : null,
+        item.productResolution.status === "UNRESOLVED"
+          ? "PRODUCT_UNRESOLVED"
+          : null,
+        valuationEvidence?.estimate.reviewRequired
+          ? "VALUATION_REVIEW_REQUIRED"
+          : null
+      ].filter((reasonCode): reasonCode is string => Boolean(reasonCode));
+      const evidence: MainRunFieldRepairRecordInput["evidence"] = [
+        {
+          evidenceId: `${item.id}:parser`,
+          evidenceType: "PARSER",
+          summary:
+            `Parser evidence captured for ${Object.keys(item.parserEvidence ?? {}).length} field(s).`,
+          payload: item.parserEvidence ?? null
+        },
+        {
+          evidenceId: `${item.id}:product-resolution`,
+          evidenceType: "PRODUCT_RESOLUTION",
+          summary:
+            `${item.productResolution.status}: ${item.productResolution.reason}`,
+          payload: item.productResolution
+        },
+        {
+          evidenceId: `${item.id}:knowledge`,
+          evidenceType: "KNOWLEDGE",
+          summary:
+            `${knowledgeEvidence?.search.results.length ?? 0} weighted knowledge result(s) were available.`,
+          payload: knowledgeEvidence?.search ?? null
+        },
+        {
+          evidenceId: `${item.id}:inventory`,
+          evidenceType: "INVENTORY",
+          summary: inventoryEvidence?.lookup.productId
+            ? `Inventory matched product ${inventoryEvidence.lookup.productId}.`
+            : "Inventory did not return an authoritative product identity.",
+          payload: inventoryEvidence?.lookup ?? null
+        },
+        {
+          evidenceId: `${item.id}:valuation`,
+          evidenceType: "VALUATION",
+          summary:
+            valuationEvidence && valuationEvidence.estimate.highValue > 0
+              ? `Valuation range ${valuationEvidence.estimate.lowValue}-${valuationEvidence.estimate.highValue} was available.`
+              : "No authoritative valuation range was available.",
+          payload: valuationEvidence?.estimate ?? null
+        },
+        {
+          evidenceId: `${item.id}:prior-review`,
+          evidenceType: "PRIOR_REVIEW",
+          summary:
+            `${priorReviewEvidence?.evidence.length ?? 0} prior-review evidence item(s) were available.`,
+          payload: priorReviewEvidence?.evidence ?? []
+        }
+      ];
+
+      return {
+        recordId: item.id,
+        sourceText: item.rawLine,
+        missingFields: item.missingFields,
+        confidence: item.confidence,
+        selectionReason: {
+          lowConfidence: item.confidence < 0.72,
+          confidence: item.confidence,
+          missingFields: item.missingFields,
+          uncertaintyNotes: item.uncertaintyNotes,
+          reviewReasonCodes
+        },
+        currentFields: {
+          brand: item.brand,
+          productLine: item.productLine,
+          category: item.category,
+          shaftFlex: item.shaftFlex,
+          conditionGrade: item.conditionGrade,
+          tradeInValue: item.tradeInValue
+        },
+        fieldApplicability,
+        parserEvidence: item.parserEvidence ?? null,
+        productResolution: {
+          status: item.productResolution.status,
+          reason: item.productResolution.reason,
+          matchedProductId:
+            item.productResolution.status === "MATCHED"
+              ? item.productResolution.match.productId
+              : null,
+          matchedSku:
+            item.productResolution.status === "MATCHED"
+              ? item.productResolution.match.sku
+              : null,
+          candidateProductIds:
+            item.productResolution.candidates.map(
+              (candidate) => candidate.productId
+            )
+        },
+        advisoryCandidates,
+        evidence
+      };
+    });
+
   const fieldRepairInputJson = buildMainRunFieldRepairExecutionInput({
     workflowRunId: workflowRun.id,
-    records: parsedItems.filter(shouldRunFieldRepair).map((item) => ({
-      recordId: item.id,
-      sourceText: item.rawLine,
-      missingFields: item.missingFields,
-      confidence: item.confidence,
-      currentFields: {
-        brand: item.brand,
-        productLine: item.productLine,
-        category: item.category,
-        shaftFlex: item.shaftFlex,
-        conditionGrade: item.conditionGrade,
-        tradeInValue: item.tradeInValue
-      },
-      parserEvidence: item.parserEvidence ?? null
-    }))
+    records: fieldRepairRecords
   });
 
   const modelCallLog = await createModelExecutionLogForWorkflowRun({
@@ -713,8 +856,14 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     requireJson: true,
     allowDisabledProvidersForSimulation: false,
     inputJson: fieldRepairInputJson,
+    outputSchema: MAIN_RUN_FIELD_REPAIR_OUTPUT_SCHEMA,
     validateOutput(outputJson) {
-      const validation = validateMainRunFieldRepairModelOutput(outputJson);
+      const validation = validateMainRunFieldRepairModelOutput(
+        outputJson,
+        {
+          records: fieldRepairRecords
+        }
+      );
 
       return {
         jsonValid: validation.jsonValid,
@@ -725,10 +874,14 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
   });
   const modelRoutingDecision = getModelRoutingDecisionFromLog(modelCallLog);
   const fieldRepairValidation = validateMainRunFieldRepairModelOutput(
-    getProviderExecutionOutputJson(modelCallLog)
+    getProviderExecutionOutputJson(modelCallLog),
+    {
+      records: fieldRepairRecords
+    }
   );
   const fieldRepairExecution = {
     modelCallLogId: modelCallLog.id,
+    recordOutcomes: fieldRepairValidation.output?.recordOutcomes ?? [],
     suggestions: fieldRepairValidation.output?.suggestions ?? [],
     jsonValid: fieldRepairValidation.jsonValid,
     validationPassed: fieldRepairValidation.validationPassed,

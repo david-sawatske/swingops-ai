@@ -25,6 +25,7 @@ type AdminOpsMetric = {
 
 type AdminOpsModelTelemetryTab =
   | "PROVIDER_MIX"
+  | "ASSISTANCE"
   | "LATENCY_COST"
   | "VALIDATION";
 
@@ -33,8 +34,9 @@ const ADMIN_OPS_MODEL_TELEMETRY_TABS: {
   value: AdminOpsModelTelemetryTab;
 }[] = [
   { label: "Provider mix", value: "PROVIDER_MIX" },
+  { label: "Assistance", value: "ASSISTANCE" },
   { label: "Latency and cost", value: "LATENCY_COST" },
-  { label: "Validation", value: "VALIDATION" },
+  { label: "Reliability", value: "VALIDATION" },
 ];
 
 type AdminOpsDashboardPageProps = {
@@ -1233,12 +1235,39 @@ function AdminOpsModelTelemetryPanel({
 
   const modelExecutions = summary?.modelExecutions;
   const providerModelRows = modelExecutions?.byProviderModel ?? [];
+  const providerAttemptRows =
+    modelExecutions?.attempts.byProviderModel ?? [];
   const latencyRows = [...providerModelRows].sort((left, right) => {
     const leftLatency = left.averageLatencyMs ?? Number.MAX_SAFE_INTEGER;
     const rightLatency = right.averageLatencyMs ?? Number.MAX_SAFE_INTEGER;
 
     return leftLatency - rightLatency;
   });
+  const attemptLatencyRows = [...providerAttemptRows].sort(
+    (left, right) => {
+      const leftLatency =
+        left.averageLatencyMs ?? Number.MAX_SAFE_INTEGER;
+      const rightLatency =
+        right.averageLatencyMs ?? Number.MAX_SAFE_INTEGER;
+
+      return leftLatency - rightLatency;
+    },
+  );
+  const attemptReliabilityRows = [...providerAttemptRows].sort(
+    (left, right) =>
+      right.nonSuccessfulAttemptCount -
+        left.nonSuccessfulAttemptCount ||
+      right.attemptCount - left.attemptCount ||
+      left.provider.localeCompare(right.provider) ||
+      left.model.localeCompare(right.model),
+  );
+  const assistanceRows = providerModelRows
+    .filter((entry) => entry.assistanceCallCount > 0)
+    .sort(
+      (left, right) =>
+        right.assistanceCallCount - left.assistanceCallCount ||
+        right.recordOutcomeCount - left.recordOutcomeCount,
+    );
   const validationRows = [...providerModelRows].sort(
     (left, right) =>
       right.fallbackCount - left.fallbackCount ||
@@ -1288,9 +1317,9 @@ function AdminOpsModelTelemetryPanel({
         <AdminOpsMetricCard
           metric={{
             detail: "Succeeded executions divided by total calls.",
-            label: "Validation pass rate",
+            label: "Execution success rate",
             value: modelExecutions
-              ? `${modelExecutions.validationPassRate}%`
+              ? `${modelExecutions.executionSuccessRate}%`
               : "—",
           }}
         />
@@ -1374,8 +1403,9 @@ function AdminOpsModelTelemetryPanel({
                 <div className="admin-ops-insight-card__header">
                   <span>Provider mix</span>
                   <p>
-                    Provider and model distribution across recent model
-                    executions.
+                    Final provider and model attribution for overall calls.
+                    Individual provider-attempt failures are shown in
+                    Reliability.
                   </p>
                 </div>
 
@@ -1389,9 +1419,15 @@ function AdminOpsModelTelemetryPanel({
                         <span>
                           {entry.provider} / {entry.model}
                         </span>
-                        <strong>{formatAdminOpsCountLabel(entry.callCount, "call")}</strong>
+                        <strong>
+                          {formatAdminOpsCountLabel(entry.callCount, "call")}
+                        </strong>
                         <small>
-                          {entry.failedCallCount} failed / {entry.fallbackCount} fallback
+                          {entry.failedCallCount} failed /{" "}
+                          {entry.fallbackCount} fallback
+                          {entry.assistanceCallCount > 0
+                            ? ` · ${entry.assistanceCallCount} assistance call(s)`
+                            : ""}
                         </small>
                       </div>
                     ))
@@ -1404,38 +1440,154 @@ function AdminOpsModelTelemetryPanel({
               </>
             ) : null}
 
+            {activeTab === "ASSISTANCE" ? (
+              <>
+                <div className="admin-ops-insight-card__header">
+                  <span>Model review assistance</span>
+                  <p>
+                    Validated record coverage and outcome distribution for
+                    evidence-bound field-repair calls.
+                  </p>
+                </div>
+
+                <div className="admin-ops-insight-list">
+                  <div className="admin-ops-insight-row">
+                    <span>Selected-record coverage</span>
+                    <strong>
+                      {modelExecutions.assistance.outcomeCoverageRate}%
+                    </strong>
+                    <small>
+                      {modelExecutions.assistance.recordOutcomes} accepted
+                      outcomes / {modelExecutions.assistance.selectedRecords}{" "}
+                      selected records
+                    </small>
+                  </div>
+
+                  <div className="admin-ops-insight-row">
+                    <span>Assistance contract validation</span>
+                    <strong>
+                      {modelExecutions.assistance.validationTrackedCalls > 0
+                        ? `${modelExecutions.assistance.validationPassRate}%`
+                        : "Not tracked"}
+                    </strong>
+                    <small>
+                      {modelExecutions.assistance.validationPassedCalls} passed
+                      / {modelExecutions.assistance.validationFailedCalls} failed
+                    </small>
+                  </div>
+
+                  <div className="admin-ops-insight-row">
+                    <span>Repair suggested</span>
+                    <strong>
+                      {modelExecutions.assistance.repairSuggested}
+                    </strong>
+                    <small>
+                      Source-supported field repairs returned for review.
+                    </small>
+                  </div>
+
+                  <div className="admin-ops-insight-row">
+                    <span>Candidate comparison</span>
+                    <strong>
+                      {modelExecutions.assistance.candidateComparison}
+                    </strong>
+                    <small>
+                      Supplied deterministic candidates requiring confirmation.
+                    </small>
+                  </div>
+
+                  <div className="admin-ops-insight-row">
+                    <span>No safe repair</span>
+                    <strong>
+                      {modelExecutions.assistance.noSafeRepair}
+                    </strong>
+                    <small>
+                      Records where the model correctly withheld unsupported
+                      repair.
+                    </small>
+                  </div>
+
+                  {assistanceRows.map((entry) => (
+                    <div
+                      className="admin-ops-insight-row"
+                      key={`assistance-${entry.provider}-${entry.model}`}
+                    >
+                      <span>
+                        {entry.provider} / {entry.model}
+                      </span>
+                      <strong>{entry.outcomeCoverageRate}% coverage</strong>
+                      <small>
+                        {entry.recordOutcomeCount} outcomes /{" "}
+                        {entry.selectedRecordCount} selected ·{" "}
+                        {entry.repairSuggestedCount} repair ·{" "}
+                        {entry.candidateComparisonCount} compare ·{" "}
+                        {entry.noSafeRepairCount} withheld
+                      </small>
+                    </div>
+                  ))}
+
+                  {modelExecutions.assistance.totalCalls === 0 ? (
+                    <p className="admin-ops-muted">
+                      No persisted model review assistance calls are available
+                      yet.
+                    </p>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
+
             {activeTab === "LATENCY_COST" ? (
               <>
                 <div className="admin-ops-insight-card__header">
                   <span>Latency and cost</span>
                   <p>
-                    Average latency, estimated cost and token usage by provider
-                    model.
+                    Overall-call attribution and individual provider-attempt
+                    latency and estimated cost.
                   </p>
                 </div>
 
                 <div className="admin-ops-insight-list">
-                  {latencyRows.length > 0 ? (
-                    latencyRows.map((entry) => (
-                      <div
-                        className="admin-ops-insight-row"
-                        key={`${entry.provider}-${entry.model}`}
-                      >
-                        <span>
-                          {entry.provider} / {entry.model}
-                        </span>
-                        <strong>{formatLatency(entry.averageLatencyMs)}</strong>
-                        <small>
-                          {formatCurrency(entry.estimatedCostTotal)} estimated ·{" "}
-                          {entry.totalTokens.toLocaleString()} tokens
-                        </small>
-                      </div>
-                    ))
-                  ) : (
+                  {latencyRows.map((entry) => (
+                    <div
+                      className="admin-ops-insight-row"
+                      key={`call-latency-${entry.provider}-${entry.model}`}
+                    >
+                      <span>
+                        Final call: {entry.provider} / {entry.model}
+                      </span>
+                      <strong>{formatLatency(entry.averageLatencyMs)}</strong>
+                      <small>
+                        {formatCurrency(entry.estimatedCostTotal)} estimated ·{" "}
+                        {entry.totalTokens.toLocaleString()} tokens
+                      </small>
+                    </div>
+                  ))}
+
+                  {attemptLatencyRows.map((entry) => (
+                    <div
+                      className="admin-ops-insight-row"
+                      key={`attempt-latency-${entry.provider}-${entry.model}`}
+                    >
+                      <span>
+                        Attempt activity: {entry.provider} / {entry.model}
+                      </span>
+                      <strong>{formatLatency(entry.averageLatencyMs)}</strong>
+                      <small>
+                        {formatAdminOpsCountLabel(
+                          entry.attemptCount,
+                          "attempt",
+                        )} ·{" "}
+                        {formatCurrency(entry.estimatedCostTotal)} estimated
+                      </small>
+                    </div>
+                  ))}
+
+                  {latencyRows.length === 0 &&
+                  attemptLatencyRows.length === 0 ? (
                     <p className="admin-ops-muted">
                       No latency or cost telemetry is available yet.
                     </p>
-                  )}
+                  ) : null}
                 </div>
               </>
             ) : null}
@@ -1443,47 +1595,111 @@ function AdminOpsModelTelemetryPanel({
             {activeTab === "VALIDATION" ? (
               <>
                 <div className="admin-ops-insight-card__header">
-                  <span>Validation</span>
+                  <span>Reliability</span>
                   <p>
-                    Success, failure and fallback behavior for recent model
-                    executions.
+                    Overall call completion, contract validation, fallback
+                    behavior and individual provider-attempt results.
                   </p>
                 </div>
 
                 <div className="admin-ops-insight-list">
                   <div className="admin-ops-insight-row">
-                    <span>Validation pass rate</span>
-                    <strong>{modelExecutions.validationPassRate}%</strong>
+                    <span>Execution success rate</span>
+                    <strong>{modelExecutions.executionSuccessRate}%</strong>
                     <small>
                       {modelExecutions.succeededCalls} succeeded /{" "}
                       {modelExecutions.failedCalls} failed
                     </small>
                   </div>
+
+                  <div className="admin-ops-insight-row">
+                    <span>Contract validation pass rate</span>
+                    <strong>
+                      {modelExecutions.validationTrackedCalls > 0
+                        ? `${modelExecutions.validationPassRate}%`
+                        : "Not tracked"}
+                    </strong>
+                    <small>
+                      {modelExecutions.validationPassedCalls} passed /{" "}
+                      {modelExecutions.validationFailedCalls} failed across
+                      tracked validation calls
+                    </small>
+                  </div>
+
                   <div className="admin-ops-insight-row">
                     <span>Fallback rate</span>
                     <strong>{modelExecutions.fallbackRate}%</strong>
                     <small>
-                      {formatAdminOpsCountLabel(modelExecutions.fallbackCount, "call")} with fallback or
-                      non-success attempt signals
+                      {formatAdminOpsCountLabel(
+                        modelExecutions.fallbackCount,
+                        "call",
+                      )}{" "}
+                      with fallback or non-success attempt signals
                     </small>
                   </div>
+
+                  <div className="admin-ops-insight-row">
+                    <span>Provider attempt success rate</span>
+                    <strong>
+                      {modelExecutions.attempts.totalAttempts > 0
+                        ? `${modelExecutions.attempts.attemptSuccessRate}%`
+                        : "Not tracked"}
+                    </strong>
+                    <small>
+                      {modelExecutions.attempts.successfulAttempts} successful
+                      /{" "}
+                      {modelExecutions.attempts.nonSuccessfulAttempts}{" "}
+                      non-successful across{" "}
+                      {formatAdminOpsCountLabel(
+                        modelExecutions.attempts.totalAttempts,
+                        "attempt",
+                      )}
+                    </small>
+                  </div>
+
+                  {attemptReliabilityRows.map((entry) => (
+                    <div
+                      className="admin-ops-insight-row"
+                      key={`attempt-reliability-${entry.provider}-${entry.model}`}
+                    >
+                      <span>
+                        Provider attempts: {entry.provider} / {entry.model}
+                      </span>
+                      <strong>
+                        {entry.successfulAttemptCount}/{entry.attemptCount}{" "}
+                        successful
+                      </strong>
+                      <small>
+                        {entry.nonSuccessfulAttemptCount} non-successful ·{" "}
+                        {formatLatency(entry.averageLatencyMs)} average
+                        {entry.latestFailureMessage
+                          ? ` · Latest failure: ${entry.latestFailureMessage}`
+                          : ""}
+                      </small>
+                    </div>
+                  ))}
+
                   {validationRows.slice(0, 5).map((entry) => (
                     <div
                       className="admin-ops-insight-row"
                       key={`${entry.provider}-${entry.model}`}
                     >
                       <span>
-                        {entry.provider} / {entry.model}
+                        Final call: {entry.provider} / {entry.model}
                       </span>
                       <strong>
-                        {formatAdminOpsPercent(
-                          entry.callCount - entry.failedCallCount,
-                          entry.callCount,
-                        )}{" "}
-                        pass
+                        {entry.validationTrackedCallCount > 0
+                          ? `${entry.validationPassRate}% validated`
+                          : `${formatAdminOpsPercent(
+                              entry.callCount - entry.failedCallCount,
+                              entry.callCount,
+                            )} executed`}
                       </strong>
                       <small>
-                        {entry.failedCallCount} failed / {entry.fallbackCount} fallback
+                        {entry.failedCallCount} execution failed /{" "}
+                        {entry.fallbackCount} fallback ·{" "}
+                        {entry.validationPassedCallCount}/
+                        {entry.validationTrackedCallCount} contract valid
                       </small>
                     </div>
                   ))}

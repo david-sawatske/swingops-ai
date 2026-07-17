@@ -3,11 +3,14 @@ import type { FormEvent } from "react";
 import type { ExecuteEndToEndAgenticTradeInDemoResponse } from "../../../types/workflow";
 import {
   formatCostEstimate,
-  formatFieldRepairValue,
   formatLatencyMs,
   formatProvider,
   getModelExecutionValidationLabel,
+  getProviderAttemptLabel,
 } from "./final-run-report/finalRunReportUtils";
+import {
+  GuidedModelReviewAssistance,
+} from "./GuidedModelReviewAssistance";
 
 type GuidedGuardedAgentExecutionStepProps = {
   error: string | null;
@@ -31,6 +34,61 @@ function getPriorReviewSuggestions(
   return result?.priorReviewLearningSuggestionsByItem.flatMap((item) => item.suggestions) ?? [];
 }
 
+const SUCCESSFUL_PROVIDER_ATTEMPT_STATUSES = new Set([
+  "SUCCESS",
+  "SUCCEEDED",
+]);
+
+export function getProviderFallbackNotice(
+  trace: ExecuteEndToEndAgenticTradeInDemoResponse["providerFallbackTrace"],
+  fieldRepairExecution: ExecuteEndToEndAgenticTradeInDemoResponse["fieldRepairExecution"],
+) {
+  if (!trace.fallbackUsed) {
+    return null;
+  }
+
+  const unsuccessfulAttempt =
+    trace.attempts.find(
+      (attempt, index) =>
+        index < trace.attempts.length - 1 &&
+        !SUCCESSFUL_PROVIDER_ATTEMPT_STATUSES.has(attempt.status),
+    ) ??
+    trace.attempts.find(
+      (attempt) =>
+        !SUCCESSFUL_PROVIDER_ATTEMPT_STATUSES.has(attempt.status),
+    ) ??
+    null;
+  const finalAttempt = trace.attempts.at(-1) ?? null;
+  const preferredProvider = formatProvider(
+    unsuccessfulAttempt?.provider ?? trace.selectedProvider,
+    unsuccessfulAttempt?.model ?? trace.selectedModel,
+  );
+  const finalProvider = formatProvider(
+    trace.finalProvider,
+    trace.finalModel,
+  );
+
+  return {
+    title: "Provider fallback completed this run",
+    summary: `${preferredProvider} did not complete successfully. ${finalProvider} completed the model review assistance.`,
+    preferredProvider,
+    preferredStatus: unsuccessfulAttempt
+      ? getProviderAttemptLabel(unsuccessfulAttempt.status)
+      : "not completed",
+    reason:
+      unsuccessfulAttempt?.errorMessage ??
+      unsuccessfulAttempt?.reason ??
+      "The preferred provider did not complete successfully.",
+    preferredLatencyMs: unsuccessfulAttempt?.latencyMs ?? null,
+    finalProvider,
+    finalStatus: finalAttempt
+      ? getProviderAttemptLabel(finalAttempt.status)
+      : "completed",
+    validationLabel:
+      getModelExecutionValidationLabel(fieldRepairExecution),
+  };
+}
+
 export function GuidedGuardedAgentExecutionStep({
   error,
   generatedWorkflowInput,
@@ -47,7 +105,14 @@ export function GuidedGuardedAgentExecutionStep({
   const hasCompletedGuardedRun = Boolean(result) && !isRunning;
   const priorReviewSuggestions = getPriorReviewSuggestions(result);
   const finalProviderAttempt = result?.providerFallbackTrace.attempts.at(-1) ?? null;
-  const fieldRepairSuggestions = result?.fieldRepairExecution.suggestions ?? [];
+  const fieldRepairOutcomes =
+    result?.fieldRepairExecution.recordOutcomes ?? [];
+  const fallbackNotice = result
+    ? getProviderFallbackNotice(
+        result.providerFallbackTrace,
+        result.fieldRepairExecution,
+      )
+    : null;
 
   return (
     <article className="guided-workflow-card">
@@ -109,13 +174,13 @@ export function GuidedGuardedAgentExecutionStep({
           <article>
             <div className="guided-guarded-system-heading">
               <strong>Model execution layer</strong>
-              <span>Field repair</span>
+              <span>Review assistance</span>
             </div>
             <div className="guided-guarded-system-details">
               <p>
-                <b>Implemented here:</b> Routes permitted field-repair work through the
-                configured provider, validates the response contract, and records
-                deterministic fallback evidence.
+                <b>Implemented here:</b> Sends only selected records and their evidence
+                packet through the configured provider. The response must return one
+                validated advisory outcome for every selected record.
               </p>
               <p>
                 <b>Production connection:</b> Approved provider credentials, execution
@@ -246,20 +311,23 @@ export function GuidedGuardedAgentExecutionStep({
               <span className="model-route-card__eyebrow">Evidence created for Step 4</span>
               <h4>Guarded workflow evidence is ready</h4>
               <p>
-                The guarded workflow kept knowledge, inventory, valuation, model-repair,
-                validation, and reviewer-facing evidence separate for Validation and
-                Human Review.
+                The guarded workflow kept knowledge, inventory, valuation, model review
+                assistance, validation, and reviewer-facing evidence separate for
+                Validation and Human Review.
               </p>
             </div>
 
             <section className="guided-model-execution-card" aria-label="Model execution summary">
               <div className="guided-model-execution-card__header">
                 <div>
-                  <span className="model-route-card__eyebrow">Model execution</span>
+                  <span className="model-route-card__eyebrow">
+                    Model review assistance
+                  </span>
                   <h5>{formatProvider(result.providerFallbackTrace.finalProvider, result.providerFallbackTrace.finalModel)}</h5>
                   <p>
-                    Field repair ran through the provider execution layer. Suggestions are
-                    review-facing and do not override deterministic parsing on their own.
+                    The provider assessed only selected records using the supplied evidence
+                    packet. Repair suggestions, candidate comparisons, and decisions to
+                    withhold unsafe repairs remain advisory until human review.
                   </p>
                 </div>
                 <span className="guided-validation-status guided-validation-status--pass">
@@ -281,31 +349,70 @@ export function GuidedGuardedAgentExecutionStep({
                   <dd>{formatCostEstimate(finalProviderAttempt?.estimatedCostUsd ?? null)}</dd>
                 </div>
                 <div>
-                  <dt>Field repair suggestions</dt>
-                  <dd>{fieldRepairSuggestions.length}</dd>
+                  <dt>Records assessed</dt>
+                  <dd>{fieldRepairOutcomes.length}</dd>
                 </div>
               </dl>
 
-              {fieldRepairSuggestions.length > 0 ? (
-                <ol className="guided-field-repair-suggestion-list">
-                  {fieldRepairSuggestions.slice(0, 3).map((suggestion, index) => (
-                    <li key={`${suggestion.recordId ?? "record"}-${suggestion.fieldName}-${suggestion.sourcePhrase}-${index}`}>
-                      <strong>
-                        {suggestion.fieldName}: {formatFieldRepairValue(suggestion.candidateValue)}
-                      </strong>
-                      <p>
-                        Source phrase “{suggestion.sourcePhrase}” · confidence{" "}
-                        {Math.round(suggestion.confidence * 100)}% ·{" "}
-                        {suggestion.reviewRequired ? "review required" : "review optional"}
-                      </p>
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <p className="guided-validation-empty-note">
-                  Deterministic parsing and system evidence were sufficient for this run, so no model repair suggestions were added.
-                </p>
-              )}
+              {fallbackNotice ? (
+                <section
+                  aria-label="Provider fallback details"
+                  className="guided-model-fallback-notice"
+                >
+                  <div className="guided-model-fallback-notice__header">
+                    <div>
+                      <span className="model-route-card__eyebrow">
+                        Provider fallback
+                      </span>
+                      <strong>{fallbackNotice.title}</strong>
+                      <p>{fallbackNotice.summary}</p>
+                    </div>
+                    <span className="guided-validation-status guided-validation-status--warning">
+                      Fallback used
+                    </span>
+                  </div>
+
+                  <details className="guided-model-fallback-notice__details">
+                    <summary>View provider attempt details</summary>
+                    <dl>
+                      <div>
+                        <dt>Preferred attempt</dt>
+                        <dd>
+                          {fallbackNotice.preferredProvider} ·{" "}
+                          {fallbackNotice.preferredStatus}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Failure detail</dt>
+                        <dd>{fallbackNotice.reason}</dd>
+                      </div>
+                      <div>
+                        <dt>Preferred latency</dt>
+                        <dd>
+                          {formatLatencyMs(
+                            fallbackNotice.preferredLatencyMs,
+                          )}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Final provider</dt>
+                        <dd>
+                          {fallbackNotice.finalProvider} ·{" "}
+                          {fallbackNotice.finalStatus}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Accepted output</dt>
+                        <dd>{fallbackNotice.validationLabel}</dd>
+                      </div>
+                    </dl>
+                  </details>
+                </section>
+              ) : null}
+
+              <GuidedModelReviewAssistance
+                outcomes={fieldRepairOutcomes}
+              />
             </section>
 
             {priorReviewSuggestions.length > 0 ? (

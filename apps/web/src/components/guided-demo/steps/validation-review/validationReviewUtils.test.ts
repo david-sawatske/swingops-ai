@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   findMatchingReviewItem,
+  getModelReviewOutcomeForRecord,
   getParserEvidenceForField,
 } from "./validationReviewUtils";
+import type { ModelReviewOutcome } from "./validationReviewTypes";
 
 describe("getParserEvidenceForField", () => {
   it("returns exact parser evidence for a normalized field", () => {
@@ -42,6 +44,53 @@ describe("getParserEvidenceForField", () => {
   });
 });
 
+
+describe("getModelReviewOutcomeForRecord", () => {
+  const outcomes: ModelReviewOutcome[] = [
+    {
+      outcomeType: "REPAIR_SUGGESTED",
+      recordId: "parsed_item_2",
+      summary: "A source-supported field repair is available.",
+      evidenceIds: ["parsed_item_2:parser"],
+      reviewerQuestion: "Should Regular be confirmed?",
+      suggestions: [
+        {
+          recordId: "parsed_item_2",
+          fieldName: "shaftFlex",
+          sourcePhrase: "regular flex",
+          candidateValue: "REGULAR",
+          confidence: 0.91,
+          reason: "The source explicitly identifies the shaft flex.",
+          reviewRequired: true,
+        },
+      ],
+    },
+    {
+      outcomeType: "NO_SAFE_REPAIR",
+      recordId: "parsed_item_7",
+      summary: "The available evidence does not support a safe repair.",
+      evidenceIds: ["parsed_item_7:parser"],
+      reviewerQuestion: "Which value should be confirmed manually?",
+      reasonCodes: ["INSUFFICIENT_EVIDENCE"],
+    },
+  ];
+
+  it("matches assistance by exact parsed record identity", () => {
+    expect(
+      getModelReviewOutcomeForRecord(outcomes, "parsed_item_7"),
+    ).toEqual(outcomes[1]);
+  });
+
+  it("does not fall back to an unrelated model outcome", () => {
+    expect(
+      getModelReviewOutcomeForRecord(outcomes, "parsed_item_3"),
+    ).toBeNull();
+  });
+
+  it("does not assign an outcome without a record identity", () => {
+    expect(getModelReviewOutcomeForRecord(outcomes, null)).toBeNull();
+  });
+});
 
 function createReviewItem(input: {
   id: string;

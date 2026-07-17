@@ -9,6 +9,9 @@ import type {
   ModelProviderRuntimeConfig
 } from "../ai/model-provider-runtime-config.js";
 import type {
+  ModelProviderOutputSchema
+} from "../ai/model-provider.types.js";
+import type {
   ModelRouteDecision,
   ModelRouteRequest,
   ModelRoutingGoal
@@ -26,6 +29,7 @@ export type CreateModelExecutionLogInput = {
   taskType: ModelRouteRequest["taskType"];
   goal: ModelRoutingGoal;
   inputJson: Record<string, unknown>;
+  outputSchema?: ModelProviderOutputSchema;
   policyKey?: string;
   agentName?: string;
   workflowName?: string;
@@ -101,6 +105,9 @@ export async function createModelExecutionLogForWorkflowRun(
     requireJson,
     allowDisabledProvidersForSimulation,
     inputJson: executionInputJson,
+    ...(input.outputSchema !== undefined
+      ? { outputSchema: input.outputSchema }
+      : {}),
     ...(input.validateOutput !== undefined
       ? { validateOutput: input.validateOutput }
       : {}),
@@ -147,6 +154,15 @@ export async function createModelExecutionLogForWorkflowRun(
         requireJson,
         allowDisabledProvidersForSimulation,
         providerFallbackExecutor: true,
+        ...(input.outputSchema
+          ? {
+              outputSchema: {
+                name: input.outputSchema.name,
+                version: input.outputSchema.version,
+                strict: input.outputSchema.strict
+              }
+            }
+          : {}),
         ...(input.policyKey ? { policyKey: input.policyKey } : {}),
         ...(input.agentName ? { agentName: input.agentName } : {}),
         ...(input.workflowName ? { workflowName: input.workflowName } : {}),

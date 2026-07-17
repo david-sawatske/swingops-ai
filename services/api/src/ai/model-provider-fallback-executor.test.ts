@@ -49,16 +49,22 @@ function openAiJsonFetch(content: string): ModelProviderFetch {
     statusText: "OK",
     async json() {
       return {
-        choices: [
+        output: [
           {
-            message: {
-              content
-            }
+            type: "message",
+            status: "completed",
+            content: [
+              {
+                type: "output_text",
+                text: content
+              }
+            ],
+            role: "assistant"
           }
         ],
         usage: {
-          prompt_tokens: 12,
-          completion_tokens: 8,
+          input_tokens: 12,
+          output_tokens: 8,
           total_tokens: 20
         }
       };

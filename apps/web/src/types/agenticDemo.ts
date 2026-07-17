@@ -124,8 +124,35 @@ export type FieldRepairSuggestion = {
   reviewRequired: boolean;
 };
 
+export type FieldRepairRecordOutcome =
+  | {
+      outcomeType: "REPAIR_SUGGESTED";
+      recordId: string;
+      summary: string;
+      evidenceIds: string[];
+      reviewerQuestion: string;
+      suggestions: FieldRepairSuggestion[];
+    }
+  | {
+      outcomeType: "CANDIDATE_COMPARISON";
+      recordId: string;
+      summary: string;
+      evidenceIds: string[];
+      reviewerQuestion: string;
+      candidateProductIds: string[];
+    }
+  | {
+      outcomeType: "NO_SAFE_REPAIR";
+      recordId: string;
+      summary: string;
+      evidenceIds: string[];
+      reviewerQuestion: string;
+      reasonCodes: string[];
+    };
+
 export type FieldRepairExecution = {
   modelCallLogId: string;
+  recordOutcomes?: FieldRepairRecordOutcome[];
   suggestions: FieldRepairSuggestion[];
   jsonValid: boolean;
   validationPassed: boolean;

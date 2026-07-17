@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { buildApp } from "../app.js";
+import {
+  getAdminOpsModelAssistanceTelemetry,
+  getAdminOpsProviderAttemptTelemetry
+} from "./admin-ops.routes.js";
 
 describe("admin ops routes", () => {
   it("returns a read-only admin ops summary", async () => {
@@ -45,7 +49,31 @@ describe("admin ops routes", () => {
           failedCalls: expect.any(Number),
           fallbackCount: expect.any(Number),
           fallbackRate: expect.any(Number),
+          executionSuccessRate: expect.any(Number),
+          validationTrackedCalls: expect.any(Number),
+          validationPassedCalls: expect.any(Number),
+          validationFailedCalls: expect.any(Number),
           validationPassRate: expect.any(Number),
+          assistance: expect.objectContaining({
+            totalCalls: expect.any(Number),
+            validationTrackedCalls: expect.any(Number),
+            validationPassedCalls: expect.any(Number),
+            validationFailedCalls: expect.any(Number),
+            validationPassRate: expect.any(Number),
+            selectedRecords: expect.any(Number),
+            recordOutcomes: expect.any(Number),
+            outcomeCoverageRate: expect.any(Number),
+            repairSuggested: expect.any(Number),
+            candidateComparison: expect.any(Number),
+            noSafeRepair: expect.any(Number)
+          }),
+          attempts: expect.objectContaining({
+            totalAttempts: expect.any(Number),
+            successfulAttempts: expect.any(Number),
+            nonSuccessfulAttempts: expect.any(Number),
+            attemptSuccessRate: expect.any(Number),
+            byProviderModel: expect.any(Array)
+          }),
           estimatedCostTotal: expect.any(Number),
           totalTokens: expect.any(Number),
           byProviderModel: expect.any(Array)
@@ -66,6 +94,154 @@ describe("admin ops routes", () => {
     ).toBe(true);
 
     await app.close();
+  });
+
+  it("extracts validated assistance outcomes from persisted model logs", () => {
+    const telemetry = getAdminOpsModelAssistanceTelemetry(
+      {
+        policyKey: "MAIN_RUN_FIELD_REPAIR",
+        outputSchema: {
+          name: "main_run_field_repair"
+        },
+        inputJson: {
+          records: [
+            { recordId: "record-1" },
+            { recordId: "record-2" },
+            { recordId: "record-3" }
+          ]
+        }
+      },
+      {
+        validation: {
+          validationPassed: true
+        },
+        providerExecution: {
+          outputJson: {
+            parsedJson: {
+              recordOutcomes: [
+                {
+                  outcomeType: "REPAIR_SUGGESTED"
+                },
+                {
+                  outcomeType: "CANDIDATE_COMPARISON"
+                },
+                {
+                  outcomeType: "NO_SAFE_REPAIR"
+                }
+              ]
+            }
+          }
+        }
+      }
+    );
+
+    expect(telemetry).toEqual({
+      isAssistanceCall: true,
+      validationPassed: true,
+      selectedRecordCount: 3,
+      recordOutcomeCount: 3,
+      repairSuggestedCount: 1,
+      candidateComparisonCount: 1,
+      noSafeRepairCount: 1
+    });
+  });
+
+  it("does not count invalid provider outcomes as accepted assistance", () => {
+    const telemetry = getAdminOpsModelAssistanceTelemetry(
+      {
+        agentName: "main-run-field-repair-agent",
+        inputJson: {
+          records: [{ recordId: "record-1" }]
+        }
+      },
+      {
+        validation: {
+          validationPassed: false
+        },
+        providerExecution: {
+          outputJson: {
+            recordOutcomes: [
+              {
+                outcomeType: "REPAIR_SUGGESTED"
+              }
+            ]
+          }
+        }
+      }
+    );
+
+    expect(telemetry).toMatchObject({
+      isAssistanceCall: true,
+      validationPassed: false,
+      selectedRecordCount: 1,
+      recordOutcomeCount: 0,
+      repairSuggestedCount: 0,
+      candidateComparisonCount: 0,
+      noSafeRepairCount: 0
+    });
+  });
+
+  it("separates provider attempt failures from successful fallback attempts", () => {
+    const telemetry = getAdminOpsProviderAttemptTelemetry([
+      {
+        provider: "OPENAI",
+        model: "gpt-4.1-mini",
+        status: "FAILED",
+        reason: "The preferred provider failed.",
+        errorMessage:
+          "OPENAI adapter request failed with 400 Bad Request.",
+        latencyMs: 1628,
+        estimatedCostUsd: 0.0012
+      },
+      {
+        provider: "MOCK",
+        model: "mock-golf-workflow-model",
+        status: "SUCCESS",
+        reason: "Fallback provider completed the request.",
+        errorMessage: null,
+        latencyMs: 2,
+        estimatedCostUsd: 0
+      },
+      {
+        provider: "OPENAI",
+        model: "gpt-4.1-mini",
+        status: "SUCCESS",
+        reason: "Preferred provider completed the request.",
+        errorMessage: null,
+        latencyMs: 900,
+        estimatedCostUsd: 0.002
+      }
+    ]);
+
+    expect(telemetry).toEqual({
+      totalAttempts: 3,
+      successfulAttempts: 2,
+      nonSuccessfulAttempts: 1,
+      attemptSuccessRate: 66.7,
+      byProviderModel: [
+        {
+          provider: "MOCK",
+          model: "mock-golf-workflow-model",
+          attemptCount: 1,
+          successfulAttemptCount: 1,
+          nonSuccessfulAttemptCount: 0,
+          averageLatencyMs: 2,
+          estimatedCostTotal: 0,
+          latestFailureMessage: null
+        },
+        {
+          provider: "OPENAI",
+          model: "gpt-4.1-mini",
+          attemptCount: 2,
+          successfulAttemptCount: 1,
+          nonSuccessfulAttemptCount: 1,
+          averageLatencyMs: 1264,
+          estimatedCostTotal: 0.0032,
+          latestFailureMessage:
+            "OPENAI adapter request failed with 400 Bad Request."
+        }
+      ]
+    });
   });
 
   it("returns the guarded workflow config snapshot", async () => {

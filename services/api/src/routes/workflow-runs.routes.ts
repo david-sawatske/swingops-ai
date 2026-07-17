@@ -121,7 +121,18 @@ export async function workflowRunRoutes(app: FastifyInstance): Promise<void> {
           orderBy: {
             createdAt: "desc"
           },
-          take: 1
+          take: 1,
+          select: {
+            id: true,
+            workflowRunId: true,
+            workflowStepId: true,
+            toolName: true,
+            status: true,
+            errorMessage: true,
+            startedAt: true,
+            completedAt: true,
+            createdAt: true
+          }
         },
         reviewQueueItems: {
           select: {
@@ -169,6 +180,15 @@ export async function workflowRunRoutes(app: FastifyInstance): Promise<void> {
       workflowRuns: workflowRuns.map((workflowRun) =>
         serializeWorkflowRunListItem({
           ...workflowRun,
+          // List responses intentionally omit tool input and output payloads.
+          // Full audit payloads remain available from GET /workflow-runs/:id.
+          toolCallLogs: workflowRun.toolCallLogs.map(
+            (toolCallLog) => ({
+              ...toolCallLog,
+              inputJson: null,
+              outputJson: null
+            })
+          ),
           auditOnlyToolCallLogCount:
             auditOnlyToolCallLogCountsByRunId[workflowRun.id] ?? 0
         })

@@ -1283,3 +1283,169 @@
     justify-content: flex-start;
   }
 }
+
+/* guided-step4-model-review-assistance */
+.guided-record-model-assistance {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.9rem;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: 0.9rem;
+  background: linear-gradient(
+    180deg,
+    rgba(239, 246, 255, 0.78),
+    rgba(248, 250, 252, 0.92)
+  );
+}
+
+.guided-record-model-assistance--candidate-comparison {
+  border-color: rgba(124, 58, 237, 0.2);
+  background: linear-gradient(
+    180deg,
+    rgba(245, 243, 255, 0.84),
+    rgba(248, 250, 252, 0.92)
+  );
+}
+
+.guided-record-model-assistance--no-safe-repair {
+  border-color: rgba(180, 83, 9, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 251, 235, 0.88),
+    rgba(248, 250, 252, 0.92)
+  );
+}
+
+.guided-record-model-assistance__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.guided-record-model-assistance__header strong {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 1rem;
+}
+
+.guided-record-model-assistance__outcome {
+  flex: 0 0 auto;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.guided-record-model-assistance__summary,
+.guided-record-model-assistance__question p,
+.guided-record-model-assistance__items p {
+  margin: 0;
+  color: rgba(20, 33, 22, 0.74);
+}
+
+.guided-record-model-assistance__items {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.guided-record-model-assistance__items article {
+  padding: 0.75rem;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.guided-record-model-assistance__items dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin: 0 0 0.55rem;
+}
+
+.guided-record-model-assistance__items dt {
+  color: rgba(20, 33, 22, 0.58);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.guided-record-model-assistance__items dd {
+  margin: 0.15rem 0 0;
+  font-weight: 800;
+}
+
+.guided-record-model-assistance__candidate-list,
+.guided-record-model-assistance__reason-list,
+.guided-record-model-assistance__question {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.7rem;
+  border: 1px solid rgba(15, 23, 42, 0.09);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.guided-record-model-assistance__candidate-list > div,
+.guided-record-model-assistance__evidence > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.guided-record-model-assistance code {
+  padding: 0.25rem 0.4rem;
+  border-radius: 0.4rem;
+  background: rgba(15, 23, 42, 0.07);
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+.guided-record-model-assistance__reason-list ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guided-record-model-assistance__reason-list li {
+  padding: 0.25rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+
+.guided-record-model-assistance__evidence summary {
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.guided-record-model-assistance__evidence > div {
+  margin-top: 0.55rem;
+}
+
+.guided-record-model-assistance__advisory {
+  color: rgba(20, 33, 22, 0.62);
+  line-height: 1.4;
+}
+
+@media (max-width: 640px) {
+  .guided-record-model-assistance__header {
+    display: grid;
+  }
+
+  .guided-record-model-assistance__outcome {
+    justify-self: start;
+  }
+
+  .guided-record-model-assistance__items dl {
+    grid-template-columns: 1fr;
+  }
+}
