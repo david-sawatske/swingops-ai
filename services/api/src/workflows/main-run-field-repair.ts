@@ -427,6 +427,7 @@ export type MainRunFieldRepairProductResolutionContext = {
 
 export type MainRunFieldRepairEvidenceType =
   | "PARSER"
+  | "DETERMINISTIC_POLICY"
   | "PRODUCT_RESOLUTION"
   | "KNOWLEDGE"
   | "INVENTORY"
@@ -593,6 +594,16 @@ export function buildMainRunFieldRepairExecutionInput(
         sourcePhrase: "condition avg",
         fieldName: "conditionGrade",
         candidateValue: "8.0 Average"
+      },
+      {
+        sourcePhrase: "overall avg",
+        fieldName: "conditionGrade",
+        candidateValue: "8.0 Average"
+      },
+      {
+        sourcePhrase: "cosmetics mint",
+        fieldName: "conditionGrade",
+        candidateValue: "9.5 Mint"
       }
     ],
     outputContract: {
@@ -652,6 +663,9 @@ export function buildMainRunFieldRepairExecutionInput(
       "Only map single-letter R to REGULAR when the source phrase clearly identifies shaft-flex context.",
       "Low-confidence suggestions must keep reviewRequired true.",
       "Do not invent missing fields without evidence.",
+      "When currentFields.conditionGrade is null and missingFields includes conditionGrade, an explicit contextual phrase describing overall condition or cosmetics may support a review-required suggestion on the approved conditionGrade scale.",
+      "Use the shortest exact source phrase carrying the condition meaning. Do not derive conditionGrade from isolated wear or damage notes such as worn grips, face wear, sky marks, scratches, or paint wear.",
+      "A separate valuation requirement for condition notes does not block an evidence-backed conditionGrade suggestion. Keep any remaining valuation review need in the summary or reviewer question.",
       "The model is advisory and subordinate to human corrections, deterministic policy, product resolution, inventory and valuation evidence, knowledge evidence, and prior review evidence.",
       "Do not replace a MATCHED product identity.",
       "For AMBIGUOUS product resolution, use only candidateProductIds supplied in the record packet.",

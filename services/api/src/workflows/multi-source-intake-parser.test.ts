@@ -918,4 +918,141 @@ describe("multi-source intake parser normalization matrix", () => {
     }
   });
 
+  it("prioritizes explicit LOG identity keys over timestamp and whole-line guesses", () => {
+    const rawContent =
+      "2026-07-18T16:48:11Z WARN row=27 review payload brand=PING model=G425 cat=irons notes='5-PW regular flex overall avg and cosmetics mint value pending' store=104";
+    const record = buildRecord(
+      {
+        id: "structured_log_identity",
+        sourceType: "LOG",
+        sourceName:
+          "Structured LOG identity",
+        rawContent
+      },
+      rawContent,
+      0
+    );
+
+    expect(record).toMatchObject({
+      brand: "PING",
+      productLine: "G425",
+      category: "IRON_SET",
+      shaftFlex: "REGULAR",
+      conditionGrade: null,
+      tradeInValue: null,
+      storeId: "104",
+      reviewNeeded: true
+    });
+
+    expect(
+      record.missingFields
+    ).toEqual(
+      expect.arrayContaining([
+        "conditionGrade",
+        "tradeInValue"
+      ])
+    );
+    expect(
+      record.missingFields
+    ).not.toEqual(
+      expect.arrayContaining([
+        "brand",
+        "productLine",
+        "category",
+        "shaftFlex"
+      ])
+    );
+    expect(
+      record.parserEvidence
+    ).toMatchObject({
+      brand: {
+        value: "PING",
+        sourceText: "PING"
+      },
+      productLine: {
+        value: "G425",
+        sourceText: "G425"
+      },
+      category: {
+        value: "IRON_SET",
+        sourceText: "irons"
+      },
+      shaftFlex: {
+        value: "REGULAR",
+        sourceText:
+          expect.stringMatching(
+            /regular/i
+          )
+      }
+    });
+  });
+
+  it("does not interpret operational timestamp numbers as wedge identity", () => {
+    const rawContent =
+      "2026-07-18T16:48:11Z ERROR payload brand=Callaway model='mystery club' shaft=unknown condition='7.0 Below Average' value=80 store=301";
+    const record = buildRecord(
+      {
+        id: "timestamp_category_safety",
+        sourceType: "LOG",
+        sourceName:
+          "Timestamp category safety",
+        rawContent
+      },
+      rawContent,
+      0
+    );
+
+    expect(record).toMatchObject({
+      brand: "Callaway",
+      productLine: null,
+      category: null,
+      shaftFlex: null,
+      conditionGrade:
+        "7.0 Below Average",
+      tradeInValue: 80,
+      storeId: "301",
+      reviewNeeded: true
+    });
+    expect(record.category).not.toBe(
+      "WEDGE"
+    );
+    expect(
+      record.parserEvidence?.category
+    ).toBeUndefined();
+  });
+
+  it("retains existing free-text wedge recognition outside operational timestamps", () => {
+    const namedWedge = buildRecord(
+      {
+        id: "named_wedge",
+        sourceType: "FREE_TEXT",
+        sourceName:
+          "Named wedge",
+        rawContent:
+          "Cleveland RTX 6 ZipCore wedge shaft Senior condition 8.0 Average value $70"
+      },
+      "Cleveland RTX 6 ZipCore wedge shaft Senior condition 8.0 Average value $70",
+      0
+    );
+    const loftWedge = buildRecord(
+      {
+        id: "loft_wedge",
+        sourceType: "FREE_TEXT",
+        sourceName:
+          "Loft wedge",
+        rawContent:
+          "Cleveland RTX ZipCore 48 shaft Regular condition 8.0 Average value $65"
+      },
+      "Cleveland RTX ZipCore 48 shaft Regular condition 8.0 Average value $65",
+      0
+    );
+
+    expect(namedWedge.category).toBe(
+      "WEDGE"
+    );
+    expect(loftWedge.category).toBe(
+      "WEDGE"
+    );
+  });
+
 });

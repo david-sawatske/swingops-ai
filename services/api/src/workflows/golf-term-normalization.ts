@@ -187,6 +187,197 @@ const SINGLE_R_FLEX_PATTERN = /\br\b/i;
 const EXPLICIT_REGULAR_PATTERN =
   /\b(?:reg|regular)\b|\br\s*flex\b|\bshaft\b[^.,;|]*\br\b|\bflex\b[^.,;|]*\br\b/i;
 
+export type DeterministicGolfTermAdvisoryMatch = {
+  policyId: string;
+  fieldName: "conditionGrade";
+  sourcePhrase: string;
+  candidateValue:
+    | "9.5 Mint"
+    | "9.0 Above Average"
+    | "8.0 Average"
+    | "7.0 Below Average"
+    | "6.0 Poor";
+  confidence: number;
+  reason: string;
+};
+
+const CONDITION_GRADE_ADVISORY_POLICIES = [
+  {
+    policyId: "condition-context-mint",
+    candidateValue: "9.5 Mint" as const,
+    pattern:
+      /\b(?:overall(?:\s+condition)?|cosmetics?|condition|cond)(?:\s+grade)?\s*(?:is|=|:)?\s*mint\b/gi
+  },
+  {
+    policyId: "condition-context-above-average",
+    candidateValue: "9.0 Above Average" as const,
+    pattern:
+      /\b(?:overall(?:\s+condition)?|cosmetics?|condition|cond)(?:\s+grade)?\s*(?:is|=|:)?\s*(?:above\s+(?:avg|average)|aa)\b/gi
+  },
+  {
+    policyId: "condition-context-average",
+    candidateValue: "8.0 Average" as const,
+    pattern:
+      /\b(?:overall(?:\s+condition)?|cosmetics?|condition|cond)(?:\s+grade)?\s*(?:is|=|:)?\s*(?:avg|average)\b/gi
+  },
+  {
+    policyId: "condition-context-below-average",
+    candidateValue: "7.0 Below Average" as const,
+    pattern:
+      /\b(?:overall(?:\s+condition)?|cosmetics?|condition|cond)(?:\s+grade)?\s*(?:is|=|:)?\s*(?:below\s+(?:avg|average)|ba)\b/gi
+  },
+  {
+    policyId: "condition-context-poor",
+    candidateValue: "6.0 Poor" as const,
+    pattern:
+      /\b(?:overall(?:\s+condition)?|cosmetics?|condition|cond)(?:\s+grade)?\s*(?:is|=|:)?\s*poor\b/gi
+  }
+] as const;
+
+const CONDITION_GRADE_NEGATIVE_EVIDENCE_PATTERN =
+  /(?:\b(?:condition|cond|grade|cosmetics?)\b[^.,;|]{0,48}\b(?:unknown|unclear|pending|not\s+listed|tbd|not\s+sure)\b)|(?:\b(?:unknown|unclear|pending|not\s+listed|tbd|not\s+sure)\b[^.,;|]{0,48}\b(?:condition|cond|grade|cosmetics?)\b)/i;
+
+const NON_CONDITION_FIELD_NEGATIVE_EVIDENCE_PATTERN =
+  /(?:\b(?:trade\s*-?\s*in\s+value|trade\s+value|estimated\s+value|value|shaft(?:\s+flex)?|flex|model|product(?:\s+line)?|category|cat)\b\s*(?:=|:|is)?\s*\b(?:unknown|unclear|pending|not\s+listed|tbd|not\s+sure)\b)|(?:\b(?:unknown|unclear|pending|not\s+listed|tbd|not\s+sure)\b\s+\b(?:trade\s*-?\s*in\s+value|trade\s+value|estimated\s+value|value|shaft(?:\s+flex)?|flex|model|product(?:\s+line)?|category|cat)\b)/gi;
+
+function getConditionGradeSafetyText(
+  sourceText: string
+): string {
+  return sourceText.replace(
+    NON_CONDITION_FIELD_NEGATIVE_EVIDENCE_PATTERN,
+    " "
+  );
+}
+
+type IndexedDeterministicGolfTermAdvisoryMatch =
+  DeterministicGolfTermAdvisoryMatch & {
+    index: number;
+  };
+
+function collectDeterministicGolfTermAdvisoryMatches(
+  sourceText: string
+): IndexedDeterministicGolfTermAdvisoryMatch[] {
+  return CONDITION_GRADE_ADVISORY_POLICIES.flatMap(
+    (policy) =>
+      Array.from(
+        sourceText.matchAll(
+          new RegExp(
+            policy.pattern.source,
+            policy.pattern.flags
+          )
+        )
+      ).flatMap((match) => {
+        if (
+          !match[0] ||
+          match.index === undefined
+        ) {
+          return [];
+        }
+
+        return [
+          {
+            policyId: policy.policyId,
+            fieldName:
+              "conditionGrade" as const,
+            sourcePhrase: match[0],
+            candidateValue:
+              policy.candidateValue,
+            confidence: 0.9,
+            reason:
+              "Deterministic normalization policy matched an explicit contextual condition phrase.",
+            index: match.index
+          }
+        ];
+      })
+  );
+}
+
+export function hasDeterministicGolfTermAdvisoryNegativeEvidence(
+  sourceText: string,
+  fieldName:
+    DeterministicGolfTermAdvisoryMatch["fieldName"]
+): boolean {
+  return (
+    fieldName === "conditionGrade" &&
+    CONDITION_GRADE_NEGATIVE_EVIDENCE_PATTERN.test(
+      getConditionGradeSafetyText(
+        sourceText
+      )
+    )
+  );
+}
+
+export function hasDeterministicGolfTermAdvisoryConflict(
+  sourceText: string,
+  fieldName:
+    DeterministicGolfTermAdvisoryMatch["fieldName"]
+): boolean {
+  const candidateValues = new Set(
+    collectDeterministicGolfTermAdvisoryMatches(
+      sourceText
+    )
+      .filter(
+        (match) =>
+          match.fieldName === fieldName
+      )
+      .map(
+        (match) =>
+          match.candidateValue
+      )
+  );
+
+  return candidateValues.size > 1;
+}
+
+export function findDeterministicGolfTermAdvisoryMatches(
+  sourceText: string
+): DeterministicGolfTermAdvisoryMatch[] {
+  if (
+    hasDeterministicGolfTermAdvisoryNegativeEvidence(
+      sourceText,
+      "conditionGrade"
+    )
+  ) {
+    return [];
+  }
+
+  const matches =
+    collectDeterministicGolfTermAdvisoryMatches(
+      sourceText
+    );
+  const uniqueValues = new Set(
+    matches.map(
+      (match) =>
+        match.candidateValue
+    )
+  );
+
+  if (
+    matches.length === 0 ||
+    uniqueValues.size !== 1
+  ) {
+    return [];
+  }
+
+  const selectedMatch = [...matches].sort(
+    (left, right) =>
+      right.sourcePhrase.length -
+        left.sourcePhrase.length ||
+      left.index - right.index
+  )[0];
+
+  if (!selectedMatch) {
+    return [];
+  }
+
+  const {
+    index: _index,
+    ...advisoryMatch
+  } = selectedMatch;
+
+  return [advisoryMatch];
+}
+
 export function getGolfTermNormalizationMatrix(): GolfTermNormalizationEntry[] {
   return [...GOLF_TERM_NORMALIZATION_MATRIX];
 }

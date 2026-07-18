@@ -1,0 +1,101 @@
+import {
+  describe,
+  expect,
+  it,
+} from "vitest";
+
+import {
+  applyModelReviewSuggestionToDraft,
+} from "./RecordReviewCardView";
+
+const baseDraft = {
+  brand: "Mizuno",
+  productLine: "JPX 923 Hot Metal",
+  category: "IRON_SET" as const,
+  shaftFlex: "REGULAR" as const,
+  conditionGrade: "" as const,
+  demoValue: "390",
+  sourceTextMatches: {},
+  demoValuationNote: "",
+  reviewerNotes:
+    "Confirmed corrected values in guided review.",
+};
+
+describe(
+  "model review suggestion application",
+  () => {
+    it(
+      "applies a condition grade and its exact source phrase to the correction draft",
+      () => {
+        const draft =
+          applyModelReviewSuggestionToDraft(
+            baseDraft,
+            {
+              recordId: "parsed_item_1",
+              fieldName:
+                "conditionGrade",
+              sourcePhrase:
+                "overall avg",
+              candidateValue:
+                "8.0 Average",
+              confidence: 0.9,
+              reason:
+                "Deterministic policy matched explicit condition evidence.",
+              reviewRequired: true,
+            },
+          );
+
+        expect(
+          draft.conditionGrade,
+        ).toBe("8.0 Average");
+        expect(
+          draft.sourceTextMatches,
+        ).toEqual({
+          conditionGrade:
+            "overall avg",
+        });
+        expect(draft.brand).toBe(
+          baseDraft.brand,
+        );
+        expect(draft.demoValue).toBe(
+          baseDraft.demoValue,
+        );
+      },
+    );
+
+    it(
+      "maps a trade-in value suggestion to the review draft value field",
+      () => {
+        const draft =
+          applyModelReviewSuggestionToDraft(
+            {
+              ...baseDraft,
+              demoValue: "",
+            },
+            {
+              recordId: "parsed_item_2",
+              fieldName:
+                "tradeInValue",
+              sourcePhrase:
+                "estimated value $145",
+              candidateValue: 145,
+              confidence: 0.92,
+              reason:
+                "The source includes an explicit numeric value.",
+              reviewRequired: true,
+            },
+          );
+
+        expect(
+          draft.demoValue,
+        ).toBe("145");
+        expect(
+          draft.sourceTextMatches,
+        ).toEqual({
+          demoValue:
+            "estimated value $145",
+        });
+      },
+    );
+  },
+);

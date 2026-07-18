@@ -3,7 +3,10 @@ import type {
 } from "../review-learning/review-learning-evidence.js";
 
 import {
-  getFieldRepairSuggestionMatrixValidationErrors
+  findDeterministicGolfTermAdvisoryMatches,
+  getFieldRepairSuggestionMatrixValidationErrors,
+  hasDeterministicGolfTermAdvisoryConflict,
+  hasDeterministicGolfTermAdvisoryNegativeEvidence
 } from "./golf-term-normalization.js";
 import {
   fieldRepairSuggestionSchema,
@@ -12,7 +15,8 @@ import {
 } from "./main-run-field-repair.js";
 
 export type MainRunFieldRepairAdvisoryCandidateSource =
-  "PRIOR_REVIEW";
+  | "DETERMINISTIC_POLICY"
+  | "PRIOR_REVIEW";
 
 export type MainRunFieldRepairAdvisoryCandidate = {
   candidateId: string;
@@ -35,6 +39,20 @@ export type BuildPriorReviewFieldRepairAdvisoryCandidatesInput = {
     | "UNRESOLVED";
   sourceEvidenceId: string;
   priorReviewSuggestions: PriorReviewLearningSuggestion[];
+};
+
+export type BuildDeterministicPolicyFieldRepairAdvisoryCandidatesInput = {
+  recordId: string;
+  sourceText: string;
+  missingFields: string[];
+  fieldApplicability: {
+    shaftFlex: "REQUIRED" | "NOT_APPLICABLE";
+  };
+  productResolutionStatus:
+    | "MATCHED"
+    | "AMBIGUOUS"
+    | "UNRESOLVED";
+  sourceEvidenceId: string;
 };
 
 const SUPPORTED_FIELD_NAMES = new Set<FieldRepairFieldName>([
@@ -118,6 +136,95 @@ const CONDITION_VALUE_BY_NORMALIZED_TEXT: Record<
   POOR: "6.0 Poor"
 };
 
+function normalizePriorReviewSuggestionFieldName(
+  fieldName: string
+): string {
+  return fieldName === "demoValue"
+    ? "tradeInValue"
+    : fieldName;
+}
+
+function normalizePriorReviewSuggestionValue(
+  value: string | number | null
+): string {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9.]+/g, "");
+}
+
+export function filterPriorReviewLearningSuggestionsForSourceSafety(
+  input: {
+    sourceText: string;
+    suggestions:
+      PriorReviewLearningSuggestion[];
+  }
+): PriorReviewLearningSuggestion[] {
+  const valuesByField =
+    new Map<string, Set<string>>();
+
+  for (const suggestion of input.suggestions) {
+    const fieldName =
+      normalizePriorReviewSuggestionFieldName(
+        suggestion.fieldName
+      );
+    const value =
+      normalizePriorReviewSuggestionValue(
+        suggestion.suggestedValue
+      );
+
+    if (!value) {
+      continue;
+    }
+
+    const fieldValues =
+      valuesByField.get(fieldName) ??
+      new Set<string>();
+
+    fieldValues.add(value);
+    valuesByField.set(
+      fieldName,
+      fieldValues
+    );
+  }
+
+  const conflictingFields = new Set(
+    [...valuesByField.entries()]
+      .filter(
+        ([, values]) =>
+          values.size > 1
+      )
+      .map(
+        ([fieldName]) =>
+          fieldName
+      )
+  );
+
+  if (
+    hasDeterministicGolfTermAdvisoryConflict(
+      input.sourceText,
+      "conditionGrade"
+    ) ||
+    hasDeterministicGolfTermAdvisoryNegativeEvidence(
+      input.sourceText,
+      "conditionGrade"
+    )
+  ) {
+    conflictingFields.add(
+      "conditionGrade"
+    );
+  }
+
+  return input.suggestions.filter(
+    (suggestion) =>
+      !conflictingFields.has(
+        normalizePriorReviewSuggestionFieldName(
+          suggestion.fieldName
+        )
+      )
+  );
+}
+
 export function buildPriorReviewFieldRepairAdvisoryCandidates(
   input: BuildPriorReviewFieldRepairAdvisoryCandidatesInput
 ): MainRunFieldRepairAdvisoryCandidate[] {
@@ -138,11 +245,95 @@ export function buildPriorReviewFieldRepairAdvisoryCandidates(
       return candidate ? [candidate] : [];
     });
 
-  return withholdConflictingFieldCandidates(validCandidates).sort(
+  return mergeFieldRepairAdvisoryCandidates(
+    validCandidates
+  );
+}
+
+export function buildDeterministicPolicyFieldRepairAdvisoryCandidates(
+  input: BuildDeterministicPolicyFieldRepairAdvisoryCandidatesInput
+): MainRunFieldRepairAdvisoryCandidate[] {
+  if (
+    input.productResolutionStatus === "AMBIGUOUS" ||
+    input.sourceEvidenceId.trim().length === 0
+  ) {
+    return [];
+  }
+
+  const candidates =
+    findDeterministicGolfTermAdvisoryMatches(
+      input.sourceText
+    ).flatMap((match) => {
+      if (
+        !input.missingFields.includes(
+          match.fieldName
+        )
+      ) {
+        return [];
+      }
+
+      const parsedSuggestion =
+        fieldRepairSuggestionSchema.safeParse({
+          recordId: input.recordId,
+          fieldName: match.fieldName,
+          sourcePhrase: match.sourcePhrase,
+          candidateValue:
+            match.candidateValue,
+          confidence: match.confidence,
+          reason: match.reason,
+          reviewRequired: true
+        });
+
+      if (!parsedSuggestion.success) {
+        return [];
+      }
+
+      if (
+        getFieldRepairSuggestionMatrixValidationErrors(
+          parsedSuggestion.data
+        ).length > 0
+      ) {
+        return [];
+      }
+
+      return [
+        {
+          candidateId:
+            `deterministic-policy:${match.policyId}:${match.fieldName}`,
+          sourceType:
+            "DETERMINISTIC_POLICY" as const,
+          sourceEvidenceId:
+            input.sourceEvidenceId,
+          sourceReferenceId:
+            match.policyId,
+          suggestion:
+            parsedSuggestion.data
+        }
+      ];
+    });
+
+  return mergeFieldRepairAdvisoryCandidates(
+    candidates
+  );
+}
+
+export function mergeFieldRepairAdvisoryCandidates(
+  ...candidateGroups:
+    MainRunFieldRepairAdvisoryCandidate[][]
+): MainRunFieldRepairAdvisoryCandidate[] {
+  return withholdConflictingFieldCandidates(
+    candidateGroups.flat()
+  ).sort(
     (left, right) =>
-      FIELD_SORT_ORDER[left.suggestion.fieldName] -
-        FIELD_SORT_ORDER[right.suggestion.fieldName] ||
-      left.candidateId.localeCompare(right.candidateId)
+      FIELD_SORT_ORDER[
+        left.suggestion.fieldName
+      ] -
+        FIELD_SORT_ORDER[
+          right.suggestion.fieldName
+        ] ||
+      left.candidateId.localeCompare(
+        right.candidateId
+      )
   );
 }
 

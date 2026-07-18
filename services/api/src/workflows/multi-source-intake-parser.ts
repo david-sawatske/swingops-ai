@@ -390,6 +390,267 @@ function normalizeDelimitedProductText(
   return productText;
 }
 
+type StructuredLogValues = {
+  brand: string | null;
+  productText: string | null;
+  category: string | null;
+  shaftFlex: string | null;
+  shaftFlexSourceText: string | null;
+  conditionGrade: string | null;
+  conditionGradeSourceText: string | null;
+};
+
+const STRUCTURED_LOG_FIELD_KEYS = [
+  "brand",
+  "make",
+  "manufacturer",
+  "model",
+  "product",
+  "productline",
+  "clubmodel",
+  "cat",
+  "category",
+  "type",
+  "shaft",
+  "shaftflex",
+  "flex",
+  "condition",
+  "conditiongrade",
+  "grade",
+  "value",
+  "tradevalue",
+  "tradeinvalue",
+  "estimatedvalue",
+  "store",
+  "storeid",
+  "location",
+  "locationid",
+  "note",
+  "notes"
+] as const;
+
+function escapeRegularExpressionText(
+  value: string
+): string {
+  return value.replace(
+    /[.*+?^${}()|[\]\\]/g,
+    "\\$&"
+  );
+}
+
+function extractStructuredLogFieldValue(
+  fragment: string,
+  aliases: string[]
+): string | null {
+  const aliasPattern = aliases
+    .map(escapeRegularExpressionText)
+    .join("|");
+  const allKeysPattern =
+    STRUCTURED_LOG_FIELD_KEYS
+      .map(escapeRegularExpressionText)
+      .join("|");
+  const pattern = new RegExp(
+    `\\b(?:${aliasPattern})\\s*[:=]\\s*(?:'([^']*)'|"([^"]*)"|(.+?))(?=\\s+\\b(?:${allKeysPattern})\\b\\s*[:=]|[,}]|$)`,
+    "i"
+  );
+  const match = fragment.match(pattern);
+  const value =
+    match?.[1] ??
+    match?.[2] ??
+    match?.[3] ??
+    "";
+
+  return (
+    stripDelimitedCell(value) ||
+    null
+  );
+}
+
+function stripOtherStructuredFieldNegativeEvidence(
+  value: string,
+  targetFieldAliases: string[]
+): string {
+  const normalizedTargetAliases =
+    new Set(
+      targetFieldAliases.map(
+        normalizeDelimitedHeader
+      )
+    );
+  const otherFieldPattern =
+    STRUCTURED_LOG_FIELD_KEYS
+      .filter(
+        (fieldName) =>
+          fieldName !== "note" &&
+          fieldName !== "notes" &&
+          !normalizedTargetAliases.has(
+            normalizeDelimitedHeader(
+              fieldName
+            )
+          )
+      )
+      .map(
+        escapeRegularExpressionText
+      )
+      .join("|");
+  const negativePattern =
+    "unknown|unclear|pending|not\\s+listed|tbd|not\\s+sure";
+  const fieldScopedNegativePattern =
+    new RegExp(
+      `(?:\\b(?:${otherFieldPattern})\\b\\s*(?:=|:|is)?\\s*\\b(?:${negativePattern})\\b)|(?:\\b(?:${negativePattern})\\b\\s+\\b(?:${otherFieldPattern})\\b)`,
+      "gi"
+    );
+
+  return value.replace(
+    fieldScopedNegativePattern,
+    " "
+  );
+}
+
+function parseStructuredLogValues(
+  source: MultiSourceParserInput,
+  fragment: string
+): StructuredLogValues | null {
+  if (source.sourceType !== "LOG") {
+    return null;
+  }
+
+  const brandText =
+    extractStructuredLogFieldValue(
+      fragment,
+      [
+        "brand",
+        "make",
+        "manufacturer"
+      ]
+    );
+  const productText =
+    normalizeDelimitedProductText(
+      extractStructuredLogFieldValue(
+        fragment,
+        [
+          "model",
+          "product",
+          "productline",
+          "clubmodel"
+        ]
+      )
+    );
+  const categoryText =
+    extractStructuredLogFieldValue(
+      fragment,
+      [
+        "cat",
+        "category",
+        "type"
+      ]
+    );
+  const explicitShaftText =
+    extractStructuredLogFieldValue(
+      fragment,
+      [
+        "shaft",
+        "shaftflex",
+        "flex"
+      ]
+    );
+  const explicitConditionText =
+    extractStructuredLogFieldValue(
+      fragment,
+      [
+        "condition",
+        "conditiongrade",
+        "grade"
+      ]
+    );
+  const notesText =
+    extractStructuredLogFieldValue(
+      fragment,
+      [
+        "note",
+        "notes"
+      ]
+    );
+
+  const shaftNormalizationText =
+    explicitShaftText
+      ? `shaft ${explicitShaftText}`
+      : notesText
+        ? stripOtherStructuredFieldNegativeEvidence(
+            notesText,
+            [
+              "shaft",
+              "shaftflex",
+              "flex"
+            ]
+          )
+        : "";
+  const conditionNormalizationText =
+    explicitConditionText
+      ? `condition ${explicitConditionText}`
+      : notesText
+        ? stripOtherStructuredFieldNegativeEvidence(
+            notesText,
+            [
+              "condition",
+              "conditiongrade",
+              "grade"
+            ]
+          )
+        : "";
+  const detectedShaftFlex =
+    detectShaftFlexWithEvidence(
+      shaftNormalizationText
+    );
+  const detectedConditionGrade =
+    detectApprovedConditionGradeWithEvidence(
+      conditionNormalizationText
+    );
+
+  if (
+    !brandText &&
+    !productText &&
+    !categoryText &&
+    !explicitShaftText &&
+    !explicitConditionText &&
+    !notesText
+  ) {
+    return null;
+  }
+
+  return {
+    brand:
+      brandText
+        ? detectBrand(brandText)
+        : null,
+    productText,
+    category:
+      categoryText
+        ? detectCategory(categoryText)
+        : null,
+    shaftFlex:
+      detectedShaftFlex.value,
+    shaftFlexSourceText:
+      detectedShaftFlex.evidence
+        ?.sourceText ??
+      null,
+    conditionGrade:
+      detectedConditionGrade.value,
+    conditionGradeSourceText:
+      detectedConditionGrade.evidence
+        ?.sourceText ??
+      null
+  };
+}
+
+function stripOperationalLogTimestamps(
+  value: string
+): string {
+  return value.replace(
+    /\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\b/g,
+    " "
+  );
+}
+
 function detectDelimitedSeparator(headerLine: string): string | null {
   const candidates = ["|", "\t", ";", ","];
   let selectedSeparator: string | null = null;
@@ -759,12 +1020,28 @@ export function buildRecord(
       source,
       fragment
     );
+  const structuredLogValues =
+    parseStructuredLogValues(
+      source,
+      fragment
+    );
+  const fallbackCategoryText =
+    source.sourceType === "LOG"
+      ? stripOperationalLogTimestamps(
+          fragment
+        )
+      : fragment;
   const detectedBrand =
+    structuredLogValues?.brand ??
     detectBrand(fragment);
   const detectedCategory =
-    detectCategory(fragment);
+    structuredLogValues?.category ??
+    detectCategory(
+      fallbackCategoryText
+    );
   const sourceSupportedProductText =
     csvRowValues?.productText ??
+    structuredLogValues?.productText ??
     detectSourceSupportedProductText({
       sourceType:
         source.sourceType,
@@ -794,20 +1071,60 @@ export function buildRecord(
     productIdentity.productLine;
   const category =
     productIdentity.category;
-  const detectedShaftFlex =
+  const fallbackShaftFlex =
     detectShaftFlexWithEvidence(
       fragment
     );
+  const detectedShaftFlex =
+    structuredLogValues
+      ?.shaftFlex &&
+    structuredLogValues
+      .shaftFlexSourceText
+      ? {
+          value:
+            structuredLogValues
+              .shaftFlex,
+          evidence: {
+            value:
+              structuredLogValues
+                .shaftFlex,
+            sourceText:
+              structuredLogValues
+                .shaftFlexSourceText
+          }
+        }
+      : fallbackShaftFlex;
   const shaftFlex =
     isShaftFlexApplicable(category)
       ? detectedShaftFlex.value ??
         csvRowValues?.shaftFlex ??
         null
       : null;
-  const conditionGrade =
+  const fallbackConditionGrade =
     detectApprovedConditionGradeWithEvidence(
       fragment
-    ).value;
+    );
+  const detectedConditionGrade =
+    structuredLogValues
+      ?.conditionGrade &&
+    structuredLogValues
+      .conditionGradeSourceText
+      ? {
+          value:
+            structuredLogValues
+              .conditionGrade,
+          evidence: {
+            value:
+              structuredLogValues
+                .conditionGrade,
+            sourceText:
+              structuredLogValues
+                .conditionGradeSourceText
+          }
+        }
+      : fallbackConditionGrade;
+  const conditionGrade =
+    detectedConditionGrade.value;
   const detectedTradeInValue =
     detectTradeInValueWithEvidence(
       fragment
@@ -826,6 +1143,29 @@ export function buildRecord(
       conditionGrade,
       tradeInValue
     });
+
+  if (
+    structuredLogValues &&
+    detectedShaftFlex.evidence &&
+    isShaftFlexApplicable(category)
+  ) {
+    parserEvidence = {
+      ...parserEvidence,
+      shaftFlex:
+        detectedShaftFlex.evidence
+    };
+  }
+
+  if (
+    structuredLogValues &&
+    detectedConditionGrade.evidence
+  ) {
+    parserEvidence = {
+      ...parserEvidence,
+      conditionGrade:
+        detectedConditionGrade.evidence
+    };
+  }
 
   if (
     !parserEvidence.shaftFlex &&
