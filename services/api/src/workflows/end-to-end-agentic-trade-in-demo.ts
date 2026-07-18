@@ -29,7 +29,10 @@ import {
   type ReadOnlyToolInvocationResult
 } from "../tools/read-only-tool-invocation.js";
 import {
-  buildPriorReviewFieldRepairAdvisoryCandidates
+  buildDeterministicPolicyFieldRepairAdvisoryCandidates,
+  buildPriorReviewFieldRepairAdvisoryCandidates,
+  filterPriorReviewLearningSuggestionsForSourceSafety,
+  mergeFieldRepairAdvisoryCandidates
 } from "./field-repair-advisory-candidates.js";
 import {
   isShaftFlexApplicable
@@ -224,10 +227,36 @@ function needsReview(item: ParsedTradeInDemoItem): boolean {
   return item.confidence < 0.72 || item.missingFields.length > 0;
 }
 
+function getFieldRepairMissingFields(
+  item: ParsedTradeInDemoItem
+): string[] {
+  return [
+    item.brand ? null : "brand",
+    item.productLine ? null : "productLine",
+    item.category ? null : "category",
+    isShaftFlexApplicable(item.category) &&
+    !item.shaftFlex
+      ? "shaftFlex"
+      : null,
+    item.conditionGrade
+      ? null
+      : "conditionGrade",
+    item.tradeInValue === null
+      ? "tradeInValue"
+      : null
+  ].filter(
+    (field): field is string =>
+      Boolean(field)
+  );
+}
+
 function shouldRunFieldRepair(item: ParsedTradeInDemoItem): boolean {
+  const fieldRepairMissingFields =
+    getFieldRepairMissingFields(item);
+
   return (
     item.confidence < 0.72 ||
-    item.missingFields.length > 0 ||
+    fieldRepairMissingFields.length > 0 ||
     item.uncertaintyNotes.length > 0
   );
 }
@@ -639,11 +668,31 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     });
   }
 
+  const parsedItemById = new Map(
+    parsedItems.map(
+      (item) => [
+        item.id,
+        item
+      ]
+    )
+  );
   const priorReviewLearningSuggestionsByItem =
-    priorReviewLearningEvidenceByItem.map((item) => ({
-      parsedItemId: item.parsedItemId,
-      suggestions: buildPriorReviewLearningSuggestionsFromEvidence(item.evidence)
-    }));
+    priorReviewLearningEvidenceByItem.map(
+      (item) => ({
+        parsedItemId: item.parsedItemId,
+        suggestions:
+          filterPriorReviewLearningSuggestionsForSourceSafety({
+            sourceText:
+              parsedItemById.get(
+                item.parsedItemId
+              )?.rawLine ?? "",
+            suggestions:
+              buildPriorReviewLearningSuggestionsFromEvidence(
+                item.evidence
+              )
+          })
+      })
+    );
 
   const knowledgeMatchesByItem:
     EndToEndAgenticTradeInDemoResult["knowledgeMatchesByItem"] = [];
@@ -717,16 +766,31 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
           (suggestions) =>
             suggestions.parsedItemId === item.id
         );
+      const fieldRepairMissingFields =
+        getFieldRepairMissingFields(item);
       const fieldApplicability = {
         shaftFlex: isShaftFlexApplicable(item.category)
           ? "REQUIRED" as const
           : "NOT_APPLICABLE" as const
       };
-      const advisoryCandidates =
+      const deterministicPolicyAdvisoryCandidates =
+        buildDeterministicPolicyFieldRepairAdvisoryCandidates({
+          recordId: item.id,
+          sourceText: item.rawLine,
+          missingFields:
+            fieldRepairMissingFields,
+          fieldApplicability,
+          productResolutionStatus:
+            item.productResolution.status,
+          sourceEvidenceId:
+            `${item.id}:deterministic-policy`
+        });
+      const priorReviewAdvisoryCandidates =
         buildPriorReviewFieldRepairAdvisoryCandidates({
           recordId: item.id,
           sourceText: item.rawLine,
-          missingFields: item.missingFields,
+          missingFields:
+            fieldRepairMissingFields,
           fieldApplicability,
           productResolutionStatus:
             item.productResolution.status,
@@ -735,9 +799,14 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
           priorReviewSuggestions:
             priorReviewSuggestions?.suggestions ?? []
         });
+      const advisoryCandidates =
+        mergeFieldRepairAdvisoryCandidates(
+          deterministicPolicyAdvisoryCandidates,
+          priorReviewAdvisoryCandidates
+        );
       const reviewReasonCodes = [
         item.confidence < 0.72 ? "LOW_CONFIDENCE" : null,
-        item.missingFields.length > 0 ? "MISSING_REQUIRED_FIELDS" : null,
+        fieldRepairMissingFields.length > 0 ? "MISSING_REQUIRED_FIELDS" : null,
         item.uncertaintyNotes.length > 0 ? "UNCERTAINTY_NOTES" : null,
         item.productResolution.status === "AMBIGUOUS"
           ? "PRODUCT_AMBIGUOUS"
@@ -789,6 +858,16 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
           payload: valuationEvidence?.estimate ?? null
         },
         {
+          evidenceId:
+            `${item.id}:deterministic-policy`,
+          evidenceType:
+            "DETERMINISTIC_POLICY",
+          summary:
+            `${deterministicPolicyAdvisoryCandidates.length} deterministic policy candidate(s) were available.`,
+          payload:
+            deterministicPolicyAdvisoryCandidates
+        },
+        {
           evidenceId: `${item.id}:prior-review`,
           evidenceType: "PRIOR_REVIEW",
           summary:
@@ -800,12 +879,12 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
       return {
         recordId: item.id,
         sourceText: item.rawLine,
-        missingFields: item.missingFields,
+        missingFields: fieldRepairMissingFields,
         confidence: item.confidence,
         selectionReason: {
           lowConfidence: item.confidence < 0.72,
           confidence: item.confidence,
-          missingFields: item.missingFields,
+          missingFields: fieldRepairMissingFields,
           uncertaintyNotes: item.uncertaintyNotes,
           reviewReasonCodes
         },

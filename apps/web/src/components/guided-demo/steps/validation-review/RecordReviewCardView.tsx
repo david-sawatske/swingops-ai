@@ -41,6 +41,13 @@ import {
   normalizeShaftFlexValue,
 } from "./validationReviewUtils";
 
+type ModelReviewSuggestion = Extract<
+  ModelReviewOutcome,
+  {
+    outcomeType: "REPAIR_SUGGESTED";
+  }
+>["suggestions"][number];
+
 function RecordFieldGrid({ card }: { card: RecordReviewCard }) {
   const proposedRecord = getProposedRecord(card.reviewItem);
 
@@ -1277,21 +1284,39 @@ function getPriorReviewSuggestionKey(suggestion: PriorReviewLearningSuggestion) 
   ].join("-");
 }
 
-function applyPriorReviewSuggestionToDraft(
+function applySuggestionValueToDraft(
   draft: ReviewCorrectionDraft,
-  suggestion: PriorReviewLearningSuggestion,
+  suggestion: {
+    fieldName: string;
+    suggestedValue:
+      | string
+      | number
+      | null
+      | undefined;
+    sourcePhrase:
+      | string
+      | null
+      | undefined;
+  },
 ): ReviewCorrectionDraft {
-  const fieldName = getSuggestionDraftFieldName(suggestion.fieldName);
-  const suggestedValue = String(suggestion.suggestedValue ?? "").trim();
+  const fieldName =
+    getSuggestionDraftFieldName(
+      suggestion.fieldName,
+    );
+  const suggestedValue = String(
+    suggestion.suggestedValue ?? "",
+  ).trim();
+  const sourcePhrase =
+    suggestion.sourcePhrase?.trim() ?? "";
 
   if (!fieldName || !suggestedValue) {
     return draft;
   }
 
-  const sourceTextMatches = suggestion.rawTextMatch
+  const sourceTextMatches = sourcePhrase
     ? {
         ...draft.sourceTextMatches,
-        [fieldName]: suggestion.rawTextMatch,
+        [fieldName]: sourcePhrase,
       }
     : draft.sourceTextMatches;
 
@@ -1314,7 +1339,10 @@ function applyPriorReviewSuggestionToDraft(
   if (fieldName === "category") {
     return {
       ...draft,
-      category: normalizeCategoryValue(suggestedValue),
+      category:
+        normalizeCategoryValue(
+          suggestedValue,
+        ),
       sourceTextMatches,
     };
   }
@@ -1322,7 +1350,10 @@ function applyPriorReviewSuggestionToDraft(
   if (fieldName === "shaftFlex") {
     return {
       ...draft,
-      shaftFlex: normalizeShaftFlexValue(suggestedValue),
+      shaftFlex:
+        normalizeShaftFlexValue(
+          suggestedValue,
+        ),
       sourceTextMatches,
     };
   }
@@ -1330,18 +1361,57 @@ function applyPriorReviewSuggestionToDraft(
   if (fieldName === "conditionGrade") {
     return {
       ...draft,
-      conditionGrade: normalizeConditionGradeValue(suggestedValue),
+      conditionGrade:
+        normalizeConditionGradeValue(
+          suggestedValue,
+        ),
       sourceTextMatches,
     };
   }
 
-  const numericValue = suggestedValue.replace(/[^\d.]+/g, "");
+  const numericValue =
+    suggestedValue.replace(
+      /[^\d.]+/g,
+      "",
+    );
 
   return {
     ...draft,
     demoValue: numericValue,
     sourceTextMatches,
   };
+}
+
+function applyPriorReviewSuggestionToDraft(
+  draft: ReviewCorrectionDraft,
+  suggestion: PriorReviewLearningSuggestion,
+): ReviewCorrectionDraft {
+  return applySuggestionValueToDraft(
+    draft,
+    {
+      fieldName: suggestion.fieldName,
+      suggestedValue:
+        suggestion.suggestedValue,
+      sourcePhrase:
+        suggestion.rawTextMatch,
+    },
+  );
+}
+
+export function applyModelReviewSuggestionToDraft(
+  draft: ReviewCorrectionDraft,
+  suggestion: ModelReviewSuggestion,
+): ReviewCorrectionDraft {
+  return applySuggestionValueToDraft(
+    draft,
+    {
+      fieldName: suggestion.fieldName,
+      suggestedValue:
+        suggestion.candidateValue,
+      sourcePhrase:
+        suggestion.sourcePhrase,
+    },
+  );
 }
 
 function getActionablePriorReviewSuggestions(
@@ -1553,8 +1623,12 @@ function RecordValidationDetails({ card }: { card: RecordReviewCard }) {
 }
 
 function ModelReviewAssistancePanel({
+  onApplySuggestion,
   outcome,
 }: {
+  onApplySuggestion:
+    | ((suggestion: ModelReviewSuggestion) => void)
+    | null;
   outcome: ModelReviewOutcome;
 }) {
   const outcomeModifier = outcome.outcomeType
@@ -1613,6 +1687,22 @@ function ModelReviewAssistancePanel({
               </dl>
 
               <p>{suggestion.reason}</p>
+
+              {onApplySuggestion ? (
+                <div className="guided-prior-review-suggestion__actions">
+                  <button
+                    className="guided-step-primary-action"
+                    onClick={() =>
+                      onApplySuggestion(
+                        suggestion,
+                      )
+                    }
+                    type="button"
+                  >
+                    Apply suggested value
+                  </button>
+                </div>
+              ) : null}
             </article>
           ))}
         </div>
@@ -2278,6 +2368,21 @@ export function RecordReviewCardView({
   onStartEditing: () => void;
   onSubmitCorrection: () => void;
 }) {
+  function handleApplyModelSuggestion(
+    suggestion: ModelReviewSuggestion,
+  ) {
+    onDraftChange(
+      applyModelReviewSuggestionToDraft(
+        correctionDraft,
+        suggestion,
+      ),
+    );
+
+    if (!isEditing) {
+      onStartEditing();
+    }
+  }
+
   return (
     <details className="guided-record-review-card" open={isEditing}>
       <summary className="guided-record-review-card__header">
@@ -2294,6 +2399,12 @@ export function RecordReviewCardView({
       <div className="guided-record-review-card__content">
         {card.modelReviewOutcome ? (
           <ModelReviewAssistancePanel
+            onApplySuggestion={
+              card.modelReviewOutcome.outcomeType ===
+              "REPAIR_SUGGESTED"
+                ? handleApplyModelSuggestion
+                : null
+            }
             outcome={card.modelReviewOutcome}
           />
         ) : null}
