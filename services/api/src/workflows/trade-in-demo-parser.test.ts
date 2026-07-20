@@ -844,4 +844,45 @@ describe("parseTradeInDemoText", () => {
     );
   });
 
+  it("preserves canonical shaft and condition when quoted LOG evidence only marks generation unclear", () => {
+    const parsedItems =
+      parseTradeInDemoText(
+        "1. Titleist TSR FAIRWAY_WOOD — shaft flex STIFF; condition 8.0 Average; trade value $135; store 104; review needed; source evidence: 2026-07-20T02:14:15Z WARN trade_record brand=Titleist model=TSR cat='fairway wood' generation='unclear' shaft=Stiff condition='8.0 Average' value=135 store=104"
+      );
+
+    expect(parsedItems).toHaveLength(1);
+    expect(parsedItems[0]).toMatchObject({
+      brand: "Titleist",
+      productLine: "TSR",
+      category: "FAIRWAY_WOOD",
+      shaftFlex: "STIFF",
+      conditionGrade: "8.0 Average",
+      tradeInValue: 135,
+      storeId: "104",
+      uncertaintyNotes: [
+        "model uncertain"
+      ],
+      productResolution: {
+        status: "AMBIGUOUS"
+      },
+      parserEvidence: {
+        shaftFlex: {
+          value: "STIFF",
+          sourceText: "shaft flex STIFF"
+        },
+        conditionGrade: {
+          value: "8.0 Average",
+          sourceText: "8.0 Average"
+        }
+      }
+    });
+
+    expect(
+      parsedItems[0]?.missingFields
+    ).not.toContain("shaftFlex");
+    expect(
+      parsedItems[0]?.missingFields
+    ).not.toContain("conditionNotes");
+  });
+
 });
