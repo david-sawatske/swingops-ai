@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCorrectionDraft,
   buildLearningEvents,
+  canApplyModelReviewSuggestion,
   getAppliedCorrectionSummaries,
   getBlockingCorrectionFields,
   getInventoryProductLineCandidates,
@@ -535,4 +536,90 @@ describe("buildCorrectionDraft", () => {
     ]);
   });
 
+});
+
+
+describe("model suggestion action availability", () => {
+  const repairOutcome = {
+    outcomeType: "REPAIR_SUGGESTED" as const,
+    recordId: "parsed_item_1",
+    summary:
+      "A reviewer-controlled repair is available.",
+    evidenceIds: [
+      "parsed_item_1:parser"
+    ],
+    reviewerQuestion:
+      "Should the suggested value be applied?",
+    suggestions: [
+      {
+        recordId: "parsed_item_1",
+        fieldName: "shaftFlex" as const,
+        sourcePhrase: "shaft firm",
+        candidateValue: "STIFF",
+        confidence: 0.94,
+        reason:
+          "Prior approved evidence supports Stiff.",
+        reviewRequired: true
+      }
+    ]
+  };
+
+  it("allows the model suggestion action for active review work", () => {
+    expect(
+      canApplyModelReviewSuggestion(
+        buildReviewCard({
+          modelReviewOutcome:
+            repairOutcome
+        })
+      )
+    ).toBe(true);
+  });
+
+  it("withholds the model suggestion action after resolution", () => {
+    const openCard =
+      buildReviewCard({
+        modelReviewOutcome:
+          repairOutcome
+      });
+
+    expect(
+      canApplyModelReviewSuggestion({
+        ...openCard,
+        status: "resolved",
+        statusLabel: "Resolved",
+        reviewItem: openCard.reviewItem
+          ? {
+              ...openCard.reviewItem,
+              status: "RESOLVED",
+              resolvedAt:
+                "2026-07-18T18:00:00.000Z"
+            }
+          : null
+      })
+    ).toBe(false);
+  });
+
+  it("withholds the model suggestion action after dismissal", () => {
+    const openCard =
+      buildReviewCard({
+        modelReviewOutcome:
+          repairOutcome
+      });
+
+    expect(
+      canApplyModelReviewSuggestion({
+        ...openCard,
+        status: "resolved",
+        statusLabel: "Dismissed",
+        reviewItem: openCard.reviewItem
+          ? {
+              ...openCard.reviewItem,
+              status: "DISMISSED",
+              resolvedAt:
+                "2026-07-18T18:00:00.000Z"
+            }
+          : null
+      })
+    ).toBe(false);
+  });
 });

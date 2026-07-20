@@ -156,6 +156,31 @@ const SHAFT_FLEX_NEGATIVE_EVIDENCE_PATTERN =
 const CONDITION_GRADE_NEGATIVE_EVIDENCE_PATTERN =
   /(?:\b(?:condition|cond|grade)\b[^.,;|]{0,48}\b(?:unknown|unclear|pending|not\s+listed|tbd|not\s+sure)\b)|(?:\b(?:unknown|unclear|pending|not\s+listed|tbd|not\s+sure)\b[^.,;|]{0,48}\b(?:condition|cond|grade)\b)/i;
 
+const NEGATIVE_EVIDENCE_TERM_PATTERN =
+  "unknown|unclear|pending|not\\s+listed|tbd|not\\s+sure";
+
+const NON_SHAFT_FIELD_PATTERN =
+  "generation|model|product(?:\\s+line)?|category|condition|cond|grade|value|valuation|store";
+
+const NON_CONDITION_FIELD_PATTERN =
+  "generation|model|product(?:\\s+line)?|category|shaft(?:\\s+flex)?|flex|value|valuation|store";
+
+function stripOtherFieldScopedNegativeEvidence(
+  text: string,
+  otherFieldPattern: string
+): string {
+  const scopedNegativePattern =
+    new RegExp(
+      `(?:\\b(?:${otherFieldPattern})\\b\\s*(?:=|:|is)?\\s*\\b(?:${NEGATIVE_EVIDENCE_TERM_PATTERN})\\b)|(?:\\b(?:${NEGATIVE_EVIDENCE_TERM_PATTERN})\\b\\s+\\b(?:${otherFieldPattern})\\b)`,
+      "gi"
+    );
+
+  return text.replace(
+    scopedNegativePattern,
+    (match) => " ".repeat(match.length)
+  );
+}
+
 function getAllPatternMatches(
   text: string,
   pattern: RegExp
@@ -270,16 +295,28 @@ function findTextParserMatch<T extends string>(
 }
 
 export function detectShaftFlexWithEvidence(text: string): NormalizedParserFieldResult<string> {
+  const shaftScopedText =
+    stripOtherFieldScopedNegativeEvidence(
+      text,
+      NON_SHAFT_FIELD_PATTERN
+    );
+
   return findTextParserMatch(
-    text,
+    shaftScopedText,
     SHAFT_FLEX_CANDIDATES,
     SHAFT_FLEX_NEGATIVE_EVIDENCE_PATTERN
   );
 }
 
 export function detectApprovedConditionGradeWithEvidence(text: string): NormalizedParserFieldResult<string> {
+  const conditionScopedText =
+    stripOtherFieldScopedNegativeEvidence(
+      text,
+      NON_CONDITION_FIELD_PATTERN
+    );
+
   return findTextParserMatch(
-    text,
+    conditionScopedText,
     APPROVED_CONDITION_GRADE_CANDIDATES,
     CONDITION_GRADE_NEGATIVE_EVIDENCE_PATTERN
   );

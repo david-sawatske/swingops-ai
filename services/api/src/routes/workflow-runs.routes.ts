@@ -17,6 +17,9 @@ import {
 import {
   executeMultiSourceIntakeDemo
 } from "../workflows/multi-source-intake-demo.js";
+import {
+  ensureGoldenDemonstrationHistory
+} from "../workflows/golden-demonstration-history.js";
 
 const workflowRunParamsSchema = z.object({
   id: z.string().min(1)
@@ -54,7 +57,36 @@ const multiSourceIntakeDemoBodySchema = z
   })
   .strict();
 
+const goldenDemonstrationPreparationBodySchema = z
+  .object({})
+  .strict();
+
 export async function workflowRunRoutes(app: FastifyInstance): Promise<void> {
+  app.post(
+    "/workflow-runs/golden-demonstration/prepare",
+    async (request, reply) => {
+      const parsedBody =
+        goldenDemonstrationPreparationBodySchema.safeParse(
+          request.body ?? {}
+        );
+
+      if (!parsedBody.success) {
+        return reply.status(400).send({
+          error:
+            "Invalid golden demonstration preparation request",
+          details: parsedBody.error.flatten()
+        });
+      }
+
+      const historicalEvidence =
+        await ensureGoldenDemonstrationHistory();
+
+      return {
+        historicalEvidence
+      };
+    }
+  );
+
   app.post("/workflow-runs/multi-source-intake-demo", async (request, reply) => {
     const parsedBody = multiSourceIntakeDemoBodySchema.safeParse(request.body ?? {});
 

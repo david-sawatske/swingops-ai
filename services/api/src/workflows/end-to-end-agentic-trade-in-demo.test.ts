@@ -122,6 +122,61 @@ describe("executeEndToEndAgenticTradeInDemo", () => {
       await cleanupResult(result);
     }
   });
+
+  it("keeps a missing trade-in value in human review when model assistance cannot safely repair it", async () => {
+    const result = await executeEndToEndAgenticTradeInDemo({
+      rawInput:
+        "TaylorMade Stealth 2 driver shaft stiff condition 8.0 Average store 104"
+    });
+
+    try {
+      expect(result.parsedItems).toHaveLength(1);
+      expect(result.parsedItems[0]).toMatchObject({
+        brand: "TaylorMade",
+        productLine: "Stealth 2",
+        category: "DRIVER",
+        shaftFlex: "STIFF",
+        conditionGrade: "8.0 Average",
+        tradeInValue: null
+      });
+
+      expect(result.valuationEvidenceByItem[0]?.estimate.highValue).toBeGreaterThan(0);
+      expect(result.fieldRepairExecution.recordOutcomes).toEqual([
+        expect.objectContaining({
+          recordId: result.parsedItems[0]?.id,
+          outcomeType: "NO_SAFE_REPAIR"
+        })
+      ]);
+
+      expect(result.reviewQueueItemsCreated).toHaveLength(1);
+      expect(result.finalSummary.reviewQueueItemCount).toBe(1);
+
+      const reviewItem = result.reviewQueueItemsCreated[0]!;
+      const proposedRecord = reviewItem.proposedGolfClubJson as {
+        missingFields?: string[];
+        reviewReasonSummary?: string;
+        tradeInValue?: number | null;
+      };
+
+      expect(reviewItem.reason).toBe("MISSING_REQUIRED_FIELDS");
+      expect(proposedRecord.tradeInValue).toBeNull();
+      expect(proposedRecord.missingFields).toContain("tradeInValue");
+      expect(proposedRecord.reviewReasonSummary).toContain(
+        "missing tradeInValue"
+      );
+
+      const workflowRun = await prisma.workflowRun.findUniqueOrThrow({
+        where: {
+          id: result.persisted.workflowRunId
+        }
+      });
+
+      expect(workflowRun.status).toBe("NEEDS_REVIEW");
+    } finally {
+      await cleanupResult(result);
+    }
+  });
+
   it("keeps deterministically resolved records out of model review assistance", async () => {
     const rawInput = [
       "Titleist TSR fairway wood, Stiff, 8.0 Average, trade value $135, store 104, generation unclear.",

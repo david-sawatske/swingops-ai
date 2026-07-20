@@ -209,4 +209,58 @@ describe("shared parser normalizers", () => {
       }
     });
   });
+
+  it("keeps unrelated field uncertainty from suppressing explicit shaft and condition evidence", () => {
+    const sourceText =
+      "Titleist TSR fairway wood generation unclear shaft stiff condition 8.0 Average";
+
+    expect(
+      detectShaftFlexWithEvidence(
+        sourceText
+      )
+    ).toEqual({
+      value: "STIFF",
+      evidence: {
+        value: "STIFF",
+        sourceText: "shaft stiff"
+      }
+    });
+
+    expect(
+      detectApprovedConditionGradeWithEvidence(
+        sourceText
+      )
+    ).toEqual({
+      value: "8.0 Average",
+      evidence: {
+        value: "8.0 Average",
+        sourceText: "8.0 Average"
+      }
+    });
+
+    expect(
+      detectShaftFlexWithEvidence(
+        "condition unclear shaft stiff"
+      )
+    ).toEqual({
+      value: "STIFF",
+      evidence: {
+        value: "STIFF",
+        sourceText: "shaft stiff"
+      }
+    });
+
+    expect(
+      detectApprovedConditionGradeWithEvidence(
+        "shaft unknown condition 8.0 Average"
+      )
+    ).toEqual({
+      value: "8.0 Average",
+      evidence: {
+        value: "8.0 Average",
+        sourceText: "8.0 Average"
+      }
+    });
+  });
+
 });
