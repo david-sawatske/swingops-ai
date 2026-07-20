@@ -171,7 +171,7 @@ function stripOtherFieldScopedNegativeEvidence(
 ): string {
   const scopedNegativePattern =
     new RegExp(
-      `(?:\\b(?:${otherFieldPattern})\\b\\s*(?:=|:|is)?\\s*\\b(?:${NEGATIVE_EVIDENCE_TERM_PATTERN})\\b)|(?:\\b(?:${NEGATIVE_EVIDENCE_TERM_PATTERN})\\b\\s+\\b(?:${otherFieldPattern})\\b)`,
+      `(?:\\b(?:${otherFieldPattern})\\b\\s*(?:=|:|is)?\\s*["']?\\b(?:${NEGATIVE_EVIDENCE_TERM_PATTERN})\\b["']?)|(?:["']?\\b(?:${NEGATIVE_EVIDENCE_TERM_PATTERN})\\b["']?\\s+\\b(?:${otherFieldPattern})\\b)`,
       "gi"
     );
 

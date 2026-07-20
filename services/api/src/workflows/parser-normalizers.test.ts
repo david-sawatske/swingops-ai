@@ -263,4 +263,51 @@ describe("shared parser normalizers", () => {
     });
   });
 
+  it("keeps quoted structured uncertainty scoped to its named field", () => {
+    const sourceText =
+      "brand=Titleist model=TSR generation='unclear' shaft=Stiff condition='8.0 Average'";
+
+    expect(
+      detectShaftFlexWithEvidence(
+        sourceText
+      )
+    ).toEqual({
+      value: "STIFF",
+      evidence: {
+        value: "STIFF",
+        sourceText: "Stiff"
+      }
+    });
+
+    expect(
+      detectApprovedConditionGradeWithEvidence(
+        sourceText
+      )
+    ).toEqual({
+      value: "8.0 Average",
+      evidence: {
+        value: "8.0 Average",
+        sourceText: "8.0 Average"
+      }
+    });
+  });
+
+  it("continues blocking quoted uncertainty scoped to the target field", () => {
+    expect(
+      detectShaftFlexWithEvidence(
+        "shaft='unknown' condition='8.0 Average'"
+      )
+    ).toEqual({
+      value: null
+    });
+
+    expect(
+      detectApprovedConditionGradeWithEvidence(
+        "condition='unclear' shaft=Stiff"
+      )
+    ).toEqual({
+      value: null
+    });
+  });
+
 });
