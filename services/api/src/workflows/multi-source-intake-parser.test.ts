@@ -1055,4 +1055,64 @@ describe("multi-source intake parser normalization matrix", () => {
     );
   });
 
+
+  it("preserves supported shaft and condition fields when only product generation is unclear", () => {
+    const source = {
+      id: "golden_titleist_email",
+      sourceType: "EMAIL" as const,
+      sourceName: "Golden ambiguity email",
+      rawContent: [
+        "From: intake@example.com",
+        "To: tradeins@swingops.example",
+        "Subject: Titleist fairway trade",
+        "",
+        "Titleist TSR fairway wood generation unclear shaft stiff condition 8.0 Average trade value $135 store 104"
+      ].join("\n")
+    };
+
+    const fragments =
+      splitSourceIntoRecordFragments(
+        source
+      );
+
+    expect(fragments).toHaveLength(1);
+
+    const record = buildRecord(
+      source,
+      fragments[0]!,
+      0
+    );
+
+    expect(record).toMatchObject({
+      brand: "Titleist",
+      productLine: "TSR",
+      category: "FAIRWAY_WOOD",
+      shaftFlex: "STIFF",
+      conditionGrade: "8.0 Average",
+      tradeInValue: 135,
+      storeId: "104",
+      reviewNeeded: true,
+      productResolution: {
+        status: "AMBIGUOUS"
+      },
+      parserEvidence: {
+        shaftFlex: {
+          value: "STIFF",
+          sourceText: "shaft stiff"
+        },
+        conditionGrade: {
+          value: "8.0 Average",
+          sourceText: "8.0 Average"
+        }
+      }
+    });
+
+    expect(
+      record.missingFields
+    ).not.toContain("shaftFlex");
+    expect(
+      record.missingFields
+    ).not.toContain("conditionGrade");
+  });
+
 });

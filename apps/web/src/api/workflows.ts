@@ -11,6 +11,7 @@ import type {
   ListReviewQueueItemsResponse,
   ListWorkflowRunsResponse,
   ListWorkflowEvalScenariosResponse,
+  PrepareGoldenDemonstrationResponse,
   RunWorkflowEvalsResponse,
   ResolveReviewQueueItemWithCorrectionsRequest,
   ResolveReviewQueueItemWithCorrectionsResponse,
@@ -89,6 +90,13 @@ export async function executeMultiSourceIntakeDemo(
     ExecuteMultiSourceIntakeDemoResponse,
     ExecuteMultiSourceIntakeDemoRequest
   >("/workflow-runs/multi-source-intake-demo", request);
+}
+
+export async function prepareGoldenDemonstration(): Promise<PrepareGoldenDemonstrationResponse> {
+  return apiPost<PrepareGoldenDemonstrationResponse, Record<string, never>>(
+    "/workflow-runs/golden-demonstration/prepare",
+    {},
+  );
 }
 
 export async function listWorkflowEvalScenarios(): Promise<ListWorkflowEvalScenariosResponse> {

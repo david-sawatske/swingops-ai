@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 
+import { prepareGoldenDemonstration } from "../../../api/workflows";
 import type {
   MultiSourceIntakeSourceInput,
   MultiSourceIntakeSourceType,
@@ -8,6 +9,7 @@ import { EmptyState } from "../../EmptyState";
 import { SourceBuilderActions } from "./SourceBuilderActions";
 import { SourceCard } from "./SourceCard";
 import { SourceIntakeStatusStrip } from "./SourceIntakeStatusStrip";
+import { createGoldenDemonstrationSources } from "./goldenDemonstrationSources";
 import { SAMPLE_SOURCE_BY_TYPE } from "./sourceIntakeSamples";
 import type {
   GuidedSourceIntakeBuilderProps,
@@ -37,6 +39,22 @@ export function GuidedSourceIntakeBuilder({
   const [selectedSourceTypes, setSelectedSourceTypes] = useState<
     (MultiSourceIntakeSourceType | null)[]
   >([null]);
+  const [
+    isPreparingGoldenDemonstration,
+    setIsPreparingGoldenDemonstration,
+  ] = useState(false);
+  const [
+    hasLoadedGoldenDemonstration,
+    setHasLoadedGoldenDemonstration,
+  ] = useState(false);
+  const [
+    goldenDemonstrationMessage,
+    setGoldenDemonstrationMessage,
+  ] = useState<string | null>(null);
+  const [
+    goldenDemonstrationError,
+    setGoldenDemonstrationError,
+  ] = useState<string | null>(null);
 
   const runnableSources = useMemo(() => toRunnableSources(sources), [sources]);
   const readySourceCount = runnableSources.length;
@@ -202,6 +220,52 @@ export function GuidedSourceIntakeBuilder({
     );
   }
 
+  async function handleLoadGoldenDemonstration() {
+    if (
+      result ||
+      isRunning ||
+      isPreparingGoldenDemonstration ||
+      hasLoadedGoldenDemonstration
+    ) {
+      return;
+    }
+
+    try {
+      setIsPreparingGoldenDemonstration(true);
+      setGoldenDemonstrationMessage(null);
+      setGoldenDemonstrationError(null);
+
+      const preparation = await prepareGoldenDemonstration();
+      const goldenSources = createGoldenDemonstrationSources();
+
+      setSources(goldenSources);
+      setSourceInputModes(
+        goldenSources.map(() => "PASTE" as const),
+      );
+      setUploadedFileNames(
+        goldenSources.map(() => null),
+      );
+      setSelectedSourceTypes(
+        goldenSources.map((source) => source.sourceType),
+      );
+      setHasLoadedGoldenDemonstration(true);
+
+      setGoldenDemonstrationMessage(
+        preparation.historicalEvidence.created
+          ? "Golden demonstration loaded. One historical reviewer-approved shaft-flex correction was prepared. Four editable source types are staged below. No normalization or model execution has run yet."
+          : "Golden demonstration loaded. The existing historical reviewer-approved shaft-flex correction was reused. Four editable source types are staged below. No normalization or model execution has run yet.",
+      );
+    } catch (preparationError) {
+      setGoldenDemonstrationError(
+        preparationError instanceof Error
+          ? preparationError.message
+          : "Unable to prepare the golden demonstration.",
+      );
+    } finally {
+      setIsPreparingGoldenDemonstration(false);
+    }
+  }
+
   function handleRun() {
     onRunSources({ sources: runnableSources });
   }
@@ -212,6 +276,62 @@ export function GuidedSourceIntakeBuilder({
 
   return (
     <div className="guided-source-builder">
+      <section
+        aria-labelledby="golden-demonstration-loader-title"
+        className="guided-source-builder__golden-setup"
+      >
+        <div>
+          <span className="model-route-card__eyebrow">
+            Canonical walkthrough
+          </span>
+          <strong id="golden-demonstration-loader-title">
+            Stage the complete five-record demonstration.
+          </strong>
+          <p>
+            This prepares one earlier reviewer-approved correction and
+            loads four editable source types. It does not normalize the
+            records or run the model.
+          </p>
+        </div>
+
+        <button
+          disabled={
+            isRunning ||
+            isPreparingGoldenDemonstration ||
+            hasLoadedGoldenDemonstration ||
+            Boolean(result)
+          }
+          onClick={() => void handleLoadGoldenDemonstration()}
+          type="button"
+        >
+          {isPreparingGoldenDemonstration
+            ? "Preparing demonstration…"
+            : hasLoadedGoldenDemonstration
+              ? "Golden demonstration loaded"
+              : result
+                ? "Start over to reload"
+                : "Load golden demonstration"}
+        </button>
+      </section>
+
+      {goldenDemonstrationMessage ? (
+        <p
+          aria-live="polite"
+          className="form-message form-message--success"
+        >
+          {goldenDemonstrationMessage}
+        </p>
+      ) : null}
+
+      {goldenDemonstrationError ? (
+        <p
+          aria-live="assertive"
+          className="form-message form-message--error"
+        >
+          {goldenDemonstrationError}
+        </p>
+      ) : null}
+
       <SourceIntakeStatusStrip
         isNormalizationComplete={Boolean(result)}
         readySourceCount={readySourceCount}

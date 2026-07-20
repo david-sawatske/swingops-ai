@@ -4,4 +4,5 @@ export * from "./agenticDemo";
 export * from "./multiSourceIntake";
 export * from "./aiReadyRecords";
 export * from "./workflowEvals";
+export * from "./goldenDemonstration";
 export * from "./adminOps";

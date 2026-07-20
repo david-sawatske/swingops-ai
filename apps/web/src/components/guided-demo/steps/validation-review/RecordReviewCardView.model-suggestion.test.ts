@@ -6,6 +6,8 @@ import {
 
 import {
   applyModelReviewSuggestionToDraft,
+  getOpenPriorReviewSuggestions,
+  isPriorReviewSuggestionLoadedInDraft,
 } from "./RecordReviewCardView";
 
 const baseDraft = {
@@ -95,6 +97,130 @@ describe(
           demoValue:
             "estimated value $145",
         });
+      },
+    );
+
+    it(
+      "recognizes when a model action has already loaded the matching prior-approved correction",
+      () => {
+        const draft =
+          applyModelReviewSuggestionToDraft(
+            {
+              ...baseDraft,
+              shaftFlex: "",
+            },
+            {
+              recordId:
+                "parsed_item_1",
+              fieldName:
+                "shaftFlex",
+              sourcePhrase:
+                "shaft firm",
+              candidateValue:
+                "STIFF",
+              confidence: 0.94,
+              reason:
+                "Prior approved evidence supports Stiff.",
+              reviewRequired: true,
+            },
+          );
+
+        expect(
+          isPriorReviewSuggestionLoadedInDraft(
+            draft,
+            {
+              fieldName:
+                "shaftFlex",
+              rawTextMatch:
+                "shaft firm",
+              suggestedValue:
+                "STIFF",
+            },
+          ),
+        ).toBe(true);
+
+        expect(
+          isPriorReviewSuggestionLoadedInDraft(
+            {
+              ...draft,
+              shaftFlex:
+                "REGULAR",
+            },
+            {
+              fieldName:
+                "shaftFlex",
+              rawTextMatch:
+                "shaft firm",
+              suggestedValue:
+                "STIFF",
+            },
+          ),
+        ).toBe(false);
+      },
+    );
+
+
+    it(
+      "removes a matching model-loaded correction from the pending prior-review steps",
+      () => {
+        const draft =
+          applyModelReviewSuggestionToDraft(
+            {
+              ...baseDraft,
+              shaftFlex: "",
+            },
+            {
+              recordId:
+                "parsed_item_1",
+              fieldName:
+                "shaftFlex",
+              sourcePhrase:
+                "shaft firm",
+              candidateValue:
+                "STIFF",
+              confidence: 0.94,
+              reason:
+                "Prior approved evidence supports Stiff.",
+              reviewRequired: true,
+            },
+          );
+
+        const priorSuggestion = {
+          fieldName:
+            "shaftFlex",
+          rawTextMatch:
+            "shaft firm",
+          suggestedValue:
+            "STIFF",
+          strength:
+            "STRONG",
+          confidenceImpact:
+            "Strong prior review match.",
+        } as Parameters<
+          typeof getOpenPriorReviewSuggestions
+        >[0][number];
+
+        expect(
+          getOpenPriorReviewSuggestions(
+            [priorSuggestion],
+            new Set<string>(),
+            draft,
+          ),
+        ).toEqual([]);
+
+        expect(
+          getOpenPriorReviewSuggestions(
+            [priorSuggestion],
+            new Set<string>(),
+            {
+              ...draft,
+              shaftFlex:
+                "REGULAR",
+            },
+          ),
+        ).toEqual([
+          priorSuggestion,
+        ]);
       },
     );
   },

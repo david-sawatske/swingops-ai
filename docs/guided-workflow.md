@@ -347,3 +347,203 @@ The report shows:
 - Blocked action count.
 - Model/tool audit trace.
 - Human review audit trace.
+
+## Golden demonstration run
+
+The golden demonstration is the canonical browser walkthrough for proving the complete SwingOps AI product story with one repeatable five-record run.
+
+It is intended to demonstrate:
+
+- Mixed-source intake preservation.
+- Deterministic extraction and reference authority.
+- A real OpenAI provider call.
+- Useful but advisory model assistance.
+- Safe abstention when evidence is insufficient.
+- Reviewer-controlled corrections.
+- Persisted learning evidence.
+- An accurate final run report.
+
+The expected counts below are acceptance expectations for the current canonical corpus. They are not implementation constants and should not be hardcoded into workflow logic.
+
+### Canonical source set
+
+Step 1 provides a **Load golden demonstration** action.
+
+The action prepares or reuses one earlier reviewer-approved correction for the phrase `shaft firm` and stages four editable source types containing five records.
+
+| Source | Record role | Expected intake behavior |
+| --- | --- | --- |
+| Free text | Cleveland RTX 6 ZipCore wedge | Complete deterministic control record |
+| Free text | TaylorMade Stealth 2 driver | Preserve `shaft firm`; shaft flex remains unresolved |
+| Poorly formed CSV | Odyssey White Hot OG putter | Preserve `cosmetics poor`; shaft flex is not applicable |
+| Email | Titleist TSR fairway wood | Preserve Stiff and 8.0 Average while keeping TSR generation ambiguous |
+| Log | Callaway mystery driver | Preserve unknown, unclear and pending values without inventing replacements |
+
+The source-of-truth fixture is:
+
+    apps/web/src/components/guided-demo/source-intake/goldenDemonstrationSources.ts
+
+The preparation route is:
+
+    POST /workflow-runs/golden-demonstration/prepare
+
+The preparation operation is idempotent. The first call can report that historical evidence was prepared. Later calls report that the existing reviewer-approved correction was reused.
+
+### Step 1: stage and normalize the sources
+
+1. Start the Guided Workflow and continue to Messy Source Intake.
+2. Select **Load golden demonstration**.
+3. Confirm:
+   - Four sources are staged.
+   - Four source types are selected.
+   - Four sources are ready.
+   - Normalization has not run.
+   - The button changes to **Golden demonstration loaded** and becomes unavailable.
+4. Select **Normalize Sources**.
+
+Loading the demonstration must not automatically normalize records or execute the model.
+
+### Step 2: verify the AI-ready records
+
+The normalized result should contain exactly five records.
+
+Expected state:
+
+| Record | Expected normalized result |
+| --- | --- |
+| Cleveland RTX 6 ZipCore | Wedge, Senior, 9.0 Above Average, $72, store 104, clear |
+| TaylorMade Stealth 2 | Driver, 9.0 Above Average, $155, store 104, missing only shaft flex |
+| Odyssey White Hot OG | Putter, $85, store 207, missing only condition grade |
+| Titleist TSR | Fairway Wood, Stiff, 8.0 Average, $135, store 104, review required with no missing fields |
+| Callaway mystery driver | Driver, store 207, unresolved shaft flex, condition and value |
+
+Important acceptance rules:
+
+- A putter must not require shaft flex.
+- Product-generation uncertainty must not erase supported shaft or condition evidence.
+- The Titleist record must remain `TSR`; the parser must not invent TSR2 or TSR3.
+- The Callaway record must remain incomplete rather than receiving defaults.
+
+### Step 3: run guarded agent execution
+
+Run the guarded trade-in workflow once.
+
+The expected record roles are:
+
+- Cleveland remains outside field-repair assistance because deterministic evidence is complete.
+- TaylorMade receives a reviewer-controlled Stiff suggestion based on `shaft firm` and approved historical evidence.
+- Odyssey receives a reviewer-controlled 6.0 Poor suggestion based on `cosmetics poor`.
+- Titleist receives a comparison between supplied authoritative TSR candidates without an automatic selection.
+- Callaway receives no safe repair.
+
+Provider acceptance requires browser-visible evidence that:
+
+- OpenAI executed through the configured provider path.
+- The configured model is displayed.
+- Provider validation passed.
+- Fallback was not used.
+- Four records were assessed.
+- Two repair suggestions were returned.
+- One candidate comparison was returned.
+- One no-safe-repair outcome was returned.
+- Tool use remained read-only.
+- At least one attempted mutation was blocked by policy.
+
+Mocks and automated tests do not replace this provider acceptance evidence.
+
+### Step 4: save only the supported corrections
+
+The initial review checkpoint should contain four active review items and one auto-passed record.
+
+Resolve only:
+
+1. TaylorMade Stealth 2
+   - Select **Review and save correction**.
+   - Confirm Shaft flex changes from missing to Stiff.
+   - Confirm the source phrase is `shaft firm`.
+   - Select **Save correction and resolve**.
+
+2. Odyssey White Hot OG
+   - Select **Review and save correction**.
+   - Confirm Condition grade changes from missing to 6.0 Poor.
+   - Confirm the source phrase is `cosmetics poor`.
+   - Confirm no shaft-flex correction is requested.
+   - Select **Save correction and resolve**.
+
+Do not resolve:
+
+- Titleist TSR, because the available evidence does not distinguish TSR2 from TSR3.
+- Callaway mystery driver, because authoritative shaft, condition and value evidence is absent.
+
+After the two supported saves, the checkpoint should show:
+
+- Two records still need attention.
+- Two records were resolved by review.
+- Four review items were created.
+- One record passed review gates automatically.
+
+Resolved records must retain model evidence for audit, but mutation-oriented suggestion actions must no longer be available.
+
+### Step 5: verify the final run report
+
+Continue to the Final Run Report without resolving Titleist or Callaway.
+
+Expected run outcome:
+
+| Metric | Expected value |
+| --- | --- |
+| Total records | 5 |
+| Ready or finalized records | 3 |
+| Unresolved records | 2 |
+| Reviewer-updated records | 2 |
+| Persisted corrections | 2 |
+| Current-run learning events | 2 |
+
+Expected record outcomes:
+
+- Cleveland is finalized without review.
+- TaylorMade is finalized after human review with Shaft flex set to Stiff.
+- Odyssey is finalized after human review with Condition grade set to 6.0 Poor.
+- Titleist remains unresolved with the TSR2 versus TSR3 ambiguity visible.
+- Callaway remains unresolved with missing shaft flex, condition and value visible.
+
+The final report should also preserve:
+
+- Provider and model evidence.
+- Repair, comparison and no-safe-repair outcomes.
+- Read-only tool evidence.
+- Blocked mutation evidence.
+- Reviewer-approved corrections.
+- Reusable learning evidence.
+- The distinction between model advice and human-authoritative changes.
+
+### Repeatability acceptance
+
+Use **Start over** and run the same procedure again.
+
+The repeated run should demonstrate that:
+
+- Loading the demonstration reuses the stable historical correction instead of creating duplicates.
+- The same five source-derived records are produced.
+- The same deterministic and safe-abstention boundaries remain intact.
+- Previously saved reviewer corrections can surface as prior-review evidence.
+- Prior-review evidence remains advisory and still requires reviewer action.
+- The final report remains internally consistent after another complete run.
+
+For a clean first run, the seeded historical evidence guarantees the `shaft firm` to Stiff match. After Odyssey has been reviewed once, later runs may also surface `cosmetics poor` to 6.0 Poor as reusable prior-review evidence.
+
+### Browser acceptance checklist
+
+- [ ] Golden loader stages four editable source types without running normalization.
+- [ ] Step 2 creates exactly five records with preserved source evidence.
+- [ ] Putter shaft flex is treated as not applicable.
+- [ ] Titleist identity remains ambiguous without losing supported fields.
+- [ ] Real OpenAI provider evidence is visible and fallback is not used.
+- [ ] TaylorMade and Odyssey receive useful reviewer-controlled repairs.
+- [ ] Titleist receives candidate comparison only.
+- [ ] Callaway receives no safe repair.
+- [ ] Only TaylorMade and Odyssey are resolved.
+- [ ] Resolved cards retain audit evidence without stale mutation controls.
+- [ ] Final report shows three ready records and two unresolved records.
+- [ ] Two corrections and two learning events are visible.
+- [ ] A repeated run reuses historical evidence without duplicating it.

@@ -321,7 +321,7 @@ function valuationNeedsReview(estimate: TradeInValuationResult): boolean {
 }
 
 function getReviewReason(item: ParsedTradeInDemoItem): "LOW_CONFIDENCE" | "MISSING_REQUIRED_FIELDS" | "AMBIGUOUS_INPUT" {
-  if (item.missingFields.length > 0) {
+  if (getFieldRepairMissingFields(item).length > 0) {
     return "MISSING_REQUIRED_FIELDS";
   }
 
@@ -336,10 +336,11 @@ function summarizeReviewReason(input: {
   item: ParsedTradeInDemoItem;
   valuationEstimate?: TradeInValuationResult;
 }): string {
+  const missingFields = getFieldRepairMissingFields(input.item);
   const reasons = [
     input.item.confidence < 0.72 ? `confidence ${input.item.confidence}` : null,
-    input.item.missingFields.length > 0
-      ? `missing ${input.item.missingFields.join(", ")}`
+    missingFields.length > 0
+      ? `missing ${missingFields.join(", ")}`
       : null,
     input.item.uncertaintyNotes.length > 0
       ? `uncertainty: ${input.item.uncertaintyNotes.join(", ")}`
@@ -976,8 +977,14 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     const inventoryEvidence = inventoryMatchesByItem.find(
       (evidence) => evidence.parsedItemId === item.id
     );
+    const fieldRepairMissingFields = getFieldRepairMissingFields(item);
+    const requiresFieldRepairReview = shouldRunFieldRepair(item);
 
-    if (!needsReview(item) && !valuationNeedsReview(valuationEvidence!.estimate)) {
+    if (
+      !needsReview(item) &&
+      !requiresFieldRepairReview &&
+      !valuationNeedsReview(valuationEvidence!.estimate)
+    ) {
       continue;
     }
 
@@ -992,6 +999,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         originalText: item.rawLine,
         proposedGolfClubJson: toInputJson({
           ...item,
+          missingFields: fieldRepairMissingFields,
           reviewReasonSummary: summarizeReviewReason({
             item,
             valuationEstimate: valuationEvidence!.estimate
