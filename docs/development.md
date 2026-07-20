@@ -20,13 +20,23 @@ From the repo root:
 
 ## Environment setup
 
-Check `.env.example` for required local variables.
+Create the API's workspace-local environment file:
 
-If needed, create a local environment file:
+    cp services/api/.env.example services/api/.env
+    pnpm config:check
 
-    cp .env.example .env
+Both the API runtime and Prisma commands read `services/api/.env`. The checked-in
+example points at the PostgreSQL container's published host port, `5433`, and
+allows the default Vite origin at `http://localhost:5173`.
 
-The API reads environment configuration from the local environment. The database URL should point at the local PostgreSQL service.
+The web app defaults to `http://localhost:4000` for the API and needs no local
+environment file for the standard setup. To override that URL:
+
+    cp apps/web/.env.example apps/web/.env
+
+Real provider calls are disabled by default. The API example lists the opt-in
+flag and supported provider variables; deterministic/mock behavior works
+without credentials.
 
 ## Start PostgreSQL
 
@@ -155,6 +165,10 @@ Confirm PostgreSQL is running:
 
 Confirm the API environment points at the local database.
 
+Validate the resolved non-secret configuration:
+
+    pnpm config:check
+
 ### Prisma client errors
 
 Regenerate the Prisma client:
@@ -171,7 +185,9 @@ Ingest the demo knowledge base through the UI before running a full guided workf
 
 ### Web app cannot reach API
 
-Confirm the API dev server is running and that the API CORS origin matches the web origin in local environment settings.
+Confirm the API dev server is running, `WEB_ORIGIN` in `services/api/.env`
+matches the web origin, and `VITE_API_BASE_URL` in `apps/web/.env` points at the
+API when you are not using the default ports.
 
 ### Review step has no current-run review items
 

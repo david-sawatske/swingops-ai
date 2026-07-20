@@ -75,6 +75,11 @@ Install dependencies:
 
     pnpm install
 
+Create the API environment file from the checked-in local defaults:
+
+    cp services/api/.env.example services/api/.env
+    pnpm config:check
+
 Start PostgreSQL:
 
     pnpm db:up
@@ -97,12 +102,19 @@ Open the web app using the URL printed by Vite. The default product experience i
 
 ## Environment assumptions
 
-The local app expects:
+Environment files are workspace-local so the API, Prisma, and Vite use their
+native loading behavior:
 
 - Node.js and pnpm.
 - Docker for the local PostgreSQL service.
-- A local environment file based on `.env.example`, if your shell does not already provide the required variables.
+- `services/api/.env`, copied from `services/api/.env.example`, for the API and Prisma.
+- `apps/web/.env` only when overriding the web app's default `http://localhost:4000` API URL; use `apps/web/.env.example` as the template.
 - Prisma migrations applied to the local database before running the full workflow.
+
+The default experience uses deterministic/mock model behavior and does not
+require a provider key. Real model calls are opt-in through
+`ENABLE_REAL_MODEL_CALLS` and the provider variables documented in the API
+example file.
 
 Useful database commands:
 
