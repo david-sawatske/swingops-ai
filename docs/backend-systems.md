@@ -207,7 +207,7 @@ Files:
     services/api/src/knowledge/knowledge-seed-data.ts
     services/api/src/knowledge/knowledge-evals.ts
 
-The knowledge system uses deterministic local embeddings and weighted scoring. It returns matched chunks, score breakdowns, matched terms, explanations, and citation metadata.
+The knowledge system uses deterministic local embeddings and weighted scoring. It returns matched chunks, score breakdowns, matched terms, explanations, citation metadata, and retrieval diagnostics. If pgvector returns no embedded rows or reports a recognized feature/schema compatibility failure, search emits a structured `knowledge_retrieval_degraded` warning with stable metric name/value fields before using deterministic local retrieval. Unexpected database failures are not converted into successful fallback responses.
 
 ### Model routing
 

@@ -130,7 +130,7 @@ Important areas include:
 
     services/api/src/knowledge/knowledge-search.test.ts
 
-These tests protect local retrieval behavior, scoring, and metadata.
+These tests protect local retrieval behavior, scoring, metadata, pgvector degradation classification, query-safe warning events, deterministic fallback diagnostics, and propagation of unexpected database failures.
 
 ### Tool tests
 

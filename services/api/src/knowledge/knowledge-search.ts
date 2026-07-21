@@ -1,5 +1,6 @@
 import type { KnowledgeChunkType } from "@prisma/client";
 
+import { operationalLogger } from "../lib/operational-logger.js";
 import { prisma } from "../lib/prisma.js";
 import {
   buildDeterministicKnowledgeEmbedding,
@@ -12,6 +13,49 @@ import {
 export type KnowledgeRetrievalMode =
   | "PGVECTOR_DETERMINISTIC_EMBEDDINGS"
   | "DETERMINISTIC_LOCAL_RAG_READY";
+
+export type KnowledgeRetrievalFallbackReason =
+  | "NO_VECTOR_RESULTS"
+  | "PGVECTOR_UNAVAILABLE"
+  | "PGVECTOR_SCHEMA_INCOMPATIBLE";
+
+export type KnowledgeRetrievalFailureClassification =
+  | "UNSUPPORTED_DATABASE_FEATURE"
+  | "INCOMPATIBLE_DATABASE_SCHEMA";
+
+export type KnowledgeRetrievalFailure = {
+  classification: KnowledgeRetrievalFailureClassification;
+  prismaCode: string | null;
+  databaseCode: string | null;
+};
+
+export type KnowledgeRetrievalDiagnostics = {
+  degraded: boolean;
+  fallbackUsed: boolean;
+  fallbackReason: KnowledgeRetrievalFallbackReason | null;
+  pgvectorFailure: KnowledgeRetrievalFailure | null;
+};
+
+export type KnowledgeRetrievalDegradationEvent = {
+  eventName: "knowledge_retrieval_degraded";
+  metricName: "knowledge_retrieval_fallback_total";
+  metricValue: 1;
+  requestedMode: "PGVECTOR_DETERMINISTIC_EMBEDDINGS";
+  fallbackMode: "DETERMINISTIC_LOCAL_RAG_READY";
+  fallbackReason: KnowledgeRetrievalFallbackReason;
+  failureClassification: KnowledgeRetrievalFailureClassification | null;
+  prismaCode: string | null;
+  databaseCode: string | null;
+  maxResults: number;
+  filtersApplied: string[];
+};
+
+export type KnowledgeSearchRuntime = {
+  searchWithPgvector?: typeof searchWithPgvector;
+  reportDegradation?: (
+    event: KnowledgeRetrievalDegradationEvent
+  ) => void;
+};
 
 export type KnowledgeSearchInput = {
   query: string;
@@ -80,6 +124,7 @@ export type KnowledgeSearchResult = {
     embeddingProvider: string | null;
     embeddingModel: string | null;
     embeddingDimension: number | null;
+    retrievalDiagnostics: KnowledgeRetrievalDiagnostics;
   };
   citations: KnowledgeSearchResultItem["citation"][];
   summary: string;
@@ -122,6 +167,21 @@ const TRADE_IN_SCORE_WEIGHTS = {
   notes: 0.1,
   vector: 0.05
 } as const;
+
+const PGVECTOR_COMPATIBILITY_DATABASE_CODES = new Map<
+  string,
+  KnowledgeRetrievalFailureClassification
+>([
+  ["0A000", "UNSUPPORTED_DATABASE_FEATURE"],
+  ["42704", "UNSUPPORTED_DATABASE_FEATURE"],
+  ["42883", "UNSUPPORTED_DATABASE_FEATURE"],
+  ["42703", "INCOMPATIBLE_DATABASE_SCHEMA"]
+]);
+
+const PGVECTOR_SCHEMA_COLUMN_PATTERN =
+  /(?:knowledge_chunks\.)?(?:embedding|embedding_provider|embedding_model|embedding_dimension)/i;
+const PGVECTOR_COMPATIBILITY_MESSAGE_PATTERN =
+  /(?:\bvector(?:\(\d+\))?\b|<=>|knowledge_chunks\.(?:embedding|embedding_provider|embedding_model|embedding_dimension)|\bembedding(?:_provider|_model|_dimension)?\b)/i;
 
 const BRAND_ALIASES: Record<string, string[]> = {
   Callaway: ["callaway", "cally"],
@@ -734,6 +794,128 @@ function buildFilters(input: KnowledgeSearchInput) {
   };
 }
 
+function getStringProperty(
+  value: unknown,
+  propertyName: string
+): string | null {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    !(propertyName in value)
+  ) {
+    return null;
+  }
+
+  const propertyValue = (value as Record<string, unknown>)[propertyName];
+
+  return typeof propertyValue === "string" ? propertyValue : null;
+}
+
+export function classifyPgvectorCompatibilityFailure(
+  error: unknown
+): KnowledgeRetrievalFailure | null {
+  const prismaCode = getStringProperty(error, "code");
+  const meta =
+    typeof error === "object" && error !== null && "meta" in error
+      ? (error as { meta?: unknown }).meta
+      : null;
+  const databaseCode = getStringProperty(meta, "code");
+  const databaseMessage = getStringProperty(meta, "message");
+
+  if (
+    prismaCode === "P2010" &&
+    databaseCode &&
+    databaseMessage &&
+    PGVECTOR_COMPATIBILITY_MESSAGE_PATTERN.test(databaseMessage)
+  ) {
+    const classification =
+      PGVECTOR_COMPATIBILITY_DATABASE_CODES.get(databaseCode);
+
+    if (classification) {
+      return {
+        classification,
+        prismaCode,
+        databaseCode
+      };
+    }
+  }
+
+  const column = getStringProperty(meta, "column");
+
+  if (
+    prismaCode === "P2022" &&
+    column &&
+    PGVECTOR_SCHEMA_COLUMN_PATTERN.test(column)
+  ) {
+    return {
+      classification: "INCOMPATIBLE_DATABASE_SCHEMA",
+      prismaCode,
+      databaseCode: null
+    };
+  }
+
+  return null;
+}
+
+function buildRetrievalDiagnostics(input: {
+  fallbackReason: KnowledgeRetrievalFallbackReason | null;
+  pgvectorFailure?: KnowledgeRetrievalFailure | null;
+}): KnowledgeRetrievalDiagnostics {
+  const fallbackUsed = input.fallbackReason !== null;
+
+  return {
+    degraded: fallbackUsed,
+    fallbackUsed,
+    fallbackReason: input.fallbackReason,
+    pgvectorFailure: input.pgvectorFailure ?? null
+  };
+}
+
+function getFallbackReasonForFailure(
+  failure: KnowledgeRetrievalFailure
+): KnowledgeRetrievalFallbackReason {
+  return failure.classification === "INCOMPATIBLE_DATABASE_SCHEMA"
+    ? "PGVECTOR_SCHEMA_INCOMPATIBLE"
+    : "PGVECTOR_UNAVAILABLE";
+}
+
+function buildDegradationEvent(input: {
+  searchInput: KnowledgeSearchInput;
+  maxResults: number;
+  fallbackReason: KnowledgeRetrievalFallbackReason;
+  failure: KnowledgeRetrievalFailure | null;
+}): KnowledgeRetrievalDegradationEvent {
+  const filtersApplied = [
+    input.searchInput.brand ? "brand" : null,
+    input.searchInput.category ? "category" : null,
+    input.searchInput.chunkType ? "chunkType" : null,
+    input.searchInput.sourceName ? "sourceName" : null
+  ].filter((filterName): filterName is string => filterName !== null);
+
+  return {
+    eventName: "knowledge_retrieval_degraded",
+    metricName: "knowledge_retrieval_fallback_total",
+    metricValue: 1,
+    requestedMode: "PGVECTOR_DETERMINISTIC_EMBEDDINGS",
+    fallbackMode: "DETERMINISTIC_LOCAL_RAG_READY",
+    fallbackReason: input.fallbackReason,
+    failureClassification: input.failure?.classification ?? null,
+    prismaCode: input.failure?.prismaCode ?? null,
+    databaseCode: input.failure?.databaseCode ?? null,
+    maxResults: input.maxResults,
+    filtersApplied
+  };
+}
+
+function reportKnowledgeRetrievalDegradation(
+  event: KnowledgeRetrievalDegradationEvent
+): void {
+  operationalLogger.warn(
+    event,
+    "Knowledge retrieval degraded to deterministic fallback"
+  );
+}
+
 function buildSummary(input: {
   resultCount: number;
   retrievalMode: KnowledgeRetrievalMode;
@@ -759,6 +941,7 @@ function toSearchResult(input: {
   embeddingProvider: string | null;
   embeddingModel: string | null;
   embeddingDimension: number | null;
+  retrievalDiagnostics: KnowledgeRetrievalDiagnostics;
 }): KnowledgeSearchResult {
   return {
     query: input.query,
@@ -771,7 +954,8 @@ function toSearchResult(input: {
       productionVectorEmbeddings: false,
       embeddingProvider: input.embeddingProvider,
       embeddingModel: input.embeddingModel,
-      embeddingDimension: input.embeddingDimension
+      embeddingDimension: input.embeddingDimension,
+      retrievalDiagnostics: input.retrievalDiagnostics
     },
     citations: input.results.map((result) => result.citation),
     summary: buildSummary({
@@ -841,6 +1025,7 @@ async function searchWithDeterministicFallback(input: {
   normalizedQuery: string;
   queryTokens: string[];
   filters: ReturnType<typeof buildFilters>;
+  retrievalDiagnostics: KnowledgeRetrievalDiagnostics;
 }): Promise<KnowledgeSearchResult> {
   const chunks = await prisma.knowledgeChunk.findMany({
     where: {
@@ -897,7 +1082,8 @@ async function searchWithDeterministicFallback(input: {
     results,
     embeddingProvider: null,
     embeddingModel: null,
-    embeddingDimension: null
+    embeddingDimension: null,
+    retrievalDiagnostics: input.retrievalDiagnostics
   });
 }
 
@@ -981,20 +1167,31 @@ async function searchWithPgvector(input: {
     results,
     embeddingProvider: firstRow?.embedding_provider ?? KNOWLEDGE_EMBEDDING_PROVIDER,
     embeddingModel: firstRow?.embedding_model ?? KNOWLEDGE_EMBEDDING_MODEL,
-    embeddingDimension: firstRow?.embedding_dimension ?? KNOWLEDGE_EMBEDDING_DIMENSION
+    embeddingDimension: firstRow?.embedding_dimension ?? KNOWLEDGE_EMBEDDING_DIMENSION,
+    retrievalDiagnostics: buildRetrievalDiagnostics({
+      fallbackReason: null
+    })
   });
 }
 
 export async function searchKnowledgeBase(
-  input: KnowledgeSearchInput
+  input: KnowledgeSearchInput,
+  runtime: KnowledgeSearchRuntime = {}
 ): Promise<KnowledgeSearchResult> {
   const maxResults = Math.min(Math.max(input.maxResults ?? 5, 1), 10);
   const normalizedQuery = normalize(input.query);
   const queryTokens = tokensFor(input.query);
   const filters = buildFilters(input);
+  const executePgvectorSearch =
+    runtime.searchWithPgvector ?? searchWithPgvector;
+  const reportDegradation =
+    runtime.reportDegradation ?? reportKnowledgeRetrievalDegradation;
+  let fallbackReason: KnowledgeRetrievalFallbackReason =
+    "NO_VECTOR_RESULTS";
+  let pgvectorFailure: KnowledgeRetrievalFailure | null = null;
 
   try {
-    const pgvectorResult = await searchWithPgvector({
+    const pgvectorResult = await executePgvectorSearch({
       searchInput: input,
       maxResults,
       normalizedQuery,
@@ -1005,17 +1202,35 @@ export async function searchKnowledgeBase(
     if (pgvectorResult) {
       return pgvectorResult;
     }
-  } catch {
-    // pgvector may be unavailable in older local databases or test environments.
-    // Keep the existing deterministic fallback path so the app remains usable.
+  } catch (error) {
+    pgvectorFailure = classifyPgvectorCompatibilityFailure(error);
+
+    if (!pgvectorFailure) {
+      throw error;
+    }
+
+    fallbackReason = getFallbackReasonForFailure(pgvectorFailure);
   }
+
+  reportDegradation(
+    buildDegradationEvent({
+      searchInput: input,
+      maxResults,
+      fallbackReason,
+      failure: pgvectorFailure
+    })
+  );
 
   return searchWithDeterministicFallback({
     searchInput: input,
     maxResults,
     normalizedQuery,
     queryTokens,
-    filters
+    filters,
+    retrievalDiagnostics: buildRetrievalDiagnostics({
+      fallbackReason,
+      pgvectorFailure
+    })
   });
 }
 
