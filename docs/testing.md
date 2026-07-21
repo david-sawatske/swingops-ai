@@ -2,6 +2,28 @@
 
 SwingOps AI uses TypeScript typechecking and Vitest tests across the workspace.
 
+## Test database isolation
+
+API integration tests require the local PostgreSQL/pgvector service:
+
+    pnpm db:up
+
+The API test lifecycle reads `TEST_DATABASE_URL` from `services/api/.env`. If it
+is omitted, SwingOps derives a sibling database by appending `_test` to the
+development database name. Before every API test suite, the project:
+
+1. Refuses any target whose database name does not end in `_test`.
+2. Refuses a target that resolves to the development database.
+3. Creates the test database when it does not exist.
+4. Resets the test schema and applies all Prisma migrations.
+
+Prepare it without running tests:
+
+    pnpm test:db:prepare
+
+The reset is intentionally limited to the guarded test database. Development
+workflow, review, and model-call records are not touched.
+
 ## Typecheck commands
 
 Run all typechecks:

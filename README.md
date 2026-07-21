@@ -111,6 +111,10 @@ native loading behavior:
 - `apps/web/.env` only when overriding the web app's default `http://localhost:4000` API URL; use `apps/web/.env.example` as the template.
 - Prisma migrations applied to the local database before running the full workflow.
 
+API tests never use the development database. The test command creates and
+resets the guarded `_test` database configured by `TEST_DATABASE_URL` before the
+API suite starts.
+
 The default experience uses deterministic/mock model behavior and does not
 require a provider key. Real model calls are opt-in through
 `ENABLE_REAL_MODEL_CALLS` and the provider variables documented in the API

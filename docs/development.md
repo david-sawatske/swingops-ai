@@ -29,6 +29,10 @@ Both the API runtime and Prisma commands read `services/api/.env`. The checked-i
 example points at the PostgreSQL container's published host port, `5433`, and
 allows the default Vite origin at `http://localhost:5173`.
 
+`TEST_DATABASE_URL` points at a separate database whose name must end in
+`_test`. API test commands create that database when necessary and reset it
+before running; they refuse to reset the development database.
+
 The web app defaults to `http://localhost:4000` for the API and needs no local
 environment file for the standard setup. To override that URL:
 

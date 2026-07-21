@@ -15,6 +15,7 @@ describe("API environment configuration", () => {
     expect(databaseUrl.protocol).toBe("postgresql:");
     expect(databaseUrl.hostname).toBe("localhost");
     expect(databaseUrl.port).toBe("5433");
+    expect(new URL(parsed.TEST_DATABASE_URL!).pathname).toBe("/swingops_ai_test");
     expect(parsed.API_PORT).toBe(4000);
     expect(parsed.WEB_ORIGIN).toBe("http://localhost:5173");
   });

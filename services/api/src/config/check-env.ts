@@ -1,7 +1,11 @@
 import { getModelProviderRuntimeConfig } from "../ai/model-provider-runtime-config.js";
+import {
+  getDatabaseDisplayName,
+  resolveTestDatabaseUrl
+} from "./database-urls.js";
 import { env } from "./env.js";
 
-const databaseUrl = new URL(env.DATABASE_URL);
+const testDatabaseUrl = resolveTestDatabaseUrl(env);
 const providerConfig = getModelProviderRuntimeConfig();
 const configuredProviders = [
   providerConfig.openAiApiKey ? "OpenAI" : null,
@@ -15,9 +19,8 @@ const configuredProviders = [
 ].filter((provider): provider is string => provider !== null);
 
 console.log("SwingOps API configuration is valid.");
-console.log(
-  `Database: ${databaseUrl.hostname}:${databaseUrl.port || "5432"}${databaseUrl.pathname}`
-);
+console.log(`Development database: ${getDatabaseDisplayName(env.DATABASE_URL)}`);
+console.log(`Test database: ${getDatabaseDisplayName(testDatabaseUrl)}`);
 console.log(`API listener: ${env.API_HOST}:${env.API_PORT}`);
 console.log(`Allowed web origin: ${env.WEB_ORIGIN}`);
 console.log(
