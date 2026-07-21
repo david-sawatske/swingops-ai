@@ -89,7 +89,8 @@ export const azureOpenAiProvider: ModelProviderAdapter = {
               })
             }
           ]
-        })
+        }),
+        ...(input.signal ? { signal: input.signal } : {})
       }
     );
 

@@ -7,6 +7,8 @@ import { ModelProviderAdapterError } from "./model-provider-errors.js";
 
 export type ModelProviderRuntimeConfig = {
   enableRealModelCalls: boolean;
+  providerAttemptTimeoutMs?: number;
+  providerWorkflowTimeoutMs?: number;
   openAiApiKey?: string;
   openAiModel?: string;
   anthropicApiKey?: string;
@@ -32,6 +34,7 @@ export type ModelProviderFetch = (
     method: string;
     headers: Record<string, string>;
     body: string;
+    signal?: AbortSignal;
   }
 ) => Promise<ModelProviderFetchResponse>;
 
@@ -48,6 +51,21 @@ export function getModelProviderRuntimeConfig(
     enableRealModelCalls:
       env.ENABLE_REAL_MODEL_CALLS === "true" && !realModelCallsBlockedByTest
   };
+
+  const providerAttemptTimeoutMs = readPositiveInteger(
+    env.MODEL_PROVIDER_ATTEMPT_TIMEOUT_MS
+  );
+  const providerWorkflowTimeoutMs = readPositiveInteger(
+    env.MODEL_PROVIDER_WORKFLOW_TIMEOUT_MS
+  );
+
+  if (providerAttemptTimeoutMs !== undefined) {
+    config.providerAttemptTimeoutMs = providerAttemptTimeoutMs;
+  }
+
+  if (providerWorkflowTimeoutMs !== undefined) {
+    config.providerWorkflowTimeoutMs = providerWorkflowTimeoutMs;
+  }
 
   if (env.OPENAI_API_KEY !== undefined) {
     config.openAiApiKey = env.OPENAI_API_KEY;
@@ -90,6 +108,20 @@ export function getModelProviderRuntimeConfig(
   }
 
   return config;
+}
+
+function readPositiveInteger(value: string | undefined): number | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const parsedValue = Number(value);
+
+  if (!Number.isSafeInteger(parsedValue) || parsedValue <= 0) {
+    return undefined;
+  }
+
+  return parsedValue;
 }
 
 export function assertRealModelCallsEnabled(input: {
@@ -227,4 +259,3 @@ function parseJsonObject(text: string): Record<string, unknown> | null {
     return null;
   }
 }
-

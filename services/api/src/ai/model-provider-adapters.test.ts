@@ -128,7 +128,9 @@ describe("model provider adapters", () => {
     const requests: {
       url: string;
       body: Record<string, unknown>;
+      signal?: AbortSignal;
     }[] = [];
+    const controller = new AbortController();
     const result = await openAiProvider.execute({
       ...baseInput,
       model: "gpt-4.1-mini",
@@ -149,10 +151,12 @@ describe("model provider adapters", () => {
       runtimeConfig: enabledConfig({
         openAiApiKey: "test-openai-key"
       }),
+      signal: controller.signal,
       fetchFn: async (url, init) => {
         requests.push({
           url,
-          body: JSON.parse(init.body) as Record<string, unknown>
+          body: JSON.parse(init.body) as Record<string, unknown>,
+          ...(init.signal ? { signal: init.signal } : {})
         });
 
         return {
@@ -209,6 +213,7 @@ describe("model provider adapters", () => {
     expect(requests[0]?.body.input).toEqual(
       expect.stringContaining("Task type: INTAKE_PARSING")
     );
+    expect(requests[0]?.signal).toBe(controller.signal);
     expect(result.outputJson).toMatchObject({
       provider: "OPENAI",
       model: "gpt-4.1-mini",

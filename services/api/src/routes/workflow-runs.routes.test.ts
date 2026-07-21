@@ -833,6 +833,86 @@ describe("workflow run routes", () => {
       await app.close();
     });
 
+    it("demonstrates a preferred provider failure followed by a successful fallback", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/workflow-runs/agentic-trade-in-demo",
+        payload: {
+          rawInput: "unknown maybe 5w shaft unknown condition unclear",
+          demonstrateProviderFallback: true
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.modelRoutingDecision).toMatchObject({
+        selectedProvider: "OPENAI",
+        selectedModel: "gpt-4.1-mini"
+      });
+      expect(body.modelCallLog).toMatchObject({
+        provider: "MOCK",
+        model: "mock-golf-workflow-model",
+        status: "SUCCEEDED"
+      });
+      expect(body.providerFallbackTrace).toMatchObject({
+        selectedProvider: "OPENAI",
+        selectedModel: "gpt-4.1-mini",
+        finalProvider: "MOCK",
+        finalModel: "mock-golf-workflow-model",
+        fallbackUsed: true,
+        attempts: [
+          expect.objectContaining({
+            provider: "OPENAI",
+            status: "FAILED",
+            failureClass: "SERVER_ERROR",
+            retryable: true,
+            errorMessage: expect.stringContaining("503 Service Unavailable")
+          }),
+          expect.objectContaining({
+            provider: "MOCK",
+            status: "SUCCESS",
+            failureClass: "NONE",
+            retryable: false
+          })
+        ]
+      });
+
+      const attemptLogs = await prisma.modelCallAttemptLog.findMany({
+        where: {
+          modelCallLogId: body.persisted.modelCallLogId
+        },
+        orderBy: {
+          attemptOrder: "asc"
+        }
+      });
+
+      expect(attemptLogs.map((attempt) => attempt.provider)).toEqual([
+        "OPENAI",
+        "MOCK"
+      ]);
+      expect(attemptLogs.map((attempt) => attempt.status)).toEqual([
+        "FAILED",
+        "SUCCESS"
+      ]);
+
+      await prisma.intakeBatch.delete({
+        where: {
+          id: body.persisted.intakeBatchId
+        }
+      });
+      await prisma.workflowRun.delete({
+        where: {
+          id: body.persisted.workflowRunId
+        }
+      });
+
+      await app.close();
+    });
+
     it("rejects invalid agentic trade-in demo payloads", async () => {
       const app = buildApp();
 

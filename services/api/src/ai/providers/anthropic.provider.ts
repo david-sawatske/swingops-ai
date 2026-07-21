@@ -71,7 +71,8 @@ export const anthropicProvider: ModelProviderAdapter = {
             })
           }
         ]
-      })
+      }),
+      ...(input.signal ? { signal: input.signal } : {})
     });
 
     await assertSuccessfulResponse({

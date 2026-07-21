@@ -27,7 +27,8 @@ const workflowRunParamsSchema = z.object({
 
 const agenticTradeInDemoBodySchema = z
   .object({
-    rawInput: z.string().optional()
+    rawInput: z.string().optional(),
+    demonstrateProviderFallback: z.boolean().optional()
   })
   .strict();
 
@@ -122,9 +123,21 @@ export async function workflowRunRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
-    return executeEndToEndAgenticTradeInDemo({
-      rawInput: parsedBody.data.rawInput ?? DEFAULT_AGENTIC_TRADE_IN_DEMO_INPUT
-    });
+    const requestAbortController = new AbortController();
+    const abortWorkflow = () => requestAbortController.abort();
+
+    request.raw.once("aborted", abortWorkflow);
+
+    try {
+      return await executeEndToEndAgenticTradeInDemo({
+        rawInput: parsedBody.data.rawInput ?? DEFAULT_AGENTIC_TRADE_IN_DEMO_INPUT,
+        demonstrateProviderFallback:
+          parsedBody.data.demonstrateProviderFallback ?? false,
+        signal: requestAbortController.signal
+      });
+    } finally {
+      request.raw.removeListener("aborted", abortWorkflow);
+    }
   });
 
   app.get("/workflow-runs", async () => {

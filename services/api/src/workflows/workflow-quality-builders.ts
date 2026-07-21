@@ -288,10 +288,32 @@ function getProviderFallbackAttempts(
   return responseJson?.providerExecution?.attempts ?? [];
 }
 
+function getSelectedProviderRoute(modelCallLog: ModelCallLog): {
+  provider: string;
+  model: string;
+} {
+  const responseJson = modelCallLog.responseJson as
+    | {
+        routingDecision?: {
+          selectedProvider?: string;
+          selectedModel?: string;
+        };
+      }
+    | null
+    | undefined;
+
+  return {
+    provider:
+      responseJson?.routingDecision?.selectedProvider ?? modelCallLog.provider,
+    model: responseJson?.routingDecision?.selectedModel ?? modelCallLog.model
+  };
+}
+
 export function buildProviderFallbackTrace(
   modelCallLog: ModelCallLog
 ): ProviderFallbackTrace {
   const attempts = getProviderFallbackAttempts(modelCallLog);
+  const selectedRoute = getSelectedProviderRoute(modelCallLog);
   const unsuccessfulAttempts = attempts.filter(
     (attempt) =>
       attempt.status !== "SUCCESS" &&
@@ -300,8 +322,8 @@ export function buildProviderFallbackTrace(
 
   return {
     routingGoal: "HIGH_QUALITY",
-    selectedProvider: modelCallLog.provider,
-    selectedModel: modelCallLog.model,
+    selectedProvider: selectedRoute.provider,
+    selectedModel: selectedRoute.model,
     finalProvider: modelCallLog.provider,
     finalModel: modelCallLog.model,
     fallbackUsed: unsuccessfulAttempts.length > 0,

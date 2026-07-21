@@ -3,6 +3,10 @@ import type { ModelCallLog, Prisma, ReviewQueueItem, ToolCallLog } from "@prisma
 
 import type { ModelRouteDecision } from "../ai/model-router.js";
 import type {
+  ModelProviderFetch,
+  ModelProviderRuntimeConfig
+} from "../ai/model-provider-runtime-config.js";
+import type {
   InventoryProductLookupResult
 } from "../internal-systems/inventory-service.js";
 import type {
@@ -224,6 +228,32 @@ function stripNonRecordDemoHeaderLines(rawInput: string): string {
 }
 
 type DemoToolResult = EndToEndAgenticTradeInDemoResult["toolCallResults"][number];
+
+function buildProviderFallbackDemonstrationOptions(enabled: boolean): {
+  runtimeConfig?: ModelProviderRuntimeConfig;
+  fetchFn?: ModelProviderFetch;
+} {
+  if (!enabled) {
+    return {};
+  }
+
+  return {
+    runtimeConfig: {
+      enableRealModelCalls: true,
+      openAiApiKey: "provider-fallback-demonstration"
+    },
+    fetchFn: async () => ({
+      ok: false,
+      status: 503,
+      statusText: "Service Unavailable",
+      async json() {
+        return {
+          error: "Deterministic provider availability demonstration."
+        };
+      }
+    })
+  };
+}
 
 function toInputJson(value: unknown): Prisma.InputJsonValue {
   return value as Prisma.InputJsonValue;
@@ -641,7 +671,13 @@ function buildAuditTrail(input: {
 export async function executeEndToEndAgenticTradeInDemo(input: {
   rawInput: string;
   productReferenceProvider?: ProductReferenceProvider;
+  demonstrateProviderFallback?: boolean;
+  signal?: AbortSignal;
 }): Promise<EndToEndAgenticTradeInDemoResult> {
+  if (input.signal?.aborted) {
+    throw new Error("Workflow execution was cancelled by the caller.");
+  }
+
   const rawInput = input.rawInput.trim() || DEFAULT_AGENTIC_TRADE_IN_DEMO_INPUT;
   const parseReadyInput = stripNonRecordDemoHeaderLines(rawInput);
   const parseStartedAt = new Date();
@@ -909,7 +945,9 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         .filter(shouldRunFieldRepair)
         .map((item) => item.id),
       taskType: MAIN_RUN_FIELD_REPAIR_TASK_TYPE,
-      policyKey: MAIN_RUN_FIELD_REPAIR_POLICY_KEY
+      policyKey: MAIN_RUN_FIELD_REPAIR_POLICY_KEY,
+      demonstrateProviderFallback:
+        input.demonstrateProviderFallback === true
     },
     async execute(step) {
       const selectedFieldRepairItems =
@@ -1091,6 +1129,10 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         workflowRunId: workflowRun.id,
         records: fieldRepairRecords
       });
+      const providerFallbackDemonstrationOptions =
+        buildProviderFallbackDemonstrationOptions(
+          input.demonstrateProviderFallback === true
+        );
 
       const modelCallLog = await createModelExecutionLogForWorkflowRun({
         workflowRunId: workflowRun.id,
@@ -1105,6 +1147,8 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         allowDisabledProvidersForSimulation: false,
         inputJson: fieldRepairInputJson,
         outputSchema: MAIN_RUN_FIELD_REPAIR_OUTPUT_SCHEMA,
+        ...providerFallbackDemonstrationOptions,
+        ...(input.signal ? { signal: input.signal } : {}),
         validateOutput(outputJson) {
           const validation = validateMainRunFieldRepairModelOutput(
             outputJson,
@@ -1255,6 +1299,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         allowDisabledProvidersForSimulation: false,
         inputJson: retryInputJson,
         outputSchema: MAIN_RUN_FIELD_REPAIR_OUTPUT_SCHEMA,
+        ...(input.signal ? { signal: input.signal } : {}),
         validateOutput(outputJson) {
           const validation = validateMainRunFieldRepairModelOutput(
             outputJson,

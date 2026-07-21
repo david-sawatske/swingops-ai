@@ -80,6 +80,9 @@ export function getProviderFallbackNotice(
       unsuccessfulAttempt?.reason ??
       "The preferred provider did not complete successfully.",
     preferredLatencyMs: unsuccessfulAttempt?.latencyMs ?? null,
+    attemptDeadlineMs: unsuccessfulAttempt?.timeoutMs ?? null,
+    failureClass: unsuccessfulAttempt?.failureClass ?? "UNKNOWN",
+    retryable: unsuccessfulAttempt?.retryable ?? false,
     finalProvider,
     finalStatus: finalAttempt
       ? getProviderAttemptLabel(finalAttempt.status)
@@ -280,6 +283,20 @@ export function GuidedGuardedAgentExecutionStep({
             rows={7}
             value={workflowInput}
           />
+
+          <label className="guided-provider-fallback-control">
+            <input
+              name="demonstrateProviderFallback"
+              type="checkbox"
+            />
+            <span>
+              <strong>Demonstrate provider fallback</strong>
+              <small>
+                Send the preferred adapter a deterministic unavailable response so
+                the fallback provider must complete the model assistance.
+              </small>
+            </span>
+          </label>
         </form>
 
         {error ? <p className="guided-workflow-message guided-workflow-message--error">{error}</p> : null}
@@ -387,10 +404,27 @@ export function GuidedGuardedAgentExecutionStep({
                         <dd>{fallbackNotice.reason}</dd>
                       </div>
                       <div>
+                        <dt>Failure class</dt>
+                        <dd>
+                          {fallbackNotice.failureClass} ·{" "}
+                          {fallbackNotice.retryable
+                            ? "eligible for fallback"
+                            : "not retryable"}
+                        </dd>
+                      </div>
+                      <div>
                         <dt>Preferred latency</dt>
                         <dd>
                           {formatLatencyMs(
                             fallbackNotice.preferredLatencyMs,
+                          )}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Attempt deadline</dt>
+                        <dd>
+                          {formatLatencyMs(
+                            fallbackNotice.attemptDeadlineMs,
                           )}
                         </dd>
                       </div>

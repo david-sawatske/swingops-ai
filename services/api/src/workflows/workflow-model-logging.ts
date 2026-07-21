@@ -39,6 +39,9 @@ export type CreateModelExecutionLogInput = {
   allowDisabledProvidersForSimulation?: boolean;
   runtimeConfig?: ModelProviderRuntimeConfig;
   fetchFn?: ModelProviderFetch;
+  signal?: AbortSignal;
+  attemptTimeoutMs?: number;
+  workflowTimeoutMs?: number;
   validateOutput?: (
     outputJson: Record<string, unknown> | null
   ) => ModelExecutionOutputValidationResult;
@@ -79,16 +82,20 @@ function toProviderExecutionLogJson(
   return {
     outputJson: result.outputJson as Prisma.InputJsonObject | null,
     usage: result.usage,
+    deadline: result.deadline,
     routingDecision: toRoutingDecisionLogJson(result.routingDecision),
     attempts: result.attempts.map((attempt) => ({
       provider: attempt.provider,
       model: attempt.model,
       attemptOrder: attempt.attemptOrder,
       status: attempt.status,
+      failureClass: attempt.failureClass,
+      retryable: attempt.retryable,
       reason: attempt.reason,
       errorMessage: attempt.errorMessage,
       latencyMs: attempt.latencyMs,
-      estimatedCostUsd: attempt.estimatedCostUsd
+      estimatedCostUsd: attempt.estimatedCostUsd,
+      timeoutMs: attempt.timeoutMs
     }))
   };
 }
@@ -116,7 +123,14 @@ export async function createModelExecutionLogForWorkflowRun(
     ...(input.runtimeConfig !== undefined
       ? { runtimeConfig: input.runtimeConfig }
       : {}),
-    ...(input.fetchFn !== undefined ? { fetchFn: input.fetchFn } : {})
+    ...(input.fetchFn !== undefined ? { fetchFn: input.fetchFn } : {}),
+    ...(input.signal !== undefined ? { signal: input.signal } : {}),
+    ...(input.attemptTimeoutMs !== undefined
+      ? { attemptTimeoutMs: input.attemptTimeoutMs }
+      : {}),
+    ...(input.workflowTimeoutMs !== undefined
+      ? { workflowTimeoutMs: input.workflowTimeoutMs }
+      : {})
   });
 
   const validationResult = input.validateOutput
@@ -126,7 +140,7 @@ export async function createModelExecutionLogForWorkflowRun(
     validationResult !== null && !validationResult.validationPassed;
   const completedAt = new Date();
 
-  return prisma.modelCallLog.create({
+  const modelCallLog = await prisma.modelCallLog.create({
     data: {
       workflowRunId: input.workflowRunId,
       ...(input.workflowStepId ? { workflowStepId: input.workflowStepId } : {}),
@@ -157,6 +171,10 @@ export async function createModelExecutionLogForWorkflowRun(
         requireJson,
         allowDisabledProvidersForSimulation,
         providerFallbackExecutor: true,
+        providerDeadlines: {
+          attemptTimeoutMs: executionResult.deadline.attemptTimeoutMs,
+          workflowTimeoutMs: executionResult.deadline.workflowTimeoutMs
+        },
         ...(input.outputSchema
           ? {
               outputSchema: {
@@ -208,6 +226,15 @@ export async function createModelExecutionLogForWorkflowRun(
       }
     }
   });
+
+  if (executionResult.deadline.cancelled) {
+    throw new Error(
+      executionResult.errorMessage ??
+        "Provider execution was cancelled by the caller."
+    );
+  }
+
+  return modelCallLog;
 }
 
 export async function createMockModelCallLogForWorkflowRun(

@@ -120,7 +120,9 @@ describe("model provider fallback executor", () => {
       provider: "OPENAI",
       model: "gpt-4.1-mini",
       attemptOrder: 1,
-      status: "SKIPPED"
+      status: "SKIPPED",
+      failureClass: "CONFIGURATION",
+      retryable: false
     });
     expect(result.attempts[0]?.errorMessage).toContain(
       "OPENAI real model calls are disabled"
@@ -157,7 +159,9 @@ describe("model provider fallback executor", () => {
       provider: "OPENAI",
       model: "gpt-4.1-mini",
       attemptOrder: 1,
-      status: "RATE_LIMITED"
+      status: "RATE_LIMITED",
+      failureClass: "RATE_LIMIT",
+      retryable: true
     });
     expect(result.attempts[0]?.errorMessage).toContain("429 Too Many Requests");
     expect(result.attempts.at(-1)).toMatchObject({
@@ -195,7 +199,9 @@ describe("model provider fallback executor", () => {
     expect(result.attempts).toHaveLength(1);
     expect(result.attempts[0]).toMatchObject({
       provider: "OPENAI",
-      status: "SUCCESS"
+      status: "SUCCESS",
+      failureClass: "NONE",
+      retryable: false
     });
     expect(result.outputJson).toMatchObject({
       provider: "OPENAI",
@@ -238,7 +244,9 @@ describe("model provider fallback executor", () => {
     ]);
     expect(result.attempts[0]).toMatchObject({
       provider: "OPENAI",
-      status: "FAILED"
+      status: "FAILED",
+      failureClass: "OUTPUT_VALIDATION",
+      retryable: false
     });
     expect(result.attempts[0]?.errorMessage).toContain(
       "Model output validation failed"
@@ -259,5 +267,137 @@ describe("model provider fallback executor", () => {
         })
       ]
     });
+  });
+
+  it("aborts a timed-out provider attempt and continues with the fallback provider", async () => {
+    let providerSignal: AbortSignal | undefined;
+    const result = await executeModelWithProviderFallback({
+      goal: "HIGH_QUALITY",
+      taskType: "FIELD_NORMALIZATION",
+      requireJson: true,
+      inputJson: {
+        policyKey: "MAIN_RUN_FIELD_REPAIR",
+        records: []
+      },
+      runtimeConfig: enabledOpenAiConfig(),
+      attemptTimeoutMs: 10,
+      workflowTimeoutMs: 100,
+      fetchFn: async (_url, init) => {
+        providerSignal = init.signal;
+
+        return new Promise((_resolve, reject) => {
+          init.signal?.addEventListener(
+            "abort",
+            () => reject(init.signal?.reason),
+            { once: true }
+          );
+        });
+      },
+      validateOutput: validateFieldRepairOutput
+    });
+
+    expect(providerSignal?.aborted).toBe(true);
+    expect(result.status).toBe("SUCCEEDED");
+    expect(result.provider).toBe("MOCK");
+    expect(result.attempts[0]).toMatchObject({
+      provider: "OPENAI",
+      status: "TIMEOUT",
+      failureClass: "TIMEOUT",
+      retryable: true,
+      timeoutMs: 10
+    });
+    expect(result.attempts.at(-1)).toMatchObject({
+      provider: "MOCK",
+      status: "SUCCESS"
+    });
+    expect(result.deadline).toMatchObject({
+      attemptTimeoutMs: 10,
+      workflowTimeoutMs: 100,
+      workflowDeadlineReached: false,
+      cancelled: false
+    });
+  });
+
+  it("stops fallback execution when the provider workflow deadline is reached", async () => {
+    const result = await executeModelWithProviderFallback({
+      goal: "HIGH_QUALITY",
+      taskType: "FIELD_NORMALIZATION",
+      requireJson: true,
+      inputJson: {
+        policyKey: "MAIN_RUN_FIELD_REPAIR",
+        records: []
+      },
+      runtimeConfig: enabledOpenAiConfig(),
+      attemptTimeoutMs: 100,
+      workflowTimeoutMs: 10,
+      fetchFn: async (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init.signal?.addEventListener(
+            "abort",
+            () => reject(init.signal?.reason),
+            { once: true }
+          );
+        }),
+      validateOutput: validateFieldRepairOutput
+    });
+
+    expect(result.status).toBe("FAILED");
+    expect(result.attempts).toHaveLength(1);
+    expect(result.attempts[0]).toMatchObject({
+      provider: "OPENAI",
+      status: "TIMEOUT",
+      failureClass: "TIMEOUT",
+      retryable: true
+    });
+    expect(result.deadline).toMatchObject({
+      attemptTimeoutMs: 100,
+      workflowTimeoutMs: 10,
+      workflowDeadlineReached: true,
+      cancelled: false
+    });
+    expect(result.errorMessage).toContain(
+      "Provider fallback workflow timed out"
+    );
+  });
+
+  it("propagates caller cancellation and does not start another provider", async () => {
+    const controller = new AbortController();
+    const result = await executeModelWithProviderFallback({
+      goal: "HIGH_QUALITY",
+      taskType: "FIELD_NORMALIZATION",
+      requireJson: true,
+      inputJson: {
+        policyKey: "MAIN_RUN_FIELD_REPAIR",
+        records: []
+      },
+      runtimeConfig: enabledOpenAiConfig(),
+      signal: controller.signal,
+      attemptTimeoutMs: 100,
+      workflowTimeoutMs: 200,
+      fetchFn: async (_url, init) => {
+        queueMicrotask(() => controller.abort());
+
+        return new Promise((_resolve, reject) => {
+          init.signal?.addEventListener(
+            "abort",
+            () => reject(init.signal?.reason),
+            { once: true }
+          );
+        });
+      },
+      validateOutput: validateFieldRepairOutput
+    });
+
+    expect(result.status).toBe("FAILED");
+    expect(result.attempts).toHaveLength(1);
+    expect(result.attempts[0]).toMatchObject({
+      provider: "OPENAI",
+      failureClass: "CANCELLED",
+      retryable: false
+    });
+    expect(result.deadline.cancelled).toBe(true);
+    expect(result.errorMessage).toBe(
+      "Provider execution was cancelled by the caller."
+    );
   });
 });

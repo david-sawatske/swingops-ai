@@ -98,6 +98,9 @@ export function useGuidedWorkflowRun({
     event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
+    const demonstrateProviderFallback =
+      new FormData(event.currentTarget).get("demonstrateProviderFallback") ===
+      "on";
 
     try {
       setIsRunningEndToEndAgenticDemo(true);
@@ -114,6 +117,7 @@ export function useGuidedWorkflowRun({
 
       const result = await executeEndToEndAgenticTradeInDemo({
         rawInput: endToEndAgenticDemoRawInput.trim() || generatedTradeInRawInput,
+        demonstrateProviderFallback,
       });
 
       setEndToEndAgenticDemoResult(result);

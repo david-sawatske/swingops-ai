@@ -248,10 +248,13 @@ export type ProviderFallbackTraceAttempt = {
   model: string;
   attemptOrder: number;
   status: string;
+  failureClass: string;
+  retryable: boolean;
   reason: string | null;
   errorMessage: string | null;
   latencyMs: number | null;
   estimatedCostUsd: number | null;
+  timeoutMs: number | null;
 };
 
 export type ProviderFallbackTrace = {
@@ -307,6 +310,7 @@ export type WorkflowQualitySummary = {
 
 export type ExecuteEndToEndAgenticTradeInDemoRequest = {
   rawInput?: string;
+  demonstrateProviderFallback?: boolean;
 };
 
 export type ExecuteEndToEndAgenticTradeInDemoResponse = {

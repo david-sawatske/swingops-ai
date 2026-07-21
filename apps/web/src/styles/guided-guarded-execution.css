@@ -77,6 +77,44 @@
   margin: 0 0 0.55rem;
 }
 
+.agentic-demo-form .guided-provider-fallback-control {
+  align-items: flex-start;
+  background: rgba(39, 69, 42, 0.05);
+  border: 1px solid rgba(39, 69, 42, 0.14);
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  gap: 0.65rem;
+  margin-top: 0.7rem;
+  padding: 0.7rem 0.8rem;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.agentic-demo-form .guided-provider-fallback-control input {
+  accent-color: #27452a;
+  flex: 0 0 auto;
+  height: 1rem;
+  margin-top: 0.15rem;
+  width: 1rem;
+}
+
+.agentic-demo-form .guided-provider-fallback-control span {
+  display: grid;
+  gap: 0.14rem;
+}
+
+.agentic-demo-form .guided-provider-fallback-control strong {
+  color: #142417;
+  font-size: 0.84rem;
+}
+
+.agentic-demo-form .guided-provider-fallback-control small {
+  color: rgba(20, 36, 23, 0.66);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
 .guided-workflow-message {
   border-radius: 14px;
   font-size: 0.86rem;

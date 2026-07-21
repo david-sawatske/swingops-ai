@@ -27,15 +27,33 @@ export type ModelProviderFallbackAttemptStatus =
   | "DISABLED"
   | "RATE_LIMITED";
 
+export type ModelProviderFailureClass =
+  | "NONE"
+  | "CONFIGURATION"
+  | "RATE_LIMIT"
+  | "TIMEOUT"
+  | "SERVER_ERROR"
+  | "CLIENT_ERROR"
+  | "INVALID_RESPONSE"
+  | "OUTPUT_VALIDATION"
+  | "CANCELLED"
+  | "UNKNOWN";
+
+export const DEFAULT_PROVIDER_ATTEMPT_TIMEOUT_MS = 10_000;
+export const DEFAULT_PROVIDER_WORKFLOW_TIMEOUT_MS = 25_000;
+
 export type ModelProviderFallbackAttempt = {
   provider: ModelProviderName;
   model: string;
   attemptOrder: number;
   status: ModelProviderFallbackAttemptStatus;
+  failureClass: ModelProviderFailureClass;
+  retryable: boolean;
   reason: string;
   errorMessage: string | null;
   latencyMs: number;
   estimatedCostUsd: number;
+  timeoutMs: number;
   startedAt: Date;
   completedAt: Date;
 };
@@ -55,6 +73,9 @@ export type ExecuteModelWithProviderFallbackInput = {
   allowDisabledProvidersForSimulation?: boolean;
   runtimeConfig?: ModelProviderRuntimeConfig;
   fetchFn?: ModelProviderFetch;
+  signal?: AbortSignal;
+  attemptTimeoutMs?: number;
+  workflowTimeoutMs?: number;
   validateOutput?: (
     outputJson: Record<string, unknown> | null
   ) => ModelProviderOutputValidationResult;
@@ -69,12 +90,61 @@ export type ExecuteModelWithProviderFallbackResult = {
   attempts: ModelProviderFallbackAttempt[];
   routingDecision: ModelRouteDecision;
   errorMessage: string | null;
+  deadline: {
+    attemptTimeoutMs: number;
+    workflowTimeoutMs: number;
+    workflowDeadlineReached: boolean;
+    cancelled: boolean;
+    durationMs: number;
+  };
 };
+
+type AttemptFailureClassification = {
+  status: ModelProviderFallbackAttemptStatus;
+  failureClass: ModelProviderFailureClass;
+  retryable: boolean;
+};
+
+class ProviderAttemptTimeoutError extends Error {
+  readonly timeoutMs: number;
+  readonly workflowDeadlineReached: boolean;
+
+  constructor(input: {
+    timeoutMs: number;
+    workflowDeadlineReached: boolean;
+  }) {
+    super(
+      input.workflowDeadlineReached
+        ? `Provider fallback workflow exceeded its ${input.timeoutMs}ms remaining deadline.`
+        : `Provider attempt timed out after ${input.timeoutMs}ms.`
+    );
+    this.name = "ProviderAttemptTimeoutError";
+    this.timeoutMs = input.timeoutMs;
+    this.workflowDeadlineReached = input.workflowDeadlineReached;
+  }
+}
+
+class ProviderExecutionCancelledError extends Error {
+  constructor() {
+    super("Provider execution was cancelled by the caller.");
+    this.name = "ProviderExecutionCancelledError";
+  }
+}
 
 export async function executeModelWithProviderFallback(
   input: ExecuteModelWithProviderFallbackInput
 ): Promise<ExecuteModelWithProviderFallbackResult> {
+  const executionStartedMs = Date.now();
   const runtimeConfig = input.runtimeConfig ?? getModelProviderRuntimeConfig();
+  const attemptTimeoutMs = resolvePositiveTimeout(
+    input.attemptTimeoutMs ?? runtimeConfig.providerAttemptTimeoutMs,
+    DEFAULT_PROVIDER_ATTEMPT_TIMEOUT_MS
+  );
+  const workflowTimeoutMs = resolvePositiveTimeout(
+    input.workflowTimeoutMs ?? runtimeConfig.providerWorkflowTimeoutMs,
+    DEFAULT_PROVIDER_WORKFLOW_TIMEOUT_MS
+  );
+  const workflowDeadlineMs = executionStartedMs + workflowTimeoutMs;
   const routingDecision = routeModel(
     {
       preferredGoal: input.goal,
@@ -95,8 +165,32 @@ export async function executeModelWithProviderFallback(
   );
   const candidates = buildExecutionCandidates(routingDecision);
   const attempts: ModelProviderFallbackAttempt[] = [];
+  let workflowDeadlineReached = false;
+  let cancelled = false;
+  let terminalErrorMessage: string | null = null;
 
   for (const candidate of candidates) {
+    if (input.signal?.aborted) {
+      cancelled = true;
+      terminalErrorMessage = "Provider execution was cancelled by the caller.";
+      break;
+    }
+
+    const workflowTimeRemainingMs = workflowDeadlineMs - Date.now();
+
+    if (workflowTimeRemainingMs <= 0) {
+      workflowDeadlineReached = true;
+      terminalErrorMessage =
+        `Provider fallback workflow timed out after ${workflowTimeoutMs}ms.`;
+      break;
+    }
+
+    const effectiveAttemptTimeoutMs = Math.max(
+      1,
+      Math.min(attemptTimeoutMs, workflowTimeRemainingMs)
+    );
+    const attemptUsesWorkflowDeadline =
+      workflowTimeRemainingMs <= attemptTimeoutMs;
     const provider = getModelProvider(candidate.provider);
     const startedAt = new Date();
     const startMs = Date.now();
@@ -107,10 +201,13 @@ export async function executeModelWithProviderFallback(
         model: candidate.model,
         attemptOrder: attempts.length + 1,
         status: "DISABLED",
+        failureClass: "CONFIGURATION",
+        retryable: false,
         reason: "Provider is not registered.",
         errorMessage: "Provider is not registered.",
         latencyMs: Date.now() - startMs,
         estimatedCostUsd: candidate.estimatedCostUsd,
+        timeoutMs: effectiveAttemptTimeoutMs,
         startedAt,
         completedAt: new Date()
       });
@@ -118,15 +215,23 @@ export async function executeModelWithProviderFallback(
     }
 
     try {
-      const result = await provider.execute({
-        model: candidate.model,
-        taskType: input.taskType,
-        inputJson: input.inputJson,
-        ...(input.outputSchema !== undefined
-          ? { outputSchema: input.outputSchema }
-          : {}),
-        runtimeConfig,
-        ...(input.fetchFn !== undefined ? { fetchFn: input.fetchFn } : {})
+      const result = await executeProviderAttempt({
+        timeoutMs: effectiveAttemptTimeoutMs,
+        workflowDeadlineReached: attemptUsesWorkflowDeadline,
+        ...(input.signal ? { signal: input.signal } : {}),
+        execute(signal) {
+          return provider.execute({
+            model: candidate.model,
+            taskType: input.taskType,
+            inputJson: input.inputJson,
+            ...(input.outputSchema !== undefined
+              ? { outputSchema: input.outputSchema }
+              : {}),
+            runtimeConfig,
+            ...(input.fetchFn !== undefined ? { fetchFn: input.fetchFn } : {}),
+            signal
+          });
+        }
       });
       const validationResult = input.validateOutput
         ? input.validateOutput(result.outputJson)
@@ -139,10 +244,13 @@ export async function executeModelWithProviderFallback(
           model: candidate.model,
           attemptOrder: attempts.length + 1,
           status: "FAILED",
+          failureClass: "OUTPUT_VALIDATION",
+          retryable: false,
           reason: `Provider ${candidate.provider} / ${candidate.model} returned output that failed validation.`,
           errorMessage: buildValidationFailureMessage(validationResult),
           latencyMs: Date.now() - startMs,
           estimatedCostUsd: candidate.estimatedCostUsd,
+          timeoutMs: effectiveAttemptTimeoutMs,
           startedAt,
           completedAt
         });
@@ -154,10 +262,13 @@ export async function executeModelWithProviderFallback(
         model: candidate.model,
         attemptOrder: attempts.length + 1,
         status: "SUCCESS",
+        failureClass: "NONE",
+        retryable: false,
         reason: `Provider ${candidate.provider} / ${candidate.model} succeeded.`,
         errorMessage: null,
         latencyMs: Date.now() - startMs,
         estimatedCostUsd: candidate.estimatedCostUsd,
+        timeoutMs: effectiveAttemptTimeoutMs,
         startedAt,
         completedAt
       });
@@ -170,21 +281,49 @@ export async function executeModelWithProviderFallback(
         usage: result.usage ?? null,
         attempts,
         routingDecision,
-        errorMessage: null
+        errorMessage: null,
+        deadline: {
+          attemptTimeoutMs,
+          workflowTimeoutMs,
+          workflowDeadlineReached: false,
+          cancelled: false,
+          durationMs: Date.now() - executionStartedMs
+        }
       };
     } catch (error) {
+      const classification = classifyAttemptFailure(error);
+
       attempts.push({
         provider: candidate.provider,
         model: candidate.model,
         attemptOrder: attempts.length + 1,
-        status: classifyAttemptStatus(error),
+        status: classification.status,
+        failureClass: classification.failureClass,
+        retryable: classification.retryable,
         reason: `Provider ${candidate.provider} / ${candidate.model} did not complete successfully.`,
         errorMessage: getErrorMessage(error),
         latencyMs: Date.now() - startMs,
         estimatedCostUsd: candidate.estimatedCostUsd,
+        timeoutMs: effectiveAttemptTimeoutMs,
         startedAt,
         completedAt: new Date()
       });
+
+      if (error instanceof ProviderExecutionCancelledError) {
+        cancelled = true;
+        terminalErrorMessage = error.message;
+        break;
+      }
+
+      if (
+        error instanceof ProviderAttemptTimeoutError &&
+        error.workflowDeadlineReached
+      ) {
+        workflowDeadlineReached = true;
+        terminalErrorMessage =
+          `Provider fallback workflow timed out after ${workflowTimeoutMs}ms.`;
+        break;
+      }
     }
   }
 
@@ -196,8 +335,80 @@ export async function executeModelWithProviderFallback(
     usage: null,
     attempts,
     routingDecision,
-    errorMessage: attempts.at(-1)?.errorMessage ?? "No provider attempt succeeded."
+    errorMessage:
+      terminalErrorMessage ??
+      attempts.at(-1)?.errorMessage ??
+      "No provider attempt succeeded.",
+    deadline: {
+      attemptTimeoutMs,
+      workflowTimeoutMs,
+      workflowDeadlineReached,
+      cancelled,
+      durationMs: Date.now() - executionStartedMs
+    }
   };
+}
+
+async function executeProviderAttempt<Result>(input: {
+  timeoutMs: number;
+  workflowDeadlineReached: boolean;
+  signal?: AbortSignal;
+  execute: (signal: AbortSignal) => Promise<Result>;
+}): Promise<Result> {
+  const attemptController = new AbortController();
+
+  return new Promise<Result>((resolve, reject) => {
+    let settled = false;
+
+    const finish = (callback: () => void) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      clearTimeout(timeout);
+      input.signal?.removeEventListener("abort", onCallerAbort);
+      callback();
+    };
+    const onCallerAbort = () => {
+      const error = new ProviderExecutionCancelledError();
+      attemptController.abort(error);
+      finish(() => reject(error));
+    };
+    const timeout = setTimeout(() => {
+      const error = new ProviderAttemptTimeoutError({
+        timeoutMs: input.timeoutMs,
+        workflowDeadlineReached: input.workflowDeadlineReached
+      });
+      attemptController.abort(error);
+      finish(() => reject(error));
+    }, input.timeoutMs);
+
+    if (input.signal?.aborted) {
+      onCallerAbort();
+      return;
+    }
+
+    input.signal?.addEventListener("abort", onCallerAbort, { once: true });
+
+    Promise.resolve()
+      .then(() => input.execute(attemptController.signal))
+      .then(
+        (result) => finish(() => resolve(result)),
+        (error: unknown) => finish(() => reject(error))
+      );
+  });
+}
+
+function resolvePositiveTimeout(
+  value: number | undefined,
+  fallback: number
+): number {
+  if (typeof value === "number" && Number.isSafeInteger(value) && value > 0) {
+    return value;
+  }
+
+  return fallback;
 }
 
 function buildExecutionCandidates(
@@ -264,34 +475,98 @@ function candidateKey(candidate: {
   return `${candidate.provider}:${candidate.model}`;
 }
 
-function classifyAttemptStatus(
+function classifyAttemptFailure(
   error: unknown
-): ModelProviderFallbackAttemptStatus {
+): AttemptFailureClassification {
+  if (error instanceof ProviderExecutionCancelledError) {
+    return {
+      status: "FAILED",
+      failureClass: "CANCELLED",
+      retryable: false
+    };
+  }
+
+  if (error instanceof ProviderAttemptTimeoutError) {
+    return {
+      status: "TIMEOUT",
+      failureClass: "TIMEOUT",
+      retryable: true
+    };
+  }
+
   if (isModelProviderAdapterError(error)) {
     if (error.code === "MODEL_PROVIDER_NOT_CONFIGURED") {
-      return "SKIPPED";
+      return {
+        status: "SKIPPED",
+        failureClass: "CONFIGURATION",
+        retryable: false
+      };
     }
 
     if (error.code === "MODEL_PROVIDER_REQUEST_FAILED") {
       if (error.statusCode === 429) {
-        return "RATE_LIMITED";
+        return {
+          status: "RATE_LIMITED",
+          failureClass: "RATE_LIMIT",
+          retryable: true
+        };
       }
 
       if (error.statusCode === 408 || error.statusCode === 504) {
-        return "TIMEOUT";
+        return {
+          status: "TIMEOUT",
+          failureClass: "TIMEOUT",
+          retryable: true
+        };
+      }
+
+      if (error.statusCode !== undefined && error.statusCode >= 500) {
+        return {
+          status: "FAILED",
+          failureClass: "SERVER_ERROR",
+          retryable: true
+        };
+      }
+
+      if (error.statusCode !== undefined && error.statusCode >= 400) {
+        return {
+          status: "FAILED",
+          failureClass: "CLIENT_ERROR",
+          retryable: false
+        };
       }
     }
 
-    return "FAILED";
+    if (error.code === "MODEL_PROVIDER_INVALID_RESPONSE") {
+      return {
+        status: "FAILED",
+        failureClass: "INVALID_RESPONSE",
+        retryable: true
+      };
+    }
+
+    return {
+      status: "FAILED",
+      failureClass: "UNKNOWN",
+      retryable: true
+    };
   }
 
   const message = getErrorMessage(error).toLowerCase();
 
   if (message.includes("timeout") || message.includes("timed out")) {
-    return "TIMEOUT";
+    return {
+      status: "TIMEOUT",
+      failureClass: "TIMEOUT",
+      retryable: true
+    };
   }
 
-  return "FAILED";
+  return {
+    status: "FAILED",
+    failureClass: "UNKNOWN",
+    retryable: true
+  };
 }
 
 function buildValidationFailureMessage(

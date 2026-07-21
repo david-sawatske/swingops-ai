@@ -59,6 +59,7 @@ export type ModelProviderExecuteInput = {
   outputSchema?: ModelProviderOutputSchema;
   runtimeConfig?: ModelProviderRuntimeConfig;
   fetchFn?: ModelProviderFetch;
+  signal?: AbortSignal;
 };
 
 export type ModelProviderExecuteResult = {

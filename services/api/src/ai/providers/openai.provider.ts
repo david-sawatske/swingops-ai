@@ -74,7 +74,8 @@ export const openAiProvider: ModelProviderAdapter = {
           text: {
             format: buildOpenAiTextFormat(input)
           }
-        })
+        }),
+        ...(input.signal ? { signal: input.signal } : {})
       }
     );
 

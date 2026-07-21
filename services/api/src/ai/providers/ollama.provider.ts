@@ -62,7 +62,8 @@ export const ollamaProvider: ModelProviderAdapter = {
         }),
         stream: false,
         format: "json"
-      })
+      }),
+      ...(input.signal ? { signal: input.signal } : {})
     });
 
     await assertSuccessfulResponse({

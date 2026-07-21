@@ -118,7 +118,11 @@ API suite starts.
 The default experience uses deterministic/mock model behavior and does not
 require a provider key. Real model calls are opt-in through
 `ENABLE_REAL_MODEL_CALLS` and the provider variables documented in the API
-example file.
+example file. Provider attempts and the complete provider fallback sequence are
+bounded by the deadline settings in that file. Step 3 of the guided workflow
+also includes a deterministic provider-fallback demonstration that exercises
+the normal adapter, classification, audit, and fallback path without making an
+external request.
 
 Useful database commands:
 
