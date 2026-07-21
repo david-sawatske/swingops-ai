@@ -56,6 +56,10 @@ import {
   type WorkflowQualityBundle
 } from "./workflow-quality.js";
 import {
+  executePersistedWorkflowStep,
+  requireWorkflowStep
+} from "./workflow-step-persistence.js";
+import {
   buildInventoryLookupFromProductResolution
 } from "./product-resolution-inventory-adapter.js";
 import {
@@ -185,6 +189,16 @@ const NON_RECORD_DEMO_HEADER_PATTERNS = [
   /^pasted trade-in notes:?$/i,
   /^trade-in notes:?$/i
 ];
+
+const AGENTIC_WORKFLOW_STEP_NAMES = {
+  parseInput: "parse-and-persist-intake",
+  retrieveEvidence: "retrieve-grounding-evidence",
+  modelAssistance: "run-field-repair-model",
+  validateOutput: "validate-field-repair-output",
+  createReviewItems: "create-human-review-work",
+  executeTools: "execute-guarded-tool-plan",
+  finalize: "finalize-workflow-run"
+} as const;
 
 function stripNonRecordDemoHeaderLines(rawInput: string): string {
   const recordLines = rawInput
@@ -605,9 +619,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
 }): Promise<EndToEndAgenticTradeInDemoResult> {
   const rawInput = input.rawInput.trim() || DEFAULT_AGENTIC_TRADE_IN_DEMO_INPUT;
   const parseReadyInput = stripNonRecordDemoHeaderLines(rawInput);
-
-  await ensureDemoKnowledgeBaseReady();
-
+  const parseStartedAt = new Date();
   const parsedItems = parseTradeInDemoText(
     parseReadyInput,
     input.productReferenceProvider
@@ -637,537 +649,789 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
       }
     }
   });
+  const parseCompletedAt = new Date();
 
   const workflowRun = await prisma.workflowRun.create({
     data: {
       intakeBatchId: intakeBatch.id,
       workflowName: "end-to-end-agentic-trade-in-demo",
       status: "RUNNING",
-      startedAt: new Date()
+      startedAt: parseStartedAt,
+      steps: {
+        create: [
+          {
+            stepName: AGENTIC_WORKFLOW_STEP_NAMES.parseInput,
+            stepType: "PARSE_INPUT",
+            status: "COMPLETED",
+            orderIndex: 1,
+            inputJson: {
+              sourceType: "FREE_TEXT",
+              characterCount: parseReadyInput.length,
+              nonEmptyLineCount: parseReadyInput.split(/\r?\n/).filter(Boolean).length
+            },
+            outputJson: {
+              parsedItemCount: parsedItems.length,
+              intakeBatchId: intakeBatch.id,
+              intakeItemIds: intakeBatch.items.map((item) => item.id)
+            },
+            startedAt: parseStartedAt,
+            completedAt: parseCompletedAt
+          },
+          {
+            stepName: AGENTIC_WORKFLOW_STEP_NAMES.retrieveEvidence,
+            stepType: "RETRIEVE_EVIDENCE",
+            orderIndex: 2
+          },
+          {
+            stepName: AGENTIC_WORKFLOW_STEP_NAMES.modelAssistance,
+            stepType: "EXTRACT_GOLF_CLUB_FIELDS",
+            orderIndex: 3
+          },
+          {
+            stepName: AGENTIC_WORKFLOW_STEP_NAMES.validateOutput,
+            stepType: "VALIDATE_STRUCTURED_OUTPUT",
+            orderIndex: 4
+          },
+          {
+            stepName: AGENTIC_WORKFLOW_STEP_NAMES.createReviewItems,
+            stepType: "CREATE_REVIEW_ITEM",
+            orderIndex: 5
+          },
+          {
+            stepName: AGENTIC_WORKFLOW_STEP_NAMES.executeTools,
+            stepType: "EXECUTE_TOOL_CALLS",
+            orderIndex: 6
+          },
+          {
+            stepName: AGENTIC_WORKFLOW_STEP_NAMES.finalize,
+            stepType: "FINALIZE_WORKFLOW",
+            orderIndex: 7
+          }
+        ]
+      }
+    },
+    include: {
+      steps: {
+        orderBy: {
+          orderIndex: "asc"
+        }
+      }
     }
   });
 
-  const priorReviewLearningEvidenceByItem:
-    EndToEndAgenticTradeInDemoResult["priorReviewLearningEvidenceByItem"] = [];
+  const evidenceResult = await executePersistedWorkflowStep({
+    step: requireWorkflowStep(
+      workflowRun.steps,
+      AGENTIC_WORKFLOW_STEP_NAMES.retrieveEvidence
+    ),
+    inputJson: {
+      parsedItemIds: parsedItems.map((item) => item.id),
+      maxKnowledgeResultsPerItem: 3
+    },
+    async execute() {
+      await ensureDemoKnowledgeBaseReady();
 
-  for (const item of parsedItems) {
-    const evidence = await findPriorReviewLearningEvidence({
-      rawText: item.rawLine,
-      sourceType: "FREE_TEXT",
-      excludeWorkflowRunId: workflowRun.id,
-      parsedFields: {
-        brand: item.brand,
-        productLine: item.productLine,
-        category: item.category,
-        shaftFlex: item.shaftFlex
+      const priorReviewLearningEvidenceByItem:
+        EndToEndAgenticTradeInDemoResult["priorReviewLearningEvidenceByItem"] = [];
+
+      for (const item of parsedItems) {
+        const evidence = await findPriorReviewLearningEvidence({
+          rawText: item.rawLine,
+          sourceType: "FREE_TEXT",
+          excludeWorkflowRunId: workflowRun.id,
+          parsedFields: {
+            brand: item.brand,
+            productLine: item.productLine,
+            category: item.category,
+            shaftFlex: item.shaftFlex
+          }
+        });
+
+        priorReviewLearningEvidenceByItem.push({
+          parsedItemId: item.id,
+          evidence
+        });
       }
-    });
 
-    priorReviewLearningEvidenceByItem.push({
-      parsedItemId: item.id,
-      evidence
-    });
-  }
-
-  const parsedItemById = new Map(
-    parsedItems.map(
-      (item) => [
-        item.id,
-        item
-      ]
-    )
-  );
-  const priorReviewLearningSuggestionsByItem =
-    priorReviewLearningEvidenceByItem.map(
-      (item) => ({
-        parsedItemId: item.parsedItemId,
-        suggestions:
-          filterPriorReviewLearningSuggestionsForSourceSafety({
-            sourceText:
-              parsedItemById.get(
-                item.parsedItemId
-              )?.rawLine ?? "",
+      const parsedItemById = new Map(
+        parsedItems.map(
+          (item) => [
+            item.id,
+            item
+          ]
+        )
+      );
+      const priorReviewLearningSuggestionsByItem =
+        priorReviewLearningEvidenceByItem.map(
+          (item) => ({
+            parsedItemId: item.parsedItemId,
             suggestions:
-              buildPriorReviewLearningSuggestionsFromEvidence(
-                item.evidence
-              )
+              filterPriorReviewLearningSuggestionsForSourceSafety({
+                sourceText:
+                  parsedItemById.get(
+                    item.parsedItemId
+                  )?.rawLine ?? "",
+                suggestions:
+                  buildPriorReviewLearningSuggestionsFromEvidence(
+                    item.evidence
+                  )
+              })
           })
-      })
-    );
-
-  const knowledgeMatchesByItem:
-    EndToEndAgenticTradeInDemoResult["knowledgeMatchesByItem"] = [];
-
-  for (const item of parsedItems) {
-    const query = buildKnowledgeQuery(item);
-    const search = await searchKnowledgeBase({
-      query,
-      ...(item.brand ? { brand: item.brand } : {}),
-      ...(item.category ? { category: item.category } : {}),
-      maxResults: 3
-    });
-
-    knowledgeMatchesByItem.push({
-      parsedItemId: item.id,
-      query,
-      search
-    });
-  }
-
-  const inventoryMatchesByItem = parsedItems.map((item) => ({
-    parsedItemId: item.id,
-    lookup:
-      buildInventoryLookupFromProductResolution({
-        resolution: item.productResolution,
-        fallback: {
-          brand: item.brand,
-          productLine: item.productLine,
-          category:
-            item.productResolution
-              .normalizedInput.category
-        }
-      })
-  }));
-
-  const valuationEvidenceByItem = parsedItems.map((item) => {
-    const inventoryMatch = inventoryMatchesByItem.find(
-      (match) => match.parsedItemId === item.id
-    );
-
-    return {
-      parsedItemId: item.id,
-      estimate: estimateTradeInValuation(
-        buildValuationInput({
-          item,
-          inventoryMatch: inventoryMatch!.lookup
-        })
-      )
-    };
-  });
-
-  const selectedFieldRepairItems =
-    parsedItems.filter(shouldRunFieldRepair);
-
-  const fieldRepairRecords: MainRunFieldRepairRecordInput[] =
-    selectedFieldRepairItems.map((item) => {
-      const knowledgeEvidence = knowledgeMatchesByItem.find(
-        (evidence) => evidence.parsedItemId === item.id
-      );
-      const inventoryEvidence = inventoryMatchesByItem.find(
-        (evidence) => evidence.parsedItemId === item.id
-      );
-      const valuationEvidence = valuationEvidenceByItem.find(
-        (evidence) => evidence.parsedItemId === item.id
-      );
-      const priorReviewEvidence = priorReviewLearningEvidenceByItem.find(
-        (evidence) => evidence.parsedItemId === item.id
-      );
-      const priorReviewSuggestions =
-        priorReviewLearningSuggestionsByItem.find(
-          (suggestions) =>
-            suggestions.parsedItemId === item.id
         );
-      const fieldRepairMissingFields =
-        getFieldRepairMissingFields(item);
-      const fieldApplicability = {
-        shaftFlex: isShaftFlexApplicable(item.category)
-          ? "REQUIRED" as const
-          : "NOT_APPLICABLE" as const
-      };
-      const deterministicPolicyAdvisoryCandidates =
-        buildDeterministicPolicyFieldRepairAdvisoryCandidates({
-          recordId: item.id,
-          sourceText: item.rawLine,
-          missingFields:
-            fieldRepairMissingFields,
-          fieldApplicability,
-          productResolutionStatus:
-            item.productResolution.status,
-          sourceEvidenceId:
-            `${item.id}:deterministic-policy`
+
+      const knowledgeMatchesByItem:
+        EndToEndAgenticTradeInDemoResult["knowledgeMatchesByItem"] = [];
+
+      for (const item of parsedItems) {
+        const query = buildKnowledgeQuery(item);
+        const search = await searchKnowledgeBase({
+          query,
+          ...(item.brand ? { brand: item.brand } : {}),
+          ...(item.category ? { category: item.category } : {}),
+          maxResults: 3
         });
-      const priorReviewAdvisoryCandidates =
-        buildPriorReviewFieldRepairAdvisoryCandidates({
-          recordId: item.id,
-          sourceText: item.rawLine,
-          missingFields:
-            fieldRepairMissingFields,
-          fieldApplicability,
-          productResolutionStatus:
-            item.productResolution.status,
-          sourceEvidenceId:
-            `${item.id}:prior-review`,
-          priorReviewSuggestions:
-            priorReviewSuggestions?.suggestions ?? []
+
+        knowledgeMatchesByItem.push({
+          parsedItemId: item.id,
+          query,
+          search
         });
-      const advisoryCandidates =
-        mergeFieldRepairAdvisoryCandidates(
-          deterministicPolicyAdvisoryCandidates,
-          priorReviewAdvisoryCandidates
+      }
+
+      const inventoryMatchesByItem = parsedItems.map((item) => ({
+        parsedItemId: item.id,
+        lookup:
+          buildInventoryLookupFromProductResolution({
+            resolution: item.productResolution,
+            fallback: {
+              brand: item.brand,
+              productLine: item.productLine,
+              category:
+                item.productResolution
+                  .normalizedInput.category
+            }
+          })
+      }));
+
+      const valuationEvidenceByItem = parsedItems.map((item) => {
+        const inventoryMatch = inventoryMatchesByItem.find(
+          (match) => match.parsedItemId === item.id
         );
-      const reviewReasonCodes = [
-        item.confidence < 0.72 ? "LOW_CONFIDENCE" : null,
-        fieldRepairMissingFields.length > 0 ? "MISSING_REQUIRED_FIELDS" : null,
-        item.uncertaintyNotes.length > 0 ? "UNCERTAINTY_NOTES" : null,
-        item.productResolution.status === "AMBIGUOUS"
-          ? "PRODUCT_AMBIGUOUS"
-          : null,
-        item.productResolution.status === "UNRESOLVED"
-          ? "PRODUCT_UNRESOLVED"
-          : null,
-        valuationEvidence?.estimate.reviewRequired
-          ? "VALUATION_REVIEW_REQUIRED"
-          : null
-      ].filter((reasonCode): reasonCode is string => Boolean(reasonCode));
-      const evidence: MainRunFieldRepairRecordInput["evidence"] = [
-        {
-          evidenceId: `${item.id}:parser`,
-          evidenceType: "PARSER",
-          summary:
-            `Parser evidence captured for ${Object.keys(item.parserEvidence ?? {}).length} field(s).`,
-          payload: item.parserEvidence ?? null
-        },
-        {
-          evidenceId: `${item.id}:product-resolution`,
-          evidenceType: "PRODUCT_RESOLUTION",
-          summary:
-            `${item.productResolution.status}: ${item.productResolution.reason}`,
-          payload: item.productResolution
-        },
-        {
-          evidenceId: `${item.id}:knowledge`,
-          evidenceType: "KNOWLEDGE",
-          summary:
-            `${knowledgeEvidence?.search.results.length ?? 0} weighted knowledge result(s) were available.`,
-          payload: knowledgeEvidence?.search ?? null
-        },
-        {
-          evidenceId: `${item.id}:inventory`,
-          evidenceType: "INVENTORY",
-          summary: inventoryEvidence?.lookup.productId
-            ? `Inventory matched product ${inventoryEvidence.lookup.productId}.`
-            : "Inventory did not return an authoritative product identity.",
-          payload: inventoryEvidence?.lookup ?? null
-        },
-        {
-          evidenceId: `${item.id}:valuation`,
-          evidenceType: "VALUATION",
-          summary:
-            valuationEvidence && valuationEvidence.estimate.highValue > 0
-              ? `Valuation range ${valuationEvidence.estimate.lowValue}-${valuationEvidence.estimate.highValue} was available.`
-              : "No authoritative valuation range was available.",
-          payload: valuationEvidence?.estimate ?? null
-        },
-        {
-          evidenceId:
-            `${item.id}:deterministic-policy`,
-          evidenceType:
-            "DETERMINISTIC_POLICY",
-          summary:
-            `${deterministicPolicyAdvisoryCandidates.length} deterministic policy candidate(s) were available.`,
-          payload:
-            deterministicPolicyAdvisoryCandidates
-        },
-        {
-          evidenceId: `${item.id}:prior-review`,
-          evidenceType: "PRIOR_REVIEW",
-          summary:
-            `${priorReviewEvidence?.evidence.length ?? 0} prior-review evidence item(s) were available.`,
-          payload: priorReviewEvidence?.evidence ?? []
-        }
-      ];
+
+        return {
+          parsedItemId: item.id,
+          estimate: estimateTradeInValuation(
+            buildValuationInput({
+              item,
+              inventoryMatch: inventoryMatch!.lookup
+            })
+          )
+        };
+      });
 
       return {
-        recordId: item.id,
-        sourceText: item.rawLine,
-        missingFields: fieldRepairMissingFields,
-        confidence: item.confidence,
-        selectionReason: {
-          lowConfidence: item.confidence < 0.72,
-          confidence: item.confidence,
-          missingFields: fieldRepairMissingFields,
-          uncertaintyNotes: item.uncertaintyNotes,
-          reviewReasonCodes
-        },
-        currentFields: {
-          brand: item.brand,
-          productLine: item.productLine,
-          category: item.category,
-          shaftFlex: item.shaftFlex,
-          conditionGrade: item.conditionGrade,
-          tradeInValue: item.tradeInValue
-        },
-        fieldApplicability,
-        parserEvidence: item.parserEvidence ?? null,
-        productResolution: {
-          status: item.productResolution.status,
-          reason: item.productResolution.reason,
-          matchedProductId:
-            item.productResolution.status === "MATCHED"
-              ? item.productResolution.match.productId
-              : null,
-          matchedSku:
-            item.productResolution.status === "MATCHED"
-              ? item.productResolution.match.sku
-              : null,
-          candidateProductIds:
-            item.productResolution.candidates.map(
-              (candidate) => candidate.productId
-            )
-        },
-        advisoryCandidates,
-        evidence
+        priorReviewLearningEvidenceByItem,
+        priorReviewLearningSuggestionsByItem,
+        knowledgeMatchesByItem,
+        inventoryMatchesByItem,
+        valuationEvidenceByItem
       };
-    });
-
-  const fieldRepairInputJson = buildMainRunFieldRepairExecutionInput({
-    workflowRunId: workflowRun.id,
-    records: fieldRepairRecords
+    },
+    buildOutputJson(result) {
+      return {
+        parsedItemCount: parsedItems.length,
+        knowledgeResultCount: result.knowledgeMatchesByItem.reduce(
+          (count, item) => count + item.search.results.length,
+          0
+        ),
+        inventoryMatchCount: result.inventoryMatchesByItem.filter(
+          (item) => item.lookup.productId !== null
+        ).length,
+        valuationRangeCount: result.valuationEvidenceByItem.filter(
+          (item) => item.estimate.highValue > 0
+        ).length,
+        priorReviewEvidenceCount: result.priorReviewLearningEvidenceByItem.reduce(
+          (count, item) => count + item.evidence.length,
+          0
+        )
+      };
+    }
   });
+  const {
+    priorReviewLearningEvidenceByItem,
+    priorReviewLearningSuggestionsByItem,
+    knowledgeMatchesByItem,
+    inventoryMatchesByItem,
+    valuationEvidenceByItem
+  } = evidenceResult;
 
-  const modelCallLog = await createModelExecutionLogForWorkflowRun({
-    workflowRunId: workflowRun.id,
-    taskType: MAIN_RUN_FIELD_REPAIR_TASK_TYPE,
-    goal: "HIGH_QUALITY",
-    policyKey: MAIN_RUN_FIELD_REPAIR_POLICY_KEY,
-    agentName: MAIN_RUN_FIELD_REPAIR_AGENT_NAME,
-    workflowName: "main-run",
-    workflowStep: "field-repair",
-    requireJson: true,
-    allowDisabledProvidersForSimulation: false,
-    inputJson: fieldRepairInputJson,
-    outputSchema: MAIN_RUN_FIELD_REPAIR_OUTPUT_SCHEMA,
-    validateOutput(outputJson) {
-      const validation = validateMainRunFieldRepairModelOutput(
-        outputJson,
+  const modelAssistanceResult = await executePersistedWorkflowStep({
+    step: requireWorkflowStep(
+      workflowRun.steps,
+      AGENTIC_WORKFLOW_STEP_NAMES.modelAssistance
+    ),
+    inputJson: {
+      candidateRecordIds: parsedItems
+        .filter(shouldRunFieldRepair)
+        .map((item) => item.id),
+      taskType: MAIN_RUN_FIELD_REPAIR_TASK_TYPE,
+      policyKey: MAIN_RUN_FIELD_REPAIR_POLICY_KEY
+    },
+    async execute(step) {
+      const selectedFieldRepairItems =
+        parsedItems.filter(shouldRunFieldRepair);
+
+      const fieldRepairRecords: MainRunFieldRepairRecordInput[] =
+        selectedFieldRepairItems.map((item) => {
+          const knowledgeEvidence = knowledgeMatchesByItem.find(
+            (evidence) => evidence.parsedItemId === item.id
+          );
+          const inventoryEvidence = inventoryMatchesByItem.find(
+            (evidence) => evidence.parsedItemId === item.id
+          );
+          const valuationEvidence = valuationEvidenceByItem.find(
+            (evidence) => evidence.parsedItemId === item.id
+          );
+          const priorReviewEvidence = priorReviewLearningEvidenceByItem.find(
+            (evidence) => evidence.parsedItemId === item.id
+          );
+          const priorReviewSuggestions =
+            priorReviewLearningSuggestionsByItem.find(
+              (suggestions) =>
+                suggestions.parsedItemId === item.id
+            );
+          const fieldRepairMissingFields =
+            getFieldRepairMissingFields(item);
+          const fieldApplicability = {
+            shaftFlex: isShaftFlexApplicable(item.category)
+              ? "REQUIRED" as const
+              : "NOT_APPLICABLE" as const
+          };
+          const deterministicPolicyAdvisoryCandidates =
+            buildDeterministicPolicyFieldRepairAdvisoryCandidates({
+              recordId: item.id,
+              sourceText: item.rawLine,
+              missingFields:
+                fieldRepairMissingFields,
+              fieldApplicability,
+              productResolutionStatus:
+                item.productResolution.status,
+              sourceEvidenceId:
+                `${item.id}:deterministic-policy`
+            });
+          const priorReviewAdvisoryCandidates =
+            buildPriorReviewFieldRepairAdvisoryCandidates({
+              recordId: item.id,
+              sourceText: item.rawLine,
+              missingFields:
+                fieldRepairMissingFields,
+              fieldApplicability,
+              productResolutionStatus:
+                item.productResolution.status,
+              sourceEvidenceId:
+                `${item.id}:prior-review`,
+              priorReviewSuggestions:
+                priorReviewSuggestions?.suggestions ?? []
+            });
+          const advisoryCandidates =
+            mergeFieldRepairAdvisoryCandidates(
+              deterministicPolicyAdvisoryCandidates,
+              priorReviewAdvisoryCandidates
+            );
+          const reviewReasonCodes = [
+            item.confidence < 0.72 ? "LOW_CONFIDENCE" : null,
+            fieldRepairMissingFields.length > 0 ? "MISSING_REQUIRED_FIELDS" : null,
+            item.uncertaintyNotes.length > 0 ? "UNCERTAINTY_NOTES" : null,
+            item.productResolution.status === "AMBIGUOUS"
+              ? "PRODUCT_AMBIGUOUS"
+              : null,
+            item.productResolution.status === "UNRESOLVED"
+              ? "PRODUCT_UNRESOLVED"
+              : null,
+            valuationEvidence?.estimate.reviewRequired
+              ? "VALUATION_REVIEW_REQUIRED"
+              : null
+          ].filter((reasonCode): reasonCode is string => Boolean(reasonCode));
+          const evidence: MainRunFieldRepairRecordInput["evidence"] = [
+            {
+              evidenceId: `${item.id}:parser`,
+              evidenceType: "PARSER",
+              summary:
+                `Parser evidence captured for ${Object.keys(item.parserEvidence ?? {}).length} field(s).`,
+              payload: item.parserEvidence ?? null
+            },
+            {
+              evidenceId: `${item.id}:product-resolution`,
+              evidenceType: "PRODUCT_RESOLUTION",
+              summary:
+                `${item.productResolution.status}: ${item.productResolution.reason}`,
+              payload: item.productResolution
+            },
+            {
+              evidenceId: `${item.id}:knowledge`,
+              evidenceType: "KNOWLEDGE",
+              summary:
+                `${knowledgeEvidence?.search.results.length ?? 0} weighted knowledge result(s) were available.`,
+              payload: knowledgeEvidence?.search ?? null
+            },
+            {
+              evidenceId: `${item.id}:inventory`,
+              evidenceType: "INVENTORY",
+              summary: inventoryEvidence?.lookup.productId
+                ? `Inventory matched product ${inventoryEvidence.lookup.productId}.`
+                : "Inventory did not return an authoritative product identity.",
+              payload: inventoryEvidence?.lookup ?? null
+            },
+            {
+              evidenceId: `${item.id}:valuation`,
+              evidenceType: "VALUATION",
+              summary:
+                valuationEvidence && valuationEvidence.estimate.highValue > 0
+                  ? `Valuation range ${valuationEvidence.estimate.lowValue}-${valuationEvidence.estimate.highValue} was available.`
+                  : "No authoritative valuation range was available.",
+              payload: valuationEvidence?.estimate ?? null
+            },
+            {
+              evidenceId:
+                `${item.id}:deterministic-policy`,
+              evidenceType:
+                "DETERMINISTIC_POLICY",
+              summary:
+                `${deterministicPolicyAdvisoryCandidates.length} deterministic policy candidate(s) were available.`,
+              payload:
+                deterministicPolicyAdvisoryCandidates
+            },
+            {
+              evidenceId: `${item.id}:prior-review`,
+              evidenceType: "PRIOR_REVIEW",
+              summary:
+                `${priorReviewEvidence?.evidence.length ?? 0} prior-review evidence item(s) were available.`,
+              payload: priorReviewEvidence?.evidence ?? []
+            }
+          ];
+
+          return {
+            recordId: item.id,
+            sourceText: item.rawLine,
+            missingFields: fieldRepairMissingFields,
+            confidence: item.confidence,
+            selectionReason: {
+              lowConfidence: item.confidence < 0.72,
+              confidence: item.confidence,
+              missingFields: fieldRepairMissingFields,
+              uncertaintyNotes: item.uncertaintyNotes,
+              reviewReasonCodes
+            },
+            currentFields: {
+              brand: item.brand,
+              productLine: item.productLine,
+              category: item.category,
+              shaftFlex: item.shaftFlex,
+              conditionGrade: item.conditionGrade,
+              tradeInValue: item.tradeInValue
+            },
+            fieldApplicability,
+            parserEvidence: item.parserEvidence ?? null,
+            productResolution: {
+              status: item.productResolution.status,
+              reason: item.productResolution.reason,
+              matchedProductId:
+                item.productResolution.status === "MATCHED"
+                  ? item.productResolution.match.productId
+                  : null,
+              matchedSku:
+                item.productResolution.status === "MATCHED"
+                  ? item.productResolution.match.sku
+                  : null,
+              candidateProductIds:
+                item.productResolution.candidates.map(
+                  (candidate) => candidate.productId
+                )
+            },
+            advisoryCandidates,
+            evidence
+          };
+        });
+
+      const fieldRepairInputJson = buildMainRunFieldRepairExecutionInput({
+        workflowRunId: workflowRun.id,
+        records: fieldRepairRecords
+      });
+
+      const modelCallLog = await createModelExecutionLogForWorkflowRun({
+        workflowRunId: workflowRun.id,
+        workflowStepId: step.id,
+        taskType: MAIN_RUN_FIELD_REPAIR_TASK_TYPE,
+        goal: "HIGH_QUALITY",
+        policyKey: MAIN_RUN_FIELD_REPAIR_POLICY_KEY,
+        agentName: MAIN_RUN_FIELD_REPAIR_AGENT_NAME,
+        workflowName: "main-run",
+        workflowStep: "field-repair",
+        requireJson: true,
+        allowDisabledProvidersForSimulation: false,
+        inputJson: fieldRepairInputJson,
+        outputSchema: MAIN_RUN_FIELD_REPAIR_OUTPUT_SCHEMA,
+        validateOutput(outputJson) {
+          const validation = validateMainRunFieldRepairModelOutput(
+            outputJson,
+            {
+              records: fieldRepairRecords
+            }
+          );
+
+          return {
+            jsonValid: validation.jsonValid,
+            validationPassed: validation.validationPassed,
+            validationErrors: validation.validationErrors
+          };
+        }
+      });
+      const modelRoutingDecision = getModelRoutingDecisionFromLog(modelCallLog);
+
+      return {
+        fieldRepairRecords,
+        modelCallLog,
+        modelRoutingDecision
+      };
+    },
+    buildOutputJson(result) {
+      return {
+        modelCallLogId: result.modelCallLog.id,
+        selectedRecordCount: result.fieldRepairRecords.length,
+        provider: result.modelCallLog.provider,
+        model: result.modelCallLog.model,
+        status: result.modelCallLog.status
+      };
+    }
+  });
+  const {
+    fieldRepairRecords,
+    modelCallLog,
+    modelRoutingDecision
+  } = modelAssistanceResult;
+
+  const fieldRepairExecution = await executePersistedWorkflowStep({
+    step: requireWorkflowStep(
+      workflowRun.steps,
+      AGENTIC_WORKFLOW_STEP_NAMES.validateOutput
+    ),
+    inputJson: {
+      modelCallLogId: modelCallLog.id,
+      selectedRecordCount: fieldRepairRecords.length
+    },
+    execute() {
+      const fieldRepairValidation = validateMainRunFieldRepairModelOutput(
+        getProviderExecutionOutputJson(modelCallLog),
         {
           records: fieldRepairRecords
         }
       );
 
       return {
-        jsonValid: validation.jsonValid,
-        validationPassed: validation.validationPassed,
-        validationErrors: validation.validationErrors
+        modelCallLogId: modelCallLog.id,
+        recordOutcomes: fieldRepairValidation.output?.recordOutcomes ?? [],
+        suggestions: fieldRepairValidation.output?.suggestions ?? [],
+        jsonValid: fieldRepairValidation.jsonValid,
+        validationPassed: fieldRepairValidation.validationPassed,
+        validationErrors: fieldRepairValidation.validationErrors
+      };
+    },
+    buildOutputJson(result) {
+      return {
+        modelCallLogId: result.modelCallLogId,
+        jsonValid: result.jsonValid,
+        validationPassed: result.validationPassed,
+        validationErrors: result.validationErrors,
+        recordOutcomeCount: result.recordOutcomes.length,
+        suggestionCount: result.suggestions.length
       };
     }
   });
-  const modelRoutingDecision = getModelRoutingDecisionFromLog(modelCallLog);
-  const fieldRepairValidation = validateMainRunFieldRepairModelOutput(
-    getProviderExecutionOutputJson(modelCallLog),
-    {
-      records: fieldRepairRecords
-    }
-  );
-  const fieldRepairExecution = {
-    modelCallLogId: modelCallLog.id,
-    recordOutcomes: fieldRepairValidation.output?.recordOutcomes ?? [],
-    suggestions: fieldRepairValidation.output?.suggestions ?? [],
-    jsonValid: fieldRepairValidation.jsonValid,
-    validationPassed: fieldRepairValidation.validationPassed,
-    validationErrors: fieldRepairValidation.validationErrors
-  };
 
-  const reviewQueueItemsCreated: ReviewQueueItem[] = [];
-
-  for (const [index, item] of parsedItems.entries()) {
-    const valuationEvidence = valuationEvidenceByItem.find(
-      (evidence) => evidence.parsedItemId === item.id
-    );
-    const inventoryEvidence = inventoryMatchesByItem.find(
-      (evidence) => evidence.parsedItemId === item.id
-    );
-    const fieldRepairMissingFields = getFieldRepairMissingFields(item);
-    const requiresFieldRepairReview = shouldRunFieldRepair(item);
-
-    if (
-      !needsReview(item) &&
-      !requiresFieldRepairReview &&
-      !valuationNeedsReview(valuationEvidence!.estimate)
-    ) {
-      continue;
-    }
-
-    const intakeItem = intakeBatch.items[index];
-
-    const reviewQueueItem = await prisma.reviewQueueItem.create({
-      data: {
-        workflowRunId: workflowRun.id,
-        intakeItemId: intakeItem?.id ?? null,
-        reason: getReviewReason(item),
-        status: "OPEN",
-        originalText: item.rawLine,
-        proposedGolfClubJson: toInputJson({
-          ...item,
-          missingFields: fieldRepairMissingFields,
-          reviewReasonSummary: summarizeReviewReason({
-            item,
-            valuationEstimate: valuationEvidence!.estimate
-          }),
-          knowledgeMatches:
-            knowledgeMatchesByItem.find((match) => match.parsedItemId === item.id)
-              ?.search.results.slice(0, 2) ?? [],
-          inventoryMatch: inventoryEvidence?.lookup ?? null,
-          demoValuationRange: valuationEvidence?.estimate ?? null
-        })
-      }
-    });
-
-    await resolveSupersededIntakeReviewMarkers({
-      authoritativeReviewQueueItemId: reviewQueueItem.id,
-      currentWorkflowRunId: workflowRun.id,
-      item,
-      sourceRowNumber: index + 1
-    });
-
-    reviewQueueItemsCreated.push(reviewQueueItem);
-  }
-
-  const firstParsedItem = parsedItems[0]!;
-  const canExecuteDemoInventoryTools =
-    input.productReferenceProvider === undefined &&
-    firstParsedItem.productResolution.status === "MATCHED";
-
-  const plannedCalls:
-    EndToEndAgenticTradeInDemoResult["toolCallingPlan"]["plannedCalls"] = [
-    {
-      orderIndex: 1,
-      toolName: "swingops.workflowRuns.get",
-      reason:
-        "Inspect the persisted workflow run context before the agent explains the audit trail.",
-      inputJson: {
-        id: workflowRun.id
-      },
-      expectedRiskLevel: "LOW",
-      expectedMutatesData: false,
-      expectedRequiresHumanApproval: false
+  const reviewQueueItemsCreated = await executePersistedWorkflowStep({
+    step: requireWorkflowStep(
+      workflowRun.steps,
+      AGENTIC_WORKFLOW_STEP_NAMES.createReviewItems
+    ),
+    inputJson: {
+      parsedItemCount: parsedItems.length,
+      modelSuggestionCount: fieldRepairExecution.suggestions.length
     },
-    {
-      orderIndex: 2,
-      toolName: "swingops.knowledgeBase.search",
-      reason:
-        "Run a read-only grounded search using the first parsed trade-in record.",
-      inputJson: {
-        query:
-          knowledgeMatchesByItem[0]?.query ??
-          rawInput,
-        maxResults: 5
-      },
-      expectedRiskLevel: "LOW",
-      expectedMutatesData: false,
-      expectedRequiresHumanApproval: false
-    },
-    ...(canExecuteDemoInventoryTools
-      ? [
-          {
-            orderIndex: 3,
-            toolName:
-              "swingops.inventory.lookupProduct",
-            reason:
-              "Use a read-only internal inventory lookup to corroborate the default reference-provider match for the first parsed record.",
-            inputJson:
-              buildInventoryLookupInput(
-                firstParsedItem
-              ),
-            expectedRiskLevel:
-              "LOW" as const,
-            expectedMutatesData: false,
-            expectedRequiresHumanApproval:
-              false
-          },
-          {
-            orderIndex: 4,
-            toolName:
-              "swingops.tradeInValuation.estimate",
-            reason:
-              "Use a read-only valuation lookup after the default reference provider authoritatively identified the first parsed record.",
-            inputJson: {
-              ...buildInventoryLookupInput(
-                firstParsedItem
-              ),
-              conditionNotes:
-                firstParsedItem.conditionNotes.join(
-                  "|"
-                ),
-              accessoriesNotes:
-                firstParsedItem.accessoriesNotes.join(
-                  "|"
-                )
-            },
-            expectedRiskLevel:
-              "LOW" as const,
-            expectedMutatesData: false,
-            expectedRequiresHumanApproval:
-              false
+    async execute() {
+      const createdItems: ReviewQueueItem[] = [];
+
+      for (const [index, item] of parsedItems.entries()) {
+        const valuationEvidence = valuationEvidenceByItem.find(
+          (evidence) => evidence.parsedItemId === item.id
+        );
+        const inventoryEvidence = inventoryMatchesByItem.find(
+          (evidence) => evidence.parsedItemId === item.id
+        );
+        const fieldRepairMissingFields = getFieldRepairMissingFields(item);
+        const requiresFieldRepairReview = shouldRunFieldRepair(item);
+
+        if (
+          !needsReview(item) &&
+          !requiresFieldRepairReview &&
+          !valuationNeedsReview(valuationEvidence!.estimate)
+        ) {
+          continue;
+        }
+
+        const intakeItem = intakeBatch.items[index];
+
+        const reviewQueueItem = await prisma.reviewQueueItem.create({
+          data: {
+            workflowRunId: workflowRun.id,
+            intakeItemId: intakeItem?.id ?? null,
+            reason: getReviewReason(item),
+            status: "OPEN",
+            originalText: item.rawLine,
+            proposedGolfClubJson: toInputJson({
+              ...item,
+              missingFields: fieldRepairMissingFields,
+              reviewReasonSummary: summarizeReviewReason({
+                item,
+                valuationEstimate: valuationEvidence!.estimate
+              }),
+              knowledgeMatches:
+                knowledgeMatchesByItem.find((match) => match.parsedItemId === item.id)
+                  ?.search.results.slice(0, 2) ?? [],
+              inventoryMatch: inventoryEvidence?.lookup ?? null,
+              demoValuationRange: valuationEvidence?.estimate ?? null
+            })
           }
-        ]
-      : []),
-    {
-      orderIndex: 5,
-      toolName:
-        "swingops.reviewQueueItems.list",
-      reason:
-        "Inspect open human-review work created by low-confidence parsing or valuation uncertainty.",
-      inputJson: {
-        status: "OPEN"
-      },
-      expectedRiskLevel: "LOW",
-      expectedMutatesData: false,
-      expectedRequiresHumanApproval: false
+        });
+
+        await resolveSupersededIntakeReviewMarkers({
+          authoritativeReviewQueueItemId: reviewQueueItem.id,
+          currentWorkflowRunId: workflowRun.id,
+          item,
+          sourceRowNumber: index + 1
+        });
+
+        createdItems.push(reviewQueueItem);
+      }
+
+      return createdItems;
     },
-    {
-      orderIndex: 6,
-      toolName: "swingops.inventory.createSku",
-      reason:
-        "Demonstrate that the agent can see a mutation-style inventory tool but cannot create SKUs without approval.",
-      inputJson: {
-        productId:
-          inventoryMatchesByItem[0]
-            ?.lookup.productId ??
-          "blocked-demo-product"
-      },
-      expectedRiskLevel: "HIGH",
-      expectedMutatesData: true,
-      expectedRequiresHumanApproval: true
+    buildOutputJson(createdItems) {
+      return {
+        reviewQueueItemCount: createdItems.length,
+        reviewQueueItemIds: createdItems.map((item) => item.id),
+        openReviewQueueItemCount: createdItems.filter(
+          (item) => item.status === "OPEN" || item.status === "IN_REVIEW"
+        ).length
+      };
     }
-  ];
+  });
 
-  const toolCallResults: DemoToolResult[] = [];
-  const toolCallLogs: ToolCallLog[] = [];
-
-  for (const plannedCall of plannedCalls) {
-    const invocationResult = await executeReadOnlyToolInvocation({
-      toolName: plannedCall.toolName,
-      inputJson: plannedCall.inputJson,
-      requestedBy: "agent.end-to-end-trade-in-demo",
-      workflowRunId: workflowRun.id,
+  const toolExecutionResult = await executePersistedWorkflowStep({
+    step: requireWorkflowStep(
+      workflowRun.steps,
+      AGENTIC_WORKFLOW_STEP_NAMES.executeTools
+    ),
+    inputJson: {
       executionMode: "AGENT_AUTONOMOUS",
+      mutationToolsEnabled: false,
       humanApprovalGranted: false
-    });
+    },
+    async execute(step) {
+      const firstParsedItem = parsedItems[0]!;
+      const canExecuteDemoInventoryTools =
+        input.productReferenceProvider === undefined &&
+        firstParsedItem.productResolution.status === "MATCHED";
 
-    toolCallResults.push(toToolResult(invocationResult));
-    toolCallLogs.push(invocationResult.toolCallLog);
-  }
+      const plannedCalls:
+        EndToEndAgenticTradeInDemoResult["toolCallingPlan"]["plannedCalls"] = [
+        {
+          orderIndex: 1,
+          toolName: "swingops.workflowRuns.get",
+          reason:
+            "Inspect the persisted workflow run context before the agent explains the audit trail.",
+          inputJson: {
+            id: workflowRun.id
+          },
+          expectedRiskLevel: "LOW",
+          expectedMutatesData: false,
+          expectedRequiresHumanApproval: false
+        },
+        {
+          orderIndex: 2,
+          toolName: "swingops.knowledgeBase.search",
+          reason:
+            "Run a read-only grounded search using the first parsed trade-in record.",
+          inputJson: {
+            query:
+              knowledgeMatchesByItem[0]?.query ??
+              rawInput,
+            maxResults: 5
+          },
+          expectedRiskLevel: "LOW",
+          expectedMutatesData: false,
+          expectedRequiresHumanApproval: false
+        },
+        ...(canExecuteDemoInventoryTools
+          ? [
+              {
+                orderIndex: 3,
+                toolName:
+                  "swingops.inventory.lookupProduct",
+                reason:
+                  "Use a read-only internal inventory lookup to corroborate the default reference-provider match for the first parsed record.",
+                inputJson:
+                  buildInventoryLookupInput(
+                    firstParsedItem
+                  ),
+                expectedRiskLevel:
+                  "LOW" as const,
+                expectedMutatesData: false,
+                expectedRequiresHumanApproval:
+                  false
+              },
+              {
+                orderIndex: 4,
+                toolName:
+                  "swingops.tradeInValuation.estimate",
+                reason:
+                  "Use a read-only valuation lookup after the default reference provider authoritatively identified the first parsed record.",
+                inputJson: {
+                  ...buildInventoryLookupInput(
+                    firstParsedItem
+                  ),
+                  conditionNotes:
+                    firstParsedItem.conditionNotes.join(
+                      "|"
+                    ),
+                  accessoriesNotes:
+                    firstParsedItem.accessoriesNotes.join(
+                      "|"
+                    )
+                },
+                expectedRiskLevel:
+                  "LOW" as const,
+                expectedMutatesData: false,
+                expectedRequiresHumanApproval:
+                  false
+              }
+            ]
+          : []),
+        {
+          orderIndex: 5,
+          toolName:
+            "swingops.reviewQueueItems.list",
+          reason:
+            "Inspect open human-review work created by low-confidence parsing or valuation uncertainty.",
+          inputJson: {
+            status: "OPEN"
+          },
+          expectedRiskLevel: "LOW",
+          expectedMutatesData: false,
+          expectedRequiresHumanApproval: false
+        },
+        {
+          orderIndex: 6,
+          toolName: "swingops.inventory.createSku",
+          reason:
+            "Demonstrate that the agent can see a mutation-style inventory tool but cannot create SKUs without approval.",
+          inputJson: {
+            productId:
+              inventoryMatchesByItem[0]
+                ?.lookup.productId ??
+              "blocked-demo-product"
+          },
+          expectedRiskLevel: "HIGH",
+          expectedMutatesData: true,
+          expectedRequiresHumanApproval: true
+        }
+      ];
+
+      const toolCallResults: DemoToolResult[] = [];
+      const toolCallLogs: ToolCallLog[] = [];
+
+      for (const plannedCall of plannedCalls) {
+        const invocationResult = await executeReadOnlyToolInvocation({
+          toolName: plannedCall.toolName,
+          inputJson: plannedCall.inputJson,
+          requestedBy: "agent.end-to-end-trade-in-demo",
+          workflowRunId: workflowRun.id,
+          workflowStepId: step.id,
+          executionMode: "AGENT_AUTONOMOUS",
+          humanApprovalGranted: false
+        });
+
+        toolCallResults.push(toToolResult(invocationResult));
+        toolCallLogs.push(invocationResult.toolCallLog);
+      }
+
+      return {
+        plannedCalls,
+        toolCallResults,
+        toolCallLogs
+      };
+    },
+    buildOutputJson(result) {
+      return {
+        plannedCallCount: result.plannedCalls.length,
+        toolCallLogIds: result.toolCallLogs.map((log) => log.id),
+        succeededCount: result.toolCallResults.filter(
+          (item) => item.status === "SUCCEEDED"
+        ).length,
+        blockedCount: result.toolCallResults.filter(
+          (item) => item.status === "BLOCKED"
+        ).length,
+        failedCount: result.toolCallResults.filter(
+          (item) => item.status === "FAILED"
+        ).length
+      };
+    }
+  });
+  const {
+    plannedCalls,
+    toolCallResults,
+    toolCallLogs
+  } = toolExecutionResult;
 
   const workflowStatus =
     reviewQueueItemsCreated.length > 0 ? "NEEDS_REVIEW" : "COMPLETED";
 
-  await prisma.workflowRun.update({
-    where: {
-      id: workflowRun.id
+  await executePersistedWorkflowStep({
+    step: requireWorkflowStep(
+      workflowRun.steps,
+      AGENTIC_WORKFLOW_STEP_NAMES.finalize
+    ),
+    inputJson: {
+      reviewQueueItemCount: reviewQueueItemsCreated.length,
+      proposedWorkflowStatus: workflowStatus
     },
-    data: {
-      status: workflowStatus,
-      completedAt: workflowStatus === "COMPLETED" ? new Date() : null
-    }
-  });
+    async execute() {
+      await prisma.workflowRun.update({
+        where: {
+          id: workflowRun.id
+        },
+        data: {
+          status: workflowStatus,
+          completedAt: workflowStatus === "COMPLETED" ? new Date() : null
+        }
+      });
 
-  await prisma.intakeBatch.update({
-    where: {
-      id: intakeBatch.id
+      await prisma.intakeBatch.update({
+        where: {
+          id: intakeBatch.id
+        },
+        data: {
+          status: workflowStatus === "COMPLETED" ? "COMPLETED" : "NEEDS_REVIEW"
+        }
+      });
+
+      return {
+        workflowStatus,
+        intakeBatchStatus:
+          workflowStatus === "COMPLETED" ? "COMPLETED" : "NEEDS_REVIEW"
+      };
     },
-    data: {
-      status: workflowStatus === "COMPLETED" ? "COMPLETED" : "NEEDS_REVIEW"
+    buildOutputJson(result) {
+      return result;
     }
   });
 

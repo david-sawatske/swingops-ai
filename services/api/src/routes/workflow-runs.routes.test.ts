@@ -1077,12 +1077,34 @@ describe("workflow run routes", () => {
 
       const workflowRun = await prisma.workflowRun.create({
         data: {
-          workflowName: "test-workflow-run-detail"
+          workflowName: "test-workflow-run-detail",
+          steps: {
+            create: {
+              stepName: "model-assisted-parse",
+              stepType: "EXTRACT_GOLF_CLUB_FIELDS",
+              status: "COMPLETED",
+              orderIndex: 1,
+              inputJson: {
+                sourceType: "FREE_TEXT"
+              },
+              outputJson: {
+                recordCount: 1
+              },
+              startedAt: new Date("2026-01-01T00:00:00.000Z"),
+              completedAt: new Date("2026-01-01T00:00:01.000Z")
+            }
+          }
+        },
+        include: {
+          steps: true
         }
       });
 
+      const workflowStep = workflowRun.steps[0]!;
+
       await createMockModelCallLogForWorkflowRun({
         workflowRunId: workflowRun.id,
+        workflowStepId: workflowStep.id,
         taskType: "INTAKE_PARSING",
         goal: "LOW_COST"
       });
@@ -1099,8 +1121,26 @@ describe("workflow run routes", () => {
       expect(body.workflowRun.id).toBe(workflowRun.id);
       expect(body.workflowRun.workflowName).toBe("test-workflow-run-detail");
 
+      expect(body.steps).toEqual([
+        expect.objectContaining({
+          id: workflowStep.id,
+          workflowRunId: workflowRun.id,
+          stepName: "model-assisted-parse",
+          stepType: "EXTRACT_GOLF_CLUB_FIELDS",
+          status: "COMPLETED",
+          orderIndex: 1,
+          inputJson: {
+            sourceType: "FREE_TEXT"
+          },
+          outputJson: {
+            recordCount: 1
+          }
+        })
+      ]);
+
       expect(body.modelCallLogs).toHaveLength(1);
       expect(body.modelCallLogs[0].workflowRunId).toBe(workflowRun.id);
+      expect(body.modelCallLogs[0].workflowStepId).toBe(workflowStep.id);
       expect(body.modelCallLogs[0].provider).toBe("MOCK");
       expect(body.modelCallLogs[0].model).toBe("mock-golf-workflow-model");
       expect(body.modelCallLogs[0].status).toBe("SUCCEEDED");

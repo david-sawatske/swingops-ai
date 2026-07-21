@@ -26,6 +26,7 @@ export type ModelExecutionOutputValidationResult = {
 
 export type CreateModelExecutionLogInput = {
   workflowRunId: string;
+  workflowStepId?: string;
   taskType: ModelRouteRequest["taskType"];
   goal: ModelRoutingGoal;
   inputJson: Record<string, unknown>;
@@ -45,6 +46,7 @@ export type CreateModelExecutionLogInput = {
 
 export type CreateMockModelCallLogInput = {
   workflowRunId: string;
+  workflowStepId?: string;
   taskType: ModelRouteRequest["taskType"];
   goal: ModelRoutingGoal;
 };
@@ -127,6 +129,7 @@ export async function createModelExecutionLogForWorkflowRun(
   return prisma.modelCallLog.create({
     data: {
       workflowRunId: input.workflowRunId,
+      ...(input.workflowStepId ? { workflowStepId: input.workflowStepId } : {}),
       provider: executionResult.provider ?? executionResult.routingDecision.provider,
       model: executionResult.model ?? executionResult.routingDecision.model,
       status: validationFailed ? "FAILED" : executionResult.status,
@@ -212,6 +215,7 @@ export async function createMockModelCallLogForWorkflowRun(
 ): Promise<ModelCallLog> {
   return createModelExecutionLogForWorkflowRun({
     workflowRunId: input.workflowRunId,
+    ...(input.workflowStepId ? { workflowStepId: input.workflowStepId } : {}),
     taskType: input.taskType,
     goal: input.goal,
     requireJson: true,

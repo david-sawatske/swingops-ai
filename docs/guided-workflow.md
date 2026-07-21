@@ -181,6 +181,11 @@ This step can create or update:
 - `ToolCallLog`
 - `ReviewQueueItem`
 
+The backend persists ordered step transitions for parsing, evidence retrieval,
+model execution, validation, review creation, guarded tool execution, and final
+run status. Model and tool logs are linked to their owning step in the workflow
+audit trail.
+
 ### Evidence and audit output
 
 The response can include:

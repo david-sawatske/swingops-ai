@@ -12,6 +12,10 @@ import {
   splitSourceIntoRecordFragments,
   unique
 } from "./multi-source-intake-parser.js";
+import {
+  executePersistedWorkflowStep,
+  requireWorkflowStep
+} from "./workflow-step-persistence.js";
 import type {
   MultiSourceIntakeAuditEvent,
   MultiSourceIntakeDemoResult,
@@ -35,6 +39,14 @@ type MultiSourceInput = {
   sourceName: string;
   rawContent: string;
 };
+
+const MULTI_SOURCE_WORKFLOW_STEP_NAMES = {
+  normalizeSources: "normalize-source-records",
+  persistRecords: "persist-ai-ready-records",
+  createReviewItems: "create-human-review-work",
+  recordToolAudit: "record-asset-tool-audit",
+  finalize: "finalize-intake-workflow"
+} as const;
 
 const DEFAULT_MULTI_SOURCE_INPUTS: MultiSourceInput[] = [
   {
@@ -388,6 +400,8 @@ async function persistDemoAudit(input: {
   cleanedDatasetPreview: MultiSourceIntakeRecord[];
   reviewRecords: MultiSourceIntakeRecord[];
   finalSummary: string;
+  normalizationStartedAt: Date;
+  normalizationCompletedAt: Date;
 }) {
   const intakeBatch = await prisma.intakeBatch.create({
     data: {
@@ -395,7 +409,7 @@ async function persistDemoAudit(input: {
       description:
         "Deterministic demo batch showing messy operational sources normalized into AI-ready intake assets.",
       sourceType: LEGACY_FREEFORM_NOTES_INTAKE_SOURCE_TYPE,
-      status: input.reviewRecords.length > 0 ? "NEEDS_REVIEW" : "COMPLETED",
+      status: "PROCESSING",
       itemCount: input.cleanedDatasetPreview.length,
       items: {
         create: input.cleanedDatasetPreview.map((record, index) => ({
@@ -418,13 +432,58 @@ async function persistDemoAudit(input: {
     data: {
       intakeBatchId: intakeBatch.id,
       workflowName: "multi-source-intake-demo",
-      status: input.reviewRecords.length > 0 ? "NEEDS_REVIEW" : "COMPLETED",
-      startedAt: new Date(),
-      completedAt: input.reviewRecords.length > 0 ? null : new Date()
+      status: "RUNNING",
+      startedAt: input.normalizationStartedAt,
+      steps: {
+        create: [
+          {
+            stepName: MULTI_SOURCE_WORKFLOW_STEP_NAMES.normalizeSources,
+            stepType: "NORMALIZE_DATA",
+            status: "COMPLETED",
+            orderIndex: 1,
+            inputJson: {
+              sourceCount: input.sourceResults.length,
+              sourceTypes: input.sourceResults.map((source) => source.sourceType)
+            },
+            outputJson: {
+              normalizedRecordCount: input.cleanedDatasetPreview.length,
+              reviewCandidateCount: input.reviewRecords.length
+            },
+            startedAt: input.normalizationStartedAt,
+            completedAt: input.normalizationCompletedAt
+          },
+          {
+            stepName: MULTI_SOURCE_WORKFLOW_STEP_NAMES.persistRecords,
+            stepType: "PERSIST_AI_READY_RECORDS",
+            orderIndex: 2
+          },
+          {
+            stepName: MULTI_SOURCE_WORKFLOW_STEP_NAMES.createReviewItems,
+            stepType: "CREATE_REVIEW_ITEM",
+            orderIndex: 3
+          },
+          {
+            stepName: MULTI_SOURCE_WORKFLOW_STEP_NAMES.recordToolAudit,
+            stepType: "EXECUTE_TOOL_CALLS",
+            orderIndex: 4
+          },
+          {
+            stepName: MULTI_SOURCE_WORKFLOW_STEP_NAMES.finalize,
+            stepType: "FINALIZE_WORKFLOW",
+            orderIndex: 5
+          }
+        ]
+      }
+    },
+    include: {
+      steps: {
+        orderBy: {
+          orderIndex: "asc"
+        }
+      }
     }
   });
 
-  const aiReadyIntakeRecords: AiReadyIntakeRecord[] = [];
   const intakeItemByRecordId = new Map(
     input.cleanedDatasetPreview.map((record, index) => [
       record.id,
@@ -435,119 +494,223 @@ async function persistDemoAudit(input: {
     input.sourceResults.map((sourceResult) => [sourceResult.id, sourceResult])
   );
 
-  for (const record of input.cleanedDatasetPreview) {
-    const sourceResult = sourceResultById.get(record.sourceId);
-    const intakeItem = intakeItemByRecordId.get(record.id) ?? null;
-    const hasRagReadyShape = record.normalizedText.length > 20 && Boolean(record.brand && record.category);
-
-    const aiReadyIntakeRecord = await prisma.aiReadyIntakeRecord.create({
-      data: {
-        intakeBatchId: intakeBatch.id,
-        intakeItemId: intakeItem?.id ?? null,
-        workflowRunId: workflowRun.id,
-        sourceRecordId: record.id,
-        sourceType: record.sourceType,
-        sourceName: sourceResult?.sourceName ?? record.sourceType,
-        rawText: record.sourceText || record.normalizedText,
-        cleanedText: record.normalizedText || sourceResult?.cleanedText || record.sourceText,
-        normalizedJson: toInputJson(record),
-        inferredSchemaJson: toInputJson(sourceResult?.inferredSchema ?? SHARED_SCHEMA),
-        metadataJson: toInputJson(sourceResult?.metadata ?? {}),
-        qualitySignalsJson: toInputJson(sourceResult?.qualitySignals ?? []),
-        status: record.reviewNeeded ? "NEEDS_REVIEW" : "READY_FOR_RAG",
-        reviewNeeded: record.reviewNeeded,
-        embeddingReady: hasRagReadyShape,
-        ragReady: hasRagReadyShape && !record.reviewNeeded
-      }
-    });
-
-    aiReadyIntakeRecords.push(aiReadyIntakeRecord);
-  }
-
-  const reviewQueueItems: ReviewQueueItem[] = [];
-  for (const reviewRecord of input.reviewRecords) {
-    const intakeItem = intakeBatch.items.find(
-      (item) => item.sourceRowNumber === input.cleanedDatasetPreview.findIndex((record) => record.id === reviewRecord.id) + 1
-    );
-
-    const reviewQueueItem = await prisma.reviewQueueItem.create({
-      data: {
-        workflowRunId: workflowRun.id,
-        intakeItemId: intakeItem?.id ?? null,
-        reason:
-          reviewRecord.missingFields.length > 0
-            ? "MISSING_REQUIRED_FIELDS"
-            : "LOW_CONFIDENCE",
-        status: "OPEN",
-        originalText: reviewRecord.sourceText || reviewRecord.normalizedText,
-        proposedGolfClubJson: toInputJson({
-          ...reviewRecord,
-          reviewReasonSummary:
-            reviewRecord.missingFields.length > 0
-              ? `Missing ${reviewRecord.missingFields.join(", ")}`
-              : `Confidence ${reviewRecord.confidence}`
-        })
-      }
-    });
-
-    reviewQueueItems.push(reviewQueueItem);
-  }
-
-  const toolCallLogs: ToolCallLog[] = [];
-  const auditToolOutputs = [
-    {
-      toolName: "swingops.intakeAssets.cleanDataset",
-      outputJson: {
-        previewOnly: true,
-        assetType: "cleaned_dataset",
-        rowCount: input.cleanedDatasetPreview.length
-      }
+  const aiReadyIntakeRecords = await executePersistedWorkflowStep({
+    step: requireWorkflowStep(
+      workflowRun.steps,
+      MULTI_SOURCE_WORKFLOW_STEP_NAMES.persistRecords
+    ),
+    inputJson: {
+      normalizedRecordCount: input.cleanedDatasetPreview.length,
+      intakeBatchId: intakeBatch.id
     },
-    {
-      toolName: "swingops.intakeAssets.inferSchema",
-      outputJson: {
-        previewOnly: true,
-        assetType: "inferred_schema",
-        fieldCount: SHARED_SCHEMA.length
+    async execute() {
+      const persistedRecords: AiReadyIntakeRecord[] = [];
+
+      for (const record of input.cleanedDatasetPreview) {
+        const sourceResult = sourceResultById.get(record.sourceId);
+        const intakeItem = intakeItemByRecordId.get(record.id) ?? null;
+        const hasRagReadyShape = record.normalizedText.length > 20 && Boolean(record.brand && record.category);
+
+        const aiReadyIntakeRecord = await prisma.aiReadyIntakeRecord.create({
+          data: {
+            intakeBatchId: intakeBatch.id,
+            intakeItemId: intakeItem?.id ?? null,
+            workflowRunId: workflowRun.id,
+            sourceRecordId: record.id,
+            sourceType: record.sourceType,
+            sourceName: sourceResult?.sourceName ?? record.sourceType,
+            rawText: record.sourceText || record.normalizedText,
+            cleanedText: record.normalizedText || sourceResult?.cleanedText || record.sourceText,
+            normalizedJson: toInputJson(record),
+            inferredSchemaJson: toInputJson(sourceResult?.inferredSchema ?? SHARED_SCHEMA),
+            metadataJson: toInputJson(sourceResult?.metadata ?? {}),
+            qualitySignalsJson: toInputJson(sourceResult?.qualitySignals ?? []),
+            status: record.reviewNeeded ? "NEEDS_REVIEW" : "READY_FOR_RAG",
+            reviewNeeded: record.reviewNeeded,
+            embeddingReady: hasRagReadyShape,
+            ragReady: hasRagReadyShape && !record.reviewNeeded
+          }
+        });
+
+        persistedRecords.push(aiReadyIntakeRecord);
       }
+
+      return persistedRecords;
     },
-    {
-      toolName: "swingops.intakeAssets.prepareRagIndex",
-      outputJson: {
-        previewOnly: true,
-        assetType: "rag_index_summary",
-        sourceCount: input.sourceResults.length
-      }
+    buildOutputJson(records) {
+      return {
+        aiReadyIntakeRecordCount: records.length,
+        aiReadyIntakeRecordIds: records.map((record) => record.id),
+        ragReadyCount: records.filter((record) => record.ragReady).length,
+        reviewNeededCount: records.filter((record) => record.reviewNeeded).length
+      };
     }
-  ];
+  });
 
-  for (const auditToolOutput of auditToolOutputs) {
-    const now = new Date();
-    const toolCallLog = await prisma.toolCallLog.create({
-      data: {
-        workflowRunId: workflowRun.id,
-        toolName: auditToolOutput.toolName,
-        status: "SUCCEEDED",
-        inputJson: toInputJson({
-          workflowRunId: workflowRun.id,
-          demo: "multi-source-intake-demo"
-        }),
-        outputJson: toInputJson({
-          ...auditToolOutput.outputJson,
-          persistedPurpose:
-            "Audit-only deterministic demo asset summary. No external connector execution was attempted."
-        }),
-        startedAt: now,
-        completedAt: now
+  const reviewQueueItems = await executePersistedWorkflowStep({
+    step: requireWorkflowStep(
+      workflowRun.steps,
+      MULTI_SOURCE_WORKFLOW_STEP_NAMES.createReviewItems
+    ),
+    inputJson: {
+      reviewCandidateCount: input.reviewRecords.length
+    },
+    async execute() {
+      const createdItems: ReviewQueueItem[] = [];
+      for (const reviewRecord of input.reviewRecords) {
+        const intakeItem = intakeBatch.items.find(
+          (item) => item.sourceRowNumber === input.cleanedDatasetPreview.findIndex((record) => record.id === reviewRecord.id) + 1
+        );
+
+        const reviewQueueItem = await prisma.reviewQueueItem.create({
+          data: {
+            workflowRunId: workflowRun.id,
+            intakeItemId: intakeItem?.id ?? null,
+            reason:
+              reviewRecord.missingFields.length > 0
+                ? "MISSING_REQUIRED_FIELDS"
+                : "LOW_CONFIDENCE",
+            status: "OPEN",
+            originalText: reviewRecord.sourceText || reviewRecord.normalizedText,
+            proposedGolfClubJson: toInputJson({
+              ...reviewRecord,
+              reviewReasonSummary:
+                reviewRecord.missingFields.length > 0
+                  ? `Missing ${reviewRecord.missingFields.join(", ")}`
+                  : `Confidence ${reviewRecord.confidence}`
+            })
+          }
+        });
+
+        createdItems.push(reviewQueueItem);
       }
-    });
 
-    toolCallLogs.push(toolCallLog);
-  }
+      return createdItems;
+    },
+    buildOutputJson(items) {
+      return {
+        reviewQueueItemCount: items.length,
+        reviewQueueItemIds: items.map((item) => item.id)
+      };
+    }
+  });
+
+  const toolCallLogs = await executePersistedWorkflowStep({
+    step: requireWorkflowStep(
+      workflowRun.steps,
+      MULTI_SOURCE_WORKFLOW_STEP_NAMES.recordToolAudit
+    ),
+    inputJson: {
+      auditOnly: true,
+      externalExecutionAttempted: false
+    },
+    async execute(step) {
+      const persistedLogs: ToolCallLog[] = [];
+      const auditToolOutputs = [
+        {
+          toolName: "swingops.intakeAssets.cleanDataset",
+          outputJson: {
+            previewOnly: true,
+            assetType: "cleaned_dataset",
+            rowCount: input.cleanedDatasetPreview.length
+          }
+        },
+        {
+          toolName: "swingops.intakeAssets.inferSchema",
+          outputJson: {
+            previewOnly: true,
+            assetType: "inferred_schema",
+            fieldCount: SHARED_SCHEMA.length
+          }
+        },
+        {
+          toolName: "swingops.intakeAssets.prepareRagIndex",
+          outputJson: {
+            previewOnly: true,
+            assetType: "rag_index_summary",
+            sourceCount: input.sourceResults.length
+          }
+        }
+      ];
+
+      for (const auditToolOutput of auditToolOutputs) {
+        const now = new Date();
+        const toolCallLog = await prisma.toolCallLog.create({
+          data: {
+            workflowRunId: workflowRun.id,
+            workflowStepId: step.id,
+            toolName: auditToolOutput.toolName,
+            status: "SUCCEEDED",
+            inputJson: toInputJson({
+              workflowRunId: workflowRun.id,
+              demo: "multi-source-intake-demo"
+            }),
+            outputJson: toInputJson({
+              ...auditToolOutput.outputJson,
+              persistedPurpose:
+                "Audit-only deterministic demo asset summary. No external connector execution was attempted."
+            }),
+            startedAt: now,
+            completedAt: now
+          }
+        });
+
+        persistedLogs.push(toolCallLog);
+      }
+
+      return persistedLogs;
+    },
+    buildOutputJson(logs) {
+      return {
+        auditToolCallCount: logs.length,
+        toolCallLogIds: logs.map((log) => log.id),
+        externalExecutionAttempted: false
+      };
+    }
+  });
+
+  const completedWorkflowRun = await executePersistedWorkflowStep({
+    step: requireWorkflowStep(
+      workflowRun.steps,
+      MULTI_SOURCE_WORKFLOW_STEP_NAMES.finalize
+    ),
+    inputJson: {
+      reviewQueueItemCount: reviewQueueItems.length
+    },
+    async execute() {
+      const status = reviewQueueItems.length > 0 ? "NEEDS_REVIEW" : "COMPLETED";
+
+      await prisma.intakeBatch.update({
+        where: {
+          id: intakeBatch.id
+        },
+        data: {
+          status
+        }
+      });
+
+      return prisma.workflowRun.update({
+        where: {
+          id: workflowRun.id
+        },
+        data: {
+          status,
+          completedAt: status === "COMPLETED" ? new Date() : null
+        }
+      });
+    },
+    buildOutputJson(run) {
+      return {
+        workflowStatus: run.status,
+        intakeBatchStatus:
+          reviewQueueItems.length > 0 ? "NEEDS_REVIEW" : "COMPLETED"
+      };
+    }
+  });
 
   return {
     intakeBatch,
-    workflowRun,
+    workflowRun: completedWorkflowRun,
     reviewQueueItems,
     toolCallLogs,
     aiReadyIntakeRecords
@@ -594,6 +757,7 @@ export async function executeMultiSourceIntakeDemo(input: {
           )
         : DEFAULT_MULTI_SOURCE_INPUTS;
 
+  const normalizationStartedAt = new Date();
   const sourceResults = selectedInputs.map((source) =>
     buildSourceResult(
       source,
@@ -636,12 +800,15 @@ export async function executeMultiSourceIntakeDemo(input: {
   const assetsCreated = 6;
   const finalSummary =
     `Processed ${sourceResults.length} source types into normalized records, inferred schema fields, metadata, review signals, and RAG-ready asset summaries.`;
+  const normalizationCompletedAt = new Date();
 
   const persisted = await persistDemoAudit({
     sourceResults,
     cleanedDatasetPreview,
     reviewRecords,
-    finalSummary
+    finalSummary,
+    normalizationStartedAt,
+    normalizationCompletedAt
   });
 
   const resultWithoutAuditTrail = {

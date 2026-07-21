@@ -88,7 +88,11 @@ Important fields:
 - `outputJson`
 - `retryCount`
 
-The guided workflow uses step data as part of the execution audit trail.
+The guided workflows persist each executable phase as an ordered step. A step
+records its input when it starts, then records either output or an error when it
+finishes. Model and tool logs reference the step that produced them, so the run
+detail response can reconstruct the execution trace without inferring ownership
+from timestamps.
 
 ## ModelCallLog
 

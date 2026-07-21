@@ -35,6 +35,37 @@ describe("executeMultiSourceIntakeDemo", () => {
       "Final demo summary"
     ]);
 
+    const workflowSteps = await prisma.workflowStep.findMany({
+      where: {
+        workflowRunId: result.persistedIds.workflowRunId
+      },
+      orderBy: {
+        orderIndex: "asc"
+      }
+    });
+
+    expect(workflowSteps.map((step) => [step.stepName, step.status])).toEqual([
+      ["normalize-source-records", "COMPLETED"],
+      ["persist-ai-ready-records", "COMPLETED"],
+      ["create-human-review-work", "COMPLETED"],
+      ["record-asset-tool-audit", "COMPLETED"],
+      ["finalize-intake-workflow", "COMPLETED"]
+    ]);
+
+    const toolStep = workflowSteps.find(
+      (step) => step.stepName === "record-asset-tool-audit"
+    );
+    const toolCallLogs = await prisma.toolCallLog.findMany({
+      where: {
+        workflowRunId: result.persistedIds.workflowRunId
+      }
+    });
+
+    expect(toolCallLogs).toHaveLength(3);
+    expect(toolCallLogs.every((log) => log.workflowStepId === toolStep?.id)).toBe(
+      true
+    );
+
     await prisma.intakeBatch.delete({
       where: {
         id: result.persistedIds.intakeBatchId

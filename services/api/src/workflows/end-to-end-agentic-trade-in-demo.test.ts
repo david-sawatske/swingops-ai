@@ -69,6 +69,59 @@ function expectNoIndependentInventoryOrValuationToolCalls(
 }
 
 describe("executeEndToEndAgenticTradeInDemo", () => {
+  it("persists ordered workflow steps and links model and tool logs", async () => {
+    const result = await executeEndToEndAgenticTradeInDemo({
+      rawInput:
+        "TaylorMade Stealth 2 driver shaft stiff condition 8.0 Average trade value $150"
+    });
+
+    try {
+      const steps = await prisma.workflowStep.findMany({
+        where: {
+          workflowRunId: result.persisted.workflowRunId
+        },
+        orderBy: {
+          orderIndex: "asc"
+        }
+      });
+
+      expect(steps.map((step) => [step.orderIndex, step.stepName, step.status])).toEqual([
+        [1, "parse-and-persist-intake", "COMPLETED"],
+        [2, "retrieve-grounding-evidence", "COMPLETED"],
+        [3, "run-field-repair-model", "COMPLETED"],
+        [4, "validate-field-repair-output", "COMPLETED"],
+        [5, "create-human-review-work", "COMPLETED"],
+        [6, "execute-guarded-tool-plan", "COMPLETED"],
+        [7, "finalize-workflow-run", "COMPLETED"]
+      ]);
+      expect(
+        steps.every((step) => step.startedAt !== null && step.completedAt !== null)
+      ).toBe(true);
+
+      const modelStep = steps.find(
+        (step) => step.stepName === "run-field-repair-model"
+      );
+      const toolStep = steps.find(
+        (step) => step.stepName === "execute-guarded-tool-plan"
+      );
+
+      expect(result.modelCallLog.workflowStepId).toBe(modelStep?.id);
+
+      const toolCallLogs = await prisma.toolCallLog.findMany({
+        where: {
+          workflowRunId: result.persisted.workflowRunId
+        }
+      });
+
+      expect(toolCallLogs.length).toBeGreaterThan(0);
+      expect(toolCallLogs.every((log) => log.workflowStepId === toolStep?.id)).toBe(
+        true
+      );
+    } finally {
+      await cleanupResult(result);
+    }
+  });
+
   it("does not send present shaft, condition, or trade value fields to review", async () => {
     const result = await executeEndToEndAgenticTradeInDemo({
       rawInput:

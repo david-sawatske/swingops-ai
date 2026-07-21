@@ -86,10 +86,14 @@ enum WorkflowStepStatus {
 enum WorkflowStepType {
   PARSE_INPUT
   NORMALIZE_DATA
+  RETRIEVE_EVIDENCE
   EXTRACT_GOLF_CLUB_FIELDS
   VALIDATE_STRUCTURED_OUTPUT
   CREATE_REVIEW_ITEM
   PERSIST_GOLF_CLUB
+  PERSIST_AI_READY_RECORDS
+  EXECUTE_TOOL_CALLS
+  FINALIZE_WORKFLOW
 }
 
 enum ToolCallStatus {
@@ -307,6 +311,7 @@ model WorkflowStep {
   @@index([workflowRunId])
   @@index([status])
   @@index([stepType])
+  @@unique([workflowRunId, orderIndex])
   @@map("workflow_steps")
 }
 
