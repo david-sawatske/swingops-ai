@@ -216,4 +216,8 @@ A completed guided run can produce:
 - Human review learning events.
 - Final merged record readiness.
 
+Run finalization is transactional. Failure handling is also transactional and
+idempotent: the first failure becomes the terminal run record, active child work
+is closed, future steps are skipped, and completed evidence remains unchanged.
+
 The final report pulls these pieces together so a reviewer can understand what happened, what changed, and what is ready for later use.

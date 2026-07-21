@@ -59,6 +59,7 @@ import {
   executePersistedWorkflowStep,
   requireWorkflowStep
 } from "./workflow-step-persistence.js";
+import { failIntakeBatchAfterWorkflowSetupError } from "./workflow-run-failure.js";
 import {
   buildInventoryLookupFromProductResolution
 } from "./product-resolution-inventory-adapter.js";
@@ -717,6 +718,10 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         }
       }
     }
+  }).catch(async (error) => {
+    await failIntakeBatchAfterWorkflowSetupError(intakeBatch.id)
+      .catch(() => undefined);
+    throw error;
   });
 
   const evidenceResult = await executePersistedWorkflowStep({
@@ -1404,34 +1409,37 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
       reviewQueueItemCount: reviewQueueItemsCreated.length,
       proposedWorkflowStatus: workflowStatus
     },
-    async execute() {
-      await prisma.workflowRun.update({
-        where: {
-          id: workflowRun.id
-        },
-        data: {
-          status: workflowStatus,
-          completedAt: workflowStatus === "COMPLETED" ? new Date() : null
-        }
-      });
-
-      await prisma.intakeBatch.update({
-        where: {
-          id: intakeBatch.id
-        },
-        data: {
-          status: workflowStatus === "COMPLETED" ? "COMPLETED" : "NEEDS_REVIEW"
-        }
-      });
-
+    execute() {
       return {
         workflowStatus,
         intakeBatchStatus:
           workflowStatus === "COMPLETED" ? "COMPLETED" : "NEEDS_REVIEW"
-      };
+      } as const;
     },
     buildOutputJson(result) {
       return result;
+    },
+    async onCompleted({ transaction, result, completedAt }) {
+      await transaction.workflowRun.update({
+        where: {
+          id: workflowRun.id
+        },
+        data: {
+          status: result.workflowStatus,
+          completedAt:
+            result.workflowStatus === "COMPLETED" ? completedAt : null,
+          errorMessage: null
+        }
+      });
+
+      await transaction.intakeBatch.update({
+        where: {
+          id: intakeBatch.id
+        },
+        data: {
+          status: result.intakeBatchStatus
+        }
+      });
     }
   });
 

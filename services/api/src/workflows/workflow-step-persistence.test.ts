@@ -67,6 +67,7 @@ describe("persisted workflow step execution", () => {
       });
       expect(persistedStep.startedAt).toBeInstanceOf(Date);
       expect(persistedStep.completedAt).toBeInstanceOf(Date);
+
     } finally {
       await prisma.workflowRun.delete({
         where: {
@@ -105,6 +106,80 @@ describe("persisted workflow step execution", () => {
         errorMessage: "Deliberate step failure"
       });
       expect(persistedStep.startedAt).toBeInstanceOf(Date);
+      expect(persistedStep.completedAt).toBeInstanceOf(Date);
+
+      const persistedRun = await prisma.workflowRun.findUniqueOrThrow({
+        where: {
+          id: workflowRun.id
+        }
+      });
+
+      expect(persistedRun).toMatchObject({
+        status: "FAILED",
+        errorMessage: "Deliberate step failure"
+      });
+      expect(persistedRun.completedAt).toBeInstanceOf(Date);
+      expect(persistedRun.failureJson).toMatchObject({
+        code: "WORKFLOW_STEP_EXECUTION_FAILED",
+        failedStep: {
+          id: step.id,
+          name: "failed-step"
+        }
+      });
+    } finally {
+      await prisma.workflowRun.delete({
+        where: {
+          id: workflowRun.id
+        }
+      });
+    }
+  });
+
+  it("fails the run when an atomic completion side effect cannot commit", async () => {
+    const workflowRun = await createTestWorkflowRun("finalization-step");
+
+    try {
+      const step = requireWorkflowStep(workflowRun.steps, "finalization-step");
+
+      await expect(
+        executePersistedWorkflowStep({
+          step,
+          execute() {
+            return {
+              workflowStatus: "COMPLETED"
+            } as const;
+          },
+          buildOutputJson(result) {
+            return result;
+          },
+          async onCompleted() {
+            throw new Error("Finalization transaction failed");
+          }
+        })
+      ).rejects.toThrow("Finalization transaction failed");
+
+      const [persistedRun, persistedStep] = await Promise.all([
+        prisma.workflowRun.findUniqueOrThrow({
+          where: {
+            id: workflowRun.id
+          }
+        }),
+        prisma.workflowStep.findUniqueOrThrow({
+          where: {
+            id: step.id
+          }
+        })
+      ]);
+
+      expect(persistedRun).toMatchObject({
+        status: "FAILED",
+        errorMessage: "Finalization transaction failed"
+      });
+      expect(persistedStep).toMatchObject({
+        status: "FAILED",
+        errorMessage: "Finalization transaction failed"
+      });
+      expect(persistedRun.completedAt).toBeInstanceOf(Date);
       expect(persistedStep.completedAt).toBeInstanceOf(Date);
     } finally {
       await prisma.workflowRun.delete({

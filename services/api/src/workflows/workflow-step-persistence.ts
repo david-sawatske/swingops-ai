@@ -1,14 +1,7 @@
 import type { Prisma, WorkflowStep } from "@prisma/client";
 
 import { prisma } from "../lib/prisma.js";
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return "Workflow step failed with an unknown error.";
-}
+import { failPersistedWorkflowRun } from "./workflow-run-failure.js";
 
 export function requireWorkflowStep(
   steps: WorkflowStep[],
@@ -28,50 +21,74 @@ export async function executePersistedWorkflowStep<Result>(input: {
   inputJson?: Prisma.InputJsonValue;
   execute: (step: WorkflowStep) => Promise<Result> | Result;
   buildOutputJson: (result: Result) => Prisma.InputJsonValue;
+  onCompleted?: (input: {
+    transaction: Prisma.TransactionClient;
+    result: Result;
+    completedAt: Date;
+  }) => Promise<void>;
 }): Promise<Result> {
   const startedAt = new Date();
 
-  await prisma.workflowStep.update({
-    where: {
-      id: input.step.id
-    },
-    data: {
-      status: "RUNNING",
-      startedAt,
-      completedAt: null,
-      errorMessage: null,
-      ...(input.inputJson === undefined ? {} : { inputJson: input.inputJson })
-    }
-  });
-
   try {
-    const result = await input.execute(input.step);
-
     await prisma.workflowStep.update({
       where: {
         id: input.step.id
       },
       data: {
-        status: "COMPLETED",
-        outputJson: input.buildOutputJson(result),
-        completedAt: new Date(),
-        errorMessage: null
+        status: "RUNNING",
+        startedAt,
+        completedAt: null,
+        errorMessage: null,
+        ...(input.inputJson === undefined ? {} : { inputJson: input.inputJson })
       }
     });
 
-    return result;
-  } catch (error) {
-    await prisma.workflowStep
-      .update({
+    const result = await input.execute(input.step);
+    const outputJson = input.buildOutputJson(result);
+    const completedAt = new Date();
+
+    const onCompleted = input.onCompleted;
+
+    if (onCompleted) {
+      await prisma.$transaction(async (transaction) => {
+        await onCompleted({
+          transaction,
+          result,
+          completedAt
+        });
+
+        await transaction.workflowStep.update({
+          where: {
+            id: input.step.id
+          },
+          data: {
+            status: "COMPLETED",
+            outputJson,
+            completedAt,
+            errorMessage: null
+          }
+        });
+      });
+    } else {
+      await prisma.workflowStep.update({
         where: {
           id: input.step.id
         },
         data: {
-          status: "FAILED",
-          errorMessage: getErrorMessage(error),
-          completedAt: new Date()
+          status: "COMPLETED",
+          outputJson,
+          completedAt,
+          errorMessage: null
         }
-      })
+      });
+    }
+
+    return result;
+  } catch (error) {
+    await failPersistedWorkflowRun({
+      step: input.step,
+      error
+    })
       .catch(() => undefined);
 
     throw error;

@@ -5,6 +5,7 @@ import { buildApp } from "../app.js";
 import { prisma } from "../lib/prisma.js";
 import { DEMO_KNOWLEDGE_SOURCE_NAME } from "../knowledge/knowledge-seed-data.js";
 import { createMockModelCallLogForWorkflowRun } from "../workflows/workflow-model-logging.js";
+import { failPersistedWorkflowRun } from "../workflows/workflow-run-failure.js";
 
 describe("workflow run routes", () => {
   describe("GET /workflow-runs", () => {
@@ -1182,6 +1183,85 @@ describe("workflow run routes", () => {
       });
 
       await app.close();
+    });
+
+    it("returns structured terminal failure details", async () => {
+      const app = buildApp();
+      const workflowRun = await prisma.workflowRun.create({
+        data: {
+          workflowName: "test-workflow-run-failure-detail",
+          status: "RUNNING",
+          startedAt: new Date(),
+          steps: {
+            create: [
+              {
+                stepName: "active-step",
+                stepType: "RETRIEVE_EVIDENCE",
+                status: "RUNNING",
+                orderIndex: 1,
+                startedAt: new Date()
+              },
+              {
+                stepName: "future-step",
+                stepType: "FINALIZE_WORKFLOW",
+                orderIndex: 2
+              }
+            ]
+          }
+        },
+        include: {
+          steps: {
+            orderBy: {
+              orderIndex: "asc"
+            }
+          }
+        }
+      });
+
+      try {
+        await failPersistedWorkflowRun({
+          step: workflowRun.steps[0]!,
+          error: new Error("Evidence provider was unavailable.")
+        });
+
+        const response = await app.inject({
+          method: "GET",
+          url: `/workflow-runs/${workflowRun.id}`
+        });
+
+        expect(response.statusCode).toBe(200);
+
+        const body = response.json();
+
+        expect(body.workflowRun).toMatchObject({
+          id: workflowRun.id,
+          status: "FAILED",
+          errorMessage: "Evidence provider was unavailable.",
+          completedAt: expect.any(String),
+          failureJson: {
+            schemaVersion: 1,
+            code: "WORKFLOW_STEP_EXECUTION_FAILED",
+            message: "Evidence provider was unavailable.",
+            failedStep: {
+              id: workflowRun.steps[0]!.id,
+              name: "active-step",
+              type: "RETRIEVE_EVIDENCE",
+              orderIndex: 1
+            }
+          }
+        });
+        expect(body.steps.map((step: { status: string }) => step.status)).toEqual([
+          "FAILED",
+          "SKIPPED"
+        ]);
+      } finally {
+        await prisma.workflowRun.delete({
+          where: {
+            id: workflowRun.id
+          }
+        });
+        await app.close();
+      }
     });
 
     it("returns persisted MCP tool invocation preview logs as audit-only tool call logs", async () => {

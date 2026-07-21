@@ -113,6 +113,7 @@ export function serializeWorkflowRunListItem(run: {
   startedAt: Date | null;
   completedAt: Date | null;
   errorMessage: string | null;
+  failureJson?: unknown;
   createdAt: Date;
   updatedAt: Date;
   intakeBatch: {

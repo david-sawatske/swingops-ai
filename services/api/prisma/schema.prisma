@@ -262,6 +262,7 @@ model WorkflowRun {
   startedAt    DateTime? @map("started_at")
   completedAt  DateTime? @map("completed_at")
   errorMessage String?   @map("error_message")
+  failureJson  Json?     @map("failure_json")
 
   intakeBatch          IntakeBatch?          @relation(fields: [intakeBatchId], references: [id], onDelete: SetNull)
   intakeItem           IntakeItem?           @relation(fields: [intakeItemId], references: [id], onDelete: SetNull)

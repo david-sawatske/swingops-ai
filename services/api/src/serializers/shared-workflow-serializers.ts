@@ -7,6 +7,7 @@ export function serializeWorkflowRun(run: {
   startedAt: Date | null;
   completedAt: Date | null;
   errorMessage: string | null;
+  failureJson?: unknown;
   createdAt: Date;
   updatedAt: Date;
 }) {
@@ -19,6 +20,7 @@ export function serializeWorkflowRun(run: {
     startedAt: run.startedAt?.toISOString() ?? null,
     completedAt: run.completedAt?.toISOString() ?? null,
     errorMessage: run.errorMessage,
+    failureJson: run.failureJson ?? null,
     createdAt: run.createdAt.toISOString(),
     updatedAt: run.updatedAt.toISOString()
   };

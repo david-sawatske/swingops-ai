@@ -19,10 +19,32 @@ export type WorkflowStepStatus =
 export type WorkflowStepType =
   | "PARSE_INPUT"
   | "NORMALIZE_DATA"
+  | "RETRIEVE_EVIDENCE"
   | "EXTRACT_GOLF_CLUB_FIELDS"
   | "VALIDATE_STRUCTURED_OUTPUT"
   | "CREATE_REVIEW_ITEM"
-  | "PERSIST_GOLF_CLUB";
+  | "PERSIST_GOLF_CLUB"
+  | "PERSIST_AI_READY_RECORDS"
+  | "EXECUTE_TOOL_CALLS"
+  | "FINALIZE_WORKFLOW";
+
+export type WorkflowFailureDetails = {
+  schemaVersion: 1;
+  code: "WORKFLOW_STEP_EXECUTION_FAILED";
+  message: string;
+  occurredAt: string;
+  failedStep: {
+    id: string;
+    name: string;
+    type: WorkflowStepType;
+    orderIndex: number;
+  };
+  cause: {
+    name: string;
+    code: string | null;
+    message: string;
+  };
+};
 
 export type ModelProviderName =
   | "MOCK"
@@ -57,6 +79,7 @@ export type WorkflowRunSummary = {
   startedAt: string | null;
   completedAt: string | null;
   errorMessage: string | null;
+  failureJson: WorkflowFailureDetails | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -176,4 +199,3 @@ export type WorkflowToolCallingPlanCallResult = WorkflowToolCallingPlannedCall &
   connectorResultPreview: unknown | null;
   failurePreview: string | null;
 };
-

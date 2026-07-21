@@ -63,6 +63,7 @@ Important fields:
 - `startedAt`
 - `completedAt`
 - `errorMessage`
+- `failureJson`
 
 Important relationships:
 
@@ -93,6 +94,11 @@ records its input when it starts, then records either output or an error when it
 finishes. Model and tool logs reference the step that produced them, so the run
 detail response can reconstruct the execution trace without inferring ownership
 from timestamps.
+
+If a step throws, one idempotent transaction marks the run and intake batch as
+failed, records structured failure details, fails active work, and skips future
+steps. Completed work is preserved as audit evidence. Repeating the transition
+does not replace the first terminal failure.
 
 ## ModelCallLog
 

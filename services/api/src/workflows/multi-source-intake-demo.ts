@@ -16,6 +16,7 @@ import {
   executePersistedWorkflowStep,
   requireWorkflowStep
 } from "./workflow-step-persistence.js";
+import { failIntakeBatchAfterWorkflowSetupError } from "./workflow-run-failure.js";
 import type {
   MultiSourceIntakeAuditEvent,
   MultiSourceIntakeDemoResult,
@@ -482,6 +483,10 @@ async function persistDemoAudit(input: {
         }
       }
     }
+  }).catch(async (error) => {
+    await failIntakeBatchAfterWorkflowSetupError(intakeBatch.id)
+      .catch(() => undefined);
+    throw error;
   });
 
   const intakeItemByRecordId = new Map(
@@ -669,7 +674,7 @@ async function persistDemoAudit(input: {
     }
   });
 
-  const completedWorkflowRun = await executePersistedWorkflowStep({
+  await executePersistedWorkflowStep({
     step: requireWorkflowStep(
       workflowRun.steps,
       MULTI_SOURCE_WORKFLOW_STEP_NAMES.finalize
@@ -677,34 +682,44 @@ async function persistDemoAudit(input: {
     inputJson: {
       reviewQueueItemCount: reviewQueueItems.length
     },
-    async execute() {
+    execute() {
       const status = reviewQueueItems.length > 0 ? "NEEDS_REVIEW" : "COMPLETED";
 
-      await prisma.intakeBatch.update({
+      return {
+        workflowStatus: status,
+        intakeBatchStatus: status
+      } as const;
+    },
+    buildOutputJson(result) {
+      return result;
+    },
+    async onCompleted({ transaction, result, completedAt }) {
+      await transaction.intakeBatch.update({
         where: {
           id: intakeBatch.id
         },
         data: {
-          status
+          status: result.intakeBatchStatus
         }
       });
 
-      return prisma.workflowRun.update({
+      await transaction.workflowRun.update({
         where: {
           id: workflowRun.id
         },
         data: {
-          status,
-          completedAt: status === "COMPLETED" ? new Date() : null
+          status: result.workflowStatus,
+          completedAt:
+            result.workflowStatus === "COMPLETED" ? completedAt : null,
+          errorMessage: null
         }
       });
-    },
-    buildOutputJson(run) {
-      return {
-        workflowStatus: run.status,
-        intakeBatchStatus:
-          reviewQueueItems.length > 0 ? "NEEDS_REVIEW" : "COMPLETED"
-      };
+    }
+  });
+
+  const completedWorkflowRun = await prisma.workflowRun.findUniqueOrThrow({
+    where: {
+      id: workflowRun.id
     }
   });
 

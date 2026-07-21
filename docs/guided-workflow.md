@@ -186,6 +186,12 @@ model execution, validation, review creation, guarded tool execution, and final
 run status. Model and tool logs are linked to their owning step in the workflow
 audit trail.
 
+Successful finalization updates the last step, workflow run, and intake batch in
+one transaction. If execution throws, the failure boundary records a terminal
+run status and structured cause, closes active logs and steps, and marks future
+steps as skipped. Repeated failure handling is idempotent and preserves the
+original failure record.
+
 ### Evidence and audit output
 
 The response can include:
