@@ -4,6 +4,7 @@ import type {
   ExecuteEndToEndAgenticTradeInDemoResponse,
 } from "../../../types/workflow";
 import {
+  getModelAssistanceScopeNotice,
   getOrchestrationSummary,
   getProviderFallbackNotice,
 } from "./GuidedGuardedAgentExecutionStep";
@@ -22,6 +23,32 @@ const validatedExecution: FieldRepairExecution = {
   validationErrors: [],
 };
 
+describe("getModelAssistanceScopeNotice", () => {
+  it("explains when eligible records were kept out of the bounded model request", () => {
+    expect(
+      getModelAssistanceScopeNotice({
+        eligibleRecordCount: 10,
+        selectedRecordCount: 8,
+        deferredRecordCount: 2,
+        maxSelectedRecordCount: 8,
+      }),
+    ).toBe(
+      "8 of 10 eligible records were included in this bounded model request. The remaining 2 stayed in deterministic processing and were routed to human review.",
+    );
+  });
+
+  it("stays hidden when every eligible record was assessed", () => {
+    expect(
+      getModelAssistanceScopeNotice({
+        eligibleRecordCount: 4,
+        selectedRecordCount: 4,
+        deferredRecordCount: 0,
+        maxSelectedRecordCount: 8,
+      }),
+    ).toBeNull();
+  });
+});
+
 describe("getProviderFallbackNotice", () => {
   it("returns no notice when fallback was not used", () => {
     const trace: ProviderFallbackTrace = {
@@ -31,6 +58,7 @@ describe("getProviderFallbackNotice", () => {
       finalProvider: "OPENAI",
       finalModel: "gpt-4.1-mini",
       fallbackUsed: false,
+      simulationRequested: false,
       attempts: [
         {
           provider: "OPENAI",
@@ -62,6 +90,7 @@ describe("getProviderFallbackNotice", () => {
       finalProvider: "MOCK",
       finalModel: "mock-golf-workflow-model",
       fallbackUsed: true,
+      simulationRequested: true,
       attempts: [
         {
           provider: "OPENAI",
@@ -99,9 +128,10 @@ describe("getProviderFallbackNotice", () => {
     expect(
       getProviderFallbackNotice(trace, validatedExecution),
     ).toEqual({
-      title: "Provider fallback completed this run",
+      title: "Fallback test passed",
       summary:
-        "OPENAI · gpt-4.1-mini did not complete successfully. MOCK · mock-golf-workflow-model completed the model review assistance.",
+        "A simulated service error prevented OPENAI · gpt-4.1-mini from completing. MOCK · mock-golf-workflow-model completed the model review assistance.",
+      statusLabel: "Simulated outage",
       preferredProvider: "OPENAI · gpt-4.1-mini",
       preferredStatus: "failed",
       reason:
@@ -113,6 +143,56 @@ describe("getProviderFallbackNotice", () => {
       finalProvider: "MOCK · mock-golf-workflow-model",
       finalStatus: "success",
       validationLabel: "Validation passed",
+    });
+  });
+
+  it("distinguishes an automatic recovery from a requested simulation", () => {
+    const trace: ProviderFallbackTrace = {
+      routingGoal: "HIGH_QUALITY",
+      selectedProvider: "OPENAI",
+      selectedModel: "gpt-4.1-mini",
+      finalProvider: "MOCK",
+      finalModel: "mock-golf-workflow-model",
+      fallbackUsed: true,
+      simulationRequested: false,
+      attempts: [
+        {
+          provider: "OPENAI",
+          model: "gpt-4.1-mini",
+          attemptOrder: 1,
+          status: "TIMEOUT",
+          failureClass: "TIMEOUT",
+          retryable: true,
+          reason: "Provider attempt timed out.",
+          errorMessage: "Provider attempt timed out after 10000ms.",
+          latencyMs: 10000,
+          estimatedCostUsd: 0.0012,
+          timeoutMs: 10000,
+        },
+        {
+          provider: "MOCK",
+          model: "mock-golf-workflow-model",
+          attemptOrder: 2,
+          status: "SUCCESS",
+          failureClass: "NONE",
+          retryable: false,
+          reason: "Provider succeeded.",
+          errorMessage: null,
+          latencyMs: 2,
+          estimatedCostUsd: 0,
+          timeoutMs: 10000,
+        },
+      ],
+      summary: "Automatic provider fallback completed the request.",
+    };
+
+    expect(
+      getProviderFallbackNotice(trace, validatedExecution),
+    ).toMatchObject({
+      title: "Automatic fallback completed this run",
+      summary:
+        "OPENAI · gpt-4.1-mini did not complete successfully. MOCK · mock-golf-workflow-model completed the model review assistance.",
+      statusLabel: "Automatic recovery",
     });
   });
 });

@@ -46,8 +46,11 @@ import {
 } from "./workflow-model-logging.js";
 import {
   MAIN_RUN_FIELD_REPAIR_AGENT_NAME,
+  MAIN_RUN_FIELD_REPAIR_MAX_RECORDS,
   MAIN_RUN_FIELD_REPAIR_OUTPUT_SCHEMA,
   MAIN_RUN_FIELD_REPAIR_POLICY_KEY,
+  MAIN_RUN_FIELD_REPAIR_PROVIDER_ATTEMPT_TIMEOUT_MS,
+  MAIN_RUN_FIELD_REPAIR_PROVIDER_WORKFLOW_TIMEOUT_MS,
   MAIN_RUN_FIELD_REPAIR_TASK_TYPE,
   buildMainRunFieldRepairExecutionInput,
   validateMainRunFieldRepairModelOutput,
@@ -117,6 +120,12 @@ export type EndToEndAgenticTradeInDemoResult = {
     parsedItemId: string;
     suggestions: PriorReviewLearningSuggestion[];
   }[];
+  modelAssistanceScope: {
+    eligibleRecordCount: number;
+    selectedRecordCount: number;
+    deferredRecordCount: number;
+    maxSelectedRecordCount: number;
+  };
   modelRoutingDecision: ModelRouteDecision;
   modelCallLog: ModelCallLog;
   fieldRepairExecution: {
@@ -201,6 +210,8 @@ export const DEFAULT_AGENTIC_TRADE_IN_DEMO_INPUT = [
   "Cally Rogue ST Max driver 9 Project X HZRDUS x-stiff, paint wear, no wrench",
   "PING G425 irons 5-PW reg, worn grips, condition unclear"
 ].join("\n");
+
+export const AGENTIC_TRADE_IN_DEMO_MAX_INPUT_CHARACTERS = 20_000;
 
 const NON_RECORD_DEMO_HEADER_PATTERNS = [
   /^store associate pasted trade-in notes:?$/i,
@@ -930,24 +941,33 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     valuationEvidenceByItem
   } = evidenceResult;
 
+  const eligibleFieldRepairItems = parsedItems.filter(shouldRunFieldRepair);
+  const selectedFieldRepairItems = eligibleFieldRepairItems.slice(
+    0,
+    MAIN_RUN_FIELD_REPAIR_MAX_RECORDS
+  );
+  const modelAssistanceScope = {
+    eligibleRecordCount: eligibleFieldRepairItems.length,
+    selectedRecordCount: selectedFieldRepairItems.length,
+    deferredRecordCount:
+      eligibleFieldRepairItems.length - selectedFieldRepairItems.length,
+    maxSelectedRecordCount: MAIN_RUN_FIELD_REPAIR_MAX_RECORDS
+  };
+
   const modelAssistanceResult = await executePersistedWorkflowStep({
     step: requireWorkflowStep(
       workflowRun.steps,
       TRADE_IN_WORKFLOW_STEP_NAMES.modelAssistance
     ),
     inputJson: {
-      candidateRecordIds: parsedItems
-        .filter(shouldRunFieldRepair)
-        .map((item) => item.id),
+      candidateRecordIds: selectedFieldRepairItems.map((item) => item.id),
+      modelAssistanceScope,
       taskType: MAIN_RUN_FIELD_REPAIR_TASK_TYPE,
       policyKey: MAIN_RUN_FIELD_REPAIR_POLICY_KEY,
       demonstrateProviderFallback:
         input.demonstrateProviderFallback === true
     },
     async execute(step) {
-      const selectedFieldRepairItems =
-        parsedItems.filter(shouldRunFieldRepair);
-
       const fieldRepairRecords: MainRunFieldRepairRecordInput[] =
         selectedFieldRepairItems.map((item) => {
           const knowledgeEvidence = knowledgeMatchesByItem.find(
@@ -1140,6 +1160,10 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         workflowStep: "field-repair",
         requireJson: true,
         allowDisabledProvidersForSimulation: false,
+        attemptTimeoutMs:
+          MAIN_RUN_FIELD_REPAIR_PROVIDER_ATTEMPT_TIMEOUT_MS,
+        workflowTimeoutMs:
+          MAIN_RUN_FIELD_REPAIR_PROVIDER_WORKFLOW_TIMEOUT_MS,
         inputJson: fieldRepairInputJson,
         outputSchema: MAIN_RUN_FIELD_REPAIR_OUTPUT_SCHEMA,
         ...providerFallbackDemonstrationOptions,
@@ -1221,7 +1245,9 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     }
   });
 
-  const retryCandidate = findTargetedFieldRetryCandidate(parsedItems);
+  const retryCandidate = findTargetedFieldRetryCandidate(
+    selectedFieldRepairItems
+  );
   const targetedFieldRetry = await executePersistedWorkflowStep({
     step: requireWorkflowStep(
       workflowRun.steps,
@@ -1722,6 +1748,8 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     inventoryMatchesByItem,
     valuationEvidenceByItem,
     modelCallLog,
+    providerFallbackSimulationRequested:
+      input.demonstrateProviderFallback === true,
     retryEvents,
     toolCallingPlan,
     toolCallResults,
@@ -1736,6 +1764,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     valuationEvidenceByItem,
     priorReviewLearningEvidenceByItem,
     priorReviewLearningSuggestionsByItem,
+    modelAssistanceScope,
     modelRoutingDecision,
     modelCallLog,
     fieldRepairExecution,

@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   MAIN_RUN_FIELD_REPAIR_AGENT_NAME,
+  MAIN_RUN_FIELD_REPAIR_MAX_RECORDS,
   MAIN_RUN_FIELD_REPAIR_OUTPUT_SCHEMA,
   MAIN_RUN_FIELD_REPAIR_POLICY_KEY,
+  MAIN_RUN_FIELD_REPAIR_PROVIDER_ATTEMPT_TIMEOUT_MS,
+  MAIN_RUN_FIELD_REPAIR_PROVIDER_WORKFLOW_TIMEOUT_MS,
   buildMainRunFieldRepairExecutionInput,
   validateMainRunFieldRepairModelOutput,
   type MainRunFieldRepairRecordInput
@@ -134,6 +137,12 @@ function buildAdvisoryCandidateRecord():
 }
 
 describe("main run field repair contract", () => {
+  it("uses a bounded provider budget sized for the multi-record demo request", () => {
+    expect(MAIN_RUN_FIELD_REPAIR_MAX_RECORDS).toBe(8);
+    expect(MAIN_RUN_FIELD_REPAIR_PROVIDER_ATTEMPT_TIMEOUT_MS).toBe(20_000);
+    expect(MAIN_RUN_FIELD_REPAIR_PROVIDER_WORKFLOW_TIMEOUT_MS).toBe(30_000);
+  });
+
   it("builds a provider execution input with policy, authority, and evidence metadata", () => {
     const inputJson = buildMainRunFieldRepairExecutionInput({
       workflowRunId: "workflow-run-1",

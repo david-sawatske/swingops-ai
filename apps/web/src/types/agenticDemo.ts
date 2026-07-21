@@ -2,6 +2,8 @@ import type { ReviewQueueItem } from "./reviewQueue";
 import type { ModelCallLog, ToolCallLog } from "./workflowRun";
 import type { ParserEvidence } from "./parserEvidence";
 
+export const AGENTIC_TRADE_IN_DEMO_MAX_INPUT_CHARACTERS = 20_000;
+
 export type AgenticTradeInRunEvalSummary = {
   extractionCompleteness: number;
   groundingConfidence: number;
@@ -298,6 +300,7 @@ export type ProviderFallbackTrace = {
   finalProvider: string;
   finalModel: string;
   fallbackUsed: boolean;
+  simulationRequested: boolean;
   attempts: ProviderFallbackTraceAttempt[];
   summary: string;
 };
@@ -399,6 +402,12 @@ export type ExecuteEndToEndAgenticTradeInDemoResponse = {
     parsedItemId: string;
     suggestions: PriorReviewLearningSuggestion[];
   }[];
+  modelAssistanceScope?: {
+    eligibleRecordCount: number;
+    selectedRecordCount: number;
+    deferredRecordCount: number;
+    maxSelectedRecordCount: number;
+  };
   fieldRepairExecution: FieldRepairExecution;
   orchestrationTrace: WorkflowOrchestrationTrace;
   modelRoutingDecision: {

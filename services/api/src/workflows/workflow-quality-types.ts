@@ -85,6 +85,7 @@ export type ProviderFallbackTrace = {
   finalProvider: string;
   finalModel: string;
   fallbackUsed: boolean;
+  simulationRequested: boolean;
   attempts: ProviderFallbackTraceAttempt[];
   summary: string;
 };

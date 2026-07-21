@@ -329,6 +329,68 @@ describe("workflow run routes", () => {
   });
 
   describe("POST /workflow-runs/agentic-trade-in-demo", () => {
+    it("rejects an oversized guided-run payload before creating workflow data", async () => {
+      const app = buildApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/workflow-runs/agentic-trade-in-demo",
+        payload: {
+          rawInput: "x".repeat(20_001)
+        }
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toMatchObject({
+        error: "Invalid agentic trade-in demo request"
+      });
+
+      await app.close();
+    });
+
+    it("bounds one model request and defers excess eligible records to review", async () => {
+      const app = buildApp();
+      const rawInput = Array.from(
+        { length: 10 },
+        (_, index) =>
+          `Unknown demo club ${index + 1}, shaft unknown, condition unclear`
+      ).join("\n");
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/workflow-runs/agentic-trade-in-demo",
+        payload: {
+          rawInput
+        }
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const body = response.json();
+
+      expect(body.parsedItems).toHaveLength(10);
+      expect(body.modelAssistanceScope).toEqual({
+        eligibleRecordCount: 10,
+        selectedRecordCount: 8,
+        deferredRecordCount: 2,
+        maxSelectedRecordCount: 8
+      });
+      expect(body.fieldRepairExecution.recordOutcomes).toHaveLength(8);
+      expect(body.reviewQueueItemsCreated).toHaveLength(10);
+
+      await prisma.intakeBatch.delete({
+        where: {
+          id: body.persisted.intakeBatchId
+        }
+      });
+      await prisma.workflowRun.delete({
+        where: {
+          id: body.persisted.workflowRunId
+        }
+      });
+      await app.close();
+    });
+
     it("returns prior review learning suggestions when a later run matches field-specific raw text", async () => {
       const app = buildApp();
 
@@ -534,7 +596,11 @@ describe("workflow run routes", () => {
         taskType: "FIELD_NORMALIZATION",
         policyKey: "MAIN_RUN_FIELD_REPAIR",
         agentName: "main-run-field-repair-agent",
-        allowDisabledProvidersForSimulation: false
+        allowDisabledProvidersForSimulation: false,
+        providerDeadlines: {
+          attemptTimeoutMs: 20_000,
+          workflowTimeoutMs: 30_000
+        }
       });
       expect(body.fieldRepairExecution).toMatchObject({
         modelCallLogId: body.modelCallLog.id,
@@ -687,6 +753,7 @@ describe("workflow run routes", () => {
         finalProvider: body.modelCallLog.provider,
         finalModel: body.modelCallLog.model,
         fallbackUsed: false,
+        simulationRequested: false,
         attempts: expect.any(Array)
       });
       expect(body.providerFallbackTrace.attempts.length).toBeGreaterThanOrEqual(1);
@@ -897,6 +964,7 @@ describe("workflow run routes", () => {
         finalProvider: "MOCK",
         finalModel: "mock-golf-workflow-model",
         fallbackUsed: true,
+        simulationRequested: true,
         attempts: [
           expect.objectContaining({
             provider: "OPENAI",

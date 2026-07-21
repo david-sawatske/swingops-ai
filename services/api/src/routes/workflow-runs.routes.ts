@@ -11,6 +11,7 @@ import {
   serializeWorkflowStep
 } from "./workflow-runs.serializers.js";
 import {
+  AGENTIC_TRADE_IN_DEMO_MAX_INPUT_CHARACTERS,
   DEFAULT_AGENTIC_TRADE_IN_DEMO_INPUT,
   executeEndToEndAgenticTradeInDemo
 } from "../workflows/end-to-end-agentic-trade-in-demo.js";
@@ -27,7 +28,10 @@ const workflowRunParamsSchema = z.object({
 
 const agenticTradeInDemoBodySchema = z
   .object({
-    rawInput: z.string().optional(),
+    rawInput: z
+      .string()
+      .max(AGENTIC_TRADE_IN_DEMO_MAX_INPUT_CHARACTERS)
+      .optional(),
     demonstrateProviderFallback: z.boolean().optional()
   })
   .strict();

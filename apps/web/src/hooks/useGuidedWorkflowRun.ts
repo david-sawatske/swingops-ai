@@ -6,11 +6,12 @@ import {
   listAiReadyIntakeRecords,
 } from "../api/workflows";
 import { formatGuidedWorkflowInputFromSourceResult } from "../components/guided-demo/formatGuidedWorkflowInput";
-import type {
-  AiReadyIntakeRecord,
-  ExecuteEndToEndAgenticTradeInDemoResponse,
-  ExecuteMultiSourceIntakeDemoRequest,
-  ExecuteMultiSourceIntakeDemoResponse,
+import {
+  AGENTIC_TRADE_IN_DEMO_MAX_INPUT_CHARACTERS,
+  type AiReadyIntakeRecord,
+  type ExecuteEndToEndAgenticTradeInDemoResponse,
+  type ExecuteMultiSourceIntakeDemoRequest,
+  type ExecuteMultiSourceIntakeDemoResponse,
 } from "../types/workflow";
 
 type UseGuidedWorkflowRunOptions = {
@@ -115,8 +116,17 @@ export function useGuidedWorkflowRun({
           })
         : "";
 
+      const workflowRawInput =
+        endToEndAgenticDemoRawInput.trim() || generatedTradeInRawInput;
+
+      if (workflowRawInput.length > AGENTIC_TRADE_IN_DEMO_MAX_INPUT_CHARACTERS) {
+        throw new Error(
+          `This guided run accepts up to ${AGENTIC_TRADE_IN_DEMO_MAX_INPUT_CHARACTERS.toLocaleString()} characters. Reduce the input before running the workflow.`,
+        );
+      }
+
       const result = await executeEndToEndAgenticTradeInDemo({
-        rawInput: endToEndAgenticDemoRawInput.trim() || generatedTradeInRawInput,
+        rawInput: workflowRawInput,
         demonstrateProviderFallback,
       });
 

@@ -207,3 +207,6 @@ Current behavior:
 - Successful, failed, and blocked calls persist `ToolCallLog` records.
 
 This local transport does not claim hosted deployment, tenant isolation, production OAuth, or remote MCP access.
+
+See [Development](docs/development.md#local-mcp-server) for copy-pasteable local
+client configuration and the focused transport test command.

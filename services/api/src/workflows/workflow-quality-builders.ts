@@ -310,7 +310,10 @@ function getSelectedProviderRoute(modelCallLog: ModelCallLog): {
 }
 
 export function buildProviderFallbackTrace(
-  modelCallLog: ModelCallLog
+  modelCallLog: ModelCallLog,
+  input: {
+    simulationRequested: boolean;
+  }
 ): ProviderFallbackTrace {
   const attempts = getProviderFallbackAttempts(modelCallLog);
   const selectedRoute = getSelectedProviderRoute(modelCallLog);
@@ -327,10 +330,13 @@ export function buildProviderFallbackTrace(
     finalProvider: modelCallLog.provider,
     finalModel: modelCallLog.model,
     fallbackUsed: unsuccessfulAttempts.length > 0,
+    simulationRequested: input.simulationRequested,
     attempts,
     summary:
       unsuccessfulAttempts.length > 0
-        ? `Provider fallback trace captured ${unsuccessfulAttempts.length} skipped or failed attempt(s) before ${modelCallLog.provider} completed the run.`
+        ? input.simulationRequested
+          ? `Provider fallback simulation captured ${unsuccessfulAttempts.length} expected unsuccessful attempt(s) before ${modelCallLog.provider} completed the run.`
+          : `Automatic provider fallback captured ${unsuccessfulAttempts.length} skipped or failed attempt(s) before ${modelCallLog.provider} completed the run.`
         : `${modelCallLog.provider} completed the run without provider fallback.`
   };
 }

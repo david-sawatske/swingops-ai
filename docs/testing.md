@@ -136,6 +136,7 @@ These tests protect local retrieval behavior, scoring, and metadata.
 
 Important areas include:
 
+    services/api/src/mcp/server.test.ts
     services/api/src/tools/tool-registry.test.ts
     services/api/src/tools/tool-execution-policy.test.ts
     services/api/src/tools/read-only-tool-invocation.test.ts
@@ -144,6 +145,8 @@ Important areas include:
 
 These tests protect:
 
+- MCP SDK client negotiation through the real stdio server process.
+- Process-boundary tool discovery, policy enforcement, and audit persistence.
 - Tool registry filtering.
 - Tool risk metadata.
 - Execution policy decisions.

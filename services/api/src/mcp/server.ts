@@ -5,6 +5,8 @@ import {
   ListToolsRequestSchema
 } from "@modelcontextprotocol/sdk/types.js";
 
+import "../config/env.js";
+
 import {
   callExternalMcpTool,
   listExternalMcpTools

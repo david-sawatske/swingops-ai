@@ -127,6 +127,14 @@ export function FinalAuditTrace({
             <dd>{result.providerFallbackTrace.fallbackUsed ? "Used" : "Not used"}</dd>
           </div>
           <div>
+            <dt>Outage simulation</dt>
+            <dd>
+              {result.providerFallbackTrace.simulationRequested
+                ? "Enabled"
+                : "Disabled"}
+            </dd>
+          </div>
+          <div>
             <dt>Provider attempts</dt>
             <dd>{result.providerFallbackTrace.attempts.length}</dd>
           </div>

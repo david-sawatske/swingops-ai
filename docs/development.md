@@ -132,7 +132,40 @@ Run the local stdio MCP server:
 
     pnpm --filter @swingops/api mcp:dev
 
-The local server wraps the existing SwingOps connector contracts and read-only execution policy.
+The server reads `services/api/.env`, so complete the environment and database
+setup above before connecting a client. It wraps the existing SwingOps connector
+contracts and read-only execution policy.
+
+For an MCP client that accepts JSON server configuration, replace the repository
+path below with the absolute path to your clone:
+
+```json
+{
+  "mcpServers": {
+    "swingops-local": {
+      "command": "pnpm",
+      "args": [
+        "--dir",
+        "/absolute/path/to/swingops-ai",
+        "--filter",
+        "@swingops/api",
+        "mcp:dev"
+      ]
+    }
+  }
+}
+```
+
+After the client connects, `tools/list` exposes the registered tools. Read-only
+calls such as `swingops.workflowRuns.list` can execute, while disabled mutations
+such as `swingops.reviewQueueItems.resolve` return a blocked result. Both outcomes
+persist a `ToolCallLog` audit record.
+
+The API test suite includes a process-level transport test that starts this
+entrypoint, connects with the MCP SDK client, discovers tools, exercises both
+policy paths, and verifies the audit records:
+
+    pnpm --filter @swingops/api test -- src/mcp/server.test.ts
 
 ## Branch and commit workflow
 

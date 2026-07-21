@@ -1,6 +1,9 @@
 import type { FormEvent } from "react";
 
-import type { ExecuteEndToEndAgenticTradeInDemoResponse } from "../../../types/workflow";
+import {
+  AGENTIC_TRADE_IN_DEMO_MAX_INPUT_CHARACTERS,
+  type ExecuteEndToEndAgenticTradeInDemoResponse,
+} from "../../../types/workflow";
 import {
   formatCostEstimate,
   formatLatencyMs,
@@ -32,6 +35,16 @@ function getPriorReviewSuggestions(
   result: ExecuteEndToEndAgenticTradeInDemoResponse | null,
 ) {
   return result?.priorReviewLearningSuggestionsByItem.flatMap((item) => item.suggestions) ?? [];
+}
+
+export function getModelAssistanceScopeNotice(
+  scope: ExecuteEndToEndAgenticTradeInDemoResponse["modelAssistanceScope"],
+) {
+  if (!scope || scope.deferredRecordCount === 0) {
+    return null;
+  }
+
+  return `${scope.selectedRecordCount} of ${scope.eligibleRecordCount} eligible records were included in this bounded model request. The remaining ${scope.deferredRecordCount} stayed in deterministic processing and were routed to human review.`;
 }
 
 const SUCCESSFUL_PROVIDER_ATTEMPT_STATUSES = new Set([
@@ -67,10 +80,18 @@ export function getProviderFallbackNotice(
     trace.finalProvider,
     trace.finalModel,
   );
+  const simulationRequested = trace.simulationRequested;
 
   return {
-    title: "Provider fallback completed this run",
-    summary: `${preferredProvider} did not complete successfully. ${finalProvider} completed the model review assistance.`,
+    title: simulationRequested
+      ? "Fallback test passed"
+      : "Automatic fallback completed this run",
+    summary: simulationRequested
+      ? `A simulated service error prevented ${preferredProvider} from completing. ${finalProvider} completed the model review assistance.`
+      : `${preferredProvider} did not complete successfully. ${finalProvider} completed the model review assistance.`,
+    statusLabel: simulationRequested
+      ? "Simulated outage"
+      : "Automatic recovery",
     preferredProvider,
     preferredStatus: unsuccessfulAttempt
       ? getProviderAttemptLabel(unsuccessfulAttempt.status)
@@ -129,6 +150,9 @@ export function GuidedGuardedAgentExecutionStep({
         result.providerFallbackTrace,
         result.fieldRepairExecution,
       )
+    : null;
+  const modelAssistanceScopeNotice = result
+    ? getModelAssistanceScopeNotice(result.modelAssistanceScope)
     : null;
   const orchestrationSummary = result
     ? getOrchestrationSummary(result.orchestrationTrace)
@@ -298,6 +322,7 @@ export function GuidedGuardedAgentExecutionStep({
 
           <textarea
             id="guided-guarded-workflow-input"
+            maxLength={AGENTIC_TRADE_IN_DEMO_MAX_INPUT_CHARACTERS}
             onChange={(event) => onRawInputChange(event.target.value)}
             rows={7}
             value={workflowInput}
@@ -309,10 +334,11 @@ export function GuidedGuardedAgentExecutionStep({
               type="checkbox"
             />
             <span>
-              <strong>Demonstrate provider fallback</strong>
+              <strong>Test fallback on the next run</strong>
               <small>
-                Send the preferred adapter a deterministic unavailable response so
-                the fallback provider must complete the model assistance.
+                Optional: simulate a service error from the first model provider. The
+                workflow should continue with a backup, and the completed run will be
+                labeled as a simulation. No live provider request is made for this test.
               </small>
             </span>
           </label>
@@ -442,7 +468,13 @@ export function GuidedGuardedAgentExecutionStep({
               <dl className="guided-model-execution-metrics">
                 <div>
                   <dt>Fallback</dt>
-                  <dd>{result.providerFallbackTrace.fallbackUsed ? "Used" : "Not used"}</dd>
+                  <dd>
+                    {result.providerFallbackTrace.fallbackUsed
+                      ? result.providerFallbackTrace.simulationRequested
+                        ? "Used · simulated"
+                        : "Used · automatic"
+                      : "Not used"}
+                  </dd>
                 </div>
                 <div>
                   <dt>Latency</dt>
@@ -458,6 +490,13 @@ export function GuidedGuardedAgentExecutionStep({
                 </div>
               </dl>
 
+              {modelAssistanceScopeNotice ? (
+                <p className="guided-model-assistance-scope-notice">
+                  <strong>Demo-scale model boundary:</strong>{" "}
+                  {modelAssistanceScopeNotice}
+                </p>
+              ) : null}
+
               {fallbackNotice ? (
                 <section
                   aria-label="Provider fallback details"
@@ -472,7 +511,7 @@ export function GuidedGuardedAgentExecutionStep({
                       <p>{fallbackNotice.summary}</p>
                     </div>
                     <span className="guided-validation-status guided-validation-status--warning">
-                      Fallback used
+                      {fallbackNotice.statusLabel}
                     </span>
                   </div>
 

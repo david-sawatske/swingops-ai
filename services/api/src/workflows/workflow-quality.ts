@@ -46,6 +46,7 @@ export function buildWorkflowQualityBundle(input: {
   inventoryMatchesByItem: InventoryMatchesByItem;
   valuationEvidenceByItem: ValuationEvidenceByItem;
   modelCallLog: ModelCallLog;
+  providerFallbackSimulationRequested: boolean;
   retryEvents: WorkflowQualityBundle["retryEvents"];
   toolCallingPlan: ToolCallingPlan;
   toolCallResults: ToolCallResults;
@@ -62,7 +63,12 @@ export function buildWorkflowQualityBundle(input: {
     blockedMutationCount
   });
   const retryEvents = input.retryEvents;
-  const providerFallbackTrace = buildProviderFallbackTrace(input.modelCallLog);
+  const providerFallbackTrace = buildProviderFallbackTrace(
+    input.modelCallLog,
+    {
+      simulationRequested: input.providerFallbackSimulationRequested
+    }
+  );
   const toolSelectionRationales = buildToolSelectionRationales(
     input.toolCallingPlan
   );
