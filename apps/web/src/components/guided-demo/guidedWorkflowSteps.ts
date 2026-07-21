@@ -27,7 +27,7 @@ export const GUIDED_STEPS: GuidedWorkflowStepDefinition[] = [
   },
   {
     id: "GUARDED_AGENT_EXECUTION",
-    label: "Guarded Agent Execution",
+    label: "Guarded Workflow Execution",
     eyebrow: "Step 3",
     description: "Run a controlled workflow from the AI-ready records.",
   },

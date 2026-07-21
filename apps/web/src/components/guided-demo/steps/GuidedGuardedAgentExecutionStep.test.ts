@@ -4,6 +4,7 @@ import type {
   ExecuteEndToEndAgenticTradeInDemoResponse,
 } from "../../../types/workflow";
 import {
+  getOrchestrationSummary,
   getProviderFallbackNotice,
 } from "./GuidedGuardedAgentExecutionStep";
 
@@ -112,6 +113,72 @@ describe("getProviderFallbackNotice", () => {
       finalProvider: "MOCK · mock-golf-workflow-model",
       finalStatus: "success",
       validationLabel: "Validation passed",
+    });
+  });
+});
+
+describe("getOrchestrationSummary", () => {
+  it("counts terminal and model-assisted states", () => {
+    expect(
+      getOrchestrationSummary({
+        mode: "DETERMINISTIC_STATE_MACHINE",
+        transitionAuthority: "APPLICATION_CODE",
+        description: "Application code owns every transition.",
+        states: [
+          {
+            stateId: "parse",
+            orderIndex: 1,
+            label: "Parse",
+            status: "COMPLETED",
+            enteredFromStateId: null,
+            transitionGuard: "Input is valid.",
+            transitionAuthority: "APPLICATION_CODE",
+            executionKind: "DETERMINISTIC",
+            modelAuthority: "NONE",
+            retryCount: 0,
+            startedAt: null,
+            completedAt: null,
+          },
+          {
+            stateId: "repair",
+            orderIndex: 2,
+            label: "Repair",
+            status: "COMPLETED",
+            enteredFromStateId: "parse",
+            transitionGuard: "Evidence is ready.",
+            transitionAuthority: "APPLICATION_CODE",
+            executionKind: "BOUNDED_MODEL_ASSISTANCE",
+            modelAuthority: "ADVISORY_ONLY",
+            retryCount: 0,
+            startedAt: null,
+            completedAt: null,
+          },
+          {
+            stateId: "retry",
+            orderIndex: 3,
+            label: "Retry",
+            status: "SKIPPED",
+            enteredFromStateId: "repair",
+            transitionGuard: "Retry eligibility is checked.",
+            transitionAuthority: "APPLICATION_CODE",
+            executionKind: "BOUNDED_MODEL_ASSISTANCE",
+            modelAuthority: "ADVISORY_ONLY",
+            retryCount: 0,
+            startedAt: null,
+            completedAt: null,
+          },
+        ],
+        modelBoundary: {
+          authority: "ADVISORY_ONLY",
+          assistedStateIds: ["repair", "retry"],
+          allowedActions: [],
+          prohibitedActions: [],
+        },
+      }),
+    ).toEqual({
+      stateCount: 3,
+      completedStateCount: 3,
+      modelAssistedStateCount: 2,
     });
   });
 });

@@ -175,20 +175,25 @@ Supporting files:
     services/api/src/workflows/workflow-quality-builders.ts
     services/api/src/workflows/workflow-quality-types.ts
     services/api/src/workflows/workflow-model-logging.ts
+    services/api/src/workflows/workflow-orchestration-trace.ts
 
 Responsibilities:
 
 - Parse generated trade-in input.
-- Create workflow run state.
+- Create and enforce deterministic workflow run state.
 - Retrieve knowledge evidence.
 - Match inventory products.
 - Estimate valuation ranges.
-- Route model work.
+- Route bounded advisory model work.
 - Execute safe read-only tools.
 - Block unsafe mutation behavior.
 - Build validation and retry traces.
 - Create review queue items.
 - Return summary data for the Guided Workflow.
+
+Application code owns the ordered state transitions, retry eligibility, tool
+selection and execution, persistence, mutation policy, and review routing. Model
+calls are restricted to advisory field repair and cannot advance workflow state.
 
 ## Key services
 

@@ -64,6 +64,11 @@ import {
   markPersistedWorkflowStepRetrying,
   requireWorkflowStep
 } from "./workflow-step-persistence.js";
+import {
+  TRADE_IN_WORKFLOW_STEP_NAMES,
+  buildTradeInWorkflowOrchestrationTrace,
+  type WorkflowOrchestrationTrace
+} from "./workflow-orchestration-trace.js";
 import { failIntakeBatchAfterWorkflowSetupError } from "./workflow-run-failure.js";
 import {
   buildInventoryLookupFromProductResolution
@@ -122,6 +127,7 @@ export type EndToEndAgenticTradeInDemoResult = {
     validationPassed: boolean;
     validationErrors: string[];
   };
+  orchestrationTrace: WorkflowOrchestrationTrace;
   toolCallingPlan: {
     planId: string;
     plannedCalls: {
@@ -179,7 +185,7 @@ export type EndToEndAgenticTradeInDemoResult = {
     selectedModel: string;
     productStory: string;
   };
-  agentPlan: WorkflowQualityBundle["agentPlan"];
+  executionPlan: WorkflowQualityBundle["executionPlan"];
   validationChecks: WorkflowQualityBundle["validationChecks"];
   retryEvents: WorkflowQualityBundle["retryEvents"];
   providerFallbackTrace: WorkflowQualityBundle["providerFallbackTrace"];
@@ -202,17 +208,6 @@ const NON_RECORD_DEMO_HEADER_PATTERNS = [
   /^pasted trade-in notes:?$/i,
   /^trade-in notes:?$/i
 ];
-
-const AGENTIC_WORKFLOW_STEP_NAMES = {
-  parseInput: "parse-and-persist-intake",
-  retrieveEvidence: "retrieve-grounding-evidence",
-  modelAssistance: "run-field-repair-model",
-  validateOutput: "validate-field-repair-output",
-  targetedRetry: "retry-targeted-field-extraction",
-  createReviewItems: "create-human-review-work",
-  executeTools: "execute-guarded-tool-plan",
-  finalize: "finalize-workflow-run"
-} as const;
 
 function stripNonRecordDemoHeaderLines(rawInput: string): string {
   const recordLines = rawInput
@@ -721,7 +716,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
       steps: {
         create: [
           {
-            stepName: AGENTIC_WORKFLOW_STEP_NAMES.parseInput,
+            stepName: TRADE_IN_WORKFLOW_STEP_NAMES.parseInput,
             stepType: "PARSE_INPUT",
             status: "COMPLETED",
             orderIndex: 1,
@@ -739,37 +734,37 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
             completedAt: parseCompletedAt
           },
           {
-            stepName: AGENTIC_WORKFLOW_STEP_NAMES.retrieveEvidence,
+            stepName: TRADE_IN_WORKFLOW_STEP_NAMES.retrieveEvidence,
             stepType: "RETRIEVE_EVIDENCE",
             orderIndex: 2
           },
           {
-            stepName: AGENTIC_WORKFLOW_STEP_NAMES.modelAssistance,
+            stepName: TRADE_IN_WORKFLOW_STEP_NAMES.modelAssistance,
             stepType: "EXTRACT_GOLF_CLUB_FIELDS",
             orderIndex: 3
           },
           {
-            stepName: AGENTIC_WORKFLOW_STEP_NAMES.validateOutput,
+            stepName: TRADE_IN_WORKFLOW_STEP_NAMES.validateOutput,
             stepType: "VALIDATE_STRUCTURED_OUTPUT",
             orderIndex: 4
           },
           {
-            stepName: AGENTIC_WORKFLOW_STEP_NAMES.targetedRetry,
+            stepName: TRADE_IN_WORKFLOW_STEP_NAMES.targetedRetry,
             stepType: "EXTRACT_GOLF_CLUB_FIELDS",
             orderIndex: 5
           },
           {
-            stepName: AGENTIC_WORKFLOW_STEP_NAMES.createReviewItems,
+            stepName: TRADE_IN_WORKFLOW_STEP_NAMES.createReviewItems,
             stepType: "CREATE_REVIEW_ITEM",
             orderIndex: 6
           },
           {
-            stepName: AGENTIC_WORKFLOW_STEP_NAMES.executeTools,
+            stepName: TRADE_IN_WORKFLOW_STEP_NAMES.executeTools,
             stepType: "EXECUTE_TOOL_CALLS",
             orderIndex: 7
           },
           {
-            stepName: AGENTIC_WORKFLOW_STEP_NAMES.finalize,
+            stepName: TRADE_IN_WORKFLOW_STEP_NAMES.finalize,
             stepType: "FINALIZE_WORKFLOW",
             orderIndex: 8
           }
@@ -792,7 +787,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
   const evidenceResult = await executePersistedWorkflowStep({
     step: requireWorkflowStep(
       workflowRun.steps,
-      AGENTIC_WORKFLOW_STEP_NAMES.retrieveEvidence
+      TRADE_IN_WORKFLOW_STEP_NAMES.retrieveEvidence
     ),
     inputJson: {
       parsedItemIds: parsedItems.map((item) => item.id),
@@ -938,7 +933,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
   const modelAssistanceResult = await executePersistedWorkflowStep({
     step: requireWorkflowStep(
       workflowRun.steps,
-      AGENTIC_WORKFLOW_STEP_NAMES.modelAssistance
+      TRADE_IN_WORKFLOW_STEP_NAMES.modelAssistance
     ),
     inputJson: {
       candidateRecordIds: parsedItems
@@ -1191,7 +1186,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
   const fieldRepairExecution = await executePersistedWorkflowStep({
     step: requireWorkflowStep(
       workflowRun.steps,
-      AGENTIC_WORKFLOW_STEP_NAMES.validateOutput
+      TRADE_IN_WORKFLOW_STEP_NAMES.validateOutput
     ),
     inputJson: {
       modelCallLogId: modelCallLog.id,
@@ -1230,7 +1225,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
   const targetedFieldRetry = await executePersistedWorkflowStep({
     step: requireWorkflowStep(
       workflowRun.steps,
-      AGENTIC_WORKFLOW_STEP_NAMES.targetedRetry
+      TRADE_IN_WORKFLOW_STEP_NAMES.targetedRetry
     ),
     inputJson: {
       policy: TARGETED_FIELD_RETRY_POLICY,
@@ -1370,7 +1365,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
   const reviewQueueItemsCreated = await executePersistedWorkflowStep({
     step: requireWorkflowStep(
       workflowRun.steps,
-      AGENTIC_WORKFLOW_STEP_NAMES.createReviewItems
+      TRADE_IN_WORKFLOW_STEP_NAMES.createReviewItems
     ),
     inputJson: {
       parsedItemCount: finalParsedItems.length,
@@ -1448,7 +1443,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
   const toolExecutionResult = await executePersistedWorkflowStep({
     step: requireWorkflowStep(
       workflowRun.steps,
-      AGENTIC_WORKFLOW_STEP_NAMES.executeTools
+      TRADE_IN_WORKFLOW_STEP_NAMES.executeTools
     ),
     inputJson: {
       executionMode: "AGENT_AUTONOMOUS",
@@ -1617,7 +1612,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
   await executePersistedWorkflowStep({
     step: requireWorkflowStep(
       workflowRun.steps,
-      AGENTIC_WORKFLOW_STEP_NAMES.finalize
+      TRADE_IN_WORKFLOW_STEP_NAMES.finalize
     ),
     inputJson: {
       reviewQueueItemCount: reviewQueueItemsCreated.length,
@@ -1703,11 +1698,23 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
   };
 
   const toolCallingPlan = {
-    planId: `agentic_demo_${workflowRun.id}`,
+    planId: `trade_in_workflow_${workflowRun.id}`,
     plannedCalls
   };
   const blockedToolCallResult =
     toolCallResults.find((result) => result.status === "BLOCKED") ?? null;
+
+  const persistedWorkflowSteps = await prisma.workflowStep.findMany({
+    where: {
+      workflowRunId: workflowRun.id
+    },
+    orderBy: {
+      orderIndex: "asc"
+    }
+  });
+  const orchestrationTrace = buildTradeInWorkflowOrchestrationTrace(
+    persistedWorkflowSteps
+  );
 
   const workflowQualityBundle = buildWorkflowQualityBundle({
     parsedItems: finalParsedItems,
@@ -1732,6 +1739,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     modelRoutingDecision,
     modelCallLog,
     fieldRepairExecution,
+    orchestrationTrace,
     toolCallingPlan,
     toolCallResults,
     blockedToolCallResult,

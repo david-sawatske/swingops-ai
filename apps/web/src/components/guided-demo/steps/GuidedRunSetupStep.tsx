@@ -45,16 +45,17 @@ export function GuidedRunSetupStep({ onContinue }: GuidedRunSetupStepProps) {
           <article>
             <strong>Workflow objective</strong>
             <p>
-              Normalize the source data, prepare durable records, run controlled AI steps,
-              and preserve evidence for review.
+              Normalize the source data, prepare durable records, run a deterministic
+              workflow with bounded model assistance, and preserve evidence for review.
             </p>
           </article>
 
           <article>
             <strong>Trust model</strong>
             <p>
-              The workflow should not silently guess. It should show what was extracted,
-              what systems were used, and what still needs review.
+              Application code controls state transitions and tool policy. Model output is
+              limited to evidence-bound advice, while uncertain records remain visible for
+              human review.
             </p>
           </article>
         </section>

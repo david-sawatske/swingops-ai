@@ -92,6 +92,20 @@ export function getProviderFallbackNotice(
   };
 }
 
+export function getOrchestrationSummary(
+  trace: ExecuteEndToEndAgenticTradeInDemoResponse["orchestrationTrace"],
+) {
+  return {
+    stateCount: trace.states.length,
+    completedStateCount: trace.states.filter(
+      (state) => state.status === "COMPLETED" || state.status === "SKIPPED",
+    ).length,
+    modelAssistedStateCount: trace.states.filter(
+      (state) => state.executionKind === "BOUNDED_MODEL_ASSISTANCE",
+    ).length,
+  };
+}
+
 export function GuidedGuardedAgentExecutionStep({
   error,
   generatedWorkflowInput,
@@ -116,19 +130,23 @@ export function GuidedGuardedAgentExecutionStep({
         result.fieldRepairExecution,
       )
     : null;
+  const orchestrationSummary = result
+    ? getOrchestrationSummary(result.orchestrationTrace)
+    : null;
 
   return (
     <article className="guided-workflow-card">
       <section className="guided-step-orientation">
         <span className="model-route-card__eyebrow">
-          Step 3 · Guarded Agent Execution
+          Step 3 · Guarded Workflow Execution
         </span>
         <h3>How do AI-ready records become a guarded workflow run?</h3>
         <p>
           The structured records from Step 2 are converted into workflow input. The
-          workflow then plans the run, gathers separate knowledge, inventory, and
-          valuation evidence, routes only permitted repair work through the model
-          execution layer, and preserves an audit trail for review.
+          application-controlled state machine advances through a fixed sequence,
+          gathers separate knowledge, inventory, and valuation evidence, routes only
+          permitted repair work through the model layer, and preserves an audit trail
+          for review.
         </p>
 
         <div className="guided-step-mini-list" aria-label="Guarded execution explanation">
@@ -151,9 +169,9 @@ export function GuidedGuardedAgentExecutionStep({
         <details className="guided-workflow-details guided-workflow-details--compact">
           <summary>Why is this step guarded?</summary>
           <p className="guided-workflow-details__intro">
-            The workflow is allowed to gather evidence and call read-only tools, but unsafe
-            mutations are blocked or routed through review. This keeps automation useful
-            without hiding risk.
+            Application code owns every state transition and tool-policy decision. The
+            model can return bounded repair advice, but it cannot choose the next state,
+            execute tools, write final records, or approve review work.
           </p>
         </details>
       </section>
@@ -176,14 +194,15 @@ export function GuidedGuardedAgentExecutionStep({
         >
           <article>
             <div className="guided-guarded-system-heading">
-              <strong>Model execution layer</strong>
-              <span>Review assistance</span>
+              <strong>Bounded model assistance</strong>
+              <span>Advisory only</span>
             </div>
             <div className="guided-guarded-system-details">
               <p>
                 <b>Implemented here:</b> Sends only selected records and their evidence
                 packet through the configured provider. The response must return one
-                validated advisory outcome for every selected record.
+                schema-validated advisory outcome for every selected record; application
+                code retains transition, tool, persistence, and review authority.
               </p>
               <p>
                 <b>Production connection:</b> Approved provider credentials, execution
@@ -333,6 +352,74 @@ export function GuidedGuardedAgentExecutionStep({
                 Validation and Human Review.
               </p>
             </div>
+
+            {orchestrationSummary ? (
+              <section
+                aria-label="Deterministic workflow orchestration"
+                className="guided-orchestration-card"
+              >
+                <div className="guided-orchestration-card__header">
+                  <div>
+                    <span className="model-route-card__eyebrow">
+                      Deterministic orchestration
+                    </span>
+                    <h5>Application-controlled state machine</h5>
+                    <p>{result.orchestrationTrace.description}</p>
+                  </div>
+                  <span className="guided-validation-status guided-validation-status--pass">
+                    Transitions enforced
+                  </span>
+                </div>
+
+                <dl className="guided-orchestration-metrics">
+                  <div>
+                    <dt>Persisted states</dt>
+                    <dd>{orchestrationSummary.stateCount}</dd>
+                  </div>
+                  <div>
+                    <dt>Terminal states</dt>
+                    <dd>{orchestrationSummary.completedStateCount}</dd>
+                  </div>
+                  <div>
+                    <dt>Model-assisted</dt>
+                    <dd>{orchestrationSummary.modelAssistedStateCount}</dd>
+                  </div>
+                  <div>
+                    <dt>Transition owner</dt>
+                    <dd>Application code</dd>
+                  </div>
+                </dl>
+
+                <details className="guided-orchestration-details">
+                  <summary>View persisted state sequence and model boundary</summary>
+                  <ol className="guided-orchestration-state-list">
+                    {result.orchestrationTrace.states.map((state) => (
+                      <li key={state.stateId}>
+                        <span>{state.orderIndex}</span>
+                        <div>
+                          <strong>{state.label}</strong>
+                          <p>{state.transitionGuard}</p>
+                        </div>
+                        <small>
+                          {state.executionKind === "BOUNDED_MODEL_ASSISTANCE"
+                            ? "Advisory model assistance"
+                            : "Deterministic application logic"}
+                          {" · "}
+                          {state.status.toLowerCase()}
+                        </small>
+                      </li>
+                    ))}
+                  </ol>
+
+                  <div className="guided-orchestration-boundary">
+                    <strong>The model cannot</strong>
+                    <p>
+                      {result.orchestrationTrace.modelBoundary.prohibitedActions.join(" ")}
+                    </p>
+                  </div>
+                </details>
+              </section>
+            ) : null}
 
             <section className="guided-model-execution-card" aria-label="Model execution summary">
               <div className="guided-model-execution-card__header">

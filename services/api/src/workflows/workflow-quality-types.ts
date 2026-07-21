@@ -1,4 +1,4 @@
-export type AgentPlanActionType =
+export type ExecutionPlanActionType =
   | "VALIDATE_FIELDS"
   | "SEARCH_KNOWLEDGE"
   | "MATCH_INVENTORY"
@@ -11,20 +11,20 @@ export type AgentPlanActionType =
   | "ENFORCE_POLICY"
   | "RECORD_TRACE";
 
-export type AgentPlanStepStatus =
+export type ExecutionPlanStepStatus =
   | "PENDING"
   | "COMPLETED"
   | "NEEDS_REVIEW"
   | "BLOCKED"
   | "SKIPPED";
 
-export type AgentPlanStep = {
+export type ExecutionPlanStep = {
   id: string;
   label: string;
   purpose: string;
-  actionType: AgentPlanActionType;
+  actionType: ExecutionPlanActionType;
   expectedOutput: string;
-  status: AgentPlanStepStatus;
+  status: ExecutionPlanStepStatus;
   linkedTraceEventIds: string[];
   requiredTools: string[];
   validationRules: string[];
@@ -130,7 +130,7 @@ export type WorkflowQualitySummary = {
 };
 
 export type WorkflowQualityBundle = {
-  agentPlan: AgentPlanStep[];
+  executionPlan: ExecutionPlanStep[];
   validationChecks: ValidationCheck[];
   retryEvents: RetryEvent[];
   providerFallbackTrace: ProviderFallbackTrace;

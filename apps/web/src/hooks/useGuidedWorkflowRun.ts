@@ -141,7 +141,7 @@ export function useGuidedWorkflowRun({
       setEndToEndAgenticDemoError(
         error instanceof Error
           ? error.message
-          : "Unable to run end-to-end agentic trade-in demo.",
+          : "Unable to run the guarded trade-in workflow.",
       );
     } finally {
       setIsRunningEndToEndAgenticDemo(false);

@@ -4,7 +4,7 @@ import type { ReviewQueueItem } from "@prisma/client";
 import type { ParsedTradeInDemoItem } from "./trade-in-demo-parser.js";
 import type { EndToEndAgenticTradeInDemoResult } from "./end-to-end-agentic-trade-in-demo.js";
 import type {
-  AgentPlanStep,
+  ExecutionPlanStep,
   ProviderFallbackTrace,
   ProviderFallbackTraceAttempt,
   RetryEvent,
@@ -375,14 +375,14 @@ export function buildReviewOutcomes(input: {
   });
 }
 
-export function buildAgentPlan(input: {
+export function buildExecutionPlan(input: {
   validationChecks: ValidationCheck[];
   retryEvents: RetryEvent[];
   toolSelectionRationales: ToolSelectionRationale[];
   reviewOutcomes: ReviewOutcome[];
   providerFallbackTrace: ProviderFallbackTrace;
   blockedMutationCount: number;
-}): AgentPlanStep[] {
+}): ExecutionPlanStep[] {
   const hasWarnings = input.validationChecks.some(
     (check) => check.status === "WARNING"
   );
@@ -396,7 +396,7 @@ export function buildAgentPlan(input: {
 
   return [
     {
-      id: "agent-plan-validate-fields",
+      id: "execution-plan-validate-fields",
       label: "Validate normalized trade-in fields",
       purpose:
         "Check extracted golf club fields before the workflow trusts structured output.",
@@ -415,7 +415,7 @@ export function buildAgentPlan(input: {
       safetyPolicy: null
     },
     {
-      id: "agent-plan-search-knowledge",
+      id: "execution-plan-search-knowledge",
       label: "Search product knowledge for evidence",
       purpose:
         "Ground extracted records against product and trade-in knowledge.",
@@ -429,7 +429,7 @@ export function buildAgentPlan(input: {
       safetyPolicy: "read-only connector execution"
     },
     {
-      id: "agent-plan-match-inventory",
+      id: "execution-plan-match-inventory",
       label: "Match parsed records to inventory products",
       purpose:
         "Use internal inventory evidence to connect messy trade-in records to product and SKU candidates.",
@@ -443,7 +443,7 @@ export function buildAgentPlan(input: {
       safetyPolicy: "read-only inventory lookup"
     },
     {
-      id: "agent-plan-estimate-value",
+      id: "execution-plan-estimate-value",
       label: "Estimate demo trade-in range",
       purpose:
         "Use seeded valuation evidence to generate a demo trade-in range with condition and accessory adjustments.",
@@ -457,10 +457,10 @@ export function buildAgentPlan(input: {
       safetyPolicy: "read-only valuation lookup"
     },
     {
-      id: "agent-plan-select-tools",
+      id: "execution-plan-select-tools",
       label: "Choose approved internal tools",
       purpose:
-        "Select only approved workflow, knowledge, and review tools for execution.",
+        "Record the application-selected workflow, knowledge, and review tools for execution.",
       actionType: "SELECT_TOOLS",
       expectedOutput: "Tool plan with concise selection rationale and risk level.",
       status: "COMPLETED",
@@ -471,7 +471,7 @@ export function buildAgentPlan(input: {
       safetyPolicy: "MCP-compatible read-only tool policy"
     },
     {
-      id: "agent-plan-provider-fallback",
+      id: "execution-plan-provider-fallback",
       label: "Route model request with fallback",
       purpose:
         "Select a model by goal and preserve provider attempt evidence.",
@@ -485,7 +485,7 @@ export function buildAgentPlan(input: {
       safetyPolicy: null
     },
     {
-      id: "agent-plan-retry-shaft-flex",
+      id: "execution-plan-retry-shaft-flex",
       label: "Attempt targeted retry for recoverable missing fields",
       purpose:
         "Retry only the incomplete shaft/flex extraction path before review.",
@@ -503,7 +503,7 @@ export function buildAgentPlan(input: {
       safetyPolicy: null
     },
     {
-      id: "agent-plan-human-review",
+      id: "execution-plan-human-review",
       label: "Escalate unresolved uncertainty to human review",
       purpose:
         "Create review work when validation finds incomplete or ambiguous records.",
@@ -517,10 +517,10 @@ export function buildAgentPlan(input: {
       safetyPolicy: null
     },
     {
-      id: "agent-plan-block-mutation",
+      id: "execution-plan-block-mutation",
       label: "Block unsafe mutations unless approved",
       purpose:
-        "Show that the agent can inspect mutation tools without executing them autonomously.",
+        "Show that application policy can classify a mutation tool without allowing it to execute.",
       actionType: "ENFORCE_POLICY",
       expectedOutput: "Blocked mutation log with policy reason.",
       status: input.blockedMutationCount > 0 ? "BLOCKED" : "SKIPPED",
@@ -531,7 +531,7 @@ export function buildAgentPlan(input: {
       safetyPolicy: "human approval required for mutation tools"
     },
     {
-      id: "agent-plan-record-quality-summary",
+      id: "execution-plan-record-quality-summary",
       label: "Record audit and quality summary",
       purpose:
         "Summarize the workflow status, counts, evidence, retries, review, and policy outcomes.",

@@ -4,7 +4,7 @@ import type { ParsedTradeInDemoItem } from "./trade-in-demo-parser.js";
 import type { EndToEndAgenticTradeInDemoResult } from "./end-to-end-agentic-trade-in-demo.js";
 
 import {
-  buildAgentPlan,
+  buildExecutionPlan,
   buildProviderFallbackTrace,
   buildReviewOutcomes,
   buildToolSelectionRationales,
@@ -13,9 +13,9 @@ import {
 } from "./workflow-quality-builders.js";
 import type { WorkflowQualityBundle } from "./workflow-quality-types.js";
 export type {
-  AgentPlanActionType,
-  AgentPlanStepStatus,
-  AgentPlanStep,
+  ExecutionPlanActionType,
+  ExecutionPlanStepStatus,
+  ExecutionPlanStep,
   ValidationCheckStatus,
   ValidationCheckSeverity,
   ValidationCheck,
@@ -71,7 +71,7 @@ export function buildWorkflowQualityBundle(input: {
     reviewQueueItemsCreated: input.reviewQueueItemsCreated,
     validationChecks
   });
-  const agentPlan = buildAgentPlan({
+  const executionPlan = buildExecutionPlan({
     validationChecks,
     retryEvents,
     toolSelectionRationales,
@@ -92,7 +92,7 @@ export function buildWorkflowQualityBundle(input: {
   });
 
   return {
-    agentPlan,
+    executionPlan,
     validationChecks,
     retryEvents,
     providerFallbackTrace,

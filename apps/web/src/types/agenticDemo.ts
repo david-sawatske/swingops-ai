@@ -177,7 +177,7 @@ export type AgenticTradeInDemoValuationEstimate = {
   reviewReasons: string[];
 };
 
-export type AgentPlanActionType =
+export type ExecutionPlanActionType =
   | "VALIDATE_FIELDS"
   | "SEARCH_KNOWLEDGE"
   | "MATCH_INVENTORY"
@@ -190,25 +190,59 @@ export type AgentPlanActionType =
   | "ENFORCE_POLICY"
   | "RECORD_TRACE";
 
-export type AgentPlanStepStatus =
+export type ExecutionPlanStepStatus =
   | "PENDING"
   | "COMPLETED"
   | "NEEDS_REVIEW"
   | "BLOCKED"
   | "SKIPPED";
 
-export type AgentPlanStep = {
+export type ExecutionPlanStep = {
   id: string;
   label: string;
   purpose: string;
-  actionType: AgentPlanActionType;
+  actionType: ExecutionPlanActionType;
   expectedOutput: string;
-  status: AgentPlanStepStatus;
+  status: ExecutionPlanStepStatus;
   linkedTraceEventIds: string[];
   requiredTools: string[];
   validationRules: string[];
   retryPolicy: string | null;
   safetyPolicy: string | null;
+};
+
+export type WorkflowOrchestrationState = {
+  stateId: string;
+  orderIndex: number;
+  label: string;
+  status:
+    | "PENDING"
+    | "RUNNING"
+    | "COMPLETED"
+    | "FAILED"
+    | "SKIPPED"
+    | "RETRYING";
+  enteredFromStateId: string | null;
+  transitionGuard: string;
+  transitionAuthority: "APPLICATION_CODE";
+  executionKind: "DETERMINISTIC" | "BOUNDED_MODEL_ASSISTANCE";
+  modelAuthority: "NONE" | "ADVISORY_ONLY";
+  retryCount: number;
+  startedAt: string | null;
+  completedAt: string | null;
+};
+
+export type WorkflowOrchestrationTrace = {
+  mode: "DETERMINISTIC_STATE_MACHINE";
+  transitionAuthority: "APPLICATION_CODE";
+  description: string;
+  states: WorkflowOrchestrationState[];
+  modelBoundary: {
+    authority: "ADVISORY_ONLY";
+    assistedStateIds: string[];
+    allowedActions: string[];
+    prohibitedActions: string[];
+  };
 };
 
 export type ValidationCheckStatus = "PASS" | "WARNING" | "FAIL";
@@ -366,6 +400,7 @@ export type ExecuteEndToEndAgenticTradeInDemoResponse = {
     suggestions: PriorReviewLearningSuggestion[];
   }[];
   fieldRepairExecution: FieldRepairExecution;
+  orchestrationTrace: WorkflowOrchestrationTrace;
   modelRoutingDecision: {
     selectedProvider: string;
     selectedModel: string;
@@ -421,7 +456,7 @@ export type ExecuteEndToEndAgenticTradeInDemoResponse = {
     selectedModel: string;
     productStory: string;
   };
-  agentPlan: AgentPlanStep[];
+  executionPlan: ExecutionPlanStep[];
   validationChecks: ValidationCheck[];
   retryEvents: RetryEvent[];
   providerFallbackTrace: ProviderFallbackTrace;

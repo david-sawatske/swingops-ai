@@ -61,22 +61,30 @@ Knowledge retrieval returns:
 
 This helps the workflow show why a record matched a policy, club reference, condition guide, brand alias, or shaft flex guide.
 
-## Guarded agent execution
+## Deterministic orchestration
 
-The guarded workflow demonstrates an agent-like process with explicit controls.
+The guarded workflow is a deterministic state machine. Application code owns the
+ordered transitions, validation gates, tool policy, persistence, and terminal
+run status. A later step cannot start until its predecessor has completed or was
+intentionally skipped, and a persisted step cannot be entered twice.
 
 It can show:
 
-- A workflow plan.
+- A fixed execution plan.
+- Persisted state transitions and transition guards.
 - Validation checks.
 - Retry behavior.
-- Tool selection.
+- Application-selected tools.
 - Read-only tool execution.
 - Blocked mutation actions.
 - Review escalation.
 - Audit output.
 
-The app is designed to make each step inspectable rather than hiding the process behind a single generated answer.
+Model assistance is limited to selected records in the field-repair and targeted
+retry states. It can return schema-validated advice, but it cannot choose the
+next state, select or execute tools, authorize mutations, write final records,
+or resolve human review work. The app makes these boundaries inspectable rather
+than hiding the process behind a single generated answer.
 
 ## Model routing and fallback
 

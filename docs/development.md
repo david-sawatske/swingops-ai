@@ -195,4 +195,4 @@ API when you are not using the default ports.
 
 ### Review step has no current-run review items
 
-The review step is run-scoped. First run source intake, then run guarded agent execution. Review items only appear when the current workflow run creates records that need human attention.
+The review step is run-scoped. First run source intake, then run guarded workflow execution. Review items only appear when the current workflow run creates records that need human attention.

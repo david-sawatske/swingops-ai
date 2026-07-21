@@ -66,7 +66,7 @@ export function FinalWorkflowRecap({
         />
         <WorkflowRecapStep
           body={`${finalSummary.knowledgeMatchCount} RAG match(es), ${finalSummary.inventoryMatchCount} inventory match(es), ${finalSummary.valuationRangeCount} valuation range(s), ${finalSummary.priorReviewSuggestionCount} prior review suggestion(s), ${finalSummary.blockedMutationToolCallCount} blocked action(s).`}
-          eyebrow="3 · Guarded Agent Execution"
+          eyebrow="3 · Guarded Workflow Execution"
           metric={`${finalSummary.successfulReadOnlyToolCallCount}`}
           title="Tool calls"
         />

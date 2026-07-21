@@ -576,19 +576,52 @@ describe("workflow run routes", () => {
         valuationReviewRequiredCount: 1
       });
 
-      expect(body.agentPlan.map((step: { id: string }) => step.id)).toEqual([
-        "agent-plan-validate-fields",
-        "agent-plan-search-knowledge",
-        "agent-plan-match-inventory",
-        "agent-plan-estimate-value",
-        "agent-plan-select-tools",
-        "agent-plan-provider-fallback",
-        "agent-plan-retry-shaft-flex",
-        "agent-plan-human-review",
-        "agent-plan-block-mutation",
-        "agent-plan-record-quality-summary"
+      expect(body.orchestrationTrace).toMatchObject({
+        mode: "DETERMINISTIC_STATE_MACHINE",
+        transitionAuthority: "APPLICATION_CODE",
+        modelBoundary: {
+          authority: "ADVISORY_ONLY",
+          assistedStateIds: [
+            "run-field-repair-model",
+            "retry-targeted-field-extraction"
+          ]
+        }
+      });
+      expect(body.orchestrationTrace.states).toHaveLength(8);
+      expect(
+        body.orchestrationTrace.states.every(
+          (state: { transitionAuthority: string }) =>
+            state.transitionAuthority === "APPLICATION_CODE"
+        )
+      ).toBe(true);
+      expect(
+        body.orchestrationTrace.states.filter(
+          (state: { executionKind: string }) =>
+            state.executionKind === "BOUNDED_MODEL_ASSISTANCE"
+        )
+      ).toHaveLength(2);
+      expect(body.orchestrationTrace.modelBoundary.prohibitedActions).toEqual(
+        expect.arrayContaining([
+          "Choose or change workflow states.",
+          "Select or execute tools.",
+          "Authorize mutations.",
+          "Write final records."
+        ])
+      );
+
+      expect(body.executionPlan.map((step: { id: string }) => step.id)).toEqual([
+        "execution-plan-validate-fields",
+        "execution-plan-search-knowledge",
+        "execution-plan-match-inventory",
+        "execution-plan-estimate-value",
+        "execution-plan-select-tools",
+        "execution-plan-provider-fallback",
+        "execution-plan-retry-shaft-flex",
+        "execution-plan-human-review",
+        "execution-plan-block-mutation",
+        "execution-plan-record-quality-summary"
       ]);
-      expect(body.agentPlan).toEqual(
+      expect(body.executionPlan).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             label: "Attempt targeted retry for recoverable missing fields",

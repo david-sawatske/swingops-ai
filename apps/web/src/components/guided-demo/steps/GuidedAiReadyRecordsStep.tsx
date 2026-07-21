@@ -267,7 +267,7 @@ export function GuidedAiReadyRecordsStep({
             </div>
 
             <button className="guided-step-primary-action" onClick={onContinue} type="button">
-              Continue to Guarded Agent Execution
+              Continue to Guarded Workflow Execution
             </button>
           </>
         ) : (

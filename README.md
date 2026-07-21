@@ -2,7 +2,7 @@
 
 SwingOps AI is a guided golf retail workflow demo for turning messy trade-in intake into normalized, reviewable, AI-ready operational records.
 
-The main product experience is the **Guided Workflow**. It walks through messy source intake, normalized record creation, guarded agent execution, human validation, review corrections, audit data, and a final run report.
+The main product experience is the **Guided Workflow**. It walks through messy source intake, normalized record creation, guarded workflow execution, human validation, review corrections, audit data, and a final run report.
 
 ## What the app demonstrates
 
@@ -12,7 +12,8 @@ The guided run demonstrates:
 
 - Messy multi-source intake from free text, poorly formed CSV, email-style text, and logs.
 - Normalized AI-ready records with schema fields, missing-field signals, and review status.
-- Guarded agent execution with workflow planning, validation gates, retry traces, and evidence.
+- A deterministic workflow state machine with persisted transitions, validation gates, retry traces, and evidence.
+- Bounded model assistance that can advise on selected field repairs but cannot control workflow state, tools, writes, or review decisions.
 - Retrieval grounding through a local knowledge base and weighted RAG-style matching.
 - Internal inventory matching and trade-in valuation evidence.
 - Model routing and provider fallback logging.
@@ -33,8 +34,8 @@ It starts with an overview/setup page and then walks through five actionable ste
 2. **AI-Ready Records**
    Inspect the normalized records created from intake. The app shows extracted fields, missing fields, review flags, and persisted AI-ready records.
 
-3. **Guarded Agent Execution**
-   Run the trade-in workflow using the normalized input. The workflow retrieves knowledge matches, checks inventory, estimates valuation ranges, routes model work, invokes safe read-only tools, and blocks unsafe mutation behavior.
+3. **Guarded Workflow Execution**
+   Run the trade-in workflow using the normalized input. Application code advances a fixed state sequence, retrieves knowledge matches, checks inventory, estimates valuation ranges, invokes safe read-only tools, and blocks unsafe mutation behavior. Model calls are limited to advisory field repair in two bounded states.
 
 4. **Validation Review**
    Inspect record-level review issues and run-level checks. Resolve review queue items with controlled corrections when human judgment is needed.

@@ -4,7 +4,7 @@ SwingOps AI is a local full-stack workflow demo built around a guided operationa
 
 The architecture emphasizes:
 
-- Structured workflow state.
+- Deterministic, persisted workflow state.
 - Traceable model and tool activity.
 - Read-only connector execution.
 - Human review before uncertain records are treated as final.
@@ -116,6 +116,21 @@ It connects:
 
 The UI uses workflow run data to show status, evidence, audit traces, and final readiness.
 
+## Workflow orchestration
+
+The guarded trade-in workflow is implemented as an application-controlled state
+machine. Its eight persisted states have a fixed order. The persistence helper
+enforces that the run is active, every earlier state is completed or intentionally
+skipped, and the current state is still pending before execution begins. Completion
+and retry transitions are also status-guarded so a state cannot be entered twice or
+moved through an invalid transition.
+
+Two states allow bounded model assistance: field-repair advice and one targeted
+field retry. Application code selects the records, evidence, and retry target;
+validates the returned schema; and retains authority over state transitions, tools,
+persistence, mutation policy, and human review. The API returns an orchestration
+trace that makes these boundaries and persisted state outcomes visible to the UI.
+
 ## Review queue
 
 The review queue captures records that should not be silently accepted.
@@ -172,6 +187,9 @@ The workflow logs model call attempts so a reviewer can see:
 - Whether fallback behavior occurred.
 - Cost and latency metadata.
 - Attempt outcomes.
+
+Routing selects a provider for an application-defined advisory task. It does not
+give the provider authority to plan the workflow or change execution state.
 
 ## MCP-compatible tools
 

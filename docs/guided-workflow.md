@@ -12,7 +12,7 @@ The user starts from a guided overview page that explains the operational run be
 
 ### What the app does
 
-The app frames the workflow as a sequence of controlled steps rather than a single model prompt. It explains the source intake, normalization, agent execution, validation, review, and final report stages.
+The app frames the workflow as a sequence of controlled steps rather than a single model prompt. It explains the source intake, normalization, deterministic workflow execution, validation, review, and final report stages.
 
 ### Technical notes
 
@@ -140,7 +140,7 @@ The displayed evidence includes:
 - Persisted count.
 - RAG readiness and embedding readiness metadata where available.
 
-## Step 3: Guarded Agent Execution
+## Step 3: Guarded Workflow Execution
 
 ### What the user does
 
@@ -150,7 +150,11 @@ The workflow input can be generated from the source intake result and then submi
 
 ### What the app does
 
-The backend executes a full guarded trade-in workflow. It parses the generated input, retrieves knowledge evidence, matches inventory products, estimates trade-in valuation ranges, routes model work, executes safe read-only tools, blocks mutation behavior, validates quality, and creates review queue items for records needing human attention.
+The backend executes a deterministic, application-controlled trade-in workflow.
+It parses the generated input, retrieves knowledge evidence, matches inventory
+products, estimates trade-in valuation ranges, routes bounded advisory model work,
+executes safe read-only tools, blocks mutation behavior, validates quality, and
+creates review queue items for records needing human attention.
 
 ### Backend route
 
@@ -169,6 +173,7 @@ Related workflow quality files:
     services/api/src/workflows/workflow-quality.ts
     services/api/src/workflows/workflow-quality-builders.ts
     services/api/src/workflows/workflow-quality-types.ts
+    services/api/src/workflows/workflow-orchestration-trace.ts
 
 ### Records created or updated
 
@@ -181,10 +186,17 @@ This step can create or update:
 - `ToolCallLog`
 - `ReviewQueueItem`
 
-The backend persists ordered step transitions for parsing, evidence retrieval,
-model execution, validation, review creation, guarded tool execution, and final
-run status. Model and tool logs are linked to their owning step in the workflow
-audit trail.
+The backend persists and enforces ordered step transitions for parsing, evidence
+retrieval, bounded model assistance, validation, review creation, guarded tool
+execution, and final run status. Each step must still be pending, the run must be
+active, and all predecessors must be completed or intentionally skipped before
+the step can start. Model and tool logs are linked to their owning step in the
+workflow audit trail.
+
+Application code owns every transition, validation gate, tool-policy decision,
+write, and review outcome. Model assistance is permitted only for field-repair
+advice and one targeted retry. It cannot select the next state, choose or execute
+tools, authorize a mutation, persist a final record, or resolve review work.
 
 Successful finalization updates the last step, workflow run, and intake batch in
 one transaction. If execution throws, the failure boundary records a terminal
@@ -196,7 +208,8 @@ original failure record.
 
 The response can include:
 
-- Agent plan.
+- Fixed execution plan.
+- Persisted orchestration trace with transition authority and model boundaries.
 - Validation checks.
 - Retry events.
 - Provider fallback trace.
@@ -435,7 +448,7 @@ Important acceptance rules:
 - The Titleist record must remain `TSR`; the parser must not invent TSR2 or TSR3.
 - The Callaway record must remain incomplete rather than receiving defaults.
 
-### Step 3: run guarded agent execution
+### Step 3: run guarded workflow execution
 
 Run the guarded trade-in workflow once.
 
