@@ -21,6 +21,7 @@ export async function executePersistedWorkflowStep<Result>(input: {
   inputJson?: Prisma.InputJsonValue;
   execute: (step: WorkflowStep) => Promise<Result> | Result;
   buildOutputJson: (result: Result) => Prisma.InputJsonValue;
+  getTerminalStatus?: (result: Result) => "COMPLETED" | "SKIPPED";
   onCompleted?: (input: {
     transaction: Prisma.TransactionClient;
     result: Result;
@@ -45,6 +46,7 @@ export async function executePersistedWorkflowStep<Result>(input: {
 
     const result = await input.execute(input.step);
     const outputJson = input.buildOutputJson(result);
+    const terminalStatus = input.getTerminalStatus?.(result) ?? "COMPLETED";
     const completedAt = new Date();
 
     const onCompleted = input.onCompleted;
@@ -62,7 +64,7 @@ export async function executePersistedWorkflowStep<Result>(input: {
             id: input.step.id
           },
           data: {
-            status: "COMPLETED",
+            status: terminalStatus,
             outputJson,
             completedAt,
             errorMessage: null
@@ -75,7 +77,7 @@ export async function executePersistedWorkflowStep<Result>(input: {
           id: input.step.id
         },
         data: {
-          status: "COMPLETED",
+          status: terminalStatus,
           outputJson,
           completedAt,
           errorMessage: null
@@ -93,4 +95,20 @@ export async function executePersistedWorkflowStep<Result>(input: {
 
     throw error;
   }
+}
+
+export async function markPersistedWorkflowStepRetrying(
+  step: WorkflowStep
+): Promise<void> {
+  await prisma.workflowStep.update({
+    where: {
+      id: step.id
+    },
+    data: {
+      status: "RETRYING",
+      retryCount: {
+        increment: 1
+      }
+    }
+  });
 }

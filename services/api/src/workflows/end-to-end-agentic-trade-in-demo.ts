@@ -57,6 +57,7 @@ import {
 } from "./workflow-quality.js";
 import {
   executePersistedWorkflowStep,
+  markPersistedWorkflowStepRetrying,
   requireWorkflowStep
 } from "./workflow-step-persistence.js";
 import { failIntakeBatchAfterWorkflowSetupError } from "./workflow-run-failure.js";
@@ -67,6 +68,13 @@ import {
   parseTradeInDemoText,
   type ParsedTradeInDemoItem
 } from "./trade-in-demo-parser.js";
+import {
+  TARGETED_FIELD_RETRY_MAX_ATTEMPTS,
+  TARGETED_FIELD_RETRY_POLICY,
+  buildSkippedTargetedFieldRetry,
+  completeTargetedFieldRetry,
+  findTargetedFieldRetryCandidate
+} from "./targeted-field-retry.js";
 
 export type EndToEndAgenticTradeInDemoAuditEvent = {
   orderIndex: number;
@@ -196,6 +204,7 @@ const AGENTIC_WORKFLOW_STEP_NAMES = {
   retrieveEvidence: "retrieve-grounding-evidence",
   modelAssistance: "run-field-repair-model",
   validateOutput: "validate-field-repair-output",
+  targetedRetry: "retry-targeted-field-extraction",
   createReviewItems: "create-human-review-work",
   executeTools: "execute-guarded-tool-plan",
   finalize: "finalize-workflow-run"
@@ -491,6 +500,7 @@ function buildAuditTrail(input: {
   priorReviewLearningSuggestionsByItem: EndToEndAgenticTradeInDemoResult["priorReviewLearningSuggestionsByItem"];
   modelRoutingDecision: ModelRouteDecision;
   fieldRepairExecution: EndToEndAgenticTradeInDemoResult["fieldRepairExecution"];
+  retryEvents: EndToEndAgenticTradeInDemoResult["retryEvents"];
   toolCallResults: DemoToolResult[];
   reviewQueueItemsCreated: ReviewQueueItem[];
   finalSummary: EndToEndAgenticTradeInDemoResult["finalSummary"];
@@ -556,6 +566,20 @@ function buildAuditTrail(input: {
     },
     {
       orderIndex: 7,
+      label: "Targeted field retry evaluated",
+      status:
+        input.retryEvents.some((event) => event.status === "UNRESOLVED")
+          ? "NEEDS_REVIEW"
+          : "SUCCEEDED",
+      summary:
+        input.retryEvents[0]?.message ??
+        "No targeted retry evidence was recorded.",
+      details: {
+        retryEvents: input.retryEvents
+      }
+    },
+    {
+      orderIndex: 8,
       label: "Read-only tools executed",
       status: "SUCCEEDED",
       summary: `${input.finalSummary.successfulReadOnlyToolCallCount} safe read-only tool calls executed and logged.`,
@@ -566,7 +590,7 @@ function buildAuditTrail(input: {
       }
     },
     {
-      orderIndex: 8,
+      orderIndex: 9,
       label: "Mutation tool blocked",
       status: "BLOCKED",
       summary: `${input.finalSummary.blockedMutationToolCallCount} mutation tool call was policy-blocked before execution.`,
@@ -577,7 +601,7 @@ function buildAuditTrail(input: {
       }
     },
     {
-      orderIndex: 9,
+      orderIndex: 10,
       label: "Human review surfaced",
       status: input.reviewQueueItemsCreated.length > 0 ? "NEEDS_REVIEW" : "SUCCEEDED",
       summary:
@@ -589,7 +613,7 @@ function buildAuditTrail(input: {
       }
     },
     {
-      orderIndex: 10,
+      orderIndex: 11,
       label: "Prior review evidence checked",
       status:
         input.finalSummary.priorReviewSuggestionCount > 0
@@ -605,7 +629,7 @@ function buildAuditTrail(input: {
       }
     },
     {
-      orderIndex: 11,
+      orderIndex: 12,
       label: "Final demo summary",
       status: "INFO",
       summary: input.finalSummary.productStory,
@@ -694,19 +718,24 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
             orderIndex: 4
           },
           {
+            stepName: AGENTIC_WORKFLOW_STEP_NAMES.targetedRetry,
+            stepType: "EXTRACT_GOLF_CLUB_FIELDS",
+            orderIndex: 5
+          },
+          {
             stepName: AGENTIC_WORKFLOW_STEP_NAMES.createReviewItems,
             stepType: "CREATE_REVIEW_ITEM",
-            orderIndex: 5
+            orderIndex: 6
           },
           {
             stepName: AGENTIC_WORKFLOW_STEP_NAMES.executeTools,
             stepType: "EXECUTE_TOOL_CALLS",
-            orderIndex: 6
+            orderIndex: 7
           },
           {
             stepName: AGENTIC_WORKFLOW_STEP_NAMES.finalize,
             stepType: "FINALIZE_WORKFLOW",
-            orderIndex: 7
+            orderIndex: 8
           }
         ]
       }
@@ -1153,19 +1182,159 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     }
   });
 
+  const retryCandidate = findTargetedFieldRetryCandidate(parsedItems);
+  const targetedFieldRetry = await executePersistedWorkflowStep({
+    step: requireWorkflowStep(
+      workflowRun.steps,
+      AGENTIC_WORKFLOW_STEP_NAMES.targetedRetry
+    ),
+    inputJson: {
+      policy: TARGETED_FIELD_RETRY_POLICY,
+      targetField: "shaftFlex",
+      candidateRecordId: retryCandidate?.id ?? null,
+      maxAttempts: TARGETED_FIELD_RETRY_MAX_ATTEMPTS
+    },
+    async execute(step) {
+      if (!retryCandidate) {
+        return buildSkippedTargetedFieldRetry(parsedItems);
+      }
+
+      const retryRecord = fieldRepairRecords.find(
+        (record) => record.recordId === retryCandidate.id
+      );
+
+      if (!retryRecord) {
+        throw new Error(
+          `Field-repair context is missing for retry candidate: ${retryCandidate.id}.`
+        );
+      }
+
+      const targetedRetryRecord: MainRunFieldRepairRecordInput = {
+        ...retryRecord,
+        missingFields: ["shaftFlex"],
+        selectionReason: {
+          ...retryRecord.selectionReason,
+          missingFields: ["shaftFlex"],
+          uncertaintyNotes:
+            retryRecord.selectionReason.uncertaintyNotes.filter(
+              (note) => /\bshaft\b/i.test(note)
+            )
+        },
+        advisoryCandidates:
+          retryRecord.advisoryCandidates?.filter(
+            (candidate) =>
+              candidate.suggestion.fieldName === "shaftFlex"
+          ) ?? []
+      };
+
+      await markPersistedWorkflowStepRetrying(step);
+
+      const retryInputJson = {
+        ...buildMainRunFieldRepairExecutionInput({
+          workflowRunId: workflowRun.id,
+          records: [targetedRetryRecord]
+        }),
+        retry: {
+          attempt: 1,
+          maxAttempts: TARGETED_FIELD_RETRY_MAX_ATTEMPTS,
+          targetField: "shaftFlex",
+          recordId: retryCandidate.id,
+          policy: TARGETED_FIELD_RETRY_POLICY
+        }
+      };
+      const retryModelCallLog = await createModelExecutionLogForWorkflowRun({
+        workflowRunId: workflowRun.id,
+        workflowStepId: step.id,
+        taskType: MAIN_RUN_FIELD_REPAIR_TASK_TYPE,
+        goal: "HIGH_QUALITY",
+        policyKey: MAIN_RUN_FIELD_REPAIR_POLICY_KEY,
+        agentName: MAIN_RUN_FIELD_REPAIR_AGENT_NAME,
+        workflowName: "main-run",
+        workflowStep: "targeted-field-retry",
+        requireJson: true,
+        allowDisabledProvidersForSimulation: false,
+        inputJson: retryInputJson,
+        outputSchema: MAIN_RUN_FIELD_REPAIR_OUTPUT_SCHEMA,
+        validateOutput(outputJson) {
+          const validation = validateMainRunFieldRepairModelOutput(
+            outputJson,
+            {
+              records: [targetedRetryRecord]
+            }
+          );
+
+          return {
+            jsonValid: validation.jsonValid,
+            validationPassed: validation.validationPassed,
+            validationErrors: validation.validationErrors
+          };
+        }
+      });
+      const retryValidation = validateMainRunFieldRepairModelOutput(
+        getProviderExecutionOutputJson(retryModelCallLog),
+        {
+          records: [targetedRetryRecord]
+        }
+      );
+
+      return completeTargetedFieldRetry({
+        parsedItems,
+        recordId: retryCandidate.id,
+        modelCallLogId: retryModelCallLog.id,
+        validationPassed: retryValidation.validationPassed,
+        validationErrors: retryValidation.validationErrors,
+        suggestions: retryValidation.output?.suggestions ?? []
+      });
+    },
+    buildOutputJson(result) {
+      return {
+        retryEventId: result.retryEvent.id,
+        status: result.retryEvent.status,
+        recordId: result.retryEvent.recordId,
+        targetField: result.retryEvent.targetField,
+        attemptCount: result.retryEvent.attemptCount,
+        maxAttempts: result.retryEvent.maxAttempts,
+        modelCallLogId: result.retryEvent.modelCallLogId
+      };
+    },
+    getTerminalStatus(result) {
+      return result.retryEvent.status === "SKIPPED" ? "SKIPPED" : "COMPLETED";
+    },
+    async onCompleted({ transaction, result }) {
+      for (const [index, item] of result.parsedItems.entries()) {
+        const intakeItem = intakeBatch.items[index];
+
+        if (!intakeItem) {
+          continue;
+        }
+
+        await transaction.intakeItem.update({
+          where: {
+            id: intakeItem.id
+          },
+          data: {
+            status: needsReview(item) ? "NEEDS_REVIEW" : "STRUCTURED"
+          }
+        });
+      }
+    }
+  });
+  const finalParsedItems = targetedFieldRetry.parsedItems;
+  const retryEvents = [targetedFieldRetry.retryEvent];
+
   const reviewQueueItemsCreated = await executePersistedWorkflowStep({
     step: requireWorkflowStep(
       workflowRun.steps,
       AGENTIC_WORKFLOW_STEP_NAMES.createReviewItems
     ),
     inputJson: {
-      parsedItemCount: parsedItems.length,
+      parsedItemCount: finalParsedItems.length,
       modelSuggestionCount: fieldRepairExecution.suggestions.length
     },
     async execute() {
       const createdItems: ReviewQueueItem[] = [];
 
-      for (const [index, item] of parsedItems.entries()) {
+      for (const [index, item] of finalParsedItems.entries()) {
         const valuationEvidence = valuationEvidenceByItem.find(
           (evidence) => evidence.parsedItemId === item.id
         );
@@ -1242,7 +1411,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
       humanApprovalGranted: false
     },
     async execute(step) {
-      const firstParsedItem = parsedItems[0]!;
+      const firstParsedItem = finalParsedItems[0]!;
       const canExecuteDemoInventoryTools =
         input.productReferenceProvider === undefined &&
         firstParsedItem.productResolution.status === "MATCHED";
@@ -1471,9 +1640,9 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     0
   );
   const finalSummary = {
-    parsedItemCount: parsedItems.length,
+    parsedItemCount: finalParsedItems.length,
     knowledgeMatchCount,
-    lowConfidenceItemCount: parsedItems.filter(needsReview).length,
+    lowConfidenceItemCount: finalParsedItems.filter(needsReview).length,
     reviewQueueItemCount: reviewQueueItemsCreated.length,
     successfulReadOnlyToolCallCount,
     blockedMutationToolCallCount,
@@ -1496,11 +1665,12 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     toolCallResults.find((result) => result.status === "BLOCKED") ?? null;
 
   const workflowQualityBundle = buildWorkflowQualityBundle({
-    parsedItems,
+    parsedItems: finalParsedItems,
     knowledgeMatchesByItem,
     inventoryMatchesByItem,
     valuationEvidenceByItem,
     modelCallLog,
+    retryEvents,
     toolCallingPlan,
     toolCallResults,
     reviewQueueItemsCreated
@@ -1508,7 +1678,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
 
   const resultWithoutAuditTrail = {
     rawInput,
-    parsedItems,
+    parsedItems: finalParsedItems,
     knowledgeMatchesByItem,
     inventoryMatchesByItem,
     valuationEvidenceByItem,

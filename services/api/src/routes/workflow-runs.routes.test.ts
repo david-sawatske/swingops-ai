@@ -642,7 +642,10 @@ describe("workflow run routes", () => {
           reason: "missing or uncertain shaft/flex data",
           targetField: "shaftFlex",
           status: "UNRESOLVED",
-          policy: "one targeted retry before human review"
+          policy: "one targeted retry before human review",
+          attemptCount: 1,
+          maxAttempts: 1,
+          modelCallLogId: expect.any(String)
         })
       ]);
 
@@ -725,6 +728,7 @@ describe("workflow run routes", () => {
         "Inventory product matched",
         "Demo valuation range estimated",
         "Model route selected",
+        "Targeted field retry evaluated",
         "Read-only tools executed",
         "Mutation tool blocked",
         "Human review surfaced",

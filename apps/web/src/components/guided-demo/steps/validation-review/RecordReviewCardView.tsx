@@ -1729,6 +1729,8 @@ function RecordValidationDetails({ card }: { card: RecordReviewCard }) {
                 <small>
                   {event.targetField ? `Target field ${event.targetField}` : "Workflow-level retry"}
                   {" · "}
+                  {`Attempts ${event.attemptCount}/${event.maxAttempts}`}
+                  {" · "}
                   {event.policy}
                 </small>
               </div>

@@ -56,6 +56,9 @@ export type RetryEvent = {
   recordId: string | null;
   policy: string;
   status: RetryEventStatus;
+  attemptCount: number;
+  maxAttempts: number;
+  modelCallLogId: string | null;
   before: unknown;
   after: unknown;
   message: string;

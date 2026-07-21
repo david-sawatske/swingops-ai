@@ -90,9 +90,10 @@ describe("executeEndToEndAgenticTradeInDemo", () => {
         [2, "retrieve-grounding-evidence", "COMPLETED"],
         [3, "run-field-repair-model", "COMPLETED"],
         [4, "validate-field-repair-output", "COMPLETED"],
-        [5, "create-human-review-work", "COMPLETED"],
-        [6, "execute-guarded-tool-plan", "COMPLETED"],
-        [7, "finalize-workflow-run", "COMPLETED"]
+        [5, "retry-targeted-field-extraction", "SKIPPED"],
+        [6, "create-human-review-work", "COMPLETED"],
+        [7, "execute-guarded-tool-plan", "COMPLETED"],
+        [8, "finalize-workflow-run", "COMPLETED"]
       ]);
       expect(
         steps.every((step) => step.startedAt !== null && step.completedAt !== null)
@@ -365,6 +366,40 @@ describe("executeEndToEndAgenticTradeInDemo", () => {
       expect(
         result.fieldRepairExecution.validationPassed
       ).toBe(true);
+
+      const retryEvent = result.retryEvents[0];
+      expect(retryEvent).toMatchObject({
+        recordId: unresolvedItem?.id,
+        targetField: "shaftFlex",
+        status: "UNRESOLVED",
+        attemptCount: 1,
+        maxAttempts: 1
+      });
+      expect(retryEvent?.modelCallLogId).toEqual(expect.any(String));
+
+      const retryStep =
+        await prisma.workflowStep.findFirstOrThrow({
+          where: {
+            workflowRunId:
+              result.persisted.workflowRunId,
+            stepName:
+              "retry-targeted-field-extraction"
+          }
+        });
+      expect(retryStep).toMatchObject({
+        status: "COMPLETED",
+        retryCount: 1
+      });
+
+      const retryModelCallLog =
+        await prisma.modelCallLog.findUniqueOrThrow({
+          where: {
+            id: retryEvent!.modelCallLogId!
+          }
+        });
+      expect(retryModelCallLog.workflowStepId).toBe(
+        retryStep.id
+      );
     } finally {
       await cleanupResult(result);
     }

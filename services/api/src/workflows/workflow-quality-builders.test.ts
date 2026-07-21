@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { parseTradeInDemoText } from "./trade-in-demo-parser.js";
 import {
-  buildRetryEvents,
   buildValidationChecks
 } from "./workflow-quality-builders.js";
 
@@ -41,19 +40,6 @@ describe("workflow-quality-builders", () => {
       severity: "INFO",
       message: "Shaft flex is not applicable to putters.",
       reviewRequired: false
-    });
-  });
-
-  it("does not select a putter for the shaft-flex retry path", () => {
-    const item = parseCompletePutterRecord();
-    const retryEvents = buildRetryEvents([item]);
-
-    expect(retryEvents).toHaveLength(1);
-    expect(retryEvents[0]).toMatchObject({
-      id: "retry-shaft-flex-not-needed",
-      targetField: "shaftFlex",
-      recordId: null,
-      status: "SKIPPED"
     });
   });
 });

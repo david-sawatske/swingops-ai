@@ -7,7 +7,6 @@ import {
   buildAgentPlan,
   buildProviderFallbackTrace,
   buildReviewOutcomes,
-  buildRetryEvents,
   buildToolSelectionRationales,
   buildValidationChecks,
   buildWorkflowQualitySummary
@@ -47,6 +46,7 @@ export function buildWorkflowQualityBundle(input: {
   inventoryMatchesByItem: InventoryMatchesByItem;
   valuationEvidenceByItem: ValuationEvidenceByItem;
   modelCallLog: ModelCallLog;
+  retryEvents: WorkflowQualityBundle["retryEvents"];
   toolCallingPlan: ToolCallingPlan;
   toolCallResults: ToolCallResults;
   reviewQueueItemsCreated: ReviewQueueItem[];
@@ -61,7 +61,7 @@ export function buildWorkflowQualityBundle(input: {
     valuationEvidenceByItem: input.valuationEvidenceByItem,
     blockedMutationCount
   });
-  const retryEvents = buildRetryEvents(input.parsedItems);
+  const retryEvents = input.retryEvents;
   const providerFallbackTrace = buildProviderFallbackTrace(input.modelCallLog);
   const toolSelectionRationales = buildToolSelectionRationales(
     input.toolCallingPlan

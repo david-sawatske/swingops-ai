@@ -273,58 +273,6 @@ export function buildValidationChecks(input: {
   return checks;
 }
 
-export function buildRetryEvents(parsedItems: ParsedTradeInDemoItem[]): RetryEvent[] {
-  const retryCandidate = parsedItems.find(
-    (item) =>
-      isShaftFlexApplicable(item.category) &&
-      (
-        item.missingFields.includes("shaftFlex") ||
-        item.uncertaintyNotes.includes("shaft uncertain") ||
-        item.rawLine.toLowerCase().includes("shaft unknown")
-      )
-  );
-
-  if (!retryCandidate) {
-    return [
-      {
-        id: "retry-shaft-flex-not-needed",
-        reason: "No recoverable shaft/flex issue was found.",
-        targetField: "shaftFlex",
-        recordId: null,
-        policy: "one targeted retry before human review",
-        status: "SKIPPED",
-        before: null,
-        after: null,
-        message:
-          "Targeted retry was skipped because validation did not find an incomplete shaft/flex field."
-      }
-    ];
-  }
-
-  return [
-    {
-      id: `${retryCandidate.id}-retry-shaft-flex`,
-      reason: "missing or uncertain shaft/flex data",
-      targetField: "shaftFlex",
-      recordId: retryCandidate.id,
-      policy: "one targeted retry before human review",
-      status: "UNRESOLVED",
-      before: {
-        shaftFlex: retryCandidate.shaftFlex,
-        missingFields: retryCandidate.missingFields,
-        uncertaintyNotes: retryCandidate.uncertaintyNotes
-      },
-      after: {
-        shaftFlex: retryCandidate.shaftFlex,
-        missingFields: retryCandidate.missingFields,
-        uncertaintyNotes: retryCandidate.uncertaintyNotes
-      },
-      message:
-        "The agent retried only the shaft/flex extraction path, but the source text remained uncertain, so validation preserved the human review requirement."
-    }
-  ];
-}
-
 function getProviderFallbackAttempts(
   modelCallLog: ModelCallLog
 ): ProviderFallbackTraceAttempt[] {
@@ -417,7 +365,12 @@ export function buildAgentPlan(input: {
     (check) => check.status === "WARNING"
   );
   const hasReview = input.reviewOutcomes.length > 0;
-  const hasRetry = input.retryEvents.some((event) => event.status !== "SKIPPED");
+  const hasResolvedRetry = input.retryEvents.some(
+    (event) => event.status === "RESOLVED"
+  );
+  const hasUnresolvedRetry = input.retryEvents.some(
+    (event) => event.status === "UNRESOLVED"
+  );
 
   return [
     {
@@ -489,7 +442,7 @@ export function buildAgentPlan(input: {
       actionType: "SELECT_TOOLS",
       expectedOutput: "Tool plan with concise selection rationale and risk level.",
       status: "COMPLETED",
-      linkedTraceEventIds: ["audit-event-7"],
+      linkedTraceEventIds: ["audit-event-8"],
       requiredTools: input.toolSelectionRationales.map((tool) => tool.toolName),
       validationRules: [],
       retryPolicy: null,
@@ -516,8 +469,12 @@ export function buildAgentPlan(input: {
         "Retry only the incomplete shaft/flex extraction path before review.",
       actionType: "RETRY_EXTRACTION",
       expectedOutput: "Retry event showing whether the issue resolved.",
-      status: hasRetry ? "NEEDS_REVIEW" : "SKIPPED",
-      linkedTraceEventIds: [],
+      status: hasUnresolvedRetry
+        ? "NEEDS_REVIEW"
+        : hasResolvedRetry
+          ? "COMPLETED"
+          : "SKIPPED",
+      linkedTraceEventIds: ["audit-event-7"],
       requiredTools: [],
       validationRules: ["shaft/flex data complete"],
       retryPolicy: "one targeted retry before human review",
@@ -531,7 +488,7 @@ export function buildAgentPlan(input: {
       actionType: "ESCALATE_REVIEW",
       expectedOutput: "Review outcome linked to validation warnings.",
       status: hasReview ? "NEEDS_REVIEW" : "COMPLETED",
-      linkedTraceEventIds: ["audit-event-9"],
+      linkedTraceEventIds: ["audit-event-10"],
       requiredTools: ["swingops.reviewQueueItems.list"],
       validationRules: ["review requirement determined"],
       retryPolicy: "preserve review requirement when retry is unresolved",
@@ -545,7 +502,7 @@ export function buildAgentPlan(input: {
       actionType: "ENFORCE_POLICY",
       expectedOutput: "Blocked mutation log with policy reason.",
       status: input.blockedMutationCount > 0 ? "BLOCKED" : "SKIPPED",
-      linkedTraceEventIds: ["audit-event-8"],
+      linkedTraceEventIds: ["audit-event-9"],
       requiredTools: ["swingops.inventory.createSku"],
       validationRules: ["unsafe mutation blocked if attempted"],
       retryPolicy: null,
@@ -559,7 +516,7 @@ export function buildAgentPlan(input: {
       actionType: "RECORD_TRACE",
       expectedOutput: "Workflow quality summary for the current run.",
       status: "COMPLETED",
-      linkedTraceEventIds: ["audit-event-11"],
+      linkedTraceEventIds: ["audit-event-12"],
       requiredTools: [],
       validationRules: [],
       retryPolicy: null,
@@ -591,9 +548,10 @@ export function buildWorkflowQualitySummary(input: {
   const blockedMutations = input.toolCallResults.filter(
     (result) => result.status === "BLOCKED"
   ).length;
-  const retryAttempts = input.retryEvents.filter(
-    (event) => event.status !== "SKIPPED"
-  ).length;
+  const retryAttempts = input.retryEvents.reduce(
+    (count, event) => count + event.attemptCount,
+    0
+  );
   const recordsWithEvidence = input.knowledgeMatchesByItem.filter(
     (match) => match.search.results.length > 0
   ).length;

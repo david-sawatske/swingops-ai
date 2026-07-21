@@ -92,6 +92,8 @@ export function RunLevelAuditSection({
                                   ? `Target field ${formatFieldLabel(event.targetField)}`
                                   : "Workflow-level retry"}
                                 {" · "}
+                                {`Attempts ${event.attemptCount}/${event.maxAttempts}`}
+                                {" · "}
                                 {event.policy}
                               </small>
                             </div>
