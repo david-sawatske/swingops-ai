@@ -1,6 +1,6 @@
 # Architecture
 
-SwingOps AI is a local full-stack workflow demo built around a guided operational run. The application is split into a web app, an API service, shared package code, and a PostgreSQL database.
+SwingOps AI is a local full-stack workflow demo built around a guided operational run. The application is split into a web app, an API service, and a PostgreSQL database.
 
 The architecture emphasizes:
 
@@ -14,7 +14,6 @@ The architecture emphasizes:
 
     apps/web
     services/api
-    packages/shared
     docs
 
 ## `apps/web`
@@ -76,10 +75,6 @@ Important areas:
     services/api/src/internal-systems
     services/api/src/serializers
     services/api/prisma/schema.prisma
-
-## `packages/shared`
-
-The shared package is available for cross-workspace TypeScript code. It keeps reusable shared code separate from app-specific UI and API implementation details.
 
 ## PostgreSQL, Prisma, and pgvector-compatible storage
 

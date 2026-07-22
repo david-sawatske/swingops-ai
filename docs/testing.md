@@ -35,7 +35,6 @@ Run individual workspace typechecks:
 
     pnpm --filter @swingops/web typecheck
     pnpm --filter @swingops/api typecheck
-    pnpm --filter @swingops/shared typecheck
 
 ## Test commands
 
@@ -91,10 +90,6 @@ Run web tests:
 Run API tests:
 
     pnpm --filter @swingops/api test
-
-Run shared package tests:
-
-    pnpm --filter @swingops/shared test
 
 ## Formatting guard
 

@@ -94,10 +94,6 @@ Typecheck the API:
 
     pnpm --filter @swingops/api typecheck
 
-Typecheck shared package:
-
-    pnpm --filter @swingops/shared typecheck
-
 Typecheck all workspaces:
 
     pnpm -r typecheck
@@ -106,7 +102,6 @@ Run tests:
 
     pnpm --filter @swingops/web test
     pnpm --filter @swingops/api test
-    pnpm --filter @swingops/shared test
 
 Run all tests:
 

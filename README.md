@@ -148,7 +148,6 @@ Run typechecks:
 
     pnpm --filter @swingops/web typecheck
     pnpm --filter @swingops/api typecheck
-    pnpm --filter @swingops/shared typecheck
 
 Run all workspace typechecks:
 
@@ -158,7 +157,6 @@ Run tests:
 
     pnpm --filter @swingops/web test
     pnpm --filter @swingops/api test
-    pnpm --filter @swingops/shared test
 
 Run all tests:
 
@@ -183,9 +181,6 @@ model behavior, and refuses to use a database whose name does not end in
       Fastify API, workflow orchestration, route handlers, serializers, Prisma access,
       knowledge retrieval, model routing, tool policy, internal inventory, valuation,
       and MCP-compatible connector execution.
-
-    packages/shared
-      Shared TypeScript package used across workspaces.
 
     docs
       Deeper documentation for architecture, workflow behavior, backend systems,
