@@ -7,18 +7,13 @@ import {
   MAIN_RUN_FIELD_REPAIR_TASK_TYPE,
   validateMainRunFieldRepairModelOutput,
 } from "./main-run-field-repair.js";
-import { buildWorkflowQualityBundle } from "./workflow-quality.js";
 import {
   executePersistedWorkflowStep,
   markPersistedWorkflowStepRetrying,
   requireWorkflowStep,
 } from "./workflow-step-persistence.js";
-import {
-  TRADE_IN_WORKFLOW_STEP_NAMES,
-  buildTradeInWorkflowOrchestrationTrace,
-} from "./workflow-orchestration-trace.js";
+import { TRADE_IN_WORKFLOW_STEP_NAMES } from "./workflow-orchestration-trace.js";
 import { failIntakeBatchAfterWorkflowSetupError } from "./workflow-run-failure.js";
-import { buildEndToEndAgenticTradeInDemoAuditTrail } from "./end-to-end-agentic-trade-in-demo-audit.js";
 import type { EndToEndAgenticTradeInDemoResult } from "./end-to-end-agentic-trade-in-demo.types.js";
 import { parseTradeInDemoText } from "./trade-in-demo-parser.js";
 import {
@@ -44,6 +39,7 @@ import {
   createTradeInDemoReviewQueueItems,
   tradeInDemoItemNeedsReview,
 } from "./trade-in-demo-review-queue.js";
+import { buildTradeInDemoResult } from "./trade-in-demo-result.js";
 import {
   buildTradeInDemoToolExecutionStepOutput,
   executeTradeInDemoTools,
@@ -232,14 +228,6 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
       return buildTradeInDemoEvidenceStepOutput(result, parsedItems.length);
     },
   });
-  const {
-    priorReviewLearningEvidenceByItem,
-    priorReviewLearningSuggestionsByItem,
-    knowledgeMatchesByItem,
-    inventoryMatchesByItem,
-    valuationEvidenceByItem,
-  } = evidenceResult;
-
   const { selectedFieldRepairItems, modelAssistanceScope } =
     selectTradeInDemoModelAssistanceItems(parsedItems);
 
@@ -462,60 +450,6 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     },
   });
 
-  const successfulReadOnlyToolCallCount = toolCallResults.filter(
-    (result) => result.status === "SUCCEEDED",
-  ).length;
-  const blockedMutationToolCallCount = toolCallResults.filter(
-    (result) => result.status === "BLOCKED",
-  ).length;
-  const knowledgeMatchCount = knowledgeMatchesByItem.reduce(
-    (count, item) => count + item.search.results.length,
-    0,
-  );
-  const inventoryMatchCount = inventoryMatchesByItem.filter(
-    (match) => match.lookup.productId !== null,
-  ).length;
-  const valuationRangeCount = valuationEvidenceByItem.filter(
-    (evidence) => evidence.estimate.highValue > 0,
-  ).length;
-  const valuationReviewRequiredCount = valuationEvidenceByItem.filter(
-    (evidence) => evidence.estimate.reviewRequired,
-  ).length;
-  const priorReviewEvidenceCount = priorReviewLearningEvidenceByItem.reduce(
-    (count, item) => count + item.evidence.length,
-    0,
-  );
-  const priorReviewSuggestionCount =
-    priorReviewLearningSuggestionsByItem.reduce(
-      (count, item) => count + item.suggestions.length,
-      0,
-    );
-  const finalSummary = {
-    parsedItemCount: finalParsedItems.length,
-    knowledgeMatchCount,
-    lowConfidenceItemCount: finalParsedItems.filter(tradeInDemoItemNeedsReview)
-      .length,
-    reviewQueueItemCount: reviewQueueItemsCreated.length,
-    successfulReadOnlyToolCallCount,
-    blockedMutationToolCallCount,
-    inventoryMatchCount,
-    valuationRangeCount,
-    valuationReviewRequiredCount,
-    priorReviewEvidenceCount,
-    priorReviewSuggestionCount,
-    selectedProvider: modelRoutingDecision.selectedProvider,
-    selectedModel: modelRoutingDecision.selectedModel,
-    productStory:
-      "Messy golf trade-in intake became structured, grounded with weighted RAG matches, matched to seeded internal inventory products, assigned demo valuation ranges, routed through provider/cost/quality logic, tool-executed through safe read-only MCP-compatible connectors, policy-guarded against mutation, logged, and reviewable.",
-  };
-
-  const toolCallingPlan = {
-    planId: `trade_in_workflow_${workflowRun.id}`,
-    plannedCalls,
-  };
-  const blockedToolCallResult =
-    toolCallResults.find((result) => result.status === "BLOCKED") ?? null;
-
   const persistedWorkflowSteps = await prisma.workflowStep.findMany({
     where: {
       workflowRunId: workflowRun.id,
@@ -524,57 +458,27 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
       orderIndex: "asc",
     },
   });
-  const orchestrationTrace = buildTradeInWorkflowOrchestrationTrace(
-    persistedWorkflowSteps,
-  );
 
-  const workflowQualityBundle = buildWorkflowQualityBundle({
-    parsedItems: finalParsedItems,
-    knowledgeMatchesByItem,
-    inventoryMatchesByItem,
-    valuationEvidenceByItem,
-    modelCallLog,
-    providerFallbackSimulationRequested:
-      input.demonstrateProviderFallback === true,
-    retryEvents,
-    toolCallingPlan,
-    toolCallResults,
-    reviewQueueItemsCreated,
-  });
-
-  const resultWithoutAuditTrail = {
+  return buildTradeInDemoResult({
     rawInput,
     parsedItems: finalParsedItems,
-    knowledgeMatchesByItem,
-    inventoryMatchesByItem,
-    valuationEvidenceByItem,
-    priorReviewLearningEvidenceByItem,
-    priorReviewLearningSuggestionsByItem,
+    evidence: evidenceResult,
     modelAssistanceScope,
     modelRoutingDecision,
     modelCallLog,
     fieldRepairExecution,
-    orchestrationTrace,
-    toolCallingPlan,
+    workflowSteps: persistedWorkflowSteps,
+    plannedCalls,
     toolCallResults,
-    blockedToolCallResult,
     reviewQueueItemsCreated,
-    persisted: {
+    retryEvents,
+    providerFallbackSimulationRequested:
+      input.demonstrateProviderFallback === true,
+    persistedIds: {
       intakeBatchId: intakeBatch.id,
       intakeItemIds: intakeBatch.items.map((item) => item.id),
       workflowRunId: workflowRun.id,
-      modelCallLogId: modelCallLog.id,
       toolCallLogIds: toolCallLogs.map((log) => log.id),
-      reviewQueueItemIds: reviewQueueItemsCreated.map((item) => item.id),
     },
-    finalSummary,
-    ...workflowQualityBundle,
-  };
-
-  return {
-    ...resultWithoutAuditTrail,
-    auditTrail: buildEndToEndAgenticTradeInDemoAuditTrail(
-      resultWithoutAuditTrail,
-    ),
-  };
+  });
 }
