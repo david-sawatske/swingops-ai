@@ -1,13 +1,7 @@
 import { LEGACY_FREEFORM_NOTES_INTAKE_SOURCE_TYPE } from "../intake/legacy-intake-source-types.js";
-import type { Prisma, ReviewQueueItem, ToolCallLog } from "@prisma/client";
 
 import type { ProductReferenceProvider } from "../product-reference/product-reference-provider.js";
-import type { TradeInValuationResult } from "../internal-systems/trade-in-valuation-service.js";
 import { prisma } from "../lib/prisma.js";
-import {
-  executeReadOnlyToolInvocation,
-  type ReadOnlyToolInvocationResult,
-} from "../tools/read-only-tool-invocation.js";
 import { createModelExecutionLogForWorkflowRun } from "./workflow-model-logging.js";
 import {
   MAIN_RUN_FIELD_REPAIR_AGENT_NAME,
@@ -30,15 +24,8 @@ import {
 } from "./workflow-orchestration-trace.js";
 import { failIntakeBatchAfterWorkflowSetupError } from "./workflow-run-failure.js";
 import { buildEndToEndAgenticTradeInDemoAuditTrail } from "./end-to-end-agentic-trade-in-demo-audit.js";
-import type {
-  AgenticTradeInToolCallResult,
-  EndToEndAgenticTradeInDemoResult,
-} from "./end-to-end-agentic-trade-in-demo.types.js";
-import { resolveSupersededIntakeReviewMarkers } from "./review-queue-supersession.js";
-import {
-  parseTradeInDemoText,
-  type ParsedTradeInDemoItem,
-} from "./trade-in-demo-parser.js";
+import type { EndToEndAgenticTradeInDemoResult } from "./end-to-end-agentic-trade-in-demo.types.js";
+import { parseTradeInDemoText } from "./trade-in-demo-parser.js";
 import {
   TARGETED_FIELD_RETRY_MAX_ATTEMPTS,
   TARGETED_FIELD_RETRY_POLICY,
@@ -49,17 +36,23 @@ import {
 import {
   TRADE_IN_DEMO_MAX_KNOWLEDGE_RESULTS_PER_ITEM,
   buildTradeInDemoEvidenceStepOutput,
-  buildTradeInInventoryLookupInput,
   collectTradeInDemoEvidence,
 } from "./trade-in-demo-evidence.js";
 import {
   buildTradeInDemoModelAssistanceStepOutput,
   executeTradeInDemoModelAssistance,
-  getTradeInDemoFieldRepairMissingFields,
   getTradeInDemoProviderExecutionOutputJson,
   selectTradeInDemoModelAssistanceItems,
-  shouldRunTradeInDemoFieldRepair,
 } from "./trade-in-demo-model-assistance.js";
+import {
+  buildTradeInDemoReviewQueueStepOutput,
+  createTradeInDemoReviewQueueItems,
+  tradeInDemoItemNeedsReview,
+} from "./trade-in-demo-review-queue.js";
+import {
+  buildTradeInDemoToolExecutionStepOutput,
+  executeTradeInDemoTools,
+} from "./trade-in-demo-tool-execution.js";
 
 export type {
   EndToEndAgenticTradeInDemoAuditEvent,
@@ -95,66 +88,6 @@ function stripNonRecordDemoHeaderLines(rawInput: string): string {
   return recordLines.join("\n") || rawInput.trim();
 }
 
-function toInputJson(value: unknown): Prisma.InputJsonValue {
-  return value as Prisma.InputJsonValue;
-}
-
-function needsReview(item: ParsedTradeInDemoItem): boolean {
-  return item.confidence < 0.72 || item.missingFields.length > 0;
-}
-
-function valuationNeedsReview(estimate: TradeInValuationResult): boolean {
-  return estimate.reviewRequired || estimate.confidence === "LOW";
-}
-
-function getReviewReason(
-  item: ParsedTradeInDemoItem,
-): "LOW_CONFIDENCE" | "MISSING_REQUIRED_FIELDS" | "AMBIGUOUS_INPUT" {
-  if (getTradeInDemoFieldRepairMissingFields(item).length > 0) {
-    return "MISSING_REQUIRED_FIELDS";
-  }
-
-  if (item.uncertaintyNotes.length > 0) {
-    return "AMBIGUOUS_INPUT";
-  }
-
-  return "LOW_CONFIDENCE";
-}
-
-function summarizeReviewReason(input: {
-  item: ParsedTradeInDemoItem;
-  valuationEstimate?: TradeInValuationResult;
-}): string {
-  const missingFields = getTradeInDemoFieldRepairMissingFields(input.item);
-  const reasons = [
-    input.item.confidence < 0.72 ? `confidence ${input.item.confidence}` : null,
-    missingFields.length > 0 ? `missing ${missingFields.join(", ")}` : null,
-    input.item.uncertaintyNotes.length > 0
-      ? `uncertainty: ${input.item.uncertaintyNotes.join(", ")}`
-      : null,
-    input.valuationEstimate?.reviewRequired
-      ? `valuation review: ${input.valuationEstimate.reviewReasons.join(", ")}`
-      : null,
-  ].filter(Boolean);
-
-  return reasons.join("; ");
-}
-
-function toToolResult(
-  result: ReadOnlyToolInvocationResult,
-): AgenticTradeInToolCallResult {
-  return {
-    toolName: result.invocation.toolName,
-    status: result.invocation.status,
-    policyDecision: result.policyEvaluation.decision,
-    policyReason: result.policyEvaluation.reason,
-    executionAttempted: result.invocation.executionAttempted,
-    toolCallLogId: result.invocation.toolCallLogId,
-    outputPreview: result.connectorResult?.data ?? null,
-    errorMessage: result.toolCallLog.errorMessage,
-  };
-}
-
 export async function executeEndToEndAgenticTradeInDemo(input: {
   rawInput: string;
   productReferenceProvider?: ProductReferenceProvider;
@@ -185,7 +118,9 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         create: parsedItems.map((item, index) => ({
           rawText: item.rawLine,
           sourceRowNumber: index + 1,
-          status: needsReview(item) ? "NEEDS_REVIEW" : "STRUCTURED",
+          status: tradeInDemoItemNeedsReview(item)
+            ? "NEEDS_REVIEW"
+            : "STRUCTURED",
         })),
       },
     },
@@ -509,7 +444,9 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
             id: intakeItem.id,
           },
           data: {
-            status: needsReview(item) ? "NEEDS_REVIEW" : "STRUCTURED",
+            status: tradeInDemoItemNeedsReview(item)
+              ? "NEEDS_REVIEW"
+              : "STRUCTURED",
           },
         });
       }
@@ -527,74 +464,16 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
       parsedItemCount: finalParsedItems.length,
       modelSuggestionCount: fieldRepairExecution.suggestions.length,
     },
-    async execute() {
-      const createdItems: ReviewQueueItem[] = [];
-
-      for (const [index, item] of finalParsedItems.entries()) {
-        const valuationEvidence = valuationEvidenceByItem.find(
-          (evidence) => evidence.parsedItemId === item.id,
-        );
-        const inventoryEvidence = inventoryMatchesByItem.find(
-          (evidence) => evidence.parsedItemId === item.id,
-        );
-        const fieldRepairMissingFields =
-          getTradeInDemoFieldRepairMissingFields(item);
-        const requiresFieldRepairReview = shouldRunTradeInDemoFieldRepair(item);
-
-        if (
-          !needsReview(item) &&
-          !requiresFieldRepairReview &&
-          !valuationNeedsReview(valuationEvidence!.estimate)
-        ) {
-          continue;
-        }
-
-        const intakeItem = intakeBatch.items[index];
-
-        const reviewQueueItem = await prisma.reviewQueueItem.create({
-          data: {
-            workflowRunId: workflowRun.id,
-            intakeItemId: intakeItem?.id ?? null,
-            reason: getReviewReason(item),
-            status: "OPEN",
-            originalText: item.rawLine,
-            proposedGolfClubJson: toInputJson({
-              ...item,
-              missingFields: fieldRepairMissingFields,
-              reviewReasonSummary: summarizeReviewReason({
-                item,
-                valuationEstimate: valuationEvidence!.estimate,
-              }),
-              knowledgeMatches:
-                knowledgeMatchesByItem
-                  .find((match) => match.parsedItemId === item.id)
-                  ?.search.results.slice(0, 2) ?? [],
-              inventoryMatch: inventoryEvidence?.lookup ?? null,
-              demoValuationRange: valuationEvidence?.estimate ?? null,
-            }),
-          },
-        });
-
-        await resolveSupersededIntakeReviewMarkers({
-          authoritativeReviewQueueItemId: reviewQueueItem.id,
-          currentWorkflowRunId: workflowRun.id,
-          item,
-          sourceRowNumber: index + 1,
-        });
-
-        createdItems.push(reviewQueueItem);
-      }
-
-      return createdItems;
+    execute() {
+      return createTradeInDemoReviewQueueItems({
+        workflowRunId: workflowRun.id,
+        parsedItems: finalParsedItems,
+        intakeItems: intakeBatch.items,
+        evidence: evidenceResult,
+      });
     },
     buildOutputJson(createdItems) {
-      return {
-        reviewQueueItemCount: createdItems.length,
-        reviewQueueItemIds: createdItems.map((item) => item.id),
-        openReviewQueueItemCount: createdItems.filter(
-          (item) => item.status === "OPEN" || item.status === "IN_REVIEW",
-        ).length,
-      };
+      return buildTradeInDemoReviewQueueStepOutput(createdItems);
     },
   });
 
@@ -608,134 +487,19 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
       mutationToolsEnabled: false,
       humanApprovalGranted: false,
     },
-    async execute(step) {
-      const firstParsedItem = finalParsedItems[0]!;
-      const canExecuteDemoInventoryTools =
-        input.productReferenceProvider === undefined &&
-        firstParsedItem.productResolution.status === "MATCHED";
-
-      const plannedCalls: EndToEndAgenticTradeInDemoResult["toolCallingPlan"]["plannedCalls"] =
-        [
-          {
-            orderIndex: 1,
-            toolName: "swingops.workflowRuns.get",
-            reason:
-              "Inspect the persisted workflow run context before the agent explains the audit trail.",
-            inputJson: {
-              id: workflowRun.id,
-            },
-            expectedRiskLevel: "LOW",
-            expectedMutatesData: false,
-            expectedRequiresHumanApproval: false,
-          },
-          {
-            orderIndex: 2,
-            toolName: "swingops.knowledgeBase.search",
-            reason:
-              "Run a read-only grounded search using the first parsed trade-in record.",
-            inputJson: {
-              query: knowledgeMatchesByItem[0]?.query ?? rawInput,
-              maxResults: 5,
-            },
-            expectedRiskLevel: "LOW",
-            expectedMutatesData: false,
-            expectedRequiresHumanApproval: false,
-          },
-          ...(canExecuteDemoInventoryTools
-            ? [
-                {
-                  orderIndex: 3,
-                  toolName: "swingops.inventory.lookupProduct",
-                  reason:
-                    "Use a read-only internal inventory lookup to corroborate the default reference-provider match for the first parsed record.",
-                  inputJson: buildTradeInInventoryLookupInput(firstParsedItem),
-                  expectedRiskLevel: "LOW" as const,
-                  expectedMutatesData: false,
-                  expectedRequiresHumanApproval: false,
-                },
-                {
-                  orderIndex: 4,
-                  toolName: "swingops.tradeInValuation.estimate",
-                  reason:
-                    "Use a read-only valuation lookup after the default reference provider authoritatively identified the first parsed record.",
-                  inputJson: {
-                    ...buildTradeInInventoryLookupInput(firstParsedItem),
-                    conditionNotes: firstParsedItem.conditionNotes.join("|"),
-                    accessoriesNotes:
-                      firstParsedItem.accessoriesNotes.join("|"),
-                  },
-                  expectedRiskLevel: "LOW" as const,
-                  expectedMutatesData: false,
-                  expectedRequiresHumanApproval: false,
-                },
-              ]
-            : []),
-          {
-            orderIndex: 5,
-            toolName: "swingops.reviewQueueItems.list",
-            reason:
-              "Inspect open human-review work created by low-confidence parsing or valuation uncertainty.",
-            inputJson: {
-              status: "OPEN",
-            },
-            expectedRiskLevel: "LOW",
-            expectedMutatesData: false,
-            expectedRequiresHumanApproval: false,
-          },
-          {
-            orderIndex: 6,
-            toolName: "swingops.inventory.createSku",
-            reason:
-              "Demonstrate that the agent can see a mutation-style inventory tool but cannot create SKUs without approval.",
-            inputJson: {
-              productId:
-                inventoryMatchesByItem[0]?.lookup.productId ??
-                "blocked-demo-product",
-            },
-            expectedRiskLevel: "HIGH",
-            expectedMutatesData: true,
-            expectedRequiresHumanApproval: true,
-          },
-        ];
-
-      const toolCallResults: AgenticTradeInToolCallResult[] = [];
-      const toolCallLogs: ToolCallLog[] = [];
-
-      for (const plannedCall of plannedCalls) {
-        const invocationResult = await executeReadOnlyToolInvocation({
-          toolName: plannedCall.toolName,
-          inputJson: plannedCall.inputJson,
-          requestedBy: "agent.end-to-end-trade-in-demo",
-          workflowRunId: workflowRun.id,
-          workflowStepId: step.id,
-          executionMode: "AGENT_AUTONOMOUS",
-          humanApprovalGranted: false,
-        });
-
-        toolCallResults.push(toToolResult(invocationResult));
-        toolCallLogs.push(invocationResult.toolCallLog);
-      }
-
-      return {
-        plannedCalls,
-        toolCallResults,
-        toolCallLogs,
-      };
+    execute(step) {
+      return executeTradeInDemoTools({
+        workflowRunId: workflowRun.id,
+        workflowStepId: step.id,
+        rawInput,
+        parsedItems: finalParsedItems,
+        evidence: evidenceResult,
+        usingDefaultProductReferenceProvider:
+          input.productReferenceProvider === undefined,
+      });
     },
     buildOutputJson(result) {
-      return {
-        plannedCallCount: result.plannedCalls.length,
-        toolCallLogIds: result.toolCallLogs.map((log) => log.id),
-        succeededCount: result.toolCallResults.filter(
-          (item) => item.status === "SUCCEEDED",
-        ).length,
-        blockedCount: result.toolCallResults.filter(
-          (item) => item.status === "BLOCKED",
-        ).length,
-        failedCount: result.toolCallResults.filter(
-          (item) => item.status === "FAILED",
-        ).length,
-      };
+      return buildTradeInDemoToolExecutionStepOutput(result);
     },
   });
   const { plannedCalls, toolCallResults, toolCallLogs } = toolExecutionResult;
@@ -817,7 +581,8 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
   const finalSummary = {
     parsedItemCount: finalParsedItems.length,
     knowledgeMatchCount,
-    lowConfidenceItemCount: finalParsedItems.filter(needsReview).length,
+    lowConfidenceItemCount: finalParsedItems.filter(tradeInDemoItemNeedsReview)
+      .length,
     reviewQueueItemCount: reviewQueueItemsCreated.length,
     successfulReadOnlyToolCallCount,
     blockedMutationToolCallCount,
