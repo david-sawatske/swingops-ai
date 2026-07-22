@@ -1,16 +1,6 @@
 import { LEGACY_FREEFORM_NOTES_INTAKE_SOURCE_TYPE } from "../intake/legacy-intake-source-types.js";
-import type {
-  ModelCallLog,
-  Prisma,
-  ReviewQueueItem,
-  ToolCallLog,
-} from "@prisma/client";
+import type { Prisma, ReviewQueueItem, ToolCallLog } from "@prisma/client";
 
-import type { ModelRouteDecision } from "../ai/model-router.js";
-import type {
-  ModelProviderFetch,
-  ModelProviderRuntimeConfig,
-} from "../ai/model-provider-runtime-config.js";
 import type { ProductReferenceProvider } from "../product-reference/product-reference-provider.js";
 import type { TradeInValuationResult } from "../internal-systems/trade-in-valuation-service.js";
 import { prisma } from "../lib/prisma.js";
@@ -18,20 +8,11 @@ import {
   executeReadOnlyToolInvocation,
   type ReadOnlyToolInvocationResult,
 } from "../tools/read-only-tool-invocation.js";
-import {
-  buildDeterministicPolicyFieldRepairAdvisoryCandidates,
-  buildPriorReviewFieldRepairAdvisoryCandidates,
-  mergeFieldRepairAdvisoryCandidates,
-} from "./field-repair-advisory-candidates.js";
-import { isShaftFlexApplicable } from "./golf-field-applicability.js";
 import { createModelExecutionLogForWorkflowRun } from "./workflow-model-logging.js";
 import {
   MAIN_RUN_FIELD_REPAIR_AGENT_NAME,
-  MAIN_RUN_FIELD_REPAIR_MAX_RECORDS,
   MAIN_RUN_FIELD_REPAIR_OUTPUT_SCHEMA,
   MAIN_RUN_FIELD_REPAIR_POLICY_KEY,
-  MAIN_RUN_FIELD_REPAIR_PROVIDER_ATTEMPT_TIMEOUT_MS,
-  MAIN_RUN_FIELD_REPAIR_PROVIDER_WORKFLOW_TIMEOUT_MS,
   MAIN_RUN_FIELD_REPAIR_TASK_TYPE,
   buildMainRunFieldRepairExecutionInput,
   validateMainRunFieldRepairModelOutput,
@@ -71,6 +52,14 @@ import {
   buildTradeInInventoryLookupInput,
   collectTradeInDemoEvidence,
 } from "./trade-in-demo-evidence.js";
+import {
+  buildTradeInDemoModelAssistanceStepOutput,
+  executeTradeInDemoModelAssistance,
+  getTradeInDemoFieldRepairMissingFields,
+  getTradeInDemoProviderExecutionOutputJson,
+  selectTradeInDemoModelAssistanceItems,
+  shouldRunTradeInDemoFieldRepair,
+} from "./trade-in-demo-model-assistance.js";
 
 export type {
   EndToEndAgenticTradeInDemoAuditEvent,
@@ -106,93 +95,12 @@ function stripNonRecordDemoHeaderLines(rawInput: string): string {
   return recordLines.join("\n") || rawInput.trim();
 }
 
-function buildProviderFallbackDemonstrationOptions(enabled: boolean): {
-  runtimeConfig?: ModelProviderRuntimeConfig;
-  fetchFn?: ModelProviderFetch;
-} {
-  if (!enabled) {
-    return {};
-  }
-
-  return {
-    runtimeConfig: {
-      enableRealModelCalls: true,
-      openAiApiKey: "provider-fallback-demonstration",
-    },
-    fetchFn: async () => ({
-      ok: false,
-      status: 503,
-      statusText: "Service Unavailable",
-      async json() {
-        return {
-          error: "Deterministic provider availability demonstration.",
-        };
-      },
-    }),
-  };
-}
-
 function toInputJson(value: unknown): Prisma.InputJsonValue {
   return value as Prisma.InputJsonValue;
 }
 
 function needsReview(item: ParsedTradeInDemoItem): boolean {
   return item.confidence < 0.72 || item.missingFields.length > 0;
-}
-
-function getFieldRepairMissingFields(item: ParsedTradeInDemoItem): string[] {
-  return [
-    item.brand ? null : "brand",
-    item.productLine ? null : "productLine",
-    item.category ? null : "category",
-    isShaftFlexApplicable(item.category) && !item.shaftFlex
-      ? "shaftFlex"
-      : null,
-    item.conditionGrade ? null : "conditionGrade",
-    item.tradeInValue === null ? "tradeInValue" : null,
-  ].filter((field): field is string => Boolean(field));
-}
-
-function shouldRunFieldRepair(item: ParsedTradeInDemoItem): boolean {
-  const fieldRepairMissingFields = getFieldRepairMissingFields(item);
-
-  return (
-    item.confidence < 0.72 ||
-    fieldRepairMissingFields.length > 0 ||
-    item.uncertaintyNotes.length > 0
-  );
-}
-
-function getModelRoutingDecisionFromLog(
-  modelCallLog: ModelCallLog,
-): ModelRouteDecision {
-  const responseJson = modelCallLog.responseJson as
-    | {
-        routingDecision?: ModelRouteDecision;
-      }
-    | null
-    | undefined;
-
-  if (!responseJson?.routingDecision) {
-    throw new Error("Model call log is missing routing decision metadata.");
-  }
-
-  return responseJson.routingDecision;
-}
-
-function getProviderExecutionOutputJson(
-  modelCallLog: ModelCallLog,
-): Record<string, unknown> | null {
-  const responseJson = modelCallLog.responseJson as
-    | {
-        providerExecution?: {
-          outputJson?: Record<string, unknown> | null;
-        };
-      }
-    | null
-    | undefined;
-
-  return responseJson?.providerExecution?.outputJson ?? null;
 }
 
 function valuationNeedsReview(estimate: TradeInValuationResult): boolean {
@@ -202,7 +110,7 @@ function valuationNeedsReview(estimate: TradeInValuationResult): boolean {
 function getReviewReason(
   item: ParsedTradeInDemoItem,
 ): "LOW_CONFIDENCE" | "MISSING_REQUIRED_FIELDS" | "AMBIGUOUS_INPUT" {
-  if (getFieldRepairMissingFields(item).length > 0) {
+  if (getTradeInDemoFieldRepairMissingFields(item).length > 0) {
     return "MISSING_REQUIRED_FIELDS";
   }
 
@@ -217,7 +125,7 @@ function summarizeReviewReason(input: {
   item: ParsedTradeInDemoItem;
   valuationEstimate?: TradeInValuationResult;
 }): string {
-  const missingFields = getFieldRepairMissingFields(input.item);
+  const missingFields = getTradeInDemoFieldRepairMissingFields(input.item);
   const reasons = [
     input.item.confidence < 0.72 ? `confidence ${input.item.confidence}` : null,
     missingFields.length > 0 ? `missing ${missingFields.join(", ")}` : null,
@@ -402,18 +310,8 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     valuationEvidenceByItem,
   } = evidenceResult;
 
-  const eligibleFieldRepairItems = parsedItems.filter(shouldRunFieldRepair);
-  const selectedFieldRepairItems = eligibleFieldRepairItems.slice(
-    0,
-    MAIN_RUN_FIELD_REPAIR_MAX_RECORDS,
-  );
-  const modelAssistanceScope = {
-    eligibleRecordCount: eligibleFieldRepairItems.length,
-    selectedRecordCount: selectedFieldRepairItems.length,
-    deferredRecordCount:
-      eligibleFieldRepairItems.length - selectedFieldRepairItems.length,
-    maxSelectedRecordCount: MAIN_RUN_FIELD_REPAIR_MAX_RECORDS,
-  };
+  const { selectedFieldRepairItems, modelAssistanceScope } =
+    selectTradeInDemoModelAssistanceItems(parsedItems);
 
   const modelAssistanceResult = await executePersistedWorkflowStep({
     step: requireWorkflowStep(
@@ -428,215 +326,17 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
       demonstrateProviderFallback: input.demonstrateProviderFallback === true,
     },
     async execute(step) {
-      const fieldRepairRecords: MainRunFieldRepairRecordInput[] =
-        selectedFieldRepairItems.map((item) => {
-          const knowledgeEvidence = knowledgeMatchesByItem.find(
-            (evidence) => evidence.parsedItemId === item.id,
-          );
-          const inventoryEvidence = inventoryMatchesByItem.find(
-            (evidence) => evidence.parsedItemId === item.id,
-          );
-          const valuationEvidence = valuationEvidenceByItem.find(
-            (evidence) => evidence.parsedItemId === item.id,
-          );
-          const priorReviewEvidence = priorReviewLearningEvidenceByItem.find(
-            (evidence) => evidence.parsedItemId === item.id,
-          );
-          const priorReviewSuggestions =
-            priorReviewLearningSuggestionsByItem.find(
-              (suggestions) => suggestions.parsedItemId === item.id,
-            );
-          const fieldRepairMissingFields = getFieldRepairMissingFields(item);
-          const fieldApplicability = {
-            shaftFlex: isShaftFlexApplicable(item.category)
-              ? ("REQUIRED" as const)
-              : ("NOT_APPLICABLE" as const),
-          };
-          const deterministicPolicyAdvisoryCandidates =
-            buildDeterministicPolicyFieldRepairAdvisoryCandidates({
-              recordId: item.id,
-              sourceText: item.rawLine,
-              missingFields: fieldRepairMissingFields,
-              fieldApplicability,
-              productResolutionStatus: item.productResolution.status,
-              sourceEvidenceId: `${item.id}:deterministic-policy`,
-            });
-          const priorReviewAdvisoryCandidates =
-            buildPriorReviewFieldRepairAdvisoryCandidates({
-              recordId: item.id,
-              sourceText: item.rawLine,
-              missingFields: fieldRepairMissingFields,
-              fieldApplicability,
-              productResolutionStatus: item.productResolution.status,
-              sourceEvidenceId: `${item.id}:prior-review`,
-              priorReviewSuggestions: priorReviewSuggestions?.suggestions ?? [],
-            });
-          const advisoryCandidates = mergeFieldRepairAdvisoryCandidates(
-            deterministicPolicyAdvisoryCandidates,
-            priorReviewAdvisoryCandidates,
-          );
-          const reviewReasonCodes = [
-            item.confidence < 0.72 ? "LOW_CONFIDENCE" : null,
-            fieldRepairMissingFields.length > 0
-              ? "MISSING_REQUIRED_FIELDS"
-              : null,
-            item.uncertaintyNotes.length > 0 ? "UNCERTAINTY_NOTES" : null,
-            item.productResolution.status === "AMBIGUOUS"
-              ? "PRODUCT_AMBIGUOUS"
-              : null,
-            item.productResolution.status === "UNRESOLVED"
-              ? "PRODUCT_UNRESOLVED"
-              : null,
-            valuationEvidence?.estimate.reviewRequired
-              ? "VALUATION_REVIEW_REQUIRED"
-              : null,
-          ].filter((reasonCode): reasonCode is string => Boolean(reasonCode));
-          const evidence: MainRunFieldRepairRecordInput["evidence"] = [
-            {
-              evidenceId: `${item.id}:parser`,
-              evidenceType: "PARSER",
-              summary: `Parser evidence captured for ${Object.keys(item.parserEvidence ?? {}).length} field(s).`,
-              payload: item.parserEvidence ?? null,
-            },
-            {
-              evidenceId: `${item.id}:product-resolution`,
-              evidenceType: "PRODUCT_RESOLUTION",
-              summary: `${item.productResolution.status}: ${item.productResolution.reason}`,
-              payload: item.productResolution,
-            },
-            {
-              evidenceId: `${item.id}:knowledge`,
-              evidenceType: "KNOWLEDGE",
-              summary: `${knowledgeEvidence?.search.results.length ?? 0} weighted knowledge result(s) were available.`,
-              payload: knowledgeEvidence?.search ?? null,
-            },
-            {
-              evidenceId: `${item.id}:inventory`,
-              evidenceType: "INVENTORY",
-              summary: inventoryEvidence?.lookup.productId
-                ? `Inventory matched product ${inventoryEvidence.lookup.productId}.`
-                : "Inventory did not return an authoritative product identity.",
-              payload: inventoryEvidence?.lookup ?? null,
-            },
-            {
-              evidenceId: `${item.id}:valuation`,
-              evidenceType: "VALUATION",
-              summary:
-                valuationEvidence && valuationEvidence.estimate.highValue > 0
-                  ? `Valuation range ${valuationEvidence.estimate.lowValue}-${valuationEvidence.estimate.highValue} was available.`
-                  : "No authoritative valuation range was available.",
-              payload: valuationEvidence?.estimate ?? null,
-            },
-            {
-              evidenceId: `${item.id}:deterministic-policy`,
-              evidenceType: "DETERMINISTIC_POLICY",
-              summary: `${deterministicPolicyAdvisoryCandidates.length} deterministic policy candidate(s) were available.`,
-              payload: deterministicPolicyAdvisoryCandidates,
-            },
-            {
-              evidenceId: `${item.id}:prior-review`,
-              evidenceType: "PRIOR_REVIEW",
-              summary: `${priorReviewEvidence?.evidence.length ?? 0} prior-review evidence item(s) were available.`,
-              payload: priorReviewEvidence?.evidence ?? [],
-            },
-          ];
-
-          return {
-            recordId: item.id,
-            sourceText: item.rawLine,
-            missingFields: fieldRepairMissingFields,
-            confidence: item.confidence,
-            selectionReason: {
-              lowConfidence: item.confidence < 0.72,
-              confidence: item.confidence,
-              missingFields: fieldRepairMissingFields,
-              uncertaintyNotes: item.uncertaintyNotes,
-              reviewReasonCodes,
-            },
-            currentFields: {
-              brand: item.brand,
-              productLine: item.productLine,
-              category: item.category,
-              shaftFlex: item.shaftFlex,
-              conditionGrade: item.conditionGrade,
-              tradeInValue: item.tradeInValue,
-            },
-            fieldApplicability,
-            parserEvidence: item.parserEvidence ?? null,
-            productResolution: {
-              status: item.productResolution.status,
-              reason: item.productResolution.reason,
-              matchedProductId:
-                item.productResolution.status === "MATCHED"
-                  ? item.productResolution.match.productId
-                  : null,
-              matchedSku:
-                item.productResolution.status === "MATCHED"
-                  ? item.productResolution.match.sku
-                  : null,
-              candidateProductIds: item.productResolution.candidates.map(
-                (candidate) => candidate.productId,
-              ),
-            },
-            advisoryCandidates,
-            evidence,
-          };
-        });
-
-      const fieldRepairInputJson = buildMainRunFieldRepairExecutionInput({
-        workflowRunId: workflowRun.id,
-        records: fieldRepairRecords,
-      });
-      const providerFallbackDemonstrationOptions =
-        buildProviderFallbackDemonstrationOptions(
-          input.demonstrateProviderFallback === true,
-        );
-
-      const modelCallLog = await createModelExecutionLogForWorkflowRun({
+      return executeTradeInDemoModelAssistance({
         workflowRunId: workflowRun.id,
         workflowStepId: step.id,
-        taskType: MAIN_RUN_FIELD_REPAIR_TASK_TYPE,
-        goal: "HIGH_QUALITY",
-        policyKey: MAIN_RUN_FIELD_REPAIR_POLICY_KEY,
-        agentName: MAIN_RUN_FIELD_REPAIR_AGENT_NAME,
-        workflowName: "main-run",
-        workflowStep: "field-repair",
-        requireJson: true,
-        allowDisabledProvidersForSimulation: false,
-        attemptTimeoutMs: MAIN_RUN_FIELD_REPAIR_PROVIDER_ATTEMPT_TIMEOUT_MS,
-        workflowTimeoutMs: MAIN_RUN_FIELD_REPAIR_PROVIDER_WORKFLOW_TIMEOUT_MS,
-        inputJson: fieldRepairInputJson,
-        outputSchema: MAIN_RUN_FIELD_REPAIR_OUTPUT_SCHEMA,
-        ...providerFallbackDemonstrationOptions,
+        selectedItems: selectedFieldRepairItems,
+        evidence: evidenceResult,
+        demonstrateProviderFallback: input.demonstrateProviderFallback === true,
         ...(input.signal ? { signal: input.signal } : {}),
-        validateOutput(outputJson) {
-          const validation = validateMainRunFieldRepairModelOutput(outputJson, {
-            records: fieldRepairRecords,
-          });
-
-          return {
-            jsonValid: validation.jsonValid,
-            validationPassed: validation.validationPassed,
-            validationErrors: validation.validationErrors,
-          };
-        },
       });
-      const modelRoutingDecision = getModelRoutingDecisionFromLog(modelCallLog);
-
-      return {
-        fieldRepairRecords,
-        modelCallLog,
-        modelRoutingDecision,
-      };
     },
     buildOutputJson(result) {
-      return {
-        modelCallLogId: result.modelCallLog.id,
-        selectedRecordCount: result.fieldRepairRecords.length,
-        provider: result.modelCallLog.provider,
-        model: result.modelCallLog.model,
-        status: result.modelCallLog.status,
-      };
+      return buildTradeInDemoModelAssistanceStepOutput(result);
     },
   });
   const { fieldRepairRecords, modelCallLog, modelRoutingDecision } =
@@ -653,7 +353,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     },
     execute() {
       const fieldRepairValidation = validateMainRunFieldRepairModelOutput(
-        getProviderExecutionOutputJson(modelCallLog),
+        getTradeInDemoProviderExecutionOutputJson(modelCallLog),
         {
           records: fieldRepairRecords,
         },
@@ -767,7 +467,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         },
       });
       const retryValidation = validateMainRunFieldRepairModelOutput(
-        getProviderExecutionOutputJson(retryModelCallLog),
+        getTradeInDemoProviderExecutionOutputJson(retryModelCallLog),
         {
           records: [targetedRetryRecord],
         },
@@ -837,8 +537,9 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         const inventoryEvidence = inventoryMatchesByItem.find(
           (evidence) => evidence.parsedItemId === item.id,
         );
-        const fieldRepairMissingFields = getFieldRepairMissingFields(item);
-        const requiresFieldRepairReview = shouldRunFieldRepair(item);
+        const fieldRepairMissingFields =
+          getTradeInDemoFieldRepairMissingFields(item);
+        const requiresFieldRepairReview = shouldRunTradeInDemoFieldRepair(item);
 
         if (
           !needsReview(item) &&
