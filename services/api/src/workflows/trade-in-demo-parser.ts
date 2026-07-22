@@ -1,26 +1,17 @@
 import { isShaftFlexApplicable } from "./golf-field-applicability.js";
 import {
   findTextParserEvidence,
-  omitEmptyParserEvidence
+  omitEmptyParserEvidence,
 } from "./parser-evidence.js";
 import {
   detectApprovedConditionGradeWithEvidence,
   detectShaftFlexWithEvidence,
-  detectTradeInValueWithEvidence
+  detectTradeInValueWithEvidence,
 } from "./parser-normalizers.js";
-import type {
-  ProductReferenceProvider
-} from "../product-reference/product-reference-provider.js";
-import type {
-  ProductResolution
-} from "../product-reference/product-reference-resolver.js";
-import {
-  resolveParsedProductIdentity
-} from "./product-resolution-parser.js";
-import type {
-  ParserEvidence,
-  ParserFieldEvidence
-} from "./parser-evidence.js";
+import type { ProductReferenceProvider } from "../product-reference/product-reference-provider.js";
+import type { ProductResolution } from "../product-reference/product-reference-resolver.js";
+import { resolveParsedProductIdentity } from "./product-resolution-parser.js";
+import type { ParserEvidence, ParserFieldEvidence } from "./parser-evidence.js";
 
 export type ParsedTradeInDemoItem = {
   id: string;
@@ -52,32 +43,32 @@ const BRAND_PATTERNS: {
 }[] = [
   {
     brand: "TaylorMade",
-    aliases: [/\btaylormade\b/i, /\btm\b/i]
+    aliases: [/\btaylormade\b/i, /\btm\b/i],
   },
   {
     brand: "Titleist",
-    aliases: [/\btitleist\b/i]
+    aliases: [/\btitleist\b/i],
   },
   {
     brand: "Callaway",
-    aliases: [/\bcallaway\b/i, /\bcally\b/i]
+    aliases: [/\bcallaway\b/i, /\bcally\b/i],
   },
   {
     brand: "PING",
-    aliases: [/\bping\b/i]
+    aliases: [/\bping\b/i],
   },
   {
     brand: "Cleveland",
-    aliases: [/\bcleveland\b/i]
+    aliases: [/\bcleveland\b/i],
   },
   {
     brand: "Odyssey",
-    aliases: [/\bodyssey\b/i]
+    aliases: [/\bodyssey\b/i],
   },
   {
     brand: "Mizuno",
-    aliases: [/\bmizuno\b/i]
-  }
+    aliases: [/\bmizuno\b/i],
+  },
 ];
 
 const CATEGORY_PATTERNS: {
@@ -86,7 +77,7 @@ const CATEGORY_PATTERNS: {
 }[] = [
   {
     category: "DRIVER",
-    aliases: [/\bdriver\b/i, /\bdrv\b/i, /\bdr\b/i, /\bDRIVER\b/]
+    aliases: [/\bdriver\b/i, /\bdrv\b/i, /\bdr\b/i, /\bDRIVER\b/],
   },
   {
     category: "FAIRWAY_WOOD",
@@ -98,25 +89,29 @@ const CATEGORY_PATTERNS: {
       /\b7w\b/i,
       /\b9w\b/i,
       /\bwood\b/i,
-      /\bFAIRWAY_WOOD\b/
-    ]
+      /\bFAIRWAY_WOOD\b/,
+    ],
   },
   {
     category: "IRON_SET",
-    aliases: [/\birons?\b/i, /\b[4-9]-pw\b/i, /\b[5-9]-gw\b/i, /\bIRON_SET\b/]
+    aliases: [/\birons?\b/i, /\b[4-9]-pw\b/i, /\b[5-9]-gw\b/i, /\bIRON_SET\b/],
   },
   {
     category: "HYBRID",
-    aliases: [/\bhy\b/i, /\bhybrid\b/i, /\brescue\b/i, /\bHYBRID\b/]
+    aliases: [/\bhy\b/i, /\bhybrid\b/i, /\brescue\b/i, /\bHYBRID\b/],
   },
   {
     category: "WEDGE",
-    aliases: [/\bwedge\b/i, /\b(?:46|48|50|52|54|56|58|60)\s*(?:deg|degree|°)?\b/i, /\bWEDGE\b/]
+    aliases: [
+      /\bwedge\b/i,
+      /\b(?:46|48|50|52|54|56|58|60)\s*(?:deg|degree|°)?\b/i,
+      /\bWEDGE\b/,
+    ],
   },
   {
     category: "PUTTER",
-    aliases: [/\bputter\b/i, /\bPUTTER\b/]
-  }
+    aliases: [/\bputter\b/i, /\bPUTTER\b/],
+  },
 ];
 
 const SHAFT_BRAND_PATTERNS: {
@@ -125,32 +120,32 @@ const SHAFT_BRAND_PATTERNS: {
 }[] = [
   {
     shaftBrand: "Fujikura",
-    aliases: [/\bfujikura\b/i, /\bventus\b/i]
+    aliases: [/\bfujikura\b/i, /\bventus\b/i],
   },
   {
     shaftBrand: "Mitsubishi",
-    aliases: [/\bmit(s|subishi)?\b/i, /\btensei\b/i, /\bkai'?li\b/i]
+    aliases: [/\bmit(s|subishi)?\b/i, /\btensei\b/i, /\bkai'?li\b/i],
   },
   {
     shaftBrand: "Project X",
-    aliases: [/\bproject\s*x\b/i, /\bhzrdus\b/i]
+    aliases: [/\bproject\s*x\b/i, /\bhzrdus\b/i],
   },
   {
     shaftBrand: "Graphite Design",
-    aliases: [/\bgraphite\s*design\b/i, /\btour\s*ad\b/i]
+    aliases: [/\bgraphite\s*design\b/i, /\btour\s*ad\b/i],
   },
   {
     shaftBrand: "True Temper",
-    aliases: [/\btrue\s*temper\b/i, /\bdynamic\s*gold\b/i]
+    aliases: [/\btrue\s*temper\b/i, /\bdynamic\s*gold\b/i],
   },
   {
     shaftBrand: "Nippon",
-    aliases: [/\bnippon\b/i, /\bmodus\b/i]
+    aliases: [/\bnippon\b/i, /\bmodus\b/i],
   },
   {
     shaftBrand: "Odyssey",
-    aliases: [/\bstroke\s*lab\b/i]
-  }
+    aliases: [/\bstroke\s*lab\b/i],
+  },
 ];
 
 const SHAFT_MODEL_PATTERNS: {
@@ -159,34 +154,33 @@ const SHAFT_MODEL_PATTERNS: {
 }[] = [
   {
     shaftModel: "Ventus",
-    aliases: [/\bventus\b/i]
+    aliases: [/\bventus\b/i],
   },
   {
     shaftModel: "Tensei",
-    aliases: [/\btensei\b/i]
+    aliases: [/\btensei\b/i],
   },
   {
     shaftModel: "HZRDUS",
-    aliases: [/\bhzrdus\b/i]
+    aliases: [/\bhzrdus\b/i],
   },
   {
     shaftModel: "Tour AD",
-    aliases: [/\btour\s*ad\b/i]
+    aliases: [/\btour\s*ad\b/i],
   },
   {
     shaftModel: "Dynamic Gold",
-    aliases: [/\bdynamic\s*gold\b/i]
+    aliases: [/\bdynamic\s*gold\b/i],
   },
   {
     shaftModel: "Modus",
-    aliases: [/\bmodus\b/i]
+    aliases: [/\bmodus\b/i],
   },
   {
     shaftModel: "Stroke Lab",
-    aliases: [/\bstroke\s*lab\b/i]
-  }
+    aliases: [/\bstroke\s*lab\b/i],
+  },
 ];
-
 
 const CONDITION_NOTE_PATTERNS: {
   note: string;
@@ -194,48 +188,48 @@ const CONDITION_NOTE_PATTERNS: {
 }[] = [
   {
     note: "9.5 Mint",
-    aliases: [/\b9\.5\s*Mint\b/i]
+    aliases: [/\b9\.5\s*Mint\b/i],
   },
   {
     note: "9.0 Above Average",
-    aliases: [/\b9\.0\s*Above\s*Average\b/i]
+    aliases: [/\b9\.0\s*Above\s*Average\b/i],
   },
   {
     note: "8.0 Average",
-    aliases: [/\b8\.0\s*Average\b/i]
+    aliases: [/\b8\.0\s*Average\b/i],
   },
   {
     note: "7.0 Below Average",
-    aliases: [/\b7\.0\s*Below\s*Average\b/i]
+    aliases: [/\b7\.0\s*Below\s*Average\b/i],
   },
   {
     note: "6.0 Poor",
-    aliases: [/\b6\.0\s*Poor\b/i]
+    aliases: [/\b6\.0\s*Poor\b/i],
   },
   {
     note: "sky mark",
-    aliases: [/\bsky\s*mark\b/i, /\bcrown\s*mark\b/i]
+    aliases: [/\bsky\s*mark\b/i, /\bcrown\s*mark\b/i],
   },
   {
     note: "face wear",
-    aliases: [/\bface\s*wear\b/i, /\bworn\s*face\b/i]
+    aliases: [/\bface\s*wear\b/i, /\bworn\s*face\b/i],
   },
   {
     note: "sole wear",
-    aliases: [/\bsole\s*wear\b/i]
+    aliases: [/\bsole\s*wear\b/i],
   },
   {
     note: "paint wear",
-    aliases: [/\bpaint\s*wear\b/i, /\bpaint\s*chip/i]
+    aliases: [/\bpaint\s*wear\b/i, /\bpaint\s*chip/i],
   },
   {
     note: "worn grip",
-    aliases: [/\bworn\s*grip\b/i, /\bslick\s*grip\b/i, /\bneeds?\s*grip\b/i]
+    aliases: [/\bworn\s*grip\b/i, /\bslick\s*grip\b/i, /\bneeds?\s*grip\b/i],
   },
   {
     note: "dent",
-    aliases: [/\bdent(ed)?\b/i]
-  }
+    aliases: [/\bdent(ed)?\b/i],
+  },
 ];
 
 const ACCESSORY_NOTE_PATTERNS: {
@@ -244,16 +238,26 @@ const ACCESSORY_NOTE_PATTERNS: {
 }[] = [
   {
     note: "missing headcover",
-    aliases: [/\bno\s*hc\b/i, /\bno\s*head\s*cover\b/i, /\bmissing\s*headcover\b/i, /\bmissing\s*head\s*cover\b/i]
+    aliases: [
+      /\bno\s*hc\b/i,
+      /\bno\s*head\s*cover\b/i,
+      /\bmissing\s*headcover\b/i,
+      /\bmissing\s*head\s*cover\b/i,
+    ],
   },
   {
     note: "headcover included",
-    aliases: [/\bhc\s*included\b/i, /\bw\/\s*hc\b/i, /\bwith\s*head\s*cover\b/i, /\bwith\s*headcover\b/i]
+    aliases: [
+      /\bhc\s*included\b/i,
+      /\bw\/\s*hc\b/i,
+      /\bwith\s*head\s*cover\b/i,
+      /\bwith\s*headcover\b/i,
+    ],
   },
   {
     note: "missing wrench",
-    aliases: [/\bno\s*wrench\b/i, /\bmissing\s*wrench\b/i]
-  }
+    aliases: [/\bno\s*wrench\b/i, /\bmissing\s*wrench\b/i],
+  },
 ];
 
 const UNCERTAINTY_PATTERNS: {
@@ -262,16 +266,21 @@ const UNCERTAINTY_PATTERNS: {
 }[] = [
   {
     note: "model uncertain",
-    aliases: [/\bmaybe\b/i, /\bpossibly\b/i, /\bnot\s*sure\b/i, /\blooks\s*like\b/i]
+    aliases: [
+      /\bmaybe\b/i,
+      /\bpossibly\b/i,
+      /\bnot\s*sure\b/i,
+      /\blooks\s*like\b/i,
+    ],
   },
   {
     note: "shaft uncertain",
-    aliases: [/\bshaft\s*unknown\b/i, /\bunknown\s*shaft\b/i]
+    aliases: [/\bshaft\s*unknown\b/i, /\bunknown\s*shaft\b/i],
   },
   {
     note: "condition uncertain",
-    aliases: [/\bcondition\s*unclear\b/i, /\bcond\s*unclear\b/i, /\brough\b/i]
-  }
+    aliases: [/\bcondition\s*unclear\b/i, /\bcond\s*unclear\b/i, /\brough\b/i],
+  },
 ];
 
 function unique(values: string[]): string[] {
@@ -281,9 +290,11 @@ function unique(values: string[]): string[] {
 function firstPatternMatch<T extends string>(
   line: string,
   patterns: { [key in T]: string } & { aliases: RegExp[] },
-  key: T
+  key: T,
 ): string | null {
-  return patterns.aliases.some((alias) => alias.test(line)) ? patterns[key] : null;
+  return patterns.aliases.some((alias) => alias.test(line))
+    ? patterns[key]
+    : null;
 }
 
 function detectBrand(line: string): string | null {
@@ -334,10 +345,13 @@ function detectShaftModel(line: string): string | null {
   return null;
 }
 
-
 function detectLoft(line: string): string | null {
-  const explicitLoftMatch = line.match(/\b(\d{1,2}(?:\.\d)?)\s*(?:deg|degree|°)\b/i);
-  const shorthandLoftMatch = line.match(/\b(?:driver|drv|fairway|wood|3w|5w|7w|9w)\s+(\d{1,2}(?:\.\d)?)\b/i);
+  const explicitLoftMatch = line.match(
+    /\b(\d{1,2}(?:\.\d)?)\s*(?:deg|degree|°)\b/i,
+  );
+  const shorthandLoftMatch = line.match(
+    /\b(?:driver|drv|fairway|wood|3w|5w|7w|9w)\s+(\d{1,2}(?:\.\d)?)\b/i,
+  );
   const loftMatch = explicitLoftMatch ?? shorthandLoftMatch;
 
   if (!loftMatch) {
@@ -354,7 +368,9 @@ function detectLoft(line: string): string | null {
 }
 
 function detectClubNumber(line: string): string | null {
-  const fairwayOrHybridMatch = line.match(/\b([2-9])\s*(?:w|wood|hy|hybrid)\b/i);
+  const fairwayOrHybridMatch = line.match(
+    /\b([2-9])\s*(?:w|wood|hy|hybrid)\b/i,
+  );
 
   if (fairwayOrHybridMatch) {
     return fairwayOrHybridMatch[1] ?? null;
@@ -376,34 +392,26 @@ function detectClubNumber(line: string): string | null {
   return null;
 }
 
-function detectStoreId(
-  line: string
-): string | null {
-  const match = line.match(
-    /\bstore(?:=|:|\s)?\s*(STORE-)?(\d{3})\b/i
-  );
+function detectStoreId(line: string): string | null {
+  const match = line.match(/\bstore(?:=|:|\s)?\s*(STORE-)?(\d{3})\b/i);
 
   if (!match?.[2]) {
     return null;
   }
 
-  return match[1]
-    ? "STORE-" + match[2]
-    : match[2];
+  return match[1] ? "STORE-" + match[2] : match[2];
 }
-
 
 function collectNotes(
   line: string,
-  patterns: { note: string; aliases: RegExp[] }[]
+  patterns: { note: string; aliases: RegExp[] }[],
 ): string[] {
   return unique(
     patterns
       .filter((pattern) => pattern.aliases.some((alias) => alias.test(line)))
-      .map((pattern) => pattern.note)
+      .map((pattern) => pattern.note),
   );
 }
-
 
 function buildParserEvidence(
   line: string,
@@ -428,16 +436,44 @@ function buildParserEvidence(
     ]),
     ...(values.productLineEvidence
       ? {
-          productLine:
-            values.productLineEvidence
+          productLine: values.productLineEvidence,
         }
       : {}),
     category: findTextParserEvidence(line, values.category, [
-      { value: "DRIVER", aliases: [/\bdriver\b/i, /\bdrv\b/i, /\bdr\b/i, /\bDRIVER\b/] },
-      { value: "FAIRWAY_WOOD", aliases: [/\bfairway\b/i, /\bfw\b/i, /\b3w\b/i, /\b5w\b/i, /\b7w\b/i, /\b9w\b/i, /\bwood\b/i, /\bFAIRWAY_WOOD\b/] },
-      { value: "IRON_SET", aliases: [/\birons?\b/i, /\b[4-9]-pw\b/i, /\b[5-9]-gw\b/i, /\bIRON_SET\b/] },
-      { value: "HYBRID", aliases: [/\bhy\b/i, /\bhybrid\b/i, /\brescue\b/i, /\bHYBRID\b/] },
-      { value: "WEDGE", aliases: [/\bwedge\b/i, /\b\d{2}\s*deg\b/i, /\bWEDGE\b/] },
+      {
+        value: "DRIVER",
+        aliases: [/\bdriver\b/i, /\bdrv\b/i, /\bdr\b/i, /\bDRIVER\b/],
+      },
+      {
+        value: "FAIRWAY_WOOD",
+        aliases: [
+          /\bfairway\b/i,
+          /\bfw\b/i,
+          /\b3w\b/i,
+          /\b5w\b/i,
+          /\b7w\b/i,
+          /\b9w\b/i,
+          /\bwood\b/i,
+          /\bFAIRWAY_WOOD\b/,
+        ],
+      },
+      {
+        value: "IRON_SET",
+        aliases: [
+          /\birons?\b/i,
+          /\b[4-9]-pw\b/i,
+          /\b[5-9]-gw\b/i,
+          /\bIRON_SET\b/,
+        ],
+      },
+      {
+        value: "HYBRID",
+        aliases: [/\bhy\b/i, /\bhybrid\b/i, /\brescue\b/i, /\bHYBRID\b/],
+      },
+      {
+        value: "WEDGE",
+        aliases: [/\bwedge\b/i, /\b\d{2}\s*deg\b/i, /\bWEDGE\b/],
+      },
       { value: "PUTTER", aliases: [/\bputter\b/i, /\bPUTTER\b/] },
     ]),
     shaftFlex: isShaftFlexApplicable(values.category)
@@ -527,53 +563,28 @@ function detectNormalizedHandoffProductText(input: {
   detectedBrand: string | null;
   detectedCategory: string | null;
 }): string | null {
-  if (
-    !/\bsource evidence\s*:/i.test(
-      input.line
-    )
-  ) {
+  if (!/\bsource evidence\s*:/i.test(input.line)) {
     return null;
   }
 
-  const identitySeparatorIndex =
-    input.line.indexOf("—");
+  const identitySeparatorIndex = input.line.indexOf("—");
 
   if (identitySeparatorIndex < 0) {
     return null;
   }
 
-  let identityText =
-    input.line
-      .slice(
-        0,
-        identitySeparatorIndex
-      )
-      .trim();
+  let identityText = input.line.slice(0, identitySeparatorIndex).trim();
 
   if (input.detectedBrand) {
-    const normalizedIdentity =
-      identityText.toLocaleLowerCase();
-    const normalizedBrand =
-      input.detectedBrand.toLocaleLowerCase();
+    const normalizedIdentity = identityText.toLocaleLowerCase();
+    const normalizedBrand = input.detectedBrand.toLocaleLowerCase();
 
-    if (
-      normalizedIdentity ===
-      normalizedBrand
-    ) {
+    if (normalizedIdentity === normalizedBrand) {
       return null;
     }
 
-    if (
-      normalizedIdentity.startsWith(
-        normalizedBrand + " "
-      )
-    ) {
-      identityText =
-        identityText
-          .slice(
-            input.detectedBrand.length
-          )
-          .trim();
+    if (normalizedIdentity.startsWith(normalizedBrand + " ")) {
+      identityText = identityText.slice(input.detectedBrand.length).trim();
     }
   }
 
@@ -585,31 +596,21 @@ function detectNormalizedHandoffProductText(input: {
       return null;
     }
 
-    const categorySuffix =
-      " " + input.detectedCategory;
+    const categorySuffix = " " + input.detectedCategory;
 
     if (
       identityText
         .toLocaleUpperCase()
-        .endsWith(
-          categorySuffix
-            .toLocaleUpperCase()
-        )
+        .endsWith(categorySuffix.toLocaleUpperCase())
     ) {
-      identityText =
-        identityText
-          .slice(
-            0,
-            -categorySuffix.length
-          )
-          .trim();
+      identityText = identityText.slice(0, -categorySuffix.length).trim();
     }
   }
 
   if (
     !identityText ||
     /^(?:unknown(?:\s+(?:item|club|model))?|mystery\s+club|n\/?a|none|null|tbd|\?)$/i.test(
-      identityText
+      identityText,
     )
   ) {
     return null;
@@ -621,95 +622,60 @@ function detectNormalizedHandoffProductText(input: {
 function parseLine(
   rawLine: string,
   index: number,
-  provider?: ProductReferenceProvider
+  provider?: ProductReferenceProvider,
 ): ParsedTradeInDemoItem {
-  const cleanedLine = rawLine
-    .replace(/^[-*•\d.)\s]+/, "")
-    .trim();
-  const detectedBrand =
-    detectBrand(cleanedLine);
-  const detectedCategory =
-    detectCategory(cleanedLine);
-  const normalizedHandoffProductText =
-    detectNormalizedHandoffProductText({
-      line: cleanedLine,
-      detectedBrand,
-      detectedCategory
-    });
-  const productIdentity =
-    resolveParsedProductIdentity({
-      rawText: cleanedLine,
-      detectedBrand,
-      detectedCategory,
-      ...(normalizedHandoffProductText
-        ? {
-            productText:
-              normalizedHandoffProductText
-          }
-        : {}),
-      ...(provider
-        ? {
-            provider
-          }
-        : {})
-    });
+  const cleanedLine = rawLine.replace(/^[-*•\d.)\s]+/, "").trim();
+  const detectedBrand = detectBrand(cleanedLine);
+  const detectedCategory = detectCategory(cleanedLine);
+  const normalizedHandoffProductText = detectNormalizedHandoffProductText({
+    line: cleanedLine,
+    detectedBrand,
+    detectedCategory,
+  });
+  const productIdentity = resolveParsedProductIdentity({
+    rawText: cleanedLine,
+    detectedBrand,
+    detectedCategory,
+    ...(normalizedHandoffProductText
+      ? {
+          productText: normalizedHandoffProductText,
+        }
+      : {}),
+    ...(provider
+      ? {
+          provider,
+        }
+      : {}),
+  });
   const brand = productIdentity.brand;
-  const productLine =
-    productIdentity.productLine;
-  const category =
-    productIdentity.category;
-  const shaftBrand =
-    detectShaftBrand(cleanedLine);
-  const shaftModel =
-    detectShaftModel(cleanedLine);
-  const shaftFlex =
-    isShaftFlexApplicable(category)
-      ? detectShaftFlexWithEvidence(
-          cleanedLine
-        ).value
-      : null;
+  const productLine = productIdentity.productLine;
+  const category = productIdentity.category;
+  const shaftBrand = detectShaftBrand(cleanedLine);
+  const shaftModel = detectShaftModel(cleanedLine);
+  const shaftFlex = isShaftFlexApplicable(category)
+    ? detectShaftFlexWithEvidence(cleanedLine).value
+    : null;
   const conditionGrade =
-    detectApprovedConditionGradeWithEvidence(
-      cleanedLine
-    ).value;
-  const tradeInValue =
-    detectTradeInValueWithEvidence(
-      cleanedLine
-    ).value;
-  const storeId =
-    detectStoreId(
-      cleanedLine
-    );
-  const parserEvidence =
-    buildParserEvidence(cleanedLine, {
-      brand,
-      productLineEvidence:
-        productIdentity.productLineEvidence,
-      category,
-      shaftFlex,
-      conditionGrade,
-      tradeInValue
-    });
+    detectApprovedConditionGradeWithEvidence(cleanedLine).value;
+  const tradeInValue = detectTradeInValueWithEvidence(cleanedLine).value;
+  const storeId = detectStoreId(cleanedLine);
+  const parserEvidence = buildParserEvidence(cleanedLine, {
+    brand,
+    productLineEvidence: productIdentity.productLineEvidence,
+    category,
+    shaftFlex,
+    conditionGrade,
+    tradeInValue,
+  });
   const conditionNotes = unique([
-    ...(conditionGrade
-      ? [conditionGrade]
-      : []),
-    ...collectNotes(
-      cleanedLine,
-      CONDITION_NOTE_PATTERNS
-    )
+    ...(conditionGrade ? [conditionGrade] : []),
+    ...collectNotes(cleanedLine, CONDITION_NOTE_PATTERNS),
   ]);
-  const accessoriesNotes = collectNotes(
-    cleanedLine,
-    ACCESSORY_NOTE_PATTERNS
-  );
+  const accessoriesNotes = collectNotes(cleanedLine, ACCESSORY_NOTE_PATTERNS);
 
   const uncertaintyNotes = unique([
-    ...collectNotes(
-      cleanedLine,
-      UNCERTAINTY_PATTERNS
-    ),
-    ...productIdentity.uncertaintyNotes
+    ...collectNotes(cleanedLine, UNCERTAINTY_PATTERNS),
+    ...productIdentity.uncertaintyNotes,
   ]);
 
   const missingFields = buildMissingFields({
@@ -717,7 +683,7 @@ function parseLine(
     productLine,
     category,
     shaftFlex,
-    conditionNotes
+    conditionNotes,
   });
   const confidence = calculateConfidence({
     brand,
@@ -727,7 +693,7 @@ function parseLine(
     conditionNotes,
     accessoriesNotes,
     uncertaintyNotes,
-    missingFields
+    missingFields,
   });
 
   return {
@@ -738,8 +704,7 @@ function parseLine(
     model: productLine,
     category,
     loft: detectLoft(cleanedLine),
-    clubNumber:
-      detectClubNumber(cleanedLine),
+    clubNumber: detectClubNumber(cleanedLine),
     shaftBrand,
     shaftModel,
     shaftFlex,
@@ -747,25 +712,22 @@ function parseLine(
     tradeInValue,
     storeId,
     parserEvidence,
-    productResolution:
-      productIdentity.productResolution,
+    productResolution: productIdentity.productResolution,
     conditionNotes,
     accessoriesNotes,
     uncertaintyNotes,
     confidence,
-    missingFields
+    missingFields,
   };
 }
 
 export function parseTradeInDemoText(
   rawInput: string,
-  provider?: ProductReferenceProvider
+  provider?: ProductReferenceProvider,
 ): ParsedTradeInDemoItem[] {
   return rawInput
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
-    .map((line, index) =>
-      parseLine(line, index, provider)
-    );
+    .map((line, index) => parseLine(line, index, provider));
 }

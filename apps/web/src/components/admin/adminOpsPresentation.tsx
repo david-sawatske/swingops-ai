@@ -8,11 +8,7 @@ export type AdminOpsMetric = {
   onAction?: () => void;
 };
 
-export function AdminOpsMetricCard({
-  metric,
-}: {
-  metric: AdminOpsMetric;
-}) {
+export function AdminOpsMetricCard({ metric }: { metric: AdminOpsMetric }) {
   return (
     <article className="admin-ops-metric-card">
       <span>{metric.label}</span>
@@ -98,9 +94,7 @@ export function AdminOpsAliasList({ aliases }: { aliases: string[] }) {
   );
 }
 
-export function formatNullable(
-  value: string | number | null | undefined,
-) {
+export function formatNullable(value: string | number | null | undefined) {
   if (value === null || value === undefined || value === "") {
     return "Blank";
   }
@@ -140,10 +134,7 @@ export function formatShortId(value: string | null | undefined) {
   return `${value.slice(0, 6)}…${value.slice(-4)}`;
 }
 
-export function formatAdminOpsPercent(
-  numerator: number,
-  denominator: number,
-) {
+export function formatAdminOpsPercent(numerator: number, denominator: number) {
   if (denominator <= 0) {
     return "0%";
   }

@@ -8,7 +8,7 @@ import {
   getModelProviderRuntimeConfig,
   normalizeTextModelOutput,
   buildUsage,
-  readObject
+  readObject,
 } from "../model-provider-runtime-config.js";
 
 export const anthropicProvider: ModelProviderAdapter = {
@@ -26,14 +26,14 @@ export const anthropicProvider: ModelProviderAdapter = {
         "INTAKE_PARSING",
         "FIELD_NORMALIZATION",
         "VALIDATION",
-        "REVIEW_SUMMARY"
+        "REVIEW_SUMMARY",
       ],
       supportsJson: true,
       costTier: "HIGH",
       latencyTier: "MEDIUM",
       qualityTier: "HIGH",
-      enabled: true
-    }
+      enabled: true,
+    },
   ],
   async execute(input) {
     const config = input.runtimeConfig ?? getModelProviderRuntimeConfig();
@@ -41,55 +41,60 @@ export const anthropicProvider: ModelProviderAdapter = {
     assertRealModelCallsEnabled({
       provider: "ANTHROPIC",
       config,
-      missingConfigHint: "Required env: ANTHROPIC_API_KEY."
+      missingConfigHint: "Required env: ANTHROPIC_API_KEY.",
     });
 
     const apiKey = assertConfiguredString({
       provider: "ANTHROPIC",
       value: config.anthropicApiKey,
-      envName: "ANTHROPIC_API_KEY"
+      envName: "ANTHROPIC_API_KEY",
     });
 
     const model = config.anthropicModel ?? input.model;
-    const response = await getFetch(input.fetchFn)("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json"
+    const response = await getFetch(input.fetchFn)(
+      "https://api.anthropic.com/v1/messages",
+      {
+        method: "POST",
+        headers: {
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 800,
+          system:
+            "You are a SwingOps AI provider adapter. Return valid JSON only.",
+          messages: [
+            {
+              role: "user",
+              content: buildProviderPrompt({
+                ...input,
+                model,
+              }),
+            },
+          ],
+        }),
+        ...(input.signal ? { signal: input.signal } : {}),
       },
-      body: JSON.stringify({
-        model,
-        max_tokens: 800,
-        system: "You are a SwingOps AI provider adapter. Return valid JSON only.",
-        messages: [
-          {
-            role: "user",
-            content: buildProviderPrompt({
-              ...input,
-              model
-            })
-          }
-        ]
-      }),
-      ...(input.signal ? { signal: input.signal } : {})
-    });
+    );
 
     await assertSuccessfulResponse({
       provider: "ANTHROPIC",
-      response
+      response,
     });
 
     const body = readObject(await response.json(), "ANTHROPIC");
     const content = Array.isArray(body.content) ? body.content : [];
     const firstContent = readObject(content[0], "ANTHROPIC");
     const text = typeof firstContent.text === "string" ? firstContent.text : "";
-    const usage = body.usage && typeof body.usage === "object"
-      ? (body.usage as {
-          input_tokens?: number;
-          output_tokens?: number;
-        })
-      : undefined;
+    const usage =
+      body.usage && typeof body.usage === "object"
+        ? (body.usage as {
+            input_tokens?: number;
+            output_tokens?: number;
+          })
+        : undefined;
 
     return normalizeTextModelOutput({
       provider: "ANTHROPIC",
@@ -105,10 +110,10 @@ export const anthropicProvider: ModelProviderAdapter = {
                 typeof usage.input_tokens === "number" &&
                 typeof usage.output_tokens === "number"
                   ? usage.input_tokens + usage.output_tokens
-                  : undefined
-            })
+                  : undefined,
+            }),
           }
-        : {})
+        : {}),
     });
-  }
+  },
 };

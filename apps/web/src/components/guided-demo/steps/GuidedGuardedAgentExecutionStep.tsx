@@ -11,9 +11,7 @@ import {
   getModelExecutionValidationLabel,
   getProviderAttemptLabel,
 } from "./final-run-report/finalRunReportUtils";
-import {
-  GuidedModelReviewAssistance,
-} from "./GuidedModelReviewAssistance";
+import { GuidedModelReviewAssistance } from "./GuidedModelReviewAssistance";
 
 type GuidedGuardedAgentExecutionStepProps = {
   error: string | null;
@@ -34,7 +32,11 @@ function getWorkflowInput(rawInput: string, generatedWorkflowInput: string) {
 function getPriorReviewSuggestions(
   result: ExecuteEndToEndAgenticTradeInDemoResponse | null,
 ) {
-  return result?.priorReviewLearningSuggestionsByItem.flatMap((item) => item.suggestions) ?? [];
+  return (
+    result?.priorReviewLearningSuggestionsByItem.flatMap(
+      (item) => item.suggestions,
+    ) ?? []
+  );
 }
 
 export function getModelAssistanceScopeNotice(
@@ -47,10 +49,7 @@ export function getModelAssistanceScopeNotice(
   return `${scope.selectedRecordCount} of ${scope.eligibleRecordCount} eligible records were included in this bounded model request. The remaining ${scope.deferredRecordCount} stayed in deterministic processing and were routed to human review.`;
 }
 
-const SUCCESSFUL_PROVIDER_ATTEMPT_STATUSES = new Set([
-  "SUCCESS",
-  "SUCCEEDED",
-]);
+const SUCCESSFUL_PROVIDER_ATTEMPT_STATUSES = new Set(["SUCCESS", "SUCCEEDED"]);
 
 export function getProviderFallbackNotice(
   trace: ExecuteEndToEndAgenticTradeInDemoResponse["providerFallbackTrace"],
@@ -67,8 +66,7 @@ export function getProviderFallbackNotice(
         !SUCCESSFUL_PROVIDER_ATTEMPT_STATUSES.has(attempt.status),
     ) ??
     trace.attempts.find(
-      (attempt) =>
-        !SUCCESSFUL_PROVIDER_ATTEMPT_STATUSES.has(attempt.status),
+      (attempt) => !SUCCESSFUL_PROVIDER_ATTEMPT_STATUSES.has(attempt.status),
     ) ??
     null;
   const finalAttempt = trace.attempts.at(-1) ?? null;
@@ -76,10 +74,7 @@ export function getProviderFallbackNotice(
     unsuccessfulAttempt?.provider ?? trace.selectedProvider,
     unsuccessfulAttempt?.model ?? trace.selectedModel,
   );
-  const finalProvider = formatProvider(
-    trace.finalProvider,
-    trace.finalModel,
-  );
+  const finalProvider = formatProvider(trace.finalProvider, trace.finalModel);
   const simulationRequested = trace.simulationRequested;
 
   return {
@@ -108,8 +103,7 @@ export function getProviderFallbackNotice(
     finalStatus: finalAttempt
       ? getProviderAttemptLabel(finalAttempt.status)
       : "completed",
-    validationLabel:
-      getModelExecutionValidationLabel(fieldRepairExecution),
+    validationLabel: getModelExecutionValidationLabel(fieldRepairExecution),
   };
 }
 
@@ -142,9 +136,9 @@ export function GuidedGuardedAgentExecutionStep({
   const canRunWorkflow = workflowInput.trim().length > 0 && !isRunning;
   const hasCompletedGuardedRun = Boolean(result) && !isRunning;
   const priorReviewSuggestions = getPriorReviewSuggestions(result);
-  const finalProviderAttempt = result?.providerFallbackTrace.attempts.at(-1) ?? null;
-  const fieldRepairOutcomes =
-    result?.fieldRepairExecution.recordOutcomes ?? [];
+  const finalProviderAttempt =
+    result?.providerFallbackTrace.attempts.at(-1) ?? null;
+  const fieldRepairOutcomes = result?.fieldRepairExecution.recordOutcomes ?? [];
   const fallbackNotice = result
     ? getProviderFallbackNotice(
         result.providerFallbackTrace,
@@ -166,36 +160,48 @@ export function GuidedGuardedAgentExecutionStep({
         </span>
         <h3>How do AI-ready records become a guarded workflow run?</h3>
         <p>
-          The structured records from Step 2 are converted into workflow input. The
-          application-controlled state machine advances through a fixed sequence,
-          gathers separate knowledge, inventory, and valuation evidence, routes only
-          permitted repair work through the model layer, and preserves an audit trail
-          for review.
+          The structured records from Step 2 are converted into workflow input.
+          The application-controlled state machine advances through a fixed
+          sequence, gathers separate knowledge, inventory, and valuation
+          evidence, routes only permitted repair work through the model layer,
+          and preserves an audit trail for review.
         </p>
 
-        <div className="guided-step-mini-list" aria-label="Guarded execution explanation">
+        <div
+          className="guided-step-mini-list"
+          aria-label="Guarded execution explanation"
+        >
           <article>
             <strong>Input</strong>
-            <p>AI-ready records generated from the normalized source intake step.</p>
+            <p>
+              AI-ready records generated from the normalized source intake step.
+            </p>
           </article>
 
           <article>
             <strong>Action</strong>
-            <p>Gather distinct knowledge, inventory, valuation, model-repair, and validation evidence.</p>
+            <p>
+              Gather distinct knowledge, inventory, valuation, model-repair, and
+              validation evidence.
+            </p>
           </article>
 
           <article>
             <strong>Output</strong>
-            <p>Workflow evidence for Step 4, including tool activity, review routing, and run trace data.</p>
+            <p>
+              Workflow evidence for Step 4, including tool activity, review
+              routing, and run trace data.
+            </p>
           </article>
         </div>
 
         <details className="guided-workflow-details guided-workflow-details--compact">
           <summary>Why is this step guarded?</summary>
           <p className="guided-workflow-details__intro">
-            Application code owns every state transition and tool-policy decision. The
-            model can return bounded repair advice, but it cannot choose the next state,
-            execute tools, write final records, or approve review work.
+            Application code owns every state transition and tool-policy
+            decision. The model can return bounded repair advice, but it cannot
+            choose the next state, execute tools, write final records, or
+            approve review work.
           </p>
         </details>
       </section>
@@ -206,8 +212,9 @@ export function GuidedGuardedAgentExecutionStep({
             <span className="model-route-card__eyebrow">Do the work</span>
             <h4>Run the guarded trade-in workflow</h4>
             <p>
-              Inspect the generated handoff text, then run the workflow. The result becomes
-              the evidence package used by validation and review in Step 4.
+              Inspect the generated handoff text, then run the workflow. The
+              result becomes the evidence package used by validation and review
+              in Step 4.
             </p>
           </div>
         </div>
@@ -223,14 +230,15 @@ export function GuidedGuardedAgentExecutionStep({
             </div>
             <div className="guided-guarded-system-details">
               <p>
-                <b>Implemented here:</b> Sends only selected records and their evidence
-                packet through the configured provider. The response must return one
-                schema-validated advisory outcome for every selected record; application
-                code retains transition, tool, persistence, and review authority.
+                <b>Implemented here:</b> Sends only selected records and their
+                evidence packet through the configured provider. The response
+                must return one schema-validated advisory outcome for every
+                selected record; application code retains transition, tool,
+                persistence, and review authority.
               </p>
               <p>
-                <b>Production connection:</b> Approved provider credentials, execution
-                policies, budgets, and model configurations.
+                <b>Production connection:</b> Approved provider credentials,
+                execution policies, budgets, and model configurations.
               </p>
             </div>
           </article>
@@ -242,12 +250,13 @@ export function GuidedGuardedAgentExecutionStep({
             </div>
             <div className="guided-guarded-system-details">
               <p>
-                <b>Implemented here:</b> Retrieves terminology and product-family evidence
-                from locally seeded reference documents.
+                <b>Implemented here:</b> Retrieves terminology and
+                product-family evidence from locally seeded reference documents.
               </p>
               <p>
-                <b>Production connection:</b> Authorized internal product knowledge,
-                catalog reference data, or another approved knowledge service.
+                <b>Production connection:</b> Authorized internal product
+                knowledge, catalog reference data, or another approved knowledge
+                service.
               </p>
             </div>
           </article>
@@ -259,13 +268,13 @@ export function GuidedGuardedAgentExecutionStep({
             </div>
             <div className="guided-guarded-system-details">
               <p>
-                <b>Implemented here:</b> Matches normalized records against a read-only
-                seeded catalog and returns product-identity evidence. It does not
-                represent live inventory quantities.
+                <b>Implemented here:</b> Matches normalized records against a
+                read-only seeded catalog and returns product-identity evidence.
+                It does not represent live inventory quantities.
               </p>
               <p>
-                <b>Production connection:</b> A retailer product catalog, inventory
-                database, PIM, or ERP.
+                <b>Production connection:</b> A retailer product catalog,
+                inventory database, PIM, or ERP.
               </p>
             </div>
           </article>
@@ -277,13 +286,13 @@ export function GuidedGuardedAgentExecutionStep({
             </div>
             <div className="guided-guarded-system-details">
               <p>
-                <b>Implemented here:</b> Produces estimated trade-in ranges using seeded
-                values and deterministic condition adjustments after product
-                identification.
+                <b>Implemented here:</b> Produces estimated trade-in ranges
+                using seeded values and deterministic condition adjustments
+                after product identification.
               </p>
               <p>
-                <b>Production connection:</b> An authorized valuation guide, internal
-                pricing service, or historical transaction data.
+                <b>Production connection:</b> An authorized valuation guide,
+                internal pricing service, or historical transaction data.
               </p>
             </div>
           </article>
@@ -295,8 +304,9 @@ export function GuidedGuardedAgentExecutionStep({
             </div>
             <div className="guided-guarded-system-details">
               <p>
-                <b>Implemented here:</b> Applies deterministic validation, retry, and
-                review-routing rules. Saved human corrections remain authoritative.
+                <b>Implemented here:</b> Applies deterministic validation,
+                retry, and review-routing rules. Saved human corrections remain
+                authoritative.
               </p>
               <p>
                 <b>Production connection:</b> A broader operational approval,
@@ -311,13 +321,16 @@ export function GuidedGuardedAgentExecutionStep({
           id="guided-guarded-workflow-run-form"
           onSubmit={onRunWorkflow}
         >
-          <label className="guided-guarded-input-label" htmlFor="guided-guarded-workflow-input">
+          <label
+            className="guided-guarded-input-label"
+            htmlFor="guided-guarded-workflow-input"
+          >
             Generated workflow input
           </label>
           <p className="guided-guarded-input-help">
-            This handoff text is generated from the AI-ready records in Step 2. It
-            preserves missing-field and review signals so the guarded workflow can route
-            them correctly.
+            This handoff text is generated from the AI-ready records in Step 2.
+            It preserves missing-field and review signals so the guarded
+            workflow can route them correctly.
           </p>
 
           <textarea
@@ -329,22 +342,24 @@ export function GuidedGuardedAgentExecutionStep({
           />
 
           <label className="guided-provider-fallback-control">
-            <input
-              name="demonstrateProviderFallback"
-              type="checkbox"
-            />
+            <input name="demonstrateProviderFallback" type="checkbox" />
             <span>
               <strong>Test fallback on the next run</strong>
               <small>
-                Optional: simulate a service error from the first model provider. The
-                workflow should continue with a backup, and the completed run will be
-                labeled as a simulation. No live provider request is made for this test.
+                Optional: simulate a service error from the first model
+                provider. The workflow should continue with a backup, and the
+                completed run will be labeled as a simulation. No live provider
+                request is made for this test.
               </small>
             </span>
           </label>
         </form>
 
-        {error ? <p className="guided-workflow-message guided-workflow-message--error">{error}</p> : null}
+        {error ? (
+          <p className="guided-workflow-message guided-workflow-message--error">
+            {error}
+          </p>
+        ) : null}
 
         {hasCompletedGuardedRun && result ? (
           <div className="guided-guarded-completion-strip">
@@ -352,7 +367,9 @@ export function GuidedGuardedAgentExecutionStep({
             <span>Evidence package ready for validation and review</span>
           </div>
         ) : success ? (
-          <p className="guided-workflow-message guided-workflow-message--success">{success}</p>
+          <p className="guided-workflow-message guided-workflow-message--success">
+            {success}
+          </p>
         ) : null}
 
         {!hasCompletedGuardedRun ? (
@@ -370,12 +387,14 @@ export function GuidedGuardedAgentExecutionStep({
         {hasCompletedGuardedRun && result ? (
           <div className="guided-guarded-run-result">
             <div>
-              <span className="model-route-card__eyebrow">Evidence created for Step 4</span>
+              <span className="model-route-card__eyebrow">
+                Evidence created for Step 4
+              </span>
               <h4>Guarded workflow evidence is ready</h4>
               <p>
-                The guarded workflow kept knowledge, inventory, valuation, model review
-                assistance, validation, and reviewer-facing evidence separate for
-                Validation and Human Review.
+                The guarded workflow kept knowledge, inventory, valuation, model
+                review assistance, validation, and reviewer-facing evidence
+                separate for Validation and Human Review.
               </p>
             </div>
 
@@ -417,7 +436,9 @@ export function GuidedGuardedAgentExecutionStep({
                 </dl>
 
                 <details className="guided-orchestration-details">
-                  <summary>View persisted state sequence and model boundary</summary>
+                  <summary>
+                    View persisted state sequence and model boundary
+                  </summary>
                   <ol className="guided-orchestration-state-list">
                     {result.orchestrationTrace.states.map((state) => (
                       <li key={state.stateId}>
@@ -440,28 +461,41 @@ export function GuidedGuardedAgentExecutionStep({
                   <div className="guided-orchestration-boundary">
                     <strong>The model cannot</strong>
                     <p>
-                      {result.orchestrationTrace.modelBoundary.prohibitedActions.join(" ")}
+                      {result.orchestrationTrace.modelBoundary.prohibitedActions.join(
+                        " ",
+                      )}
                     </p>
                   </div>
                 </details>
               </section>
             ) : null}
 
-            <section className="guided-model-execution-card" aria-label="Model execution summary">
+            <section
+              className="guided-model-execution-card"
+              aria-label="Model execution summary"
+            >
               <div className="guided-model-execution-card__header">
                 <div>
                   <span className="model-route-card__eyebrow">
                     Model review assistance
                   </span>
-                  <h5>{formatProvider(result.providerFallbackTrace.finalProvider, result.providerFallbackTrace.finalModel)}</h5>
+                  <h5>
+                    {formatProvider(
+                      result.providerFallbackTrace.finalProvider,
+                      result.providerFallbackTrace.finalModel,
+                    )}
+                  </h5>
                   <p>
-                    The provider assessed only selected records using the supplied evidence
-                    packet. Repair suggestions, candidate comparisons, and decisions to
-                    withhold unsafe repairs remain advisory until human review.
+                    The provider assessed only selected records using the
+                    supplied evidence packet. Repair suggestions, candidate
+                    comparisons, and decisions to withhold unsafe repairs remain
+                    advisory until human review.
                   </p>
                 </div>
                 <span className="guided-validation-status guided-validation-status--pass">
-                  {getModelExecutionValidationLabel(result.fieldRepairExecution)}
+                  {getModelExecutionValidationLabel(
+                    result.fieldRepairExecution,
+                  )}
                 </span>
               </div>
 
@@ -478,11 +512,17 @@ export function GuidedGuardedAgentExecutionStep({
                 </div>
                 <div>
                   <dt>Latency</dt>
-                  <dd>{formatLatencyMs(finalProviderAttempt?.latencyMs ?? null)}</dd>
+                  <dd>
+                    {formatLatencyMs(finalProviderAttempt?.latencyMs ?? null)}
+                  </dd>
                 </div>
                 <div>
                   <dt>Est. cost</dt>
-                  <dd>{formatCostEstimate(finalProviderAttempt?.estimatedCostUsd ?? null)}</dd>
+                  <dd>
+                    {formatCostEstimate(
+                      finalProviderAttempt?.estimatedCostUsd ?? null,
+                    )}
+                  </dd>
                 </div>
                 <div>
                   <dt>Records assessed</dt>
@@ -541,17 +581,13 @@ export function GuidedGuardedAgentExecutionStep({
                       <div>
                         <dt>Preferred latency</dt>
                         <dd>
-                          {formatLatencyMs(
-                            fallbackNotice.preferredLatencyMs,
-                          )}
+                          {formatLatencyMs(fallbackNotice.preferredLatencyMs)}
                         </dd>
                       </div>
                       <div>
                         <dt>Attempt deadline</dt>
                         <dd>
-                          {formatLatencyMs(
-                            fallbackNotice.attemptDeadlineMs,
-                          )}
+                          {formatLatencyMs(fallbackNotice.attemptDeadlineMs)}
                         </dd>
                       </div>
                       <div>
@@ -570,9 +606,7 @@ export function GuidedGuardedAgentExecutionStep({
                 </section>
               ) : null}
 
-              <GuidedModelReviewAssistance
-                outcomes={fieldRepairOutcomes}
-              />
+              <GuidedModelReviewAssistance outcomes={fieldRepairOutcomes} />
             </section>
 
             {priorReviewSuggestions.length > 0 ? (
@@ -581,7 +615,8 @@ export function GuidedGuardedAgentExecutionStep({
                 <p>{priorReviewSuggestions[0]?.summary}</p>
                 {priorReviewSuggestions.length > 1 ? (
                   <p className="guided-validation-empty-note">
-                    {priorReviewSuggestions.length - 1} additional prior review suggestion(s) surfaced.
+                    {priorReviewSuggestions.length - 1} additional prior review
+                    suggestion(s) surfaced.
                   </p>
                 ) : null}
               </div>
@@ -593,7 +628,9 @@ export function GuidedGuardedAgentExecutionStep({
                 <span>validated records</span>
               </article>
               <article>
-                <strong>{result.finalSummary.successfulReadOnlyToolCallCount}</strong>
+                <strong>
+                  {result.finalSummary.successfulReadOnlyToolCallCount}
+                </strong>
                 <span>read-only calls</span>
               </article>
               <article>
@@ -601,7 +638,9 @@ export function GuidedGuardedAgentExecutionStep({
                 <span>review items</span>
               </article>
               <article>
-                <strong>{result.finalSummary.blockedMutationToolCallCount}</strong>
+                <strong>
+                  {result.finalSummary.blockedMutationToolCallCount}
+                </strong>
                 <span>blocked mutations</span>
               </article>
             </div>

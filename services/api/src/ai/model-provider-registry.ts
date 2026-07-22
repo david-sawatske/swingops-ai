@@ -5,7 +5,7 @@ import type {
   ModelProviderModelConfig,
   ModelProviderName,
   ModelQualityTier,
-  ModelTaskType
+  ModelTaskType,
 } from "./model-provider.types.js";
 import { anthropicProvider } from "./providers/anthropic.provider.js";
 import { azureOpenAiProvider } from "./providers/azure-openai.provider.js";
@@ -28,21 +28,21 @@ const registeredProviders: ModelProviderAdapter[] = [
   openAiProvider,
   anthropicProvider,
   azureOpenAiProvider,
-  ollamaProvider
+  ollamaProvider,
 ];
 
 export function listModelProviders(): ModelProviderAdapter[] {
   return registeredProviders.map((provider) => ({
     ...provider,
-    models: provider.models.map((model) => ({ ...model }))
+    models: provider.models.map((model) => ({ ...model })),
   }));
 }
 
 export function getModelProvider(
-  providerName: ModelProviderName
+  providerName: ModelProviderName,
 ): ModelProviderAdapter | null {
   const provider = registeredProviders.find(
-    (registeredProvider) => registeredProvider.provider === providerName
+    (registeredProvider) => registeredProvider.provider === providerName,
   );
 
   if (!provider) {
@@ -51,26 +51,29 @@ export function getModelProvider(
 
   return {
     ...provider,
-    models: provider.models.map((model) => ({ ...model }))
+    models: provider.models.map((model) => ({ ...model })),
   };
 }
 
 export function listModelConfigs(
-  filter: ModelProviderRegistryFilter = {}
+  filter: ModelProviderRegistryFilter = {},
 ): ModelProviderModelConfig[] {
   return registeredProviders
     .flatMap((provider) =>
       provider.models.map((model) => ({
         providerEnabled: provider.enabled,
-        model
-      }))
+        model,
+      })),
     )
     .filter(({ providerEnabled, model }) => {
       if (filter.provider && model.provider !== filter.provider) {
         return false;
       }
 
-      if (filter.taskType && !model.supportedTaskTypes.includes(filter.taskType)) {
+      if (
+        filter.taskType &&
+        !model.supportedTaskTypes.includes(filter.taskType)
+      ) {
         return false;
       }
 
@@ -111,7 +114,7 @@ export function getModelConfig(input: {
   model: string;
 }): ModelProviderModelConfig | null {
   const config = listModelConfigs({
-    provider: input.provider
+    provider: input.provider,
   }).find((modelConfig) => modelConfig.model === input.model);
 
   return config ?? null;

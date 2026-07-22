@@ -1,7 +1,4 @@
-export type AppView =
-  | "GUIDED_DEMO"
-  | "ADMIN_OPS"
-  | "REVIEW_QUEUE";
+export type AppView = "GUIDED_DEMO" | "ADMIN_OPS" | "REVIEW_QUEUE";
 
 export type AppNavItem = {
   view: AppView;

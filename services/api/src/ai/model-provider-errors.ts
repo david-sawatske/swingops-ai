@@ -28,7 +28,7 @@ export class ModelProviderAdapterError extends Error {
 }
 
 export function isModelProviderAdapterError(
-  error: unknown
+  error: unknown,
 ): error is ModelProviderAdapterError {
   return error instanceof ModelProviderAdapterError;
 }

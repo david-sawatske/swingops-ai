@@ -4,7 +4,7 @@ import { parseTradeInDemoText } from "./trade-in-demo-parser.js";
 import {
   buildSkippedTargetedFieldRetry,
   completeTargetedFieldRetry,
-  findTargetedFieldRetryCandidate
+  findTargetedFieldRetryCandidate,
 } from "./targeted-field-retry.js";
 
 function requireParsedItem(sourceText: string) {
@@ -20,7 +20,7 @@ function requireParsedItem(sourceText: string) {
 describe("targeted-field-retry", () => {
   it("skips the retry when shaft flex is not applicable", () => {
     const item = requireParsedItem(
-      "Odyssey White Hot OG putter condition 8.0 Average trade value $95"
+      "Odyssey White Hot OG putter condition 8.0 Average trade value $95",
     );
 
     expect(findTargetedFieldRetryCandidate([item])).toBeNull();
@@ -29,13 +29,13 @@ describe("targeted-field-retry", () => {
       status: "SKIPPED",
       attemptCount: 0,
       maxAttempts: 1,
-      modelCallLogId: null
+      modelCallLogId: null,
     });
   });
 
   it("records one unresolved attempt when no safe retry value is available", () => {
     const item = requireParsedItem(
-      "PING G425 irons 5-PW shaft unknown condition 8.0 Average trade value $175"
+      "PING G425 irons 5-PW shaft unknown condition 8.0 Average trade value $175",
     );
     const result = completeTargetedFieldRetry({
       parsedItems: [item],
@@ -43,14 +43,14 @@ describe("targeted-field-retry", () => {
       modelCallLogId: "retry-model-call-1",
       validationPassed: true,
       validationErrors: [],
-      suggestions: []
+      suggestions: [],
     });
 
     expect(result.retryEvent).toMatchObject({
       status: "UNRESOLVED",
       attemptCount: 1,
       maxAttempts: 1,
-      modelCallLogId: "retry-model-call-1"
+      modelCallLogId: "retry-model-call-1",
     });
     expect(result.parsedItems[0]?.shaftFlex).toBeNull();
     expect(result.parsedItems[0]?.missingFields).toContain("shaftFlex");
@@ -58,11 +58,11 @@ describe("targeted-field-retry", () => {
 
   it("applies one validated non-review suggestion before human review", () => {
     const parsedItem = requireParsedItem(
-      "PING G425 irons 5-PW condition 8.0 Average trade value $175"
+      "PING G425 irons 5-PW condition 8.0 Average trade value $175",
     );
     const item = {
       ...parsedItem,
-      rawLine: `${parsedItem.rawLine} shaft marked S`
+      rawLine: `${parsedItem.rawLine} shaft marked S`,
     };
     const result = completeTargetedFieldRetry({
       parsedItems: [item],
@@ -78,25 +78,25 @@ describe("targeted-field-retry", () => {
           candidateValue: "STIFF",
           confidence: 0.9,
           reason: "The retry found an explicit shaft-flex marking.",
-          reviewRequired: false
-        }
-      ]
+          reviewRequired: false,
+        },
+      ],
     });
 
     expect(result.retryEvent).toMatchObject({
       status: "RESOLVED",
       attemptCount: 1,
       maxAttempts: 1,
-      modelCallLogId: "retry-model-call-2"
+      modelCallLogId: "retry-model-call-2",
     });
     expect(result.parsedItems[0]).toMatchObject({
       shaftFlex: "STIFF",
       parserEvidence: {
         shaftFlex: {
           value: "STIFF",
-          sourceText: "shaft marked S"
-        }
-      }
+          sourceText: "shaft marked S",
+        },
+      },
     });
     expect(result.parsedItems[0]?.missingFields).not.toContain("shaftFlex");
   });

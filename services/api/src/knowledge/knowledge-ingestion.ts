@@ -1,4 +1,8 @@
-import type { KnowledgeChunkType, KnowledgeSourceType, Prisma } from "@prisma/client";
+import type {
+  KnowledgeChunkType,
+  KnowledgeSourceType,
+  Prisma,
+} from "@prisma/client";
 
 import { prisma } from "../lib/prisma.js";
 import {
@@ -6,12 +10,12 @@ import {
   KNOWLEDGE_EMBEDDING_DIMENSION,
   KNOWLEDGE_EMBEDDING_MODEL,
   KNOWLEDGE_EMBEDDING_PROVIDER,
-  toPgvectorLiteral
+  toPgvectorLiteral,
 } from "./knowledge-embeddings.js";
 import {
   DEMO_KNOWLEDGE_DOCUMENTS,
   DEMO_KNOWLEDGE_SOURCE_NAME,
-  type KnowledgeSeedChunk
+  type KnowledgeSeedChunk,
 } from "./knowledge-seed-data.js";
 
 export type KnowledgeIngestionSummary = {
@@ -41,29 +45,31 @@ export type DemoKnowledgeBaseReadinessSummary = {
 function countExpectedDemoKnowledgeChunks(): number {
   return DEMO_KNOWLEDGE_DOCUMENTS.reduce(
     (count, document) => count + document.chunks.length,
-    0
+    0,
   );
 }
 
-export async function ensureDemoKnowledgeBaseReady(input: {
-  sourceName?: string;
-} = {}): Promise<DemoKnowledgeBaseReadinessSummary> {
+export async function ensureDemoKnowledgeBaseReady(
+  input: {
+    sourceName?: string;
+  } = {},
+): Promise<DemoKnowledgeBaseReadinessSummary> {
   const sourceName = input.sourceName ?? DEMO_KNOWLEDGE_SOURCE_NAME;
   const expectedDemoChunks = countExpectedDemoKnowledgeChunks();
 
   const [documentsAvailable, chunksAvailable] = await Promise.all([
     prisma.knowledgeDocument.count({
       where: {
-        sourceName
-      }
+        sourceName,
+      },
     }),
     prisma.knowledgeChunk.count({
       where: {
         document: {
-          sourceName
-        }
-      }
-    })
+          sourceName,
+        },
+      },
+    }),
   ]);
 
   if (documentsAvailable > 0 && chunksAvailable >= expectedDemoChunks) {
@@ -75,12 +81,12 @@ export async function ensureDemoKnowledgeBaseReady(input: {
       expectedDemoChunks,
       ingested: false,
       ingestionRunId: null,
-      errorMessage: null
+      errorMessage: null,
     };
   }
 
   const ingestionSummary = await ingestDemoKnowledgeBase({
-    sourceName
+    sourceName,
   });
 
   return {
@@ -91,14 +97,14 @@ export async function ensureDemoKnowledgeBaseReady(input: {
     expectedDemoChunks,
     ingested: true,
     ingestionRunId: ingestionSummary.ingestionRunId,
-    errorMessage: ingestionSummary.errorMessage
+    errorMessage: ingestionSummary.errorMessage,
   };
 }
 
 export function cleanKnowledgeText(value: string): string {
   return value
     .replace(/\r\n/g, "\n")
-    .replace(/[“”]/g, "\"")
+    .replace(/[“”]/g, '"')
     .replace(/[‘’]/g, "'")
     .replace(/\s+/g, " ")
     .trim();
@@ -116,8 +122,8 @@ function buildSearchText(input: {
       input.chunk.category ?? "",
       ...(input.chunk.aliases ?? []),
       ...(input.chunk.conditionFlags ?? []),
-      input.cleanedDocumentText
-    ].join(" ")
+      input.cleanedDocumentText,
+    ].join(" "),
   );
 }
 
@@ -126,7 +132,7 @@ function toMetadataJson(chunk: KnowledgeSeedChunk): Prisma.InputJsonObject {
     aliases: chunk.aliases ?? [],
     conditionFlags: chunk.conditionFlags ?? [],
     normalizationNotes:
-      "Demo metadata extracted from messy golf-retail source notes for deterministic local retrieval."
+      "Demo metadata extracted from messy golf-retail source notes for deterministic local retrieval.",
   };
 }
 
@@ -149,18 +155,18 @@ async function updateChunkEmbedding(input: {
 async function clearExistingDemoKnowledge(sourceName: string) {
   const existingDocuments = await prisma.knowledgeDocument.findMany({
     where: {
-      sourceName
+      sourceName,
     },
     select: {
-      id: true
-    }
+      id: true,
+    },
   });
 
   if (existingDocuments.length > 0) {
     await prisma.knowledgeDocument.deleteMany({
       where: {
-        sourceName
-      }
+        sourceName,
+      },
     });
   }
 }
@@ -178,19 +184,21 @@ function buildIngestionSummary(input: {
     embeddingProvider: KNOWLEDGE_EMBEDDING_PROVIDER,
     embeddingModel: KNOWLEDGE_EMBEDDING_MODEL,
     embeddingDimension: KNOWLEDGE_EMBEDDING_DIMENSION,
-    productionVectorEmbeddings: false
+    productionVectorEmbeddings: false,
   };
 }
 
-export async function ingestDemoKnowledgeBase(input: {
-  sourceName?: string;
-} = {}): Promise<KnowledgeIngestionSummary> {
+export async function ingestDemoKnowledgeBase(
+  input: {
+    sourceName?: string;
+  } = {},
+): Promise<KnowledgeIngestionSummary> {
   const sourceName = input.sourceName ?? DEMO_KNOWLEDGE_SOURCE_NAME;
   const ingestionRun = await prisma.knowledgeIngestionRun.create({
     data: {
       sourceName,
-      status: "STARTED"
-    }
+      status: "STARTED",
+    },
   });
 
   try {
@@ -209,15 +217,15 @@ export async function ingestDemoKnowledgeBase(input: {
           cleanedText,
           metadataJson: {
             sourceKind: "messy-golf-retail-reference-material",
-            chunkCount: document.chunks.length
-          }
-        }
+            chunkCount: document.chunks.length,
+          },
+        },
       });
 
       for (const [chunkIndex, chunk] of document.chunks.entries()) {
         const searchText = buildSearchText({
           chunk,
-          cleanedDocumentText: cleanedText
+          cleanedDocumentText: cleanedText,
         });
         const embedding = buildDeterministicKnowledgeEmbedding(searchText);
         const createdChunk = await prisma.knowledgeChunk.create({
@@ -235,13 +243,13 @@ export async function ingestDemoKnowledgeBase(input: {
             embeddingModel: KNOWLEDGE_EMBEDDING_MODEL,
             embeddingDimension: KNOWLEDGE_EMBEDDING_DIMENSION,
             embeddedAt: new Date(),
-            searchText
-          }
+            searchText,
+          },
         });
 
         await updateChunkEmbedding({
           chunkId: createdChunk.id,
-          vector: embedding.vector
+          vector: embedding.vector,
         });
 
         chunksCreated += 1;
@@ -250,20 +258,20 @@ export async function ingestDemoKnowledgeBase(input: {
 
     await prisma.knowledgeIngestionRun.updateMany({
       where: {
-        id: ingestionRun.id
+        id: ingestionRun.id,
       },
       data: {
         status: "SUCCEEDED",
         documentsCreated: DEMO_KNOWLEDGE_DOCUMENTS.length,
         chunksCreated,
-        completedAt: new Date()
-      }
+        completedAt: new Date(),
+      },
     });
 
     const completedRun = await prisma.knowledgeIngestionRun.findUnique({
       where: {
-        id: ingestionRun.id
-      }
+        id: ingestionRun.id,
+      },
     });
 
     return buildIngestionSummary({
@@ -273,26 +281,27 @@ export async function ingestDemoKnowledgeBase(input: {
       documentsCreated:
         completedRun?.documentsCreated ?? DEMO_KNOWLEDGE_DOCUMENTS.length,
       chunksCreated: completedRun?.chunksCreated ?? chunksCreated,
-      errorMessage: completedRun?.errorMessage ?? null
+      errorMessage: completedRun?.errorMessage ?? null,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown ingestion error";
+    const message =
+      error instanceof Error ? error.message : "Unknown ingestion error";
 
     await prisma.knowledgeIngestionRun.updateMany({
       where: {
-        id: ingestionRun.id
+        id: ingestionRun.id,
       },
       data: {
         status: "FAILED",
         errorMessage: message,
-        completedAt: new Date()
-      }
+        completedAt: new Date(),
+      },
     });
 
     const failedRun = await prisma.knowledgeIngestionRun.findUnique({
       where: {
-        id: ingestionRun.id
-      }
+        id: ingestionRun.id,
+      },
     });
 
     return buildIngestionSummary({
@@ -301,7 +310,7 @@ export async function ingestDemoKnowledgeBase(input: {
       sourceName: failedRun?.sourceName ?? sourceName,
       documentsCreated: failedRun?.documentsCreated ?? 0,
       chunksCreated: failedRun?.chunksCreated ?? 0,
-      errorMessage: failedRun?.errorMessage ?? message
+      errorMessage: failedRun?.errorMessage ?? message,
     });
   }
 }

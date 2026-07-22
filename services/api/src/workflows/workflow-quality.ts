@@ -9,7 +9,7 @@ import {
   buildReviewOutcomes,
   buildToolSelectionRationales,
   buildValidationChecks,
-  buildWorkflowQualitySummary
+  buildWorkflowQualitySummary,
 } from "./workflow-quality-builders.js";
 import type { WorkflowQualityBundle } from "./workflow-quality-types.js";
 export type {
@@ -27,7 +27,7 @@ export type {
   ReviewOutcome,
   WorkflowQualityStatus,
   WorkflowQualitySummary,
-  WorkflowQualityBundle
+  WorkflowQualityBundle,
 } from "./workflow-quality-types.js";
 
 type ToolCallingPlan = EndToEndAgenticTradeInDemoResult["toolCallingPlan"];
@@ -53,29 +53,26 @@ export function buildWorkflowQualityBundle(input: {
   reviewQueueItemsCreated: ReviewQueueItem[];
 }): WorkflowQualityBundle {
   const blockedMutationCount = input.toolCallResults.filter(
-    (result) => result.status === "BLOCKED"
+    (result) => result.status === "BLOCKED",
   ).length;
   const validationChecks = buildValidationChecks({
     parsedItems: input.parsedItems,
     knowledgeMatchesByItem: input.knowledgeMatchesByItem,
     inventoryMatchesByItem: input.inventoryMatchesByItem,
     valuationEvidenceByItem: input.valuationEvidenceByItem,
-    blockedMutationCount
+    blockedMutationCount,
   });
   const retryEvents = input.retryEvents;
-  const providerFallbackTrace = buildProviderFallbackTrace(
-    input.modelCallLog,
-    {
-      simulationRequested: input.providerFallbackSimulationRequested
-    }
-  );
+  const providerFallbackTrace = buildProviderFallbackTrace(input.modelCallLog, {
+    simulationRequested: input.providerFallbackSimulationRequested,
+  });
   const toolSelectionRationales = buildToolSelectionRationales(
-    input.toolCallingPlan
+    input.toolCallingPlan,
   );
   const reviewOutcomes = buildReviewOutcomes({
     parsedItems: input.parsedItems,
     reviewQueueItemsCreated: input.reviewQueueItemsCreated,
-    validationChecks
+    validationChecks,
   });
   const executionPlan = buildExecutionPlan({
     validationChecks,
@@ -83,7 +80,7 @@ export function buildWorkflowQualityBundle(input: {
     toolSelectionRationales,
     reviewOutcomes,
     providerFallbackTrace,
-    blockedMutationCount
+    blockedMutationCount,
   });
   const workflowQualitySummary = buildWorkflowQualitySummary({
     parsedItems: input.parsedItems,
@@ -94,7 +91,7 @@ export function buildWorkflowQualityBundle(input: {
     providerFallbackTrace,
     knowledgeMatchesByItem: input.knowledgeMatchesByItem,
     inventoryMatchesByItem: input.inventoryMatchesByItem,
-    valuationEvidenceByItem: input.valuationEvidenceByItem
+    valuationEvidenceByItem: input.valuationEvidenceByItem,
   });
 
   return {
@@ -104,6 +101,6 @@ export function buildWorkflowQualityBundle(input: {
     providerFallbackTrace,
     toolSelectionRationales,
     reviewOutcomes,
-    workflowQualitySummary
+    workflowQualitySummary,
   };
 }

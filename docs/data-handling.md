@@ -7,11 +7,11 @@ used to execute the workflow.
 
 ## Protected boundaries
 
-| Boundary | Behavior |
-| --- | --- |
+| Boundary                                 | Behavior                                                                                                                                                          |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ModelCallLog` request and response JSON | Sensitive keys and recognized sensitive text are replaced with typed redaction markers before persistence. Attempt reasons and error messages are also sanitized. |
-| `ToolCallLog` input, output, and errors | Persisted audit copies are sanitized and include policy diagnostics. Connector execution still receives the original input. |
-| MCP-compatible tool responses | Sensitive fields are omitted and recognized sensitive text is redacted before the response leaves the internal connector surface. |
+| `ToolCallLog` input, output, and errors  | Persisted audit copies are sanitized and include policy diagnostics. Connector execution still receives the original input.                                       |
+| MCP-compatible tool responses            | Sensitive fields are omitted and recognized sensitive text is redacted before the response leaves the internal connector surface.                                 |
 
 The policy classifies explicit authentication credentials, email addresses,
 phone numbers, government identifiers, payment data, person-name fields, and

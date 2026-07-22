@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { prisma } from "../lib/prisma.js";
-import {
-  createInMemoryProductReferenceProvider
-} from "../product-reference/product-reference-provider.js";
+import { createInMemoryProductReferenceProvider } from "../product-reference/product-reference-provider.js";
 import { executeMultiSourceIntakeDemo } from "./multi-source-intake-demo.js";
 
 describe("executeMultiSourceIntakeDemo", () => {
@@ -15,13 +13,13 @@ describe("executeMultiSourceIntakeDemo", () => {
       "FREE_TEXT",
       "POORLY_FORMED_CSV",
       "EMAIL",
-      "LOG"
+      "LOG",
     ]);
     expect(result.recordsExtracted).toBeGreaterThanOrEqual(8);
     expect(result.assetsCreated).toBe(6);
-    expect(result.inferredDatasetSchema.map((field) => field.fieldName)).toContain(
-      "reviewNeeded"
-    );
+    expect(
+      result.inferredDatasetSchema.map((field) => field.fieldName),
+    ).toContain("reviewNeeded");
     expect(result.cleanedDatasetPreview.length).toBe(result.recordsExtracted);
     expect(result.ragReadinessSummary.embeddingReady).toBe(true);
     expect(result.ragReadinessSummary.ragIndexReady).toBe(true);
@@ -32,16 +30,16 @@ describe("executeMultiSourceIntakeDemo", () => {
       "Schema and metadata inferred",
       "Quality review signals calculated",
       "AI-ready assets summarized",
-      "Final demo summary"
+      "Final demo summary",
     ]);
 
     const workflowSteps = await prisma.workflowStep.findMany({
       where: {
-        workflowRunId: result.persistedIds.workflowRunId
+        workflowRunId: result.persistedIds.workflowRunId,
       },
       orderBy: {
-        orderIndex: "asc"
-      }
+        orderIndex: "asc",
+      },
     });
 
     expect(workflowSteps.map((step) => [step.stepName, step.status])).toEqual([
@@ -49,56 +47,60 @@ describe("executeMultiSourceIntakeDemo", () => {
       ["persist-ai-ready-records", "COMPLETED"],
       ["create-human-review-work", "COMPLETED"],
       ["record-asset-tool-audit", "COMPLETED"],
-      ["finalize-intake-workflow", "COMPLETED"]
+      ["finalize-intake-workflow", "COMPLETED"],
     ]);
 
     const toolStep = workflowSteps.find(
-      (step) => step.stepName === "record-asset-tool-audit"
+      (step) => step.stepName === "record-asset-tool-audit",
     );
     const toolCallLogs = await prisma.toolCallLog.findMany({
       where: {
-        workflowRunId: result.persistedIds.workflowRunId
-      }
+        workflowRunId: result.persistedIds.workflowRunId,
+      },
     });
 
     expect(toolCallLogs).toHaveLength(3);
-    expect(toolCallLogs.every((log) => log.workflowStepId === toolStep?.id)).toBe(
-      true
-    );
+    expect(
+      toolCallLogs.every((log) => log.workflowStepId === toolStep?.id),
+    ).toBe(true);
 
     await prisma.intakeBatch.delete({
       where: {
-        id: result.persistedIds.intakeBatchId
-      }
+        id: result.persistedIds.intakeBatchId,
+      },
     });
     await prisma.workflowRun.delete({
       where: {
-        id: result.persistedIds.workflowRunId
-      }
+        id: result.persistedIds.workflowRunId,
+      },
     });
   });
 
   it("extracts records from malformed CSV input", async () => {
     const result = await executeMultiSourceIntakeDemo({
-      sourceTypes: ["POORLY_FORMED_CSV"]
+      sourceTypes: ["POORLY_FORMED_CSV"],
     });
 
     expect(result.sourcesProcessed).toBe(1);
     expect(result.recordsExtracted).toBeGreaterThanOrEqual(3);
     expect(result.sourceResults[0]?.metadata.operationalTags).toContain(
-      "delimiter-normalization"
+      "delimiter-normalization",
     );
-    expect(result.cleanedDatasetPreview.some((record) => record.brand === "Callaway")).toBe(true);
+    expect(
+      result.cleanedDatasetPreview.some(
+        (record) => record.brand === "Callaway",
+      ),
+    ).toBe(true);
 
     await prisma.intakeBatch.delete({
       where: {
-        id: result.persistedIds.intakeBatchId
-      }
+        id: result.persistedIds.intakeBatchId,
+      },
     });
     await prisma.workflowRun.delete({
       where: {
-        id: result.persistedIds.workflowRunId
-      }
+        id: result.persistedIds.workflowRunId,
+      },
     });
   });
 
@@ -109,53 +111,59 @@ describe("executeMultiSourceIntakeDemo", () => {
           sourceType: "FREE_TEXT",
           sourceName: "Uploaded counter note",
           rawContent:
-            "Customer Alex brought Callaway Rogue ST Max driver with HZRDUS X. Paint chip. Store 207. Value 190."
-        }
-      ]
+            "Customer Alex brought Callaway Rogue ST Max driver with HZRDUS X. Paint chip. Store 207. Value 190.",
+        },
+      ],
     });
 
     expect(result.sourcesProcessed).toBe(1);
     expect(result.sourceResults[0]).toMatchObject({
       sourceType: "FREE_TEXT",
-      sourceName: "Uploaded counter note"
+      sourceName: "Uploaded counter note",
     });
     expect(result.sourceResults[0]?.rawContent).toContain("Customer Alex");
-    expect(result.cleanedDatasetPreview.some((record) => record.brand === "Callaway")).toBe(true);
+    expect(
+      result.cleanedDatasetPreview.some(
+        (record) => record.brand === "Callaway",
+      ),
+    ).toBe(true);
     expect(result.metadataSummary.detectedStoreIds).toContain("207");
 
     await prisma.intakeBatch.delete({
       where: {
-        id: result.persistedIds.intakeBatchId
-      }
+        id: result.persistedIds.intakeBatchId,
+      },
     });
     await prisma.workflowRun.delete({
       where: {
-        id: result.persistedIds.workflowRunId
-      }
+        id: result.persistedIds.workflowRunId,
+      },
     });
   });
 
   it("extracts email metadata and attachment names", async () => {
     const result = await executeMultiSourceIntakeDemo({
-      sourceTypes: ["EMAIL"]
+      sourceTypes: ["EMAIL"],
     });
 
-    expect(result.metadataSummary.customerEmails).toContain("hannah.lee@example.com");
+    expect(result.metadataSummary.customerEmails).toContain(
+      "hannah.lee@example.com",
+    );
     expect(result.metadataSummary.attachmentNames).toEqual([
       "trade_sheet_8821.pdf",
-      "driver_photos.zip"
+      "driver_photos.zip",
     ]);
     expect(result.metadataSummary.detectedStoreIds).toContain("207");
 
     await prisma.intakeBatch.delete({
       where: {
-        id: result.persistedIds.intakeBatchId
-      }
+        id: result.persistedIds.intakeBatchId,
+      },
     });
     await prisma.workflowRun.delete({
       where: {
-        id: result.persistedIds.workflowRunId
-      }
+        id: result.persistedIds.workflowRunId,
+      },
     });
   });
 
@@ -166,13 +174,13 @@ describe("executeMultiSourceIntakeDemo", () => {
           sourceType: "EMAIL",
           sourceName: "Customer 3 wood email",
           rawContent:
-            "From: Morgan Price <morgan.price@example.com>\nSubject: Trade-in value request\nI want to trade in a Titleist TSR2 3 wood with a Tensei stiff shaft. It has normal face wear and can be brought to store 104."
-        }
-      ]
+            "From: Morgan Price <morgan.price@example.com>\nSubject: Trade-in value request\nI want to trade in a Titleist TSR2 3 wood with a Tensei stiff shaft. It has normal face wear and can be brought to store 104.",
+        },
+      ],
     });
 
     const titleistRecord = result.cleanedDatasetPreview.find(
-      (record) => record.brand === "Titleist"
+      (record) => record.brand === "Titleist",
     );
 
     expect(titleistRecord?.category).toBe("FAIRWAY_WOOD");
@@ -180,48 +188,51 @@ describe("executeMultiSourceIntakeDemo", () => {
 
     await prisma.intakeBatch.delete({
       where: {
-        id: result.persistedIds.intakeBatchId
-      }
+        id: result.persistedIds.intakeBatchId,
+      },
     });
     await prisma.workflowRun.delete({
       where: {
-        id: result.persistedIds.workflowRunId
-      }
+        id: result.persistedIds.workflowRunId,
+      },
     });
   });
 
   it("extracts log timestamps and operational events", async () => {
     const result = await executeMultiSourceIntakeDemo({
-      sourceTypes: ["LOG"]
+      sourceTypes: ["LOG"],
     });
 
     expect(result.metadataSummary.eventTimestamps).toContain(
-      "2026-05-18T14:33:04Z"
+      "2026-05-18T14:33:04Z",
     );
-    expect(result.metadataSummary.operationalTags).toContain("import-observability");
-    expect(result.cleanedDatasetPreview.some((record) => record.eventTimestamp)).toBe(true);
+    expect(result.metadataSummary.operationalTags).toContain(
+      "import-observability",
+    );
+    expect(
+      result.cleanedDatasetPreview.some((record) => record.eventTimestamp),
+    ).toBe(true);
 
     await prisma.intakeBatch.delete({
       where: {
-        id: result.persistedIds.intakeBatchId
-      }
+        id: result.persistedIds.intakeBatchId,
+      },
     });
     await prisma.workflowRun.delete({
       where: {
-        id: result.persistedIds.workflowRunId
-      }
+        id: result.persistedIds.workflowRunId,
+      },
     });
   });
-
-
 
   it("keeps condition grades tied to each source record fragment", async () => {
     const result = await executeMultiSourceIntakeDemo();
 
-    const pingRecord = result.cleanedDatasetPreview.find((record) =>
-      record.brand === "PING" &&
-      record.productLine?.includes("G425") &&
-      record.normalizedText.toLowerCase().includes("below average")
+    const pingRecord = result.cleanedDatasetPreview.find(
+      (record) =>
+        record.brand === "PING" &&
+        record.productLine?.includes("G425") &&
+        record.normalizedText.toLowerCase().includes("below average"),
     );
 
     expect(pingRecord).toBeDefined();
@@ -229,8 +240,8 @@ describe("executeMultiSourceIntakeDemo", () => {
 
     const persistedRecords = await prisma.aiReadyIntakeRecord.findMany({
       where: {
-        workflowRunId: result.persistedIds.workflowRunId
-      }
+        workflowRunId: result.persistedIds.workflowRunId,
+      },
     });
 
     const persistedPingRecord = persistedRecords.find((record) => {
@@ -251,13 +262,13 @@ describe("executeMultiSourceIntakeDemo", () => {
 
     await prisma.intakeBatch.delete({
       where: {
-        id: result.persistedIds.intakeBatchId
-      }
+        id: result.persistedIds.intakeBatchId,
+      },
     });
     await prisma.workflowRun.delete({
       where: {
-        id: result.persistedIds.workflowRunId
-      }
+        id: result.persistedIds.workflowRunId,
+      },
     });
   });
 
@@ -265,17 +276,23 @@ describe("executeMultiSourceIntakeDemo", () => {
     const result = await executeMultiSourceIntakeDemo();
 
     expect(result.reviewNeeded).toBeGreaterThanOrEqual(1);
-    expect(result.cleanedDatasetPreview.some((record) => record.reviewNeeded)).toBe(true);
-    expect(result.persistedIds.reviewQueueItemIds.length).toBe(result.reviewNeeded);
-    expect(result.persistedIds.aiReadyIntakeRecordIds.length).toBe(result.recordsExtracted);
+    expect(
+      result.cleanedDatasetPreview.some((record) => record.reviewNeeded),
+    ).toBe(true);
+    expect(result.persistedIds.reviewQueueItemIds.length).toBe(
+      result.reviewNeeded,
+    );
+    expect(result.persistedIds.aiReadyIntakeRecordIds.length).toBe(
+      result.recordsExtracted,
+    );
 
     const persistedRecords = await prisma.aiReadyIntakeRecord.findMany({
       where: {
-        workflowRunId: result.persistedIds.workflowRunId
+        workflowRunId: result.persistedIds.workflowRunId,
       },
       orderBy: {
-        createdAt: "asc"
-      }
+        createdAt: "asc",
+      },
     });
 
     expect(persistedRecords).toHaveLength(result.recordsExtracted);
@@ -283,23 +300,23 @@ describe("executeMultiSourceIntakeDemo", () => {
       intakeBatchId: result.persistedIds.intakeBatchId,
       workflowRunId: result.persistedIds.workflowRunId,
       sourceType: expect.any(String),
-      reviewNeeded: expect.any(Boolean)
+      reviewNeeded: expect.any(Boolean),
     });
     expect(persistedRecords[0]?.normalizedJson).toEqual(
       expect.objectContaining({
-        conditionGrade: expect.anything()
-      })
+        conditionGrade: expect.anything(),
+      }),
     );
 
     await prisma.intakeBatch.delete({
       where: {
-        id: result.persistedIds.intakeBatchId
-      }
+        id: result.persistedIds.intakeBatchId,
+      },
     });
     await prisma.workflowRun.delete({
       where: {
-        id: result.persistedIds.workflowRunId
-      }
+        id: result.persistedIds.workflowRunId,
+      },
     });
   });
   it("normalizes equivalent QA fixture records across source formats", async () => {
@@ -309,27 +326,27 @@ describe("executeMultiSourceIntakeDemo", () => {
           sourceType: "FREE_TEXT",
           sourceName: "QA free text fixture",
           rawContent:
-            "Counter note: Cleveland RTX 6 ZipCore wedge Senior flex condition 9.0 Above Average value $72 store 104 serial CLV-001 worn grip note only."
+            "Counter note: Cleveland RTX 6 ZipCore wedge Senior flex condition 9.0 Above Average value $72 store 104 serial CLV-001 worn grip note only.",
         },
         {
           sourceType: "POORLY_FORMED_CSV",
           sourceName: "QA CSV fixture",
           rawContent:
-            "brand|model|cat|shaft|condition_grade|value|store|serial\nOdyssey|White Hot OG putter|putter||8.0 Average|$95|104|ODS-002"
+            "brand|model|cat|shaft|condition_grade|value|store|serial\nOdyssey|White Hot OG putter|putter||8.0 Average|$95|104|ODS-002",
         },
         {
           sourceType: "EMAIL",
           sourceName: "QA email fixture",
           rawContent:
-            "From: Casey Park <casey.park@example.com>\nSubject: Trade value\nI have a Mizuno JPX 923 Hot Metal iron set with Tour X-Stiff shaft, condition 9.0 Above Average, estimated value 390, store 104, serial MIZ-003."
+            "From: Casey Park <casey.park@example.com>\nSubject: Trade value\nI have a Mizuno JPX 923 Hot Metal iron set with Tour X-Stiff shaft, condition 9.0 Above Average, estimated value 390, store 104, serial MIZ-003.",
         },
         {
           sourceType: "LOG",
           sourceName: "QA log fixture",
           rawContent:
-            "2026-06-24T10:12:44Z INFO normalized payload brand=PING model=G430 Max cat=driver shaft='Tour X-Stiff' condition='9.5 Mint' value=240 store=207 serial=PNG-004"
-        }
-      ]
+            "2026-06-24T10:12:44Z INFO normalized payload brand=PING model=G430 Max cat=driver shaft='Tour X-Stiff' condition='9.5 Mint' value=240 store=207 serial=PNG-004",
+        },
+      ],
     });
 
     expect(result.sourcesProcessed).toBe(4);
@@ -343,7 +360,7 @@ describe("executeMultiSourceIntakeDemo", () => {
         category: "WEDGE",
         shaftFlex: "SENIOR",
         conditionGrade: "9.0 Above Average",
-        tradeInValue: 72
+        tradeInValue: 72,
       },
       {
         sourceType: "POORLY_FORMED_CSV",
@@ -352,7 +369,7 @@ describe("executeMultiSourceIntakeDemo", () => {
         category: "PUTTER",
         shaftFlex: null,
         conditionGrade: "8.0 Average",
-        tradeInValue: 95
+        tradeInValue: 95,
       },
       {
         sourceType: "EMAIL",
@@ -361,7 +378,7 @@ describe("executeMultiSourceIntakeDemo", () => {
         category: "IRON_SET",
         shaftFlex: "TOUR_X_STIFF",
         conditionGrade: "9.0 Above Average",
-        tradeInValue: 390
+        tradeInValue: 390,
       },
       {
         sourceType: "LOG",
@@ -370,8 +387,8 @@ describe("executeMultiSourceIntakeDemo", () => {
         category: "DRIVER",
         shaftFlex: "TOUR_X_STIFF",
         conditionGrade: "9.5 Mint",
-        tradeInValue: 240
-      }
+        tradeInValue: 240,
+      },
     ];
 
     for (const expectedRecord of expectedRecords) {
@@ -379,329 +396,232 @@ describe("executeMultiSourceIntakeDemo", () => {
         expect.objectContaining({
           ...expectedRecord,
           reviewNeeded: false,
-          missingFields: []
-        })
+          missingFields: [],
+        }),
       );
     }
 
-    expect(result.cleanedDatasetPreview.map((record) => record.normalizedText).join(" ")).not.toMatch(
-      /CLV-001|ODS-002|MIZ-003|PNG-004|serial/i
-    );
-    expect(result.cleanedDatasetPreview.map((record) => record.conditionGrade)).not.toContain(
-      "worn grip"
-    );
+    expect(
+      result.cleanedDatasetPreview
+        .map((record) => record.normalizedText)
+        .join(" "),
+    ).not.toMatch(/CLV-001|ODS-002|MIZ-003|PNG-004|serial/i);
+    expect(
+      result.cleanedDatasetPreview.map((record) => record.conditionGrade),
+    ).not.toContain("worn grip");
 
     await prisma.intakeBatch.delete({
       where: {
-        id: result.persistedIds.intakeBatchId
-      }
+        id: result.persistedIds.intakeBatchId,
+      },
     });
     await prisma.workflowRun.delete({
       where: {
-        id: result.persistedIds.workflowRunId
-      }
+        id: result.persistedIds.workflowRunId,
+      },
     });
   });
-
 
   it("preserves every meaningful source record through preview and persistence", async () => {
     const sourceLines = [
       "PING G425 4-PW, shaft firm, condition 8.0 Average, trade value $210, store 207.",
       "Titleist TSR fairway wood, maybe TSR2 or TSR3, stiff shaft, condition 9.0 Above Average, trade value $185, store 114.",
       "Callaway mystery club, shaft unknown, condition 7.0 Below Average, trade value $80, store 301.",
-      "Odyssey White Hot putter, condition 8.0 Average, trade value $65, store 207."
+      "Odyssey White Hot putter, condition 8.0 Average, trade value $65, store 207.",
     ];
 
-    const result =
-      await executeMultiSourceIntakeDemo({
-        sources: [
-          {
-            sourceType: "FREE_TEXT",
-            sourceName:
-              "Intake preservation lifecycle fixture",
-            rawContent:
-              sourceLines.join("\n")
-          }
-        ]
-      });
+    const result = await executeMultiSourceIntakeDemo({
+      sources: [
+        {
+          sourceType: "FREE_TEXT",
+          sourceName: "Intake preservation lifecycle fixture",
+          rawContent: sourceLines.join("\n"),
+        },
+      ],
+    });
 
     try {
       expect(result.sourcesProcessed).toBe(1);
       expect(result.recordsExtracted).toBe(4);
-      expect(
-        result.cleanedDatasetPreview
-      ).toHaveLength(4);
-      expect(
-        result.ragReadinessSummary
-          .totalRecordCount
-      ).toBe(4);
+      expect(result.cleanedDatasetPreview).toHaveLength(4);
+      expect(result.ragReadinessSummary.totalRecordCount).toBe(4);
 
-      expect(
-        result.cleanedDatasetPreview.map(
-          (record) => record.id
-        )
-      ).toEqual([
+      expect(result.cleanedDatasetPreview.map((record) => record.id)).toEqual([
         "custom_source_1_record_1",
         "custom_source_1_record_2",
         "custom_source_1_record_3",
-        "custom_source_1_record_4"
+        "custom_source_1_record_4",
       ]);
 
       expect(
-        result.cleanedDatasetPreview.map(
-          (record) => record.sourceText
-        )
+        result.cleanedDatasetPreview.map((record) => record.sourceText),
       ).toEqual(sourceLines);
 
-      const unresolvedCallaway =
-        result.cleanedDatasetPreview.find(
-          (record) =>
-            record.sourceText ===
-            sourceLines[2]
-        );
+      const unresolvedCallaway = result.cleanedDatasetPreview.find(
+        (record) => record.sourceText === sourceLines[2],
+      );
 
-      expect(
-        unresolvedCallaway
-      ).toMatchObject({
+      expect(unresolvedCallaway).toMatchObject({
         brand: "Callaway",
         productLine: null,
         category: null,
         shaftFlex: null,
-        conditionGrade:
-          "7.0 Below Average",
+        conditionGrade: "7.0 Below Average",
         tradeInValue: 80,
         storeId: "301",
         reviewNeeded: true,
         productResolution: {
-          status: "UNRESOLVED"
-        }
+          status: "UNRESOLVED",
+        },
       });
-      expect(
-        unresolvedCallaway?.missingFields
-      ).toEqual(
-        expect.arrayContaining([
-          "productLine",
-          "category",
-          "shaftFlex"
-        ])
+      expect(unresolvedCallaway?.missingFields).toEqual(
+        expect.arrayContaining(["productLine", "category", "shaftFlex"]),
       );
 
-      const putter =
-        result.cleanedDatasetPreview.find(
-          (record) =>
-            record.sourceText ===
-            sourceLines[3]
-        );
+      const putter = result.cleanedDatasetPreview.find(
+        (record) => record.sourceText === sourceLines[3],
+      );
 
       expect(putter).toMatchObject({
         brand: "Odyssey",
         category: "PUTTER",
         shaftFlex: null,
         conditionGrade: "8.0 Average",
-        tradeInValue: 65
+        tradeInValue: 65,
       });
-      expect(
-        putter?.missingFields
-      ).not.toContain("shaftFlex");
+      expect(putter?.missingFields).not.toContain("shaftFlex");
 
-      expect(
-        result.persistedIds
-          .intakeItemIds
-      ).toHaveLength(4);
-      expect(
-        result.persistedIds
-          .aiReadyIntakeRecordIds
-      ).toHaveLength(4);
-      expect(
-        result.persistedIds
-          .reviewQueueItemIds
-      ).toHaveLength(
-        result.reviewNeeded
+      expect(result.persistedIds.intakeItemIds).toHaveLength(4);
+      expect(result.persistedIds.aiReadyIntakeRecordIds).toHaveLength(4);
+      expect(result.persistedIds.reviewQueueItemIds).toHaveLength(
+        result.reviewNeeded,
       );
 
-      const intakeItems =
-        await prisma.intakeItem.findMany({
-          where: {
-            intakeBatchId:
-              result.persistedIds
-                .intakeBatchId
-          },
-          orderBy: {
-            sourceRowNumber: "asc"
-          }
-        });
+      const intakeItems = await prisma.intakeItem.findMany({
+        where: {
+          intakeBatchId: result.persistedIds.intakeBatchId,
+        },
+        orderBy: {
+          sourceRowNumber: "asc",
+        },
+      });
 
       expect(
-        intakeItems.map(
-          (item) => ({
-            sourceRowNumber:
-              item.sourceRowNumber,
-            rawText: item.rawText
-          })
-        )
+        intakeItems.map((item) => ({
+          sourceRowNumber: item.sourceRowNumber,
+          rawText: item.rawText,
+        })),
       ).toEqual(
-        sourceLines.map(
-          (rawText, index) => ({
-            sourceRowNumber: index + 1,
-            rawText
-          })
-        )
+        sourceLines.map((rawText, index) => ({
+          sourceRowNumber: index + 1,
+          rawText,
+        })),
       );
 
-      const persistedRecords =
-        await prisma
-          .aiReadyIntakeRecord
-          .findMany({
-            where: {
-              workflowRunId:
-                result.persistedIds
-                  .workflowRunId
-            },
-            orderBy: {
-              createdAt: "asc"
-            }
-          });
+      const persistedRecords = await prisma.aiReadyIntakeRecord.findMany({
+        where: {
+          workflowRunId: result.persistedIds.workflowRunId,
+        },
+        orderBy: {
+          createdAt: "asc",
+        },
+      });
 
-      expect(
-        persistedRecords
-      ).toHaveLength(4);
-      expect(
-        persistedRecords.map(
-          (record) =>
-            record.sourceRecordId
-        )
-      ).toEqual(
-        result.cleanedDatasetPreview.map(
-          (record) => record.id
-        )
+      expect(persistedRecords).toHaveLength(4);
+      expect(persistedRecords.map((record) => record.sourceRecordId)).toEqual(
+        result.cleanedDatasetPreview.map((record) => record.id),
       );
-      expect(
-        persistedRecords.map(
-          (record) => record.rawText
-        )
-      ).toEqual(sourceLines);
+      expect(persistedRecords.map((record) => record.rawText)).toEqual(
+        sourceLines,
+      );
 
-      const persistedCallaway =
-        persistedRecords.find(
-          (record) =>
-            record.sourceRecordId ===
-            unresolvedCallaway?.id
-        );
+      const persistedCallaway = persistedRecords.find(
+        (record) => record.sourceRecordId === unresolvedCallaway?.id,
+      );
 
-      expect(
-        persistedCallaway
-      ).toMatchObject({
+      expect(persistedCallaway).toMatchObject({
         sourceType: "FREE_TEXT",
         reviewNeeded: true,
         status: "NEEDS_REVIEW",
-        rawText: sourceLines[2]
+        rawText: sourceLines[2],
       });
-      expect(
-        persistedCallaway
-          ?.normalizedJson
-      ).toEqual(
+      expect(persistedCallaway?.normalizedJson).toEqual(
         expect.objectContaining({
           brand: "Callaway",
           productLine: null,
           category: null,
           sourceText: sourceLines[2],
-          reviewNeeded: true
-        })
+          reviewNeeded: true,
+        }),
       );
 
-      const persistedReviewItems =
-        await prisma
-          .reviewQueueItem
-          .findMany({
-            where: {
-              workflowRunId:
-                result.persistedIds
-                  .workflowRunId
-            },
-            orderBy: {
-              createdAt: "asc"
-            }
-          });
+      const persistedReviewItems = await prisma.reviewQueueItem.findMany({
+        where: {
+          workflowRunId: result.persistedIds.workflowRunId,
+        },
+        orderBy: {
+          createdAt: "asc",
+        },
+      });
 
-      expect(
-        persistedReviewItems
-      ).toHaveLength(
-        result.reviewNeeded
-      );
+      expect(persistedReviewItems).toHaveLength(result.reviewNeeded);
       expect(
         persistedReviewItems.some(
-          (item) =>
-            item.originalText ===
-            sourceLines[2]
-        )
+          (item) => item.originalText === sourceLines[2],
+        ),
       ).toBe(true);
     } finally {
       await prisma.intakeBatch.delete({
         where: {
-          id:
-            result.persistedIds
-              .intakeBatchId
-        }
+          id: result.persistedIds.intakeBatchId,
+        },
       });
 
       await prisma.workflowRun.delete({
         where: {
-          id:
-            result.persistedIds
-              .workflowRunId
-        }
+          id: result.persistedIds.workflowRunId,
+        },
       });
     }
   });
 
-
-
   it("resolves an injected reference product through the multi-source workflow", async () => {
-    const provider =
-      createInMemoryProductReferenceProvider([
-        {
-          productId:
-            "prod_test_nova_x_driver_2026",
-          sku: "TEST-NOVAX-DRV-2026",
-          brand: "Test Golf",
-          productLine: "Nova X",
-          category: "DRIVER",
-          year: 2026,
-          aliases: [
-            "nx prototype driver"
-          ],
-          shaftFamilies: []
-        }
-      ]);
+    const provider = createInMemoryProductReferenceProvider([
+      {
+        productId: "prod_test_nova_x_driver_2026",
+        sku: "TEST-NOVAX-DRV-2026",
+        brand: "Test Golf",
+        productLine: "Nova X",
+        category: "DRIVER",
+        year: 2026,
+        aliases: ["nx prototype driver"],
+        shaftFamilies: [],
+      },
+    ]);
 
-    const result =
-      await executeMultiSourceIntakeDemo({
-        sources: [
-          {
-            sourceType: "FREE_TEXT",
-            sourceName:
-              "Injected reference fixture",
-            rawContent:
-              "Test Golf nx prototype driver shaft stiff condition 9.0 Above Average value $225 store 104"
-          }
-        ],
-        productReferenceProvider: provider
-      });
+    const result = await executeMultiSourceIntakeDemo({
+      sources: [
+        {
+          sourceType: "FREE_TEXT",
+          sourceName: "Injected reference fixture",
+          rawContent:
+            "Test Golf nx prototype driver shaft stiff condition 9.0 Above Average value $225 store 104",
+        },
+      ],
+      productReferenceProvider: provider,
+    });
 
     try {
       expect(result.sourcesProcessed).toBe(1);
       expect(result.recordsExtracted).toBe(1);
       expect(result.cleanedDatasetPreview).toHaveLength(1);
 
-      expect(
-        result.cleanedDatasetPreview[0]
-      ).toMatchObject({
+      expect(result.cleanedDatasetPreview[0]).toMatchObject({
         brand: "Test Golf",
         productLine: "Nova X",
         category: "DRIVER",
         shaftFlex: "STIFF",
-        conditionGrade:
-          "9.0 Above Average",
+        conditionGrade: "9.0 Above Average",
         tradeInValue: 225,
         storeId: "104",
         reviewNeeded: false,
@@ -710,39 +630,27 @@ describe("executeMultiSourceIntakeDemo", () => {
           status: "MATCHED",
           providerRecordCount: 1,
           match: {
-            productId:
-              "prod_test_nova_x_driver_2026",
-            sku: "TEST-NOVAX-DRV-2026"
-          }
-        }
+            productId: "prod_test_nova_x_driver_2026",
+            sku: "TEST-NOVAX-DRV-2026",
+          },
+        },
       });
 
       expect(result.reviewNeeded).toBe(0);
-      expect(
-        result.persistedIds
-          .reviewQueueItemIds
-      ).toHaveLength(0);
-      expect(
-        result.persistedIds
-          .aiReadyIntakeRecordIds
-      ).toHaveLength(1);
+      expect(result.persistedIds.reviewQueueItemIds).toHaveLength(0);
+      expect(result.persistedIds.aiReadyIntakeRecordIds).toHaveLength(1);
     } finally {
       await prisma.intakeBatch.delete({
         where: {
-          id:
-            result.persistedIds
-              .intakeBatchId
-        }
+          id: result.persistedIds.intakeBatchId,
+        },
       });
 
       await prisma.workflowRun.delete({
         where: {
-          id:
-            result.persistedIds
-              .workflowRunId
-        }
+          id: result.persistedIds.workflowRunId,
+        },
       });
     }
   });
-
 });

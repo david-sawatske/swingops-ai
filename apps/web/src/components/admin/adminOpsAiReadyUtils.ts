@@ -1,21 +1,12 @@
 import type { AiReadyIntakeRecord } from "../../types/workflow";
 
 export type AiReadyStatusFilter =
-  | "ACTIVE"
-  | "ALL"
-  | AiReadyIntakeRecord["status"];
+  "ACTIVE" | "ALL" | AiReadyIntakeRecord["status"];
 export type AiReadyReadinessFilter =
-  | "ALL"
-  | "REVIEW_NEEDED"
-  | "GROUNDING_READY"
-  | "MISSING_FIELDS"
-  | "COMPLETE";
+  "ALL" | "REVIEW_NEEDED" | "GROUNDING_READY" | "MISSING_FIELDS" | "COMPLETE";
 export type AiReadySortOption = "NEWEST" | "STATUS" | "SOURCE";
 export type AiReadyDateFilter =
-  | "ALL"
-  | "TODAY"
-  | "LAST_7_DAYS"
-  | "LAST_30_DAYS";
+  "ALL" | "TODAY" | "LAST_7_DAYS" | "LAST_30_DAYS";
 export type AiReadyInsightTab = "MISSING_FIELDS" | "SOURCE_QUALITY";
 
 export const AI_READY_STATUS_FILTERS: {

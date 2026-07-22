@@ -21,23 +21,19 @@ import {
 const QUALITY_GUARDRAILS = [
   {
     title: "No invented defaults",
-    body:
-      "Unknown shaft, condition, and value fields stay blank until source text or review supports them.",
+    body: "Unknown shaft, condition, and value fields stay blank until source text or review supports them.",
   },
   {
     title: "Evidence stays attached",
-    body:
-      "Normalized parser fields keep the raw phrase that produced each value.",
+    body: "Normalized parser fields keep the raw phrase that produced each value.",
   },
   {
     title: "Review routing remains active",
-    body:
-      "Incomplete or low-confidence records still create review work.",
+    body: "Incomplete or low-confidence records still create review work.",
   },
   {
     title: "Learning stays suggestive",
-    body:
-      "Prior corrections can surface as suggestions, but they do not auto-apply.",
+    body: "Prior corrections can surface as suggestions, but they do not auto-apply.",
   },
 ];
 
@@ -121,7 +117,9 @@ function WorkflowEvalSuggestionList({
       aria-label="Prior review suggestions"
     >
       <div>
-        <span className="model-route-card__eyebrow">Prior review suggestion</span>
+        <span className="model-route-card__eyebrow">
+          Prior review suggestion
+        </span>
         <h5>Reviewer-approved evidence found, but not auto-applied</h5>
       </div>
 
@@ -160,13 +158,11 @@ function WorkflowEvalSuggestionList({
   );
 }
 
-function WorkflowEvalProofStrip({
-  result,
-}: {
-  result: WorkflowEvalResult;
-}) {
+function WorkflowEvalProofStrip({ result }: { result: WorkflowEvalResult }) {
   const firstRecord = result.observed.records[0] ?? null;
-  const parserEvidenceEntries = Object.entries(firstRecord?.parserEvidence ?? {});
+  const parserEvidenceEntries = Object.entries(
+    firstRecord?.parserEvidence ?? {},
+  );
   const proofItems = [
     {
       label: "Shaft",
@@ -175,7 +171,8 @@ function WorkflowEvalProofStrip({
     {
       label: "Trade value",
       value:
-        firstRecord?.tradeInValue === null || firstRecord?.tradeInValue === undefined
+        firstRecord?.tradeInValue === null ||
+        firstRecord?.tradeInValue === undefined
           ? "Blank"
           : `$${firstRecord.tradeInValue}`,
     },
@@ -229,14 +226,19 @@ function WorkflowEvalRecordSnapshot({
           value={record.productLine}
         />
         <WorkflowEvalObservedField label="Category" value={record.category} />
-        <WorkflowEvalObservedField label="Shaft flex" value={record.shaftFlex} />
+        <WorkflowEvalObservedField
+          label="Shaft flex"
+          value={record.shaftFlex}
+        />
         <WorkflowEvalObservedField
           label="Condition"
           value={record.conditionGrade}
         />
         <WorkflowEvalObservedField
           label="Trade-in value"
-          value={record.tradeInValue === null ? null : `$${record.tradeInValue}`}
+          value={
+            record.tradeInValue === null ? null : `$${record.tradeInValue}`
+          }
         />
         <WorkflowEvalObservedField
           label="Missing fields"
@@ -268,11 +270,7 @@ function WorkflowEvalRecordSnapshot({
   );
 }
 
-function WorkflowEvalObservedPanel({
-  result,
-}: {
-  result: WorkflowEvalResult;
-}) {
+function WorkflowEvalObservedPanel({ result }: { result: WorkflowEvalResult }) {
   const firstRecord = result.observed.records[0] ?? null;
 
   return (
@@ -465,8 +463,9 @@ export function WorkflowQualityChecksPage() {
           <h3>Reliability guardrails for the trade-in workflow</h3>
           <p>
             Run known scenarios against the same workflow code used by the main
-            trade-in path. A passing check means the workflow matched the expected
-            guardrail behavior, including cases that should route to review.
+            trade-in path. A passing check means the workflow matched the
+            expected guardrail behavior, including cases that should route to
+            review.
           </p>
         </div>
 
@@ -483,8 +482,8 @@ export function WorkflowQualityChecksPage() {
       <WorkflowEvalGuardrailGrid />
 
       <p className="workflow-eval-interpretation-note">
-        Expected outcomes can include review routing. For example, an unknown shaft
-        value passes when it stays blank and creates a review item.
+        Expected outcomes can include review routing. For example, an unknown
+        shaft value passes when it stays blank and creates a review item.
       </p>
 
       {error ? <p className="workflow-eval-error">{error}</p> : null}
@@ -494,7 +493,10 @@ export function WorkflowQualityChecksPage() {
           className="workflow-eval-summary-grid"
           aria-label="Quality check summary"
         >
-          <WorkflowEvalMetricCard label="Checks run" value={result.summary.total} />
+          <WorkflowEvalMetricCard
+            label="Checks run"
+            value={result.summary.total}
+          />
           <WorkflowEvalMetricCard
             label="Expected outcomes met"
             value={result.summary.passed}

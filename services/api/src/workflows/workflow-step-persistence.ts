@@ -9,27 +9,27 @@ const ACTIVE_STEP_STATUSES = ["RUNNING", "RETRYING"] as const;
 async function startPersistedWorkflowStep(
   step: WorkflowStep,
   startedAt: Date,
-  inputJson?: Prisma.InputJsonValue
+  inputJson?: Prisma.InputJsonValue,
 ): Promise<WorkflowStep> {
   return prisma.$transaction(async (transaction) => {
     const persistedStep = await transaction.workflowStep.findUniqueOrThrow({
       where: {
-        id: step.id
-      }
+        id: step.id,
+      },
     });
 
     const workflowRun = await transaction.workflowRun.findUniqueOrThrow({
       where: {
-        id: persistedStep.workflowRunId
+        id: persistedStep.workflowRunId,
       },
       select: {
-        status: true
-      }
+        status: true,
+      },
     });
 
     if (workflowRun.status !== "RUNNING") {
       throw new Error(
-        `Workflow step "${persistedStep.stepName}" cannot start while run status is ${workflowRun.status}.`
+        `Workflow step "${persistedStep.stepName}" cannot start while run status is ${workflowRun.status}.`,
       );
     }
 
@@ -37,20 +37,20 @@ async function startPersistedWorkflowStep(
       where: {
         workflowRunId: persistedStep.workflowRunId,
         orderIndex: {
-          lt: persistedStep.orderIndex
+          lt: persistedStep.orderIndex,
         },
         status: {
-          notIn: [...COMPLETED_PREDECESSOR_STATUSES]
-        }
+          notIn: [...COMPLETED_PREDECESSOR_STATUSES],
+        },
       },
       orderBy: {
-        orderIndex: "asc"
-      }
+        orderIndex: "asc",
+      },
     });
 
     if (incompletePredecessor) {
       throw new Error(
-        `Workflow step "${persistedStep.stepName}" cannot start before predecessor "${incompletePredecessor.stepName}" reaches a terminal success state; current status is ${incompletePredecessor.status}.`
+        `Workflow step "${persistedStep.stepName}" cannot start before predecessor "${incompletePredecessor.stepName}" reaches a terminal success state; current status is ${incompletePredecessor.status}.`,
       );
     }
 
@@ -58,27 +58,27 @@ async function startPersistedWorkflowStep(
       where: {
         id: persistedStep.id,
         workflowRunId: persistedStep.workflowRunId,
-        status: "PENDING"
+        status: "PENDING",
       },
       data: {
         status: "RUNNING",
         startedAt,
         completedAt: null,
         errorMessage: null,
-        ...(inputJson === undefined ? {} : { inputJson })
-      }
+        ...(inputJson === undefined ? {} : { inputJson }),
+      },
     });
 
     if (transition.count !== 1) {
       throw new Error(
-        `Workflow step "${persistedStep.stepName}" cannot transition from ${persistedStep.status} to RUNNING.`
+        `Workflow step "${persistedStep.stepName}" cannot transition from ${persistedStep.status} to RUNNING.`,
       );
     }
 
     return transaction.workflowStep.findUniqueOrThrow({
       where: {
-        id: persistedStep.id
-      }
+        id: persistedStep.id,
+      },
     });
   });
 }
@@ -95,27 +95,27 @@ async function completePersistedWorkflowStep(input: {
       id: input.step.id,
       workflowRunId: input.step.workflowRunId,
       status: {
-        in: [...ACTIVE_STEP_STATUSES]
-      }
+        in: [...ACTIVE_STEP_STATUSES],
+      },
     },
     data: {
       status: input.status,
       outputJson: input.outputJson,
       completedAt: input.completedAt,
-      errorMessage: null
-    }
+      errorMessage: null,
+    },
   });
 
   if (transition.count !== 1) {
     throw new Error(
-      `Workflow step "${input.step.stepName}" cannot transition to ${input.status} because it is not active.`
+      `Workflow step "${input.step.stepName}" cannot transition to ${input.status} because it is not active.`,
     );
   }
 }
 
 export function requireWorkflowStep(
   steps: WorkflowStep[],
-  stepName: string
+  stepName: string,
 ): WorkflowStep {
   const step = steps.find((candidate) => candidate.stepName === stepName);
 
@@ -144,7 +144,7 @@ export async function executePersistedWorkflowStep<Result>(input: {
     const startedStep = await startPersistedWorkflowStep(
       input.step,
       startedAt,
-      input.inputJson
+      input.inputJson,
     );
 
     const result = await input.execute(startedStep);
@@ -159,7 +159,7 @@ export async function executePersistedWorkflowStep<Result>(input: {
         await onCompleted({
           transaction,
           result,
-          completedAt
+          completedAt,
         });
 
         await completePersistedWorkflowStep({
@@ -167,7 +167,7 @@ export async function executePersistedWorkflowStep<Result>(input: {
           step: startedStep,
           status: terminalStatus,
           outputJson,
-          completedAt
+          completedAt,
         });
       });
     } else {
@@ -177,7 +177,7 @@ export async function executePersistedWorkflowStep<Result>(input: {
           step: startedStep,
           status: terminalStatus,
           outputJson,
-          completedAt
+          completedAt,
         });
       });
     }
@@ -186,34 +186,33 @@ export async function executePersistedWorkflowStep<Result>(input: {
   } catch (error) {
     await failPersistedWorkflowRun({
       step: input.step,
-      error
-    })
-      .catch(() => undefined);
+      error,
+    }).catch(() => undefined);
 
     throw error;
   }
 }
 
 export async function markPersistedWorkflowStepRetrying(
-  step: WorkflowStep
+  step: WorkflowStep,
 ): Promise<void> {
   const transition = await prisma.workflowStep.updateMany({
     where: {
       id: step.id,
       workflowRunId: step.workflowRunId,
-      status: "RUNNING"
+      status: "RUNNING",
     },
     data: {
       status: "RETRYING",
       retryCount: {
-        increment: 1
-      }
-    }
+        increment: 1,
+      },
+    },
   });
 
   if (transition.count !== 1) {
     throw new Error(
-      `Workflow step "${step.stepName}" cannot transition to RETRYING because it is not RUNNING.`
+      `Workflow step "${step.stepName}" cannot transition to RETRYING because it is not RUNNING.`,
     );
   }
 }

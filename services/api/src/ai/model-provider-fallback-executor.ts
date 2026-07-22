@@ -4,18 +4,18 @@ import {
   routeModel,
   type ModelRouteCandidateSummary,
   type ModelRouteDecision,
-  type ModelRoutingGoal
+  type ModelRoutingGoal,
 } from "./model-router.js";
 import type {
   ModelProviderExecuteResult,
   ModelProviderName,
   ModelProviderOutputSchema,
-  ModelTaskType
+  ModelTaskType,
 } from "./model-provider.types.js";
 import {
   getModelProviderRuntimeConfig,
   type ModelProviderFetch,
-  type ModelProviderRuntimeConfig
+  type ModelProviderRuntimeConfig,
 } from "./model-provider-runtime-config.js";
 
 export type ModelProviderFallbackAttemptStatus =
@@ -77,7 +77,7 @@ export type ExecuteModelWithProviderFallbackInput = {
   attemptTimeoutMs?: number;
   workflowTimeoutMs?: number;
   validateOutput?: (
-    outputJson: Record<string, unknown> | null
+    outputJson: Record<string, unknown> | null,
   ) => ModelProviderOutputValidationResult;
 };
 
@@ -109,14 +109,11 @@ class ProviderAttemptTimeoutError extends Error {
   readonly timeoutMs: number;
   readonly workflowDeadlineReached: boolean;
 
-  constructor(input: {
-    timeoutMs: number;
-    workflowDeadlineReached: boolean;
-  }) {
+  constructor(input: { timeoutMs: number; workflowDeadlineReached: boolean }) {
     super(
       input.workflowDeadlineReached
         ? `Provider fallback workflow exceeded its ${input.timeoutMs}ms remaining deadline.`
-        : `Provider attempt timed out after ${input.timeoutMs}ms.`
+        : `Provider attempt timed out after ${input.timeoutMs}ms.`,
     );
     this.name = "ProviderAttemptTimeoutError";
     this.timeoutMs = input.timeoutMs;
@@ -132,17 +129,17 @@ class ProviderExecutionCancelledError extends Error {
 }
 
 export async function executeModelWithProviderFallback(
-  input: ExecuteModelWithProviderFallbackInput
+  input: ExecuteModelWithProviderFallbackInput,
 ): Promise<ExecuteModelWithProviderFallbackResult> {
   const executionStartedMs = Date.now();
   const runtimeConfig = input.runtimeConfig ?? getModelProviderRuntimeConfig();
   const attemptTimeoutMs = resolvePositiveTimeout(
     input.attemptTimeoutMs ?? runtimeConfig.providerAttemptTimeoutMs,
-    DEFAULT_PROVIDER_ATTEMPT_TIMEOUT_MS
+    DEFAULT_PROVIDER_ATTEMPT_TIMEOUT_MS,
   );
   const workflowTimeoutMs = resolvePositiveTimeout(
     input.workflowTimeoutMs ?? runtimeConfig.providerWorkflowTimeoutMs,
-    DEFAULT_PROVIDER_WORKFLOW_TIMEOUT_MS
+    DEFAULT_PROVIDER_WORKFLOW_TIMEOUT_MS,
   );
   const workflowDeadlineMs = executionStartedMs + workflowTimeoutMs;
   const routingDecision = routeModel(
@@ -155,13 +152,13 @@ export async function executeModelWithProviderFallback(
       ...(input.allowDisabledProvidersForSimulation !== undefined
         ? {
             allowDisabledProvidersForSimulation:
-              input.allowDisabledProvidersForSimulation
+              input.allowDisabledProvidersForSimulation,
           }
-        : {})
+        : {}),
     },
     {
-      providerEnabledByName: buildRuntimeProviderEnabledByName(runtimeConfig)
-    }
+      providerEnabledByName: buildRuntimeProviderEnabledByName(runtimeConfig),
+    },
   );
   const candidates = buildExecutionCandidates(routingDecision);
   const attempts: ModelProviderFallbackAttempt[] = [];
@@ -180,14 +177,13 @@ export async function executeModelWithProviderFallback(
 
     if (workflowTimeRemainingMs <= 0) {
       workflowDeadlineReached = true;
-      terminalErrorMessage =
-        `Provider fallback workflow timed out after ${workflowTimeoutMs}ms.`;
+      terminalErrorMessage = `Provider fallback workflow timed out after ${workflowTimeoutMs}ms.`;
       break;
     }
 
     const effectiveAttemptTimeoutMs = Math.max(
       1,
-      Math.min(attemptTimeoutMs, workflowTimeRemainingMs)
+      Math.min(attemptTimeoutMs, workflowTimeRemainingMs),
     );
     const attemptUsesWorkflowDeadline =
       workflowTimeRemainingMs <= attemptTimeoutMs;
@@ -209,7 +205,7 @@ export async function executeModelWithProviderFallback(
         estimatedCostUsd: candidate.estimatedCostUsd,
         timeoutMs: effectiveAttemptTimeoutMs,
         startedAt,
-        completedAt: new Date()
+        completedAt: new Date(),
       });
       continue;
     }
@@ -229,9 +225,9 @@ export async function executeModelWithProviderFallback(
               : {}),
             runtimeConfig,
             ...(input.fetchFn !== undefined ? { fetchFn: input.fetchFn } : {}),
-            signal
+            signal,
           });
-        }
+        },
       });
       const validationResult = input.validateOutput
         ? input.validateOutput(result.outputJson)
@@ -252,7 +248,7 @@ export async function executeModelWithProviderFallback(
           estimatedCostUsd: candidate.estimatedCostUsd,
           timeoutMs: effectiveAttemptTimeoutMs,
           startedAt,
-          completedAt
+          completedAt,
         });
         continue;
       }
@@ -270,7 +266,7 @@ export async function executeModelWithProviderFallback(
         estimatedCostUsd: candidate.estimatedCostUsd,
         timeoutMs: effectiveAttemptTimeoutMs,
         startedAt,
-        completedAt
+        completedAt,
       });
 
       return {
@@ -287,8 +283,8 @@ export async function executeModelWithProviderFallback(
           workflowTimeoutMs,
           workflowDeadlineReached: false,
           cancelled: false,
-          durationMs: Date.now() - executionStartedMs
-        }
+          durationMs: Date.now() - executionStartedMs,
+        },
       };
     } catch (error) {
       const classification = classifyAttemptFailure(error);
@@ -306,7 +302,7 @@ export async function executeModelWithProviderFallback(
         estimatedCostUsd: candidate.estimatedCostUsd,
         timeoutMs: effectiveAttemptTimeoutMs,
         startedAt,
-        completedAt: new Date()
+        completedAt: new Date(),
       });
 
       if (error instanceof ProviderExecutionCancelledError) {
@@ -320,8 +316,7 @@ export async function executeModelWithProviderFallback(
         error.workflowDeadlineReached
       ) {
         workflowDeadlineReached = true;
-        terminalErrorMessage =
-          `Provider fallback workflow timed out after ${workflowTimeoutMs}ms.`;
+        terminalErrorMessage = `Provider fallback workflow timed out after ${workflowTimeoutMs}ms.`;
         break;
       }
     }
@@ -344,8 +339,8 @@ export async function executeModelWithProviderFallback(
       workflowTimeoutMs,
       workflowDeadlineReached,
       cancelled,
-      durationMs: Date.now() - executionStartedMs
-    }
+      durationMs: Date.now() - executionStartedMs,
+    },
   };
 }
 
@@ -378,7 +373,7 @@ async function executeProviderAttempt<Result>(input: {
     const timeout = setTimeout(() => {
       const error = new ProviderAttemptTimeoutError({
         timeoutMs: input.timeoutMs,
-        workflowDeadlineReached: input.workflowDeadlineReached
+        workflowDeadlineReached: input.workflowDeadlineReached,
       });
       attemptController.abort(error);
       finish(() => reject(error));
@@ -395,14 +390,14 @@ async function executeProviderAttempt<Result>(input: {
       .then(() => input.execute(attemptController.signal))
       .then(
         (result) => finish(() => resolve(result)),
-        (error: unknown) => finish(() => reject(error))
+        (error: unknown) => finish(() => reject(error)),
       );
   });
 }
 
 function resolvePositiveTimeout(
   value: number | undefined,
-  fallback: number
+  fallback: number,
 ): number {
   if (typeof value === "number" && Number.isSafeInteger(value) && value > 0) {
     return value;
@@ -412,23 +407,23 @@ function resolvePositiveTimeout(
 }
 
 function buildExecutionCandidates(
-  decision: ModelRouteDecision
+  decision: ModelRouteDecision,
 ): ModelRouteCandidateSummary[] {
   const rejectedCandidateKeys = new Set(
-    decision.rejectedCandidates.map((candidate) => candidateKey(candidate))
+    decision.rejectedCandidates.map((candidate) => candidateKey(candidate)),
   );
   const eligibleCandidates = decision.candidatesConsidered.filter(
-    (candidate) => !rejectedCandidateKeys.has(candidateKey(candidate))
+    (candidate) => !rejectedCandidateKeys.has(candidateKey(candidate)),
   );
   const selectedCandidate = eligibleCandidates.find(
     (candidate) =>
       candidate.provider === decision.provider &&
-      candidate.model === decision.model
+      candidate.model === decision.model,
   );
   const fallbackCandidate = eligibleCandidates.find(
     (candidate) =>
       candidate.provider === decision.fallbackProvider &&
-      candidate.model === decision.fallbackModel
+      candidate.model === decision.fallbackModel,
   );
   const orderedCandidates: ModelRouteCandidateSummary[] = [];
 
@@ -439,7 +434,8 @@ function buildExecutionCandidates(
   if (
     fallbackCandidate &&
     !orderedCandidates.some(
-      (candidate) => candidateKey(candidate) === candidateKey(fallbackCandidate)
+      (candidate) =>
+        candidateKey(candidate) === candidateKey(fallbackCandidate),
     )
   ) {
     orderedCandidates.push(fallbackCandidate);
@@ -456,7 +452,7 @@ function buildExecutionCandidates(
     if (
       orderedCandidates.some(
         (orderedCandidate) =>
-          candidateKey(orderedCandidate) === candidateKey(candidate)
+          candidateKey(orderedCandidate) === candidateKey(candidate),
       )
     ) {
       continue;
@@ -475,14 +471,12 @@ function candidateKey(candidate: {
   return `${candidate.provider}:${candidate.model}`;
 }
 
-function classifyAttemptFailure(
-  error: unknown
-): AttemptFailureClassification {
+function classifyAttemptFailure(error: unknown): AttemptFailureClassification {
   if (error instanceof ProviderExecutionCancelledError) {
     return {
       status: "FAILED",
       failureClass: "CANCELLED",
-      retryable: false
+      retryable: false,
     };
   }
 
@@ -490,7 +484,7 @@ function classifyAttemptFailure(
     return {
       status: "TIMEOUT",
       failureClass: "TIMEOUT",
-      retryable: true
+      retryable: true,
     };
   }
 
@@ -499,7 +493,7 @@ function classifyAttemptFailure(
       return {
         status: "SKIPPED",
         failureClass: "CONFIGURATION",
-        retryable: false
+        retryable: false,
       };
     }
 
@@ -508,7 +502,7 @@ function classifyAttemptFailure(
         return {
           status: "RATE_LIMITED",
           failureClass: "RATE_LIMIT",
-          retryable: true
+          retryable: true,
         };
       }
 
@@ -516,7 +510,7 @@ function classifyAttemptFailure(
         return {
           status: "TIMEOUT",
           failureClass: "TIMEOUT",
-          retryable: true
+          retryable: true,
         };
       }
 
@@ -524,7 +518,7 @@ function classifyAttemptFailure(
         return {
           status: "FAILED",
           failureClass: "SERVER_ERROR",
-          retryable: true
+          retryable: true,
         };
       }
 
@@ -532,7 +526,7 @@ function classifyAttemptFailure(
         return {
           status: "FAILED",
           failureClass: "CLIENT_ERROR",
-          retryable: false
+          retryable: false,
         };
       }
     }
@@ -541,14 +535,14 @@ function classifyAttemptFailure(
       return {
         status: "FAILED",
         failureClass: "INVALID_RESPONSE",
-        retryable: true
+        retryable: true,
       };
     }
 
     return {
       status: "FAILED",
       failureClass: "UNKNOWN",
-      retryable: true
+      retryable: true,
     };
   }
 
@@ -558,25 +552,25 @@ function classifyAttemptFailure(
     return {
       status: "TIMEOUT",
       failureClass: "TIMEOUT",
-      retryable: true
+      retryable: true,
     };
   }
 
   return {
     status: "FAILED",
     failureClass: "UNKNOWN",
-    retryable: true
+    retryable: true,
   };
 }
 
 function buildValidationFailureMessage(
-  validationResult: ModelProviderOutputValidationResult
+  validationResult: ModelProviderOutputValidationResult,
 ): string {
   return [
     "Model output validation failed.",
     `jsonValid=${validationResult.jsonValid}.`,
     `validationPassed=${validationResult.validationPassed}.`,
-    ...validationResult.validationErrors
+    ...validationResult.validationErrors,
   ].join(" ");
 }
 
@@ -589,17 +583,21 @@ function getErrorMessage(error: unknown): string {
 }
 
 function buildRuntimeProviderEnabledByName(
-  runtimeConfig: ModelProviderRuntimeConfig
+  runtimeConfig: ModelProviderRuntimeConfig,
 ): Partial<Record<ModelProviderName, boolean>> {
   return {
-    OPENAI: Boolean(runtimeConfig.enableRealModelCalls && runtimeConfig.openAiApiKey),
-    ANTHROPIC: Boolean(runtimeConfig.enableRealModelCalls && runtimeConfig.anthropicApiKey),
+    OPENAI: Boolean(
+      runtimeConfig.enableRealModelCalls && runtimeConfig.openAiApiKey,
+    ),
+    ANTHROPIC: Boolean(
+      runtimeConfig.enableRealModelCalls && runtimeConfig.anthropicApiKey,
+    ),
     AZURE_OPENAI: Boolean(
       runtimeConfig.enableRealModelCalls &&
-        runtimeConfig.azureOpenAiApiKey &&
-        runtimeConfig.azureOpenAiEndpoint &&
-        runtimeConfig.azureOpenAiDeployment
+      runtimeConfig.azureOpenAiApiKey &&
+      runtimeConfig.azureOpenAiEndpoint &&
+      runtimeConfig.azureOpenAiDeployment,
     ),
-    OLLAMA: Boolean(runtimeConfig.ollamaBaseUrl)
+    OLLAMA: Boolean(runtimeConfig.ollamaBaseUrl),
   };
 }

@@ -1,11 +1,11 @@
 import {
   evaluateToolExecutionPolicy,
-  type ToolExecutionPolicyEvaluation
+  type ToolExecutionPolicyEvaluation,
 } from "./tool-execution-policy.js";
 import type {
   AgentToolContract,
   AgentToolDefinition,
-  AgentToolInputField
+  AgentToolInputField,
 } from "./tool-registry.types.js";
 
 export type McpCompatibleInputSchema = {
@@ -20,28 +20,31 @@ function fieldToJsonSchema(field: AgentToolInputField): unknown {
     return {
       type: "string",
       enum: field.enumValues ?? [],
-      description: field.description
+      description: field.description,
     };
   }
 
   return {
     type: field.type,
-    description: field.description
+    description: field.description,
   };
 }
 
 export function toMcpInputSchema(
-  tool: AgentToolDefinition
+  tool: AgentToolDefinition,
 ): McpCompatibleInputSchema {
   return {
     type: "object",
     properties: Object.fromEntries(
-      tool.inputShape.fields.map((field) => [field.name, fieldToJsonSchema(field)])
+      tool.inputShape.fields.map((field) => [
+        field.name,
+        fieldToJsonSchema(field),
+      ]),
     ),
     required: tool.inputShape.fields
       .filter((field) => field.required)
       .map((field) => field.name),
-    additionalProperties: false
+    additionalProperties: false,
   };
 }
 
@@ -64,11 +67,13 @@ export function getAllowedMode(input: {
   return "AGENT_AUTONOMOUS";
 }
 
-export function toAgentToolContract(tool: AgentToolDefinition): AgentToolContract {
+export function toAgentToolContract(
+  tool: AgentToolDefinition,
+): AgentToolContract {
   const policyEvaluation = evaluateToolExecutionPolicy({
     toolName: tool.name,
     executionMode: "AGENT_AUTONOMOUS",
-    humanApprovalGranted: false
+    humanApprovalGranted: false,
   });
 
   return {
@@ -78,7 +83,7 @@ export function toAgentToolContract(tool: AgentToolDefinition): AgentToolContrac
     inputSchema: tool.inputShape,
     outputSchema: {
       type: "object",
-      summary: tool.outputSummary
+      summary: tool.outputSummary,
     },
     riskLevel: tool.riskLevel,
     mutatesData: tool.mutatesData,
@@ -86,9 +91,9 @@ export function toAgentToolContract(tool: AgentToolDefinition): AgentToolContrac
     enabled: tool.enabled,
     allowedMode: getAllowedMode({
       tool,
-      policyEvaluation
+      policyEvaluation,
     }),
     auditBehavior: tool.auditBehavior,
-    redactionNotes: tool.redactionNotes
+    redactionNotes: tool.redactionNotes,
   };
 }

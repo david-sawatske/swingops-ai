@@ -11,7 +11,7 @@
 }
 
 .guided-passed-record-normalized-fields {
-  border: 1px solid rgba(30, 74, 42, 0.14);
+  border: 1px solid rgb(30 74 42 / 14%);
   border-radius: 0.75rem;
   margin-top: 1rem;
   padding: 0.9rem;
@@ -38,7 +38,7 @@
 }
 
 .guided-passed-record-normalized-fields .guided-record-field-grid dt {
-  color: rgba(21, 37, 24, 0.62);
+  color: rgb(21 37 24 / 62%);
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.14em;
@@ -47,25 +47,25 @@
 }
 
 .guided-passed-record-normalized-fields .guided-record-field-grid dd {
-  color: rgb(21, 37, 24);
+  color: rgb(21 37 24);
   font-size: 0.95rem;
   font-weight: 600;
   margin: 0;
 }
 
 .guided-passed-record-normalized-fields .guided-parser-field-evidence {
-  color: rgba(21, 37, 24, 0.68);
+  color: rgb(21 37 24 / 68%);
   font-size: 0.78rem;
   font-weight: 500;
 }
 
-@media (max-width: 760px) {
+@media (width <= 760px) {
   .guided-passed-record-normalized-fields .guided-record-field-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 520px) {
+@media (width <= 520px) {
   .guided-passed-record-normalized-fields .guided-record-field-grid {
     grid-template-columns: 1fr;
   }

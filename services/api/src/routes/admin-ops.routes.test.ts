@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildApp } from "../app.js";
 import {
   getAdminOpsModelAssistanceTelemetry,
-  getAdminOpsProviderAttemptTelemetry
+  getAdminOpsProviderAttemptTelemetry,
 } from "./admin-ops.routes.js";
 
 describe("admin ops routes", () => {
@@ -12,7 +12,7 @@ describe("admin ops routes", () => {
 
     const response = await app.inject({
       method: "GET",
-      url: "/admin/ops/summary"
+      url: "/admin/ops/summary",
     });
 
     expect(response.statusCode).toBe(200);
@@ -36,12 +36,12 @@ describe("admin ops routes", () => {
           freshness: expect.objectContaining({
             last24Hours: expect.any(Number),
             last7Days: expect.any(Number),
-            last30Days: expect.any(Number)
-          })
+            last30Days: expect.any(Number),
+          }),
         }),
         workflowRuns: expect.objectContaining({
           total: expect.any(Number),
-          byStatus: expect.any(Object)
+          byStatus: expect.any(Object),
         }),
         modelExecutions: expect.objectContaining({
           totalCalls: expect.any(Number),
@@ -65,32 +65,30 @@ describe("admin ops routes", () => {
             outcomeCoverageRate: expect.any(Number),
             repairSuggested: expect.any(Number),
             candidateComparison: expect.any(Number),
-            noSafeRepair: expect.any(Number)
+            noSafeRepair: expect.any(Number),
           }),
           attempts: expect.objectContaining({
             totalAttempts: expect.any(Number),
             successfulAttempts: expect.any(Number),
             nonSuccessfulAttempts: expect.any(Number),
             attemptSuccessRate: expect.any(Number),
-            byProviderModel: expect.any(Array)
+            byProviderModel: expect.any(Array),
           }),
           estimatedCostTotal: expect.any(Number),
           totalTokens: expect.any(Number),
-          byProviderModel: expect.any(Array)
-        })
-      })
+          byProviderModel: expect.any(Array),
+        }),
+      }),
     );
 
-    const newestCreatedAt =
-      body.aiReadyRecords.freshness.newestCreatedAt;
-    const averageLatencyMs =
-      body.modelExecutions.averageLatencyMs;
+    const newestCreatedAt = body.aiReadyRecords.freshness.newestCreatedAt;
+    const averageLatencyMs = body.modelExecutions.averageLatencyMs;
 
     expect(
-      newestCreatedAt === null || typeof newestCreatedAt === "string"
+      newestCreatedAt === null || typeof newestCreatedAt === "string",
     ).toBe(true);
     expect(
-      averageLatencyMs === null || typeof averageLatencyMs === "number"
+      averageLatencyMs === null || typeof averageLatencyMs === "number",
     ).toBe(true);
 
     await app.close();
@@ -101,38 +99,38 @@ describe("admin ops routes", () => {
       {
         policyKey: "MAIN_RUN_FIELD_REPAIR",
         outputSchema: {
-          name: "main_run_field_repair"
+          name: "main_run_field_repair",
         },
         inputJson: {
           records: [
             { recordId: "record-1" },
             { recordId: "record-2" },
-            { recordId: "record-3" }
-          ]
-        }
+            { recordId: "record-3" },
+          ],
+        },
       },
       {
         validation: {
-          validationPassed: true
+          validationPassed: true,
         },
         providerExecution: {
           outputJson: {
             parsedJson: {
               recordOutcomes: [
                 {
-                  outcomeType: "REPAIR_SUGGESTED"
+                  outcomeType: "REPAIR_SUGGESTED",
                 },
                 {
-                  outcomeType: "CANDIDATE_COMPARISON"
+                  outcomeType: "CANDIDATE_COMPARISON",
                 },
                 {
-                  outcomeType: "NO_SAFE_REPAIR"
-                }
-              ]
-            }
-          }
-        }
-      }
+                  outcomeType: "NO_SAFE_REPAIR",
+                },
+              ],
+            },
+          },
+        },
+      },
     );
 
     expect(telemetry).toEqual({
@@ -142,7 +140,7 @@ describe("admin ops routes", () => {
       recordOutcomeCount: 3,
       repairSuggestedCount: 1,
       candidateComparisonCount: 1,
-      noSafeRepairCount: 1
+      noSafeRepairCount: 1,
     });
   });
 
@@ -151,23 +149,23 @@ describe("admin ops routes", () => {
       {
         agentName: "main-run-field-repair-agent",
         inputJson: {
-          records: [{ recordId: "record-1" }]
-        }
+          records: [{ recordId: "record-1" }],
+        },
       },
       {
         validation: {
-          validationPassed: false
+          validationPassed: false,
         },
         providerExecution: {
           outputJson: {
             recordOutcomes: [
               {
-                outcomeType: "REPAIR_SUGGESTED"
-              }
-            ]
-          }
-        }
-      }
+                outcomeType: "REPAIR_SUGGESTED",
+              },
+            ],
+          },
+        },
+      },
     );
 
     expect(telemetry).toMatchObject({
@@ -177,7 +175,7 @@ describe("admin ops routes", () => {
       recordOutcomeCount: 0,
       repairSuggestedCount: 0,
       candidateComparisonCount: 0,
-      noSafeRepairCount: 0
+      noSafeRepairCount: 0,
     });
   });
 
@@ -188,10 +186,9 @@ describe("admin ops routes", () => {
         model: "gpt-4.1-mini",
         status: "FAILED",
         reason: "The preferred provider failed.",
-        errorMessage:
-          "OPENAI adapter request failed with 400 Bad Request.",
+        errorMessage: "OPENAI adapter request failed with 400 Bad Request.",
         latencyMs: 1628,
-        estimatedCostUsd: 0.0012
+        estimatedCostUsd: 0.0012,
       },
       {
         provider: "MOCK",
@@ -200,7 +197,7 @@ describe("admin ops routes", () => {
         reason: "Fallback provider completed the request.",
         errorMessage: null,
         latencyMs: 2,
-        estimatedCostUsd: 0
+        estimatedCostUsd: 0,
       },
       {
         provider: "OPENAI",
@@ -209,8 +206,8 @@ describe("admin ops routes", () => {
         reason: "Preferred provider completed the request.",
         errorMessage: null,
         latencyMs: 900,
-        estimatedCostUsd: 0.002
-      }
+        estimatedCostUsd: 0.002,
+      },
     ]);
 
     expect(telemetry).toEqual({
@@ -227,7 +224,7 @@ describe("admin ops routes", () => {
           nonSuccessfulAttemptCount: 0,
           averageLatencyMs: 2,
           estimatedCostTotal: 0,
-          latestFailureMessage: null
+          latestFailureMessage: null,
         },
         {
           provider: "OPENAI",
@@ -238,9 +235,9 @@ describe("admin ops routes", () => {
           averageLatencyMs: 1264,
           estimatedCostTotal: 0.0032,
           latestFailureMessage:
-            "OPENAI adapter request failed with 400 Bad Request."
-        }
-      ]
+            "OPENAI adapter request failed with 400 Bad Request.",
+        },
+      ],
     });
   });
 
@@ -249,7 +246,7 @@ describe("admin ops routes", () => {
 
     const response = await app.inject({
       method: "GET",
-      url: "/admin/ops/workflow-config"
+      url: "/admin/ops/workflow-config",
     });
 
     expect(response.statusCode).toBe(200);
@@ -261,27 +258,27 @@ describe("admin ops routes", () => {
         confidenceThresholds: expect.arrayContaining([
           expect.objectContaining({
             name: "modelAuthority",
-            value: "secondary"
-          })
+            value: "secondary",
+          }),
         ]),
         reviewRoutingRules: expect.arrayContaining([
           expect.objectContaining({
             ruleId: "negative-evidence",
-            effect: "BLOCK_REPAIR"
-          })
+            effect: "BLOCK_REPAIR",
+          }),
         ]),
         providerRoutingPolicy: expect.arrayContaining([
           expect.objectContaining({
             taskType: "MAIN_RUN_FIELD_REPAIR",
             fallbackProvider: "MOCK",
-            validationRequired: true
-          })
+            validationRequired: true,
+          }),
         ]),
         mutationPolicy: expect.objectContaining({
           readOnlyToolsOnly: true,
-          blockedMutationsVisible: true
-        })
-      })
+          blockedMutationsVisible: true,
+        }),
+      }),
     );
 
     await app.close();
@@ -291,7 +288,7 @@ describe("admin ops routes", () => {
 
     const response = await app.inject({
       method: "GET",
-      url: "/admin/ops/normalization-matrix"
+      url: "/admin/ops/normalization-matrix",
     });
 
     expect(response.statusCode).toBe(200);
@@ -302,21 +299,20 @@ describe("admin ops routes", () => {
       expect.arrayContaining([
         expect.objectContaining({
           id: "negative-evidence",
-          action: "BLOCK_REPAIR"
+          action: "BLOCK_REPAIR",
         }),
         expect.objectContaining({
           id: "category-utility-wood",
-          action: "ROUTE_TO_REVIEW"
+          action: "ROUTE_TO_REVIEW",
         }),
         expect.objectContaining({
           id: "shaft-regular",
           canonicalValue: "REGULAR",
-          requiresContext: true
-        })
-      ])
+          requiresContext: true,
+        }),
+      ]),
     );
 
     await app.close();
   });
-
 });

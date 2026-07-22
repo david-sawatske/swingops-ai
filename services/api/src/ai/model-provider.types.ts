@@ -1,20 +1,13 @@
 import type {
   ModelProviderFetch,
-  ModelProviderRuntimeConfig
+  ModelProviderRuntimeConfig,
 } from "./model-provider-runtime-config.js";
 
 export type ModelProviderName =
-  | "MOCK"
-  | "OPENAI"
-  | "ANTHROPIC"
-  | "AZURE_OPENAI"
-  | "OLLAMA";
+  "MOCK" | "OPENAI" | "ANTHROPIC" | "AZURE_OPENAI" | "OLLAMA";
 
 export type ModelTaskType =
-  | "INTAKE_PARSING"
-  | "FIELD_NORMALIZATION"
-  | "VALIDATION"
-  | "REVIEW_SUMMARY";
+  "INTAKE_PARSING" | "FIELD_NORMALIZATION" | "VALIDATION" | "REVIEW_SUMMARY";
 
 export type ModelCostTier = "FREE" | "LOW" | "MEDIUM" | "HIGH";
 
@@ -49,7 +42,9 @@ export type ModelProviderAdapter = {
   kind: ModelProviderKind;
   enabled: boolean;
   models: ModelProviderModelConfig[];
-  execute: (input: ModelProviderExecuteInput) => Promise<ModelProviderExecuteResult>;
+  execute: (
+    input: ModelProviderExecuteInput,
+  ) => Promise<ModelProviderExecuteResult>;
 };
 
 export type ModelProviderExecuteInput = {

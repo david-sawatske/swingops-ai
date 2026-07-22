@@ -80,7 +80,9 @@ export function useGuidedWorkflowRun({
   }
 
   function upsertAiReadyIntakeRecord(record: AiReadyIntakeRecord) {
-    setCurrentRunAiReadyIntakeRecords((current) => upsertRecord(current, record));
+    setCurrentRunAiReadyIntakeRecords((current) =>
+      upsertRecord(current, record),
+    );
   }
 
   function resetGuidedRunState() {
@@ -111,15 +113,20 @@ export function useGuidedWorkflowRun({
       setCurrentRunAiReadyIntakeRecords([]);
 
       const generatedTradeInRawInput = multiSourceIntakeDemoResult
-        ? formatGuidedWorkflowInputFromSourceResult(multiSourceIntakeDemoResult, {
-            includeMissingFields: true,
-          })
+        ? formatGuidedWorkflowInputFromSourceResult(
+            multiSourceIntakeDemoResult,
+            {
+              includeMissingFields: true,
+            },
+          )
         : "";
 
       const workflowRawInput =
         endToEndAgenticDemoRawInput.trim() || generatedTradeInRawInput;
 
-      if (workflowRawInput.length > AGENTIC_TRADE_IN_DEMO_MAX_INPUT_CHARACTERS) {
+      if (
+        workflowRawInput.length > AGENTIC_TRADE_IN_DEMO_MAX_INPUT_CHARACTERS
+      ) {
         throw new Error(
           `This guided run accepts up to ${AGENTIC_TRADE_IN_DEMO_MAX_INPUT_CHARACTERS.toLocaleString()} characters. Reduce the input before running the workflow.`,
         );
@@ -131,7 +138,9 @@ export function useGuidedWorkflowRun({
       });
 
       setEndToEndAgenticDemoResult(result);
-      await refreshCurrentRunAiReadyIntakeRecords(result.persisted.workflowRunId);
+      await refreshCurrentRunAiReadyIntakeRecords(
+        result.persisted.workflowRunId,
+      );
       setEndToEndAgenticDemoSuccess(
         "Demo created workflow " +
           result.persisted.workflowRunId +
@@ -181,12 +190,10 @@ export function useGuidedWorkflowRun({
       setMultiSourceIntakeDemoResult(result);
       setPersistedAiReadyIntakeRecords(persistedRecordsResponse.records);
 
-      const generatedTradeInRawInput = formatGuidedWorkflowInputFromSourceResult(
-        result,
-        {
+      const generatedTradeInRawInput =
+        formatGuidedWorkflowInputFromSourceResult(result, {
           includeMissingFields: true,
-        },
-      );
+        });
 
       setEndToEndAgenticDemoRawInput(generatedTradeInRawInput);
       setEndToEndAgenticDemoResult(null);

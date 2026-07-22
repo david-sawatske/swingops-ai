@@ -2,25 +2,23 @@ import type { ModelCallLog, Prisma } from "@prisma/client";
 
 import {
   executeModelWithProviderFallback,
-  type ExecuteModelWithProviderFallbackResult
+  type ExecuteModelWithProviderFallbackResult,
 } from "../ai/model-provider-fallback-executor.js";
 import type {
   ModelProviderFetch,
-  ModelProviderRuntimeConfig
+  ModelProviderRuntimeConfig,
 } from "../ai/model-provider-runtime-config.js";
-import type {
-  ModelProviderOutputSchema
-} from "../ai/model-provider.types.js";
+import type { ModelProviderOutputSchema } from "../ai/model-provider.types.js";
 import type {
   ModelRouteDecision,
   ModelRouteRequest,
-  ModelRoutingGoal
+  ModelRoutingGoal,
 } from "../ai/model-router.js";
 import { prisma } from "../lib/prisma.js";
 import {
   applyDataHandlingPolicy,
   attachDataHandlingDiagnostics,
-  sanitizeAuditText
+  sanitizeAuditText,
 } from "../security/data-handling-policy.js";
 
 export type ModelExecutionOutputValidationResult = {
@@ -48,7 +46,7 @@ export type CreateModelExecutionLogInput = {
   attemptTimeoutMs?: number;
   workflowTimeoutMs?: number;
   validateOutput?: (
-    outputJson: Record<string, unknown> | null
+    outputJson: Record<string, unknown> | null,
   ) => ModelExecutionOutputValidationResult;
 };
 
@@ -60,7 +58,7 @@ export type CreateMockModelCallLogInput = {
 };
 
 function toRoutingDecisionLogJson(
-  decision: ModelRouteDecision
+  decision: ModelRouteDecision,
 ): Prisma.InputJsonObject {
   return {
     provider: decision.provider,
@@ -77,12 +75,12 @@ function toRoutingDecisionLogJson(
     rejectedCandidates: decision.rejectedCandidates,
     fallbackProvider: decision.fallbackProvider,
     fallbackModel: decision.fallbackModel,
-    fallbackReason: decision.fallbackReason
+    fallbackReason: decision.fallbackReason,
   };
 }
 
 function toProviderExecutionLogJson(
-  result: ExecuteModelWithProviderFallbackResult
+  result: ExecuteModelWithProviderFallbackResult,
 ): Prisma.InputJsonObject {
   return {
     outputJson: result.outputJson as Prisma.InputJsonObject | null,
@@ -100,8 +98,8 @@ function toProviderExecutionLogJson(
       errorMessage: attempt.errorMessage,
       latencyMs: attempt.latencyMs,
       estimatedCostUsd: attempt.estimatedCostUsd,
-      timeoutMs: attempt.timeoutMs
-    }))
+      timeoutMs: attempt.timeoutMs,
+    })),
   };
 }
 
@@ -109,13 +107,13 @@ function toPersistedModelAuditJson(value: unknown): Prisma.InputJsonObject {
   return attachDataHandlingDiagnostics(
     applyDataHandlingPolicy({
       value,
-      context: "MODEL_AUDIT_LOG"
-    })
+      context: "MODEL_AUDIT_LOG",
+    }),
   ) as Prisma.InputJsonObject;
 }
 
 export async function createModelExecutionLogForWorkflowRun(
-  input: CreateModelExecutionLogInput
+  input: CreateModelExecutionLogInput,
 ): Promise<ModelCallLog> {
   const requireJson = input.requireJson ?? true;
   const allowDisabledProvidersForSimulation =
@@ -144,7 +142,7 @@ export async function createModelExecutionLogForWorkflowRun(
       : {}),
     ...(input.workflowTimeoutMs !== undefined
       ? { workflowTimeoutMs: input.workflowTimeoutMs }
-      : {})
+      : {}),
   });
 
   const validationResult = input.validateOutput
@@ -165,15 +163,15 @@ export async function createModelExecutionLogForWorkflowRun(
     providerFallbackExecutor: true,
     providerDeadlines: {
       attemptTimeoutMs: executionResult.deadline.attemptTimeoutMs,
-      workflowTimeoutMs: executionResult.deadline.workflowTimeoutMs
+      workflowTimeoutMs: executionResult.deadline.workflowTimeoutMs,
     },
     ...(input.outputSchema
       ? {
           outputSchema: {
             name: input.outputSchema.name,
             version: input.outputSchema.version,
-            strict: input.outputSchema.strict
-          }
+            strict: input.outputSchema.strict,
+          },
         }
       : {}),
     ...(input.policyKey ? { policyKey: input.policyKey } : {}),
@@ -181,7 +179,7 @@ export async function createModelExecutionLogForWorkflowRun(
     ...(input.workflowName ? { workflowName: input.workflowName } : {}),
     ...(input.workflowStep ? { workflowStep: input.workflowStep } : {}),
     inputJson: executionInputJson,
-    mock: executionResult.provider === "MOCK"
+    mock: executionResult.provider === "MOCK",
   });
   const responseJson = toPersistedModelAuditJson({
     providerFallbackExecutor: true,
@@ -195,19 +193,20 @@ export async function createModelExecutionLogForWorkflowRun(
           validation: {
             jsonValid: validationResult.jsonValid,
             validationPassed: validationResult.validationPassed,
-            validationErrors: validationResult.validationErrors
-          }
+            validationErrors: validationResult.validationErrors,
+          },
         }
       : {}),
     providerExecution: toProviderExecutionLogJson(executionResult),
-    routingDecision: toRoutingDecisionLogJson(executionResult.routingDecision)
+    routingDecision: toRoutingDecisionLogJson(executionResult.routingDecision),
   });
 
   const modelCallLog = await prisma.modelCallLog.create({
     data: {
       workflowRunId: input.workflowRunId,
       ...(input.workflowStepId ? { workflowStepId: input.workflowStepId } : {}),
-      provider: executionResult.provider ?? executionResult.routingDecision.provider,
+      provider:
+        executionResult.provider ?? executionResult.routingDecision.provider,
       model: executionResult.model ?? executionResult.routingDecision.model,
       status: validationFailed ? "FAILED" : executionResult.status,
       promptTokens: executionResult.usage?.promptTokens ?? null,
@@ -216,12 +215,12 @@ export async function createModelExecutionLogForWorkflowRun(
       latencyMs:
         executionResult.attempts.reduce(
           (totalLatencyMs, attempt) => totalLatencyMs + attempt.latencyMs,
-          0
+          0,
         ) || 0,
       estimatedCostUsd:
         executionResult.attempts.reduce(
           (totalCostUsd, attempt) => totalCostUsd + attempt.estimatedCostUsd,
-          0
+          0,
         ) || 0,
       completedAt,
       errorMessage:
@@ -240,23 +239,20 @@ export async function createModelExecutionLogForWorkflowRun(
           errorMessage:
             attempt.errorMessage === null
               ? null
-              : sanitizeAuditText(
-                  attempt.errorMessage,
-                  "MODEL_AUDIT_LOG"
-                ),
+              : sanitizeAuditText(attempt.errorMessage, "MODEL_AUDIT_LOG"),
           latencyMs: attempt.latencyMs,
           estimatedCostUsd: attempt.estimatedCostUsd,
           startedAt: attempt.startedAt,
-          completedAt: attempt.completedAt
-        }))
-      }
-    }
+          completedAt: attempt.completedAt,
+        })),
+      },
+    },
   });
 
   if (executionResult.deadline.cancelled) {
     throw new Error(
       executionResult.errorMessage ??
-        "Provider execution was cancelled by the caller."
+        "Provider execution was cancelled by the caller.",
     );
   }
 
@@ -264,7 +260,7 @@ export async function createModelExecutionLogForWorkflowRun(
 }
 
 export async function createMockModelCallLogForWorkflowRun(
-  input: CreateMockModelCallLogInput
+  input: CreateMockModelCallLogInput,
 ): Promise<ModelCallLog> {
   return createModelExecutionLogForWorkflowRun({
     workflowRunId: input.workflowRunId,
@@ -276,28 +272,28 @@ export async function createMockModelCallLogForWorkflowRun(
     inputJson: {
       workflowRunId: input.workflowRunId,
       taskType: input.taskType,
-      routingGoal: input.goal
+      routingGoal: input.goal,
     },
     runtimeConfig: {
-      enableRealModelCalls: false
-    }
+      enableRealModelCalls: false,
+    },
   });
 }
 
 function buildExecutionInputJson(
-  input: CreateModelExecutionLogInput
+  input: CreateModelExecutionLogInput,
 ): Record<string, unknown> {
   return {
     ...(input.policyKey ? { policyKey: input.policyKey } : {}),
     ...(input.agentName ? { agentName: input.agentName } : {}),
     ...(input.workflowName ? { workflowName: input.workflowName } : {}),
     ...(input.workflowStep ? { workflowStep: input.workflowStep } : {}),
-    ...input.inputJson
+    ...input.inputJson,
   };
 }
 
 function buildValidationErrorMessage(
-  validationResult: ModelExecutionOutputValidationResult | null
+  validationResult: ModelExecutionOutputValidationResult | null,
 ): string {
   if (!validationResult) {
     return "Model output validation failed.";
@@ -305,6 +301,6 @@ function buildValidationErrorMessage(
 
   return [
     "Model output validation failed.",
-    ...validationResult.validationErrors
+    ...validationResult.validationErrors,
   ].join(" ");
 }

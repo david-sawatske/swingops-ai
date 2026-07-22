@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { prisma } from "../lib/prisma.js";
 import {
   callExternalMcpTool,
-  listExternalMcpTools
+  listExternalMcpTools,
 } from "./external-mcp-server-transport.js";
 
 afterEach(async () => {
@@ -11,13 +11,13 @@ afterEach(async () => {
     where: {
       OR: [
         {
-          toolName: "swingops.knowledgeBase.search"
+          toolName: "swingops.knowledgeBase.search",
         },
         {
-          toolName: "swingops.reviewQueueItems.resolve"
-        }
-      ]
-    }
+          toolName: "swingops.reviewQueueItems.resolve",
+        },
+      ],
+    },
   });
 });
 
@@ -36,7 +36,7 @@ describe("external MCP server transport adapter", () => {
       auditLogPersistence: "TOOL_CALL_LOG",
       mutationExecutionEnabled: false,
       summary:
-        "Local stdio MCP server transport that wraps the existing SwingOps connector contracts, policy evaluator, read-only executor, ToolCallLog persistence, and output sanitizer."
+        "Local stdio MCP server transport that wraps the existing SwingOps connector contracts, policy evaluator, read-only executor, ToolCallLog persistence, and output sanitizer.",
     });
 
     expect(response.tools).toEqual(
@@ -46,14 +46,14 @@ describe("external MCP server transport adapter", () => {
           inputSchema: expect.objectContaining({
             type: "object",
             additionalProperties: false,
-            required: ["query"]
+            required: ["query"],
           }),
           annotations: expect.objectContaining({
             riskLevel: "LOW",
             mutatesData: false,
             enabled: true,
-            allowedMode: "AGENT_AUTONOMOUS"
-          })
+            allowedMode: "AGENT_AUTONOMOUS",
+          }),
         }),
         expect.objectContaining({
           name: "swingops.reviewQueueItems.resolve",
@@ -62,10 +62,10 @@ describe("external MCP server transport adapter", () => {
             mutatesData: true,
             requiresApproval: true,
             enabled: false,
-            allowedMode: "DISABLED"
-          })
-        })
-      ])
+            allowedMode: "DISABLED",
+          }),
+        }),
+      ]),
     );
   });
 
@@ -74,14 +74,14 @@ describe("external MCP server transport adapter", () => {
       name: "swingops.knowledgeBase.search",
       arguments: {
         query: "TM stealth2 drv 10.5 stiff no hc",
-        maxResults: 3
-      }
+        maxResults: 3,
+      },
     });
 
     expect(response.isError).toBe(false);
     expect(response.content[0]).toMatchObject({
       type: "text",
-      text: expect.stringContaining("swingops.knowledgeBase.search succeeded")
+      text: expect.stringContaining("swingops.knowledgeBase.search succeeded"),
     });
     expect(response.structuredContent).toMatchObject({
       toolId: "swingops.knowledgeBase.search",
@@ -92,12 +92,12 @@ describe("external MCP server transport adapter", () => {
         reasonCodes: ["TOOL_ALLOWED"],
         executionMode: "AGENT_AUTONOMOUS",
         executionEnabled: true,
-        humanApprovalGranted: false
+        humanApprovalGranted: false,
       },
       outputSafety: {
         sanitized: true,
         sanitizerVersion: "2026-07-21",
-        intentionallyExposedFieldsOnly: true
+        intentionallyExposedFieldsOnly: true,
       },
       transportMetadata: {
         transport: "STDIO",
@@ -106,26 +106,26 @@ describe("external MCP server transport adapter", () => {
         productionAuthImplemented: false,
         reusedInternalPolicyAndExecutor: true,
         auditLogPersistence: "TOOL_CALL_LOG",
-        mutationExecutionEnabled: false
-      }
+        mutationExecutionEnabled: false,
+      },
     });
     expect(response.structuredContent.outputSafety.redactionNotes).toEqual(
-      expect.any(String)
+      expect.any(String),
     );
     expect(response.structuredContent.resultJson).toMatchObject({
-      knowledgeBaseSearch: expect.any(Object)
+      knowledgeBaseSearch: expect.any(Object),
     });
 
     const log = await prisma.toolCallLog.findUniqueOrThrow({
       where: {
-        id: response.structuredContent.toolCallLogId
-      }
+        id: response.structuredContent.toolCallLogId,
+      },
     });
 
     expect(log).toMatchObject({
       toolName: "swingops.knowledgeBase.search",
       status: "SUCCEEDED",
-      errorMessage: null
+      errorMessage: null,
     });
   });
 
@@ -134,8 +134,8 @@ describe("external MCP server transport adapter", () => {
       name: "swingops.reviewQueueItems.resolve",
       arguments: {
         id: "review-item-1",
-        reviewerNotes: "Looks correct."
-      }
+        reviewerNotes: "Looks correct.",
+      },
     });
 
     expect(response.isError).toBe(true);
@@ -148,7 +148,7 @@ describe("external MCP server transport adapter", () => {
         sanitized: false,
         sanitizerVersion: null,
         redactionNotes: null,
-        intentionallyExposedFieldsOnly: false
+        intentionallyExposedFieldsOnly: false,
       },
       errorMessage: "Tool is disabled and cannot be executed.",
       policyDecision: {
@@ -156,20 +156,20 @@ describe("external MCP server transport adapter", () => {
         reasonCodes: ["TOOL_DISABLED"],
         executionMode: "AGENT_AUTONOMOUS",
         executionEnabled: false,
-        humanApprovalGranted: false
-      }
+        humanApprovalGranted: false,
+      },
     });
 
     const log = await prisma.toolCallLog.findUniqueOrThrow({
       where: {
-        id: response.structuredContent.toolCallLogId
-      }
+        id: response.structuredContent.toolCallLogId,
+      },
     });
 
     expect(log).toMatchObject({
       toolName: "swingops.reviewQueueItems.resolve",
       status: "FAILED",
-      errorMessage: "Tool is disabled and cannot be executed."
+      errorMessage: "Tool is disabled and cannot be executed.",
     });
   });
 
@@ -177,8 +177,8 @@ describe("external MCP server transport adapter", () => {
     const response = await callExternalMcpTool({
       name: "swingops.knowledgeBase.search",
       arguments: {
-        maxResults: 3
-      }
+        maxResults: 3,
+      },
     });
 
     expect(response.isError).toBe(true);
@@ -191,20 +191,20 @@ describe("external MCP server transport adapter", () => {
         sanitized: false,
         sanitizerVersion: null,
         redactionNotes: null,
-        intentionallyExposedFieldsOnly: false
-      }
+        intentionallyExposedFieldsOnly: false,
+      },
     });
     expect(response.structuredContent.errorMessage).toContain("Required");
 
     const log = await prisma.toolCallLog.findUniqueOrThrow({
       where: {
-        id: response.structuredContent.toolCallLogId
-      }
+        id: response.structuredContent.toolCallLogId,
+      },
     });
 
     expect(log).toMatchObject({
       toolName: "swingops.knowledgeBase.search",
-      status: "FAILED"
+      status: "FAILED",
     });
     expect(log.errorMessage).toContain("Required");
   });

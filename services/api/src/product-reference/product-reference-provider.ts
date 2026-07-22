@@ -1,44 +1,34 @@
-import type {
-  ProductReferenceRecord
-} from "./product-reference-types.js";
+import type { ProductReferenceRecord } from "./product-reference-types.js";
 
 export type ProductReferenceProvider = {
   listProducts: () => readonly ProductReferenceRecord[];
-  findByProductId: (
-    productId: string
-  ) => ProductReferenceRecord | null;
-  findBySku: (
-    sku: string
-  ) => ProductReferenceRecord | null;
+  findByProductId: (productId: string) => ProductReferenceRecord | null;
+  findBySku: (sku: string) => ProductReferenceRecord | null;
 };
 
 function cloneProductReference(
-  product: ProductReferenceRecord
+  product: ProductReferenceRecord,
 ): ProductReferenceRecord {
   return {
     ...product,
     aliases: [...product.aliases],
-    shaftFamilies: [...product.shaftFamilies]
+    shaftFamilies: [...product.shaftFamilies],
   };
 }
 
 function validateUniqueProductReferences(
-  products: readonly ProductReferenceRecord[]
+  products: readonly ProductReferenceRecord[],
 ): void {
   const productIds = new Set<string>();
   const skus = new Set<string>();
 
   for (const product of products) {
     if (productIds.has(product.productId)) {
-      throw new Error(
-        `Duplicate product reference ID: ${product.productId}`
-      );
+      throw new Error(`Duplicate product reference ID: ${product.productId}`);
     }
 
     if (skus.has(product.sku)) {
-      throw new Error(
-        `Duplicate product reference SKU: ${product.sku}`
-      );
+      throw new Error(`Duplicate product reference SKU: ${product.sku}`);
     }
 
     productIds.add(product.productId);
@@ -47,22 +37,16 @@ function validateUniqueProductReferences(
 }
 
 export function createInMemoryProductReferenceProvider(
-  products: readonly ProductReferenceRecord[]
+  products: readonly ProductReferenceRecord[],
 ): ProductReferenceProvider {
   validateUniqueProductReferences(products);
 
   const records = products.map(cloneProductReference);
   const productsById = new Map(
-    records.map((product) => [
-      product.productId,
-      product
-    ])
+    records.map((product) => [product.productId, product]),
   );
   const productsBySku = new Map(
-    records.map((product) => [
-      product.sku,
-      product
-    ])
+    records.map((product) => [product.sku, product]),
   );
 
   return {
@@ -70,19 +54,14 @@ export function createInMemoryProductReferenceProvider(
       return records.map(cloneProductReference);
     },
     findByProductId(productId) {
-      const product =
-        productsById.get(productId);
+      const product = productsById.get(productId);
 
-      return product
-        ? cloneProductReference(product)
-        : null;
+      return product ? cloneProductReference(product) : null;
     },
     findBySku(sku) {
       const product = productsBySku.get(sku);
 
-      return product
-        ? cloneProductReference(product)
-        : null;
-    }
+      return product ? cloneProductReference(product) : null;
+    },
   };
 }

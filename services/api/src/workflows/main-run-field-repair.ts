@@ -1,15 +1,11 @@
 import { z } from "zod";
 
-import type {
-  ModelProviderOutputSchema
-} from "../ai/model-provider.types.js";
-import type {
-  MainRunFieldRepairAdvisoryCandidate
-} from "./field-repair-advisory-candidates.js";
+import type { ModelProviderOutputSchema } from "../ai/model-provider.types.js";
+import type { MainRunFieldRepairAdvisoryCandidate } from "./field-repair-advisory-candidates.js";
 
 import {
   getFieldRepairSuggestionMatrixValidationErrors,
-  getGolfTermNormalizationMatrix
+  getGolfTermNormalizationMatrix,
 } from "./golf-term-normalization.js";
 
 export const MAIN_RUN_FIELD_REPAIR_POLICY_KEY = "MAIN_RUN_FIELD_REPAIR";
@@ -33,7 +29,7 @@ const fieldRepairSuggestionOutputJsonSchema: Record<string, unknown> = {
         candidateValue: { type: "string" },
         confidence: { type: "number", minimum: 0, maximum: 1 },
         reason: { type: "string" },
-        reviewRequired: { type: "boolean" }
+        reviewRequired: { type: "boolean" },
       },
       required: [
         "recordId",
@@ -42,9 +38,9 @@ const fieldRepairSuggestionOutputJsonSchema: Record<string, unknown> = {
         "candidateValue",
         "confidence",
         "reason",
-        "reviewRequired"
+        "reviewRequired",
       ],
-      additionalProperties: false
+      additionalProperties: false,
     },
     {
       type: "object",
@@ -55,7 +51,7 @@ const fieldRepairSuggestionOutputJsonSchema: Record<string, unknown> = {
         candidateValue: { type: "string" },
         confidence: { type: "number", minimum: 0, maximum: 1 },
         reason: { type: "string" },
-        reviewRequired: { type: "boolean" }
+        reviewRequired: { type: "boolean" },
       },
       required: [
         "recordId",
@@ -64,9 +60,9 @@ const fieldRepairSuggestionOutputJsonSchema: Record<string, unknown> = {
         "candidateValue",
         "confidence",
         "reason",
-        "reviewRequired"
+        "reviewRequired",
       ],
-      additionalProperties: false
+      additionalProperties: false,
     },
     {
       type: "object",
@@ -82,12 +78,12 @@ const fieldRepairSuggestionOutputJsonSchema: Record<string, unknown> = {
             "HYBRID",
             "IRON_SET",
             "WEDGE",
-            "PUTTER"
-          ]
+            "PUTTER",
+          ],
         },
         confidence: { type: "number", minimum: 0, maximum: 1 },
         reason: { type: "string" },
-        reviewRequired: { type: "boolean" }
+        reviewRequired: { type: "boolean" },
       },
       required: [
         "recordId",
@@ -96,9 +92,9 @@ const fieldRepairSuggestionOutputJsonSchema: Record<string, unknown> = {
         "candidateValue",
         "confidence",
         "reason",
-        "reviewRequired"
+        "reviewRequired",
       ],
-      additionalProperties: false
+      additionalProperties: false,
     },
     {
       type: "object",
@@ -114,12 +110,12 @@ const fieldRepairSuggestionOutputJsonSchema: Record<string, unknown> = {
             "REGULAR",
             "STIFF",
             "X_STIFF",
-            "TOUR_X_STIFF"
-          ]
+            "TOUR_X_STIFF",
+          ],
         },
         confidence: { type: "number", minimum: 0, maximum: 1 },
         reason: { type: "string" },
-        reviewRequired: { type: "boolean" }
+        reviewRequired: { type: "boolean" },
       },
       required: [
         "recordId",
@@ -128,9 +124,9 @@ const fieldRepairSuggestionOutputJsonSchema: Record<string, unknown> = {
         "candidateValue",
         "confidence",
         "reason",
-        "reviewRequired"
+        "reviewRequired",
       ],
-      additionalProperties: false
+      additionalProperties: false,
     },
     {
       type: "object",
@@ -145,12 +141,12 @@ const fieldRepairSuggestionOutputJsonSchema: Record<string, unknown> = {
             "9.0 Above Average",
             "8.0 Average",
             "7.0 Below Average",
-            "6.0 Poor"
-          ]
+            "6.0 Poor",
+          ],
         },
         confidence: { type: "number", minimum: 0, maximum: 1 },
         reason: { type: "string" },
-        reviewRequired: { type: "boolean" }
+        reviewRequired: { type: "boolean" },
       },
       required: [
         "recordId",
@@ -159,9 +155,9 @@ const fieldRepairSuggestionOutputJsonSchema: Record<string, unknown> = {
         "candidateValue",
         "confidence",
         "reason",
-        "reviewRequired"
+        "reviewRequired",
       ],
-      additionalProperties: false
+      additionalProperties: false,
     },
     {
       type: "object",
@@ -172,7 +168,7 @@ const fieldRepairSuggestionOutputJsonSchema: Record<string, unknown> = {
         candidateValue: { type: "number", minimum: 0 },
         confidence: { type: "number", minimum: 0, maximum: 1 },
         reason: { type: "string" },
-        reviewRequired: { type: "boolean" }
+        reviewRequired: { type: "boolean" },
       },
       required: [
         "recordId",
@@ -181,11 +177,11 @@ const fieldRepairSuggestionOutputJsonSchema: Record<string, unknown> = {
         "candidateValue",
         "confidence",
         "reason",
-        "reviewRequired"
+        "reviewRequired",
       ],
-      additionalProperties: false
-    }
-  ]
+      additionalProperties: false,
+    },
+  ],
 };
 
 const fieldRepairRecordOutcomeOutputJsonSchema: Record<string, unknown> = {
@@ -198,14 +194,14 @@ const fieldRepairRecordOutcomeOutputJsonSchema: Record<string, unknown> = {
         summary: { type: "string" },
         evidenceIds: {
           type: "array",
-          items: { type: "string" }
+          items: { type: "string" },
         },
         reviewerQuestion: { type: "string" },
         suggestions: {
           type: "array",
           minItems: 1,
-          items: fieldRepairSuggestionOutputJsonSchema
-        }
+          items: fieldRepairSuggestionOutputJsonSchema,
+        },
       },
       required: [
         "outcomeType",
@@ -213,9 +209,9 @@ const fieldRepairRecordOutcomeOutputJsonSchema: Record<string, unknown> = {
         "summary",
         "evidenceIds",
         "reviewerQuestion",
-        "suggestions"
+        "suggestions",
       ],
-      additionalProperties: false
+      additionalProperties: false,
     },
     {
       type: "object",
@@ -225,14 +221,14 @@ const fieldRepairRecordOutcomeOutputJsonSchema: Record<string, unknown> = {
         summary: { type: "string" },
         evidenceIds: {
           type: "array",
-          items: { type: "string" }
+          items: { type: "string" },
         },
         reviewerQuestion: { type: "string" },
         candidateProductIds: {
           type: "array",
           minItems: 2,
-          items: { type: "string" }
-        }
+          items: { type: "string" },
+        },
       },
       required: [
         "outcomeType",
@@ -240,9 +236,9 @@ const fieldRepairRecordOutcomeOutputJsonSchema: Record<string, unknown> = {
         "summary",
         "evidenceIds",
         "reviewerQuestion",
-        "candidateProductIds"
+        "candidateProductIds",
       ],
-      additionalProperties: false
+      additionalProperties: false,
     },
     {
       type: "object",
@@ -252,14 +248,14 @@ const fieldRepairRecordOutcomeOutputJsonSchema: Record<string, unknown> = {
         summary: { type: "string" },
         evidenceIds: {
           type: "array",
-          items: { type: "string" }
+          items: { type: "string" },
         },
         reviewerQuestion: { type: "string" },
         reasonCodes: {
           type: "array",
           minItems: 1,
-          items: { type: "string" }
-        }
+          items: { type: "string" },
+        },
       },
       required: [
         "outcomeType",
@@ -267,11 +263,11 @@ const fieldRepairRecordOutcomeOutputJsonSchema: Record<string, unknown> = {
         "summary",
         "evidenceIds",
         "reviewerQuestion",
-        "reasonCodes"
+        "reasonCodes",
       ],
-      additionalProperties: false
-    }
-  ]
+      additionalProperties: false,
+    },
+  ],
 };
 
 export const MAIN_RUN_FIELD_REPAIR_OUTPUT_SCHEMA = {
@@ -283,16 +279,16 @@ export const MAIN_RUN_FIELD_REPAIR_OUTPUT_SCHEMA = {
     properties: {
       recordOutcomes: {
         type: "array",
-        items: fieldRepairRecordOutcomeOutputJsonSchema
+        items: fieldRepairRecordOutcomeOutputJsonSchema,
       },
       suggestions: {
         type: "array",
-        items: fieldRepairSuggestionOutputJsonSchema
-      }
+        items: fieldRepairSuggestionOutputJsonSchema,
+      },
     },
     required: ["recordOutcomes", "suggestions"],
-    additionalProperties: false
-  }
+    additionalProperties: false,
+  },
 } satisfies ModelProviderOutputSchema;
 
 export const fieldRepairFieldNameSchema = z.enum([
@@ -301,7 +297,7 @@ export const fieldRepairFieldNameSchema = z.enum([
   "category",
   "shaftFlex",
   "conditionGrade",
-  "tradeInValue"
+  "tradeInValue",
 ]);
 
 export const fieldRepairCategoryValueSchema = z.enum([
@@ -310,7 +306,7 @@ export const fieldRepairCategoryValueSchema = z.enum([
   "HYBRID",
   "IRON_SET",
   "WEDGE",
-  "PUTTER"
+  "PUTTER",
 ]);
 
 export const fieldRepairShaftFlexValueSchema = z.enum([
@@ -319,7 +315,7 @@ export const fieldRepairShaftFlexValueSchema = z.enum([
   "REGULAR",
   "STIFF",
   "X_STIFF",
-  "TOUR_X_STIFF"
+  "TOUR_X_STIFF",
 ]);
 
 export const fieldRepairConditionGradeValueSchema = z.enum([
@@ -327,7 +323,7 @@ export const fieldRepairConditionGradeValueSchema = z.enum([
   "9.0 Above Average",
   "8.0 Average",
   "7.0 Below Average",
-  "6.0 Poor"
+  "6.0 Poor",
 ]);
 
 const fieldRepairSuggestionBaseSchema = z
@@ -336,35 +332,35 @@ const fieldRepairSuggestionBaseSchema = z
     sourcePhrase: z.string().trim().min(1),
     confidence: z.number().min(0).max(1),
     reason: z.string().trim().min(1),
-    reviewRequired: z.boolean()
+    reviewRequired: z.boolean(),
   })
   .strict();
 
 export const fieldRepairSuggestionSchema = z.discriminatedUnion("fieldName", [
   fieldRepairSuggestionBaseSchema.extend({
     fieldName: z.literal("brand"),
-    candidateValue: z.string().trim().min(1)
+    candidateValue: z.string().trim().min(1),
   }),
   fieldRepairSuggestionBaseSchema.extend({
     fieldName: z.literal("productLine"),
-    candidateValue: z.string().trim().min(1)
+    candidateValue: z.string().trim().min(1),
   }),
   fieldRepairSuggestionBaseSchema.extend({
     fieldName: z.literal("category"),
-    candidateValue: fieldRepairCategoryValueSchema
+    candidateValue: fieldRepairCategoryValueSchema,
   }),
   fieldRepairSuggestionBaseSchema.extend({
     fieldName: z.literal("shaftFlex"),
-    candidateValue: fieldRepairShaftFlexValueSchema
+    candidateValue: fieldRepairShaftFlexValueSchema,
   }),
   fieldRepairSuggestionBaseSchema.extend({
     fieldName: z.literal("conditionGrade"),
-    candidateValue: fieldRepairConditionGradeValueSchema
+    candidateValue: fieldRepairConditionGradeValueSchema,
   }),
   fieldRepairSuggestionBaseSchema.extend({
     fieldName: z.literal("tradeInValue"),
-    candidateValue: z.number().min(0)
-  })
+    candidateValue: z.number().min(0),
+  }),
 ]);
 
 const fieldRepairRecordOutcomeBaseSchema = z
@@ -372,7 +368,7 @@ const fieldRepairRecordOutcomeBaseSchema = z
     recordId: z.string().trim().min(1),
     summary: z.string().trim().min(1),
     evidenceIds: z.array(z.string().trim().min(1)),
-    reviewerQuestion: z.string().trim().min(1)
+    reviewerQuestion: z.string().trim().min(1),
   })
   .strict();
 
@@ -381,23 +377,23 @@ export const fieldRepairRecordOutcomeSchema = z.discriminatedUnion(
   [
     fieldRepairRecordOutcomeBaseSchema.extend({
       outcomeType: z.literal("REPAIR_SUGGESTED"),
-      suggestions: z.array(fieldRepairSuggestionSchema).min(1)
+      suggestions: z.array(fieldRepairSuggestionSchema).min(1),
     }),
     fieldRepairRecordOutcomeBaseSchema.extend({
       outcomeType: z.literal("CANDIDATE_COMPARISON"),
-      candidateProductIds: z.array(z.string().trim().min(1)).min(2)
+      candidateProductIds: z.array(z.string().trim().min(1)).min(2),
     }),
     fieldRepairRecordOutcomeBaseSchema.extend({
       outcomeType: z.literal("NO_SAFE_REPAIR"),
-      reasonCodes: z.array(z.string().trim().min(1)).min(1)
-    })
-  ]
+      reasonCodes: z.array(z.string().trim().min(1)).min(1),
+    }),
+  ],
 );
 
 export const fieldRepairOutputSchema = z
   .object({
     recordOutcomes: z.array(fieldRepairRecordOutcomeSchema).default([]),
-    suggestions: z.array(fieldRepairSuggestionSchema)
+    suggestions: z.array(fieldRepairSuggestionSchema),
   })
   .strict();
 
@@ -488,12 +484,9 @@ export type FieldRepairValidationResult =
     };
 
 export function buildMainRunFieldRepairExecutionInput(
-  input: BuildMainRunFieldRepairExecutionInput
+  input: BuildMainRunFieldRepairExecutionInput,
 ): Record<string, unknown> {
-  const requiredRecordIds =
-    input.records.map(
-      (record) => record.recordId
-    );
+  const requiredRecordIds = input.records.map((record) => record.recordId);
 
   return {
     policyKey: MAIN_RUN_FIELD_REPAIR_POLICY_KEY,
@@ -509,16 +502,14 @@ export function buildMainRunFieldRepairExecutionInput(
       fieldApplicability: record.fieldApplicability,
       parserEvidence: record.parserEvidence ?? null,
       productResolution: record.productResolution,
-      advisoryCandidates:
-        record.advisoryCandidates ?? [],
-      evidence: record.evidence
+      advisoryCandidates: record.advisoryCandidates ?? [],
+      evidence: record.evidence,
     })),
     outcomeCompleteness: {
-      expectedRecordCount:
-        requiredRecordIds.length,
+      expectedRecordCount: requiredRecordIds.length,
       requiredRecordIds,
       requirement:
-        "Return exactly one recordOutcomes entry for every requiredRecordId, preserving this order."
+        "Return exactly one recordOutcomes entry for every requiredRecordId, preserving this order.",
     },
     authorityOrder: [
       "HUMAN_CORRECTION",
@@ -527,7 +518,7 @@ export function buildMainRunFieldRepairExecutionInput(
       "INVENTORY_AND_VALUATION",
       "KNOWLEDGE",
       "PRIOR_REVIEW",
-      "MODEL"
+      "MODEL",
     ],
     advisoryCandidatePolicy: {
       description:
@@ -537,7 +528,7 @@ export function buildMainRunFieldRepairExecutionInput(
       requiredEvidence:
         "Cite every advisory candidate sourceEvidenceId in the record outcome.",
       suggestionHandling:
-        "Preserve each candidate suggestion recordId, fieldName, sourcePhrase, candidateValue, confidence, and reviewRequired value. Do not add unsupported suggestions."
+        "Preserve each candidate suggestion recordId, fieldName, sourcePhrase, candidateValue, confidence, and reviewRequired value. Do not add unsupported suggestions.",
     },
     approvedValueSets: {
       category: [
@@ -546,7 +537,7 @@ export function buildMainRunFieldRepairExecutionInput(
         "HYBRID",
         "IRON_SET",
         "WEDGE",
-        "PUTTER"
+        "PUTTER",
       ],
       shaftFlex: [
         "LADIES",
@@ -554,60 +545,60 @@ export function buildMainRunFieldRepairExecutionInput(
         "REGULAR",
         "STIFF",
         "X_STIFF",
-        "TOUR_X_STIFF"
+        "TOUR_X_STIFF",
       ],
       conditionGrade: [
         "9.5 Mint",
         "9.0 Above Average",
         "8.0 Average",
         "7.0 Below Average",
-        "6.0 Poor"
-      ]
+        "6.0 Poor",
+      ],
     },
     normalizationMatrix: getGolfTermNormalizationMatrix(),
     normalizationExamples: [
       {
         sourcePhrase: "s flex",
         fieldName: "shaftFlex",
-        candidateValue: "STIFF"
+        candidateValue: "STIFF",
       },
       {
         sourcePhrase: "x-stiff",
         fieldName: "shaftFlex",
-        candidateValue: "X_STIFF"
+        candidateValue: "X_STIFF",
       },
       {
         sourcePhrase: "tour x stiff",
         fieldName: "shaftFlex",
-        candidateValue: "TOUR_X_STIFF"
+        candidateValue: "TOUR_X_STIFF",
       },
       {
         sourcePhrase: "shaft unknown",
         fieldName: "shaftFlex",
         candidateValue: null,
-        action: "BLOCK_REPAIR"
+        action: "BLOCK_REPAIR",
       },
       {
         sourcePhrase: "UW 19 degree",
         fieldName: "category",
         candidateValue: null,
-        action: "ROUTE_TO_REVIEW"
+        action: "ROUTE_TO_REVIEW",
       },
       {
         sourcePhrase: "condition avg",
         fieldName: "conditionGrade",
-        candidateValue: "8.0 Average"
+        candidateValue: "8.0 Average",
       },
       {
         sourcePhrase: "overall avg",
         fieldName: "conditionGrade",
-        candidateValue: "8.0 Average"
+        candidateValue: "8.0 Average",
       },
       {
         sourcePhrase: "cosmetics mint",
         fieldName: "conditionGrade",
-        candidateValue: "9.5 Mint"
-      }
+        candidateValue: "9.5 Mint",
+      },
     ],
     outputContract: {
       recordOutcomes: [
@@ -616,7 +607,8 @@ export function buildMainRunFieldRepairExecutionInput(
           recordId: "source record id",
           summary: "brief reviewer-facing summary",
           evidenceIds: ["only evidenceId values supplied for this record"],
-          reviewerQuestion: "specific question or approval action for the reviewer",
+          reviewerQuestion:
+            "specific question or approval action for the reviewer",
           suggestions: [
             {
               recordId: "source record id",
@@ -626,19 +618,21 @@ export function buildMainRunFieldRepairExecutionInput(
                 "approved normalized value only. Do not return abbreviations like S or free-text values like Average.",
               confidence: "number from 0 to 1",
               reason: "brief evidence-based reason",
-              reviewRequired: "boolean"
-            }
-          ]
+              reviewRequired: "boolean",
+            },
+          ],
         },
         {
           outcomeType: "CANDIDATE_COMPARISON",
           recordId: "source record id",
           summary: "compare only supplied deterministic candidates",
-          evidenceIds: ["product-resolution evidenceId supplied for this record"],
+          evidenceIds: [
+            "product-resolution evidenceId supplied for this record",
+          ],
           reviewerQuestion: "specific distinction the reviewer should confirm",
           candidateProductIds: [
-            "only product IDs supplied in productResolution.candidateProductIds"
-          ]
+            "only product IDs supplied in productResolution.candidateProductIds",
+          ],
         },
         {
           outcomeType: "NO_SAFE_REPAIR",
@@ -646,11 +640,11 @@ export function buildMainRunFieldRepairExecutionInput(
           summary: "why available evidence cannot safely repair the record",
           evidenceIds: ["only evidenceId values supplied for this record"],
           reviewerQuestion: "specific missing fact the reviewer should confirm",
-          reasonCodes: ["one or more concise safety or evidence reason codes"]
-        }
+          reasonCodes: ["one or more concise safety or evidence reason codes"],
+        },
       ],
       suggestions:
-        "Compatibility field. Repeat only suggestions nested under REPAIR_SUGGESTED outcomes. The validator derives the accepted projection from validated record outcomes."
+        "Compatibility field. Repeat only suggestions nested under REPAIR_SUGGESTED outcomes. The validator derives the accepted projection from validated record outcomes.",
     },
     validationRules: [
       "Return JSON only.",
@@ -679,14 +673,14 @@ export function buildMainRunFieldRepairExecutionInput(
       "Do not return NO_SAFE_REPAIR when the selected record includes a valid evidence-backed advisory candidate.",
       "Do not add suggestions that are not present in advisoryCandidates when advisoryCandidates is non-empty.",
       "When fieldApplicability.shaftFlex is NOT_APPLICABLE, do not suggest shaftFlex or ask the reviewer to provide it.",
-      "Top-level suggestions is compatibility-only. Include only suggestions already nested under REPAIR_SUGGESTED outcomes."
-    ]
+      "Top-level suggestions is compatibility-only. Include only suggestions already nested under REPAIR_SUGGESTED outcomes.",
+    ],
   };
 }
 
 export function validateMainRunFieldRepairModelOutput(
   outputJson: Record<string, unknown> | null,
-  context?: FieldRepairValidationContext
+  context?: FieldRepairValidationContext,
 ): FieldRepairValidationResult {
   const candidateJson = getCandidateFieldRepairJson(outputJson);
   const parsedOutput = fieldRepairOutputSchema.safeParse(candidateJson);
@@ -698,52 +692,47 @@ export function validateMainRunFieldRepairModelOutput(
       output: null,
       validationErrors: formatFieldRepairValidationErrors(
         parsedOutput.error.issues,
-        candidateJson
-      )
+        candidateJson,
+      ),
     };
   }
 
-  const usesRecordOutcomeContract =
-    parsedOutput.data.recordOutcomes.length > 0;
+  const usesRecordOutcomeContract = parsedOutput.data.recordOutcomes.length > 0;
   const indexedSuggestions = [
     ...(usesRecordOutcomeContract
       ? []
       : parsedOutput.data.suggestions.map((suggestion, index) => ({
           path: `suggestions.${index}`,
-          suggestion
+          suggestion,
         }))),
     ...parsedOutput.data.recordOutcomes.flatMap((outcome, outcomeIndex) =>
       outcome.outcomeType === "REPAIR_SUGGESTED"
         ? outcome.suggestions.map((suggestion, suggestionIndex) => ({
-            path:
-              `recordOutcomes.${outcomeIndex}.suggestions.${suggestionIndex}`,
-            suggestion
+            path: `recordOutcomes.${outcomeIndex}.suggestions.${suggestionIndex}`,
+            suggestion,
           }))
-        : []
-    )
+        : [],
+    ),
   ];
   const matrixValidationErrors = indexedSuggestions.flatMap(
     ({ path, suggestion }) =>
       getFieldRepairSuggestionMatrixValidationErrors(suggestion).map(
-        (message) => `${path}: ${message}`
-      )
+        (message) => `${path}: ${message}`,
+      ),
   );
   const outputForContextValidation: FieldRepairOutput =
     usesRecordOutcomeContract
       ? {
           ...parsedOutput.data,
-          suggestions: []
+          suggestions: [],
         }
       : parsedOutput.data;
   const contextValidationErrors = context
-    ? getFieldRepairContextValidationErrors(
-        outputForContextValidation,
-        context
-      )
+    ? getFieldRepairContextValidationErrors(outputForContextValidation, context)
     : [];
   const validationErrors = [
     ...matrixValidationErrors,
-    ...contextValidationErrors
+    ...contextValidationErrors,
   ];
 
   if (validationErrors.length > 0) {
@@ -751,56 +740,51 @@ export function validateMainRunFieldRepairModelOutput(
       jsonValid: true,
       validationPassed: false,
       output: null,
-      validationErrors
+      validationErrors,
     };
   }
 
-  const normalizedRecordOutcomes =
-    parsedOutput.data.recordOutcomes.map(
-      normalizeRecordOutcomeReviewRequirements
-    );
+  const normalizedRecordOutcomes = parsedOutput.data.recordOutcomes.map(
+    normalizeRecordOutcomeReviewRequirements,
+  );
   const compatibilitySuggestions = usesRecordOutcomeContract
     ? normalizedRecordOutcomes.flatMap((outcome) =>
-        outcome.outcomeType === "REPAIR_SUGGESTED"
-          ? outcome.suggestions
-          : []
+        outcome.outcomeType === "REPAIR_SUGGESTED" ? outcome.suggestions : [],
       )
-    : parsedOutput.data.suggestions.map(
-        normalizeSuggestionReviewRequirement
-      );
+    : parsedOutput.data.suggestions.map(normalizeSuggestionReviewRequirement);
 
   return {
     jsonValid: true,
     validationPassed: true,
     output: {
       recordOutcomes: normalizedRecordOutcomes,
-      suggestions: compatibilitySuggestions
+      suggestions: compatibilitySuggestions,
     },
-    validationErrors: []
+    validationErrors: [],
   };
 }
 
 function getFieldRepairContextValidationErrors(
   output: FieldRepairOutput,
-  context: FieldRepairValidationContext
+  context: FieldRepairValidationContext,
 ): string[] {
   const errors: string[] = [];
   const recordsById = new Map(
-    context.records.map((record) => [record.recordId, record])
+    context.records.map((record) => [record.recordId, record]),
   );
   const outcomeCountByRecordId = new Map<string, number>();
 
   for (const [outcomeIndex, outcome] of output.recordOutcomes.entries()) {
     outcomeCountByRecordId.set(
       outcome.recordId,
-      (outcomeCountByRecordId.get(outcome.recordId) ?? 0) + 1
+      (outcomeCountByRecordId.get(outcome.recordId) ?? 0) + 1,
     );
 
     const record = recordsById.get(outcome.recordId);
 
     if (!record) {
       errors.push(
-        `recordOutcomes.${outcomeIndex}: unknown recordId=${outcome.recordId}.`
+        `recordOutcomes.${outcomeIndex}: unknown recordId=${outcome.recordId}.`,
       );
       continue;
     }
@@ -809,8 +793,8 @@ function getFieldRepairContextValidationErrors(
       ...getOutcomeContextValidationErrors({
         outcome,
         outcomeIndex,
-        record
-      })
+        record,
+      }),
     );
   }
 
@@ -819,11 +803,11 @@ function getFieldRepairContextValidationErrors(
 
     if (outcomeCount === 0) {
       errors.push(
-        `recordOutcomes: missing advisory outcome for recordId=${record.recordId}.`
+        `recordOutcomes: missing advisory outcome for recordId=${record.recordId}.`,
       );
     } else if (outcomeCount > 1) {
       errors.push(
-        `recordOutcomes: expected one advisory outcome for recordId=${record.recordId}, received ${outcomeCount}.`
+        `recordOutcomes: expected one advisory outcome for recordId=${record.recordId}, received ${outcomeCount}.`,
       );
     }
   }
@@ -831,7 +815,7 @@ function getFieldRepairContextValidationErrors(
   for (const [suggestionIndex, suggestion] of output.suggestions.entries()) {
     if (!suggestion.recordId) {
       errors.push(
-        `suggestions.${suggestionIndex}: recordId is required when validating against selected records.`
+        `suggestions.${suggestionIndex}: recordId is required when validating against selected records.`,
       );
       continue;
     }
@@ -840,7 +824,7 @@ function getFieldRepairContextValidationErrors(
 
     if (!record) {
       errors.push(
-        `suggestions.${suggestionIndex}: unknown recordId=${suggestion.recordId}.`
+        `suggestions.${suggestionIndex}: unknown recordId=${suggestion.recordId}.`,
       );
       continue;
     }
@@ -849,8 +833,8 @@ function getFieldRepairContextValidationErrors(
       ...getSuggestionContextValidationErrors({
         suggestion,
         path: `suggestions.${suggestionIndex}`,
-        record
-      })
+        record,
+      }),
     );
   }
 
@@ -865,37 +849,30 @@ function getOutcomeContextValidationErrors(input: {
   const errors: string[] = [];
   const path = `recordOutcomes.${input.outcomeIndex}`;
   const allowedEvidenceIds = new Set(
-    input.record.evidence.map((evidence) => evidence.evidenceId)
+    input.record.evidence.map((evidence) => evidence.evidenceId),
   );
-  const advisoryCandidates =
-    input.record.advisoryCandidates ?? [];
+  const advisoryCandidates = input.record.advisoryCandidates ?? [];
 
   for (const evidenceId of input.outcome.evidenceIds) {
     if (!allowedEvidenceIds.has(evidenceId)) {
       errors.push(
-        `${path}: unknown evidenceId=${evidenceId} for recordId=${input.record.recordId}.`
+        `${path}: unknown evidenceId=${evidenceId} for recordId=${input.record.recordId}.`,
       );
     }
   }
 
   for (const advisoryCandidate of advisoryCandidates) {
-    if (
-      !allowedEvidenceIds.has(
-        advisoryCandidate.sourceEvidenceId
-      )
-    ) {
+    if (!allowedEvidenceIds.has(advisoryCandidate.sourceEvidenceId)) {
       errors.push(
-        `${path}: advisory candidate ${advisoryCandidate.candidateId} references unknown sourceEvidenceId=${advisoryCandidate.sourceEvidenceId}.`
+        `${path}: advisory candidate ${advisoryCandidate.candidateId} references unknown sourceEvidenceId=${advisoryCandidate.sourceEvidenceId}.`,
       );
     }
 
     if (
-      !input.outcome.evidenceIds.includes(
-        advisoryCandidate.sourceEvidenceId
-      )
+      !input.outcome.evidenceIds.includes(advisoryCandidate.sourceEvidenceId)
     ) {
       errors.push(
-        `${path}: missing required sourceEvidenceId=${advisoryCandidate.sourceEvidenceId} for advisory candidate ${advisoryCandidate.candidateId}.`
+        `${path}: missing required sourceEvidenceId=${advisoryCandidate.sourceEvidenceId} for advisory candidate ${advisoryCandidate.candidateId}.`,
       );
     }
   }
@@ -905,7 +882,7 @@ function getOutcomeContextValidationErrors(input: {
     input.outcome.outcomeType !== "REPAIR_SUGGESTED"
   ) {
     errors.push(
-      `${path}: recordId=${input.record.recordId} requires REPAIR_SUGGESTED because evidence-backed advisory candidates were supplied.`
+      `${path}: recordId=${input.record.recordId} requires REPAIR_SUGGESTED because evidence-backed advisory candidates were supplied.`,
     );
   }
 
@@ -914,39 +891,41 @@ function getOutcomeContextValidationErrors(input: {
     /\b(?:shaft|flex)\b/i.test(input.outcome.reviewerQuestion)
   ) {
     errors.push(
-      `${path}: reviewerQuestion must not request shaft-flex information for a putter.`
+      `${path}: reviewerQuestion must not request shaft-flex information for a putter.`,
     );
   }
 
   if (input.outcome.outcomeType === "CANDIDATE_COMPARISON") {
     if (input.record.productResolution.status !== "AMBIGUOUS") {
       errors.push(
-        `${path}: CANDIDATE_COMPARISON requires AMBIGUOUS deterministic product resolution.`
+        `${path}: CANDIDATE_COMPARISON requires AMBIGUOUS deterministic product resolution.`,
       );
     }
 
     const allowedCandidateIds = new Set(
-      input.record.productResolution.candidateProductIds
+      input.record.productResolution.candidateProductIds,
     );
 
     for (const candidateProductId of input.outcome.candidateProductIds) {
       if (!allowedCandidateIds.has(candidateProductId)) {
         errors.push(
-          `${path}: unsupported candidateProductId=${candidateProductId}.`
+          `${path}: unsupported candidateProductId=${candidateProductId}.`,
         );
       }
     }
   }
 
   if (input.outcome.outcomeType === "REPAIR_SUGGESTED") {
-    for (const [suggestionIndex, suggestion] of
-      input.outcome.suggestions.entries()) {
+    for (const [
+      suggestionIndex,
+      suggestion,
+    ] of input.outcome.suggestions.entries()) {
       errors.push(
         ...getSuggestionContextValidationErrors({
           suggestion,
           path: `${path}.suggestions.${suggestionIndex}`,
-          record: input.record
-        })
+          record: input.record,
+        }),
       );
     }
 
@@ -954,8 +933,8 @@ function getOutcomeContextValidationErrors(input: {
       ...getAdvisoryCandidateOutcomeValidationErrors({
         outcome: input.outcome,
         path,
-        record: input.record
-      })
+        record: input.record,
+      }),
     );
   }
 
@@ -972,8 +951,7 @@ function getAdvisoryCandidateOutcomeValidationErrors(input: {
   path: string;
   record: MainRunFieldRepairRecordInput;
 }): string[] {
-  const advisoryCandidates =
-    input.record.advisoryCandidates ?? [];
+  const advisoryCandidates = input.record.advisoryCandidates ?? [];
 
   if (advisoryCandidates.length === 0) {
     return [];
@@ -982,36 +960,28 @@ function getAdvisoryCandidateOutcomeValidationErrors(input: {
   const errors: string[] = [];
 
   for (const advisoryCandidate of advisoryCandidates) {
-    const matchingSuggestion =
-      input.outcome.suggestions.find((suggestion) =>
-        suggestionMatchesAdvisoryCandidate(
-          suggestion,
-          advisoryCandidate
-        )
-      );
+    const matchingSuggestion = input.outcome.suggestions.find((suggestion) =>
+      suggestionMatchesAdvisoryCandidate(suggestion, advisoryCandidate),
+    );
 
     if (!matchingSuggestion) {
       errors.push(
-        `${input.path}: missing or altered advisory candidate ${advisoryCandidate.candidateId}.`
+        `${input.path}: missing or altered advisory candidate ${advisoryCandidate.candidateId}.`,
       );
     }
   }
 
   for (const [
     suggestionIndex,
-    suggestion
+    suggestion,
   ] of input.outcome.suggestions.entries()) {
-    const suppliedCandidate =
-      advisoryCandidates.some((advisoryCandidate) =>
-        suggestionMatchesAdvisoryCandidate(
-          suggestion,
-          advisoryCandidate
-        )
-      );
+    const suppliedCandidate = advisoryCandidates.some((advisoryCandidate) =>
+      suggestionMatchesAdvisoryCandidate(suggestion, advisoryCandidate),
+    );
 
     if (!suppliedCandidate) {
       errors.push(
-        `${input.path}.suggestions.${suggestionIndex}: suggestion was not supplied as an evidence-backed advisory candidate.`
+        `${input.path}.suggestions.${suggestionIndex}: suggestion was not supplied as an evidence-backed advisory candidate.`,
       );
     }
   }
@@ -1021,37 +991,23 @@ function getAdvisoryCandidateOutcomeValidationErrors(input: {
 
 function suggestionMatchesAdvisoryCandidate(
   suggestion: FieldRepairSuggestion,
-  advisoryCandidate: MainRunFieldRepairAdvisoryCandidate
+  advisoryCandidate: MainRunFieldRepairAdvisoryCandidate,
 ): boolean {
-  const suppliedSuggestion =
-    advisoryCandidate.suggestion;
+  const suppliedSuggestion = advisoryCandidate.suggestion;
 
   return (
-    suggestion.recordId ===
-      suppliedSuggestion.recordId &&
-    suggestion.fieldName ===
-      suppliedSuggestion.fieldName &&
-    suggestion.sourcePhrase ===
-      suppliedSuggestion.sourcePhrase &&
-    getFieldRepairCandidateValueKey(
-      suggestion.candidateValue
-    ) ===
-      getFieldRepairCandidateValueKey(
-        suppliedSuggestion.candidateValue
-      ) &&
-    suggestion.confidence ===
-      suppliedSuggestion.confidence &&
-    suggestion.reviewRequired ===
-      suppliedSuggestion.reviewRequired
+    suggestion.recordId === suppliedSuggestion.recordId &&
+    suggestion.fieldName === suppliedSuggestion.fieldName &&
+    suggestion.sourcePhrase === suppliedSuggestion.sourcePhrase &&
+    getFieldRepairCandidateValueKey(suggestion.candidateValue) ===
+      getFieldRepairCandidateValueKey(suppliedSuggestion.candidateValue) &&
+    suggestion.confidence === suppliedSuggestion.confidence &&
+    suggestion.reviewRequired === suppliedSuggestion.reviewRequired
   );
 }
 
-function getFieldRepairCandidateValueKey(
-  value: string | number
-): string {
-  return typeof value === "number"
-    ? `number:${value}`
-    : `string:${value}`;
+function getFieldRepairCandidateValueKey(value: string | number): string {
+  return typeof value === "number" ? `number:${value}` : `string:${value}`;
 }
 
 function getSuggestionContextValidationErrors(input: {
@@ -1063,7 +1019,7 @@ function getSuggestionContextValidationErrors(input: {
 
   if (input.suggestion.recordId !== input.record.recordId) {
     errors.push(
-      `${input.path}: suggestion recordId must match outcome recordId=${input.record.recordId}.`
+      `${input.path}: suggestion recordId must match outcome recordId=${input.record.recordId}.`,
     );
   }
 
@@ -1073,7 +1029,7 @@ function getSuggestionContextValidationErrors(input: {
       .includes(input.suggestion.sourcePhrase.toLowerCase())
   ) {
     errors.push(
-      `${input.path}: sourcePhrase was not found in the selected record source text.`
+      `${input.path}: sourcePhrase was not found in the selected record source text.`,
     );
   }
 
@@ -1082,18 +1038,16 @@ function getSuggestionContextValidationErrors(input: {
     input.suggestion.fieldName === "shaftFlex"
   ) {
     errors.push(
-      `${input.path}: shaftFlex is not applicable for a putter record.`
+      `${input.path}: shaftFlex is not applicable for a putter record.`,
     );
   }
 
   if (
     input.record.productResolution.status === "MATCHED" &&
-    ["brand", "productLine", "category"].includes(
-      input.suggestion.fieldName
-    )
+    ["brand", "productLine", "category"].includes(input.suggestion.fieldName)
   ) {
     errors.push(
-      `${input.path}: model repair cannot replace deterministic MATCHED product identity.`
+      `${input.path}: model repair cannot replace deterministic MATCHED product identity.`,
     );
   }
 
@@ -1102,7 +1056,7 @@ function getSuggestionContextValidationErrors(input: {
 
 function formatFieldRepairValidationErrors(
   issues: z.ZodIssue[],
-  candidateJson: unknown
+  candidateJson: unknown,
 ): string[] {
   return issues.map((issue) => {
     const baseMessage = [issue.path.join("."), issue.message]
@@ -1110,7 +1064,7 @@ function formatFieldRepairValidationErrors(
       .join(": ");
     const fieldName = getIssueSuggestionFieldName({
       issue,
-      candidateJson
+      candidateJson,
     });
 
     return fieldName ? `${baseMessage} fieldName=${fieldName}` : baseMessage;
@@ -1127,7 +1081,10 @@ function getIssueSuggestionFieldName(input: {
     return null;
   }
 
-  if (!isRecord(input.candidateJson) || !Array.isArray(input.candidateJson.suggestions)) {
+  if (
+    !isRecord(input.candidateJson) ||
+    !Array.isArray(input.candidateJson.suggestions)
+  ) {
     return null;
   }
 
@@ -1141,7 +1098,7 @@ function getIssueSuggestionFieldName(input: {
 }
 
 function getCandidateFieldRepairJson(
-  outputJson: Record<string, unknown> | null
+  outputJson: Record<string, unknown> | null,
 ): unknown {
   if (!outputJson) {
     return null;
@@ -1155,7 +1112,7 @@ function getCandidateFieldRepairJson(
 }
 
 function normalizeRecordOutcomeReviewRequirements(
-  outcome: FieldRepairRecordOutcome
+  outcome: FieldRepairRecordOutcome,
 ): FieldRepairRecordOutcome {
   if (outcome.outcomeType !== "REPAIR_SUGGESTED") {
     return outcome;
@@ -1163,20 +1120,18 @@ function normalizeRecordOutcomeReviewRequirements(
 
   return {
     ...outcome,
-    suggestions: outcome.suggestions.map(
-      normalizeSuggestionReviewRequirement
-    )
+    suggestions: outcome.suggestions.map(normalizeSuggestionReviewRequirement),
   };
 }
 
 function normalizeSuggestionReviewRequirement(
-  suggestion: FieldRepairSuggestion
+  suggestion: FieldRepairSuggestion,
 ): FieldRepairSuggestion {
   return {
     ...suggestion,
     reviewRequired:
       suggestion.reviewRequired ||
-      suggestion.confidence < FIELD_REPAIR_AUTO_ACCEPT_CONFIDENCE_THRESHOLD
+      suggestion.confidence < FIELD_REPAIR_AUTO_ACCEPT_CONFIDENCE_THRESHOLD,
   };
 }
 

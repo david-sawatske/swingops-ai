@@ -31,16 +31,24 @@ export function GuidedValidationReviewStep({
   result,
   reviewQueueNotesById,
 }: GuidedValidationReviewStepProps) {
-  const [editingReviewQueueItemId, setEditingReviewQueueItemId] = useState<string | null>(null);
-  const [correctionDraftsByReviewQueueItemId, setCorrectionDraftsByReviewQueueItemId] =
-    useState<Record<string, ReviewCorrectionDraft>>({});
+  const [editingReviewQueueItemId, setEditingReviewQueueItemId] = useState<
+    string | null
+  >(null);
+  const [
+    correctionDraftsByReviewQueueItemId,
+    setCorrectionDraftsByReviewQueueItemId,
+  ] = useState<Record<string, ReviewCorrectionDraft>>({});
 
   const validationChecks = result?.validationChecks ?? [];
   const retryEvents = result?.retryEvents ?? [];
   const qualitySummary = result?.workflowQualitySummary ?? null;
 
-  const reviewRequiredChecks = validationChecks.filter((check) => check.reviewRequired);
-  const unresolvedRetries = retryEvents.filter((event) => event.status === "UNRESOLVED");
+  const reviewRequiredChecks = validationChecks.filter(
+    (check) => check.reviewRequired,
+  );
+  const unresolvedRetries = retryEvents.filter(
+    (event) => event.status === "UNRESOLVED",
+  );
   const recordReviewData = result
     ? buildRecordReviewCards(result, currentRunReviewQueueItems)
     : null;
@@ -51,20 +59,28 @@ export function GuidedValidationReviewStep({
   const recordsResolvedByReview = recordCards.filter(
     (card) => card.status === "resolved",
   );
-  const recordsAutoPassed = recordCards.filter((card) => card.status === "ready");
+  const recordsAutoPassed = recordCards.filter(
+    (card) => card.status === "ready",
+  );
   const activeRecordCards = recordsStillNeedingAttention;
   const reviewedRecordCards = recordsResolvedByReview;
   const passedGateRecordCards = recordsAutoPassed;
-  const visibleReviewRecordCards = [...activeRecordCards, ...reviewedRecordCards];
+  const visibleReviewRecordCards = [
+    ...activeRecordCards,
+    ...reviewedRecordCards,
+  ];
   const shouldOpenPassedGateRecords = activeRecordCards.length === 0;
   const unmappedActionableValidationChecks =
     recordReviewData?.unassignedValidationChecks.filter(
       isActionableRunLevelValidationCheck,
     ) ?? [];
   const unmappedActionableRetryEvents =
-    recordReviewData?.unassignedRetryEvents.filter((event) => event.status === "UNRESOLVED") ?? [];
+    recordReviewData?.unassignedRetryEvents.filter(
+      (event) => event.status === "UNRESOLVED",
+    ) ?? [];
   const unassignedRunLevelSignalCount =
-    unmappedActionableValidationChecks.length + unmappedActionableRetryEvents.length;
+    unmappedActionableValidationChecks.length +
+    unmappedActionableRetryEvents.length;
   const reviewItemsCreatedCount = result?.reviewQueueItemsCreated.length ?? 0;
 
   function getDraftForCard(card: RecordReviewCard) {
@@ -78,7 +94,10 @@ export function GuidedValidationReviewStep({
     );
   }
 
-  function setDraftForCard(card: RecordReviewCard, draft: ReviewCorrectionDraft) {
+  function setDraftForCard(
+    card: RecordReviewCard,
+    draft: ReviewCorrectionDraft,
+  ) {
     if (!card.reviewItem) {
       return;
     }
@@ -98,13 +117,12 @@ export function GuidedValidationReviewStep({
 
     setCorrectionDraftsByReviewQueueItemId((current) => ({
       ...current,
-      [card.reviewItem!.id]:
-        current[card.reviewItem!.id] ?? {
-          ...buildCorrectionDraft(card),
-          reviewerNotes:
-            reviewQueueNotesById[card.reviewItem!.id] ??
-            buildCorrectionDraft(card).reviewerNotes,
-        },
+      [card.reviewItem!.id]: current[card.reviewItem!.id] ?? {
+        ...buildCorrectionDraft(card),
+        reviewerNotes:
+          reviewQueueNotesById[card.reviewItem!.id] ??
+          buildCorrectionDraft(card).reviewerNotes,
+      },
     }));
     setEditingReviewQueueItemId(card.reviewItem.id);
   }
@@ -162,32 +180,38 @@ export function GuidedValidationReviewStep({
         </span>
         <h3>Which records need attention before the final report?</h3>
         <p>
-          This step organizes the workflow evidence by record so you can see what
-          passed, what still needs review, and which records need a human decision
-          before final output. Deterministic validation identifies the issue.
-          Model-assisted and prior-review suggestions remain proposals until a reviewer
-          saves a correction.
+          This step organizes the workflow evidence by record so you can see
+          what passed, what still needs review, and which records need a human
+          decision before final output. Deterministic validation identifies the
+          issue. Model-assisted and prior-review suggestions remain proposals
+          until a reviewer saves a correction.
         </p>
 
-        <div className="guided-step-mini-list" aria-label="Validation and review explanation">
+        <div
+          className="guided-step-mini-list"
+          aria-label="Validation and review explanation"
+        >
           <article>
             <strong>Input</strong>
-            <p>Parsed records, source evidence, tool results, validation checks, retry events, and review items.</p>
+            <p>
+              Parsed records, source evidence, tool results, validation checks,
+              retry events, and review items.
+            </p>
           </article>
 
           <article>
             <strong>Action</strong>
             <p>
-              Group evidence by record, identify deterministic validation issues, and
-              present suggestions without treating them as approval.
+              Group evidence by record, identify deterministic validation
+              issues, and present suggestions without treating them as approval.
             </p>
           </article>
 
           <article>
             <strong>Output</strong>
             <p>
-              A run-scoped checkpoint showing what can move forward, what needs human
-              attention, and which saved corrections became authoritative.
+              A run-scoped checkpoint showing what can move forward, what needs
+              human attention, and which saved corrections became authoritative.
             </p>
           </article>
         </div>
@@ -199,8 +223,9 @@ export function GuidedValidationReviewStep({
             <span className="model-route-card__eyebrow">Do the work</span>
             <h4>Review the current run by record</h4>
             <p>
-              This checkpoint separates records that passed from records that need
-              confirmation, correction, or review before the final run report.
+              This checkpoint separates records that passed from records that
+              need confirmation, correction, or review before the final run
+              report.
             </p>
           </div>
         </div>
@@ -210,12 +235,16 @@ export function GuidedValidationReviewStep({
             <ReviewSummaryCards
               qualityStatus={qualitySummary.status}
               recordsResolvedByReviewCount={recordsResolvedByReview.length}
-              recordsStillNeedingAttentionCount={recordsStillNeedingAttention.length}
+              recordsStillNeedingAttentionCount={
+                recordsStillNeedingAttention.length
+              }
               reviewItemsCreatedCount={reviewItemsCreatedCount}
             />
 
             {actionSuccess ? (
-              <p className="form-message form-message--success">{actionSuccess}</p>
+              <p className="form-message form-message--success">
+                {actionSuccess}
+              </p>
             ) : null}
 
             {actionError ? (
@@ -224,7 +253,9 @@ export function GuidedValidationReviewStep({
 
             <section className="guided-review-checkpoint">
               <div>
-                <span className="model-route-card__eyebrow">Review checkpoint</span>
+                <span className="model-route-card__eyebrow">
+                  Review checkpoint
+                </span>
                 <h4>
                   {recordsStillNeedingAttention.length === 0
                     ? "All current review work has been handled"
@@ -257,7 +288,9 @@ export function GuidedValidationReviewStep({
               </dl>
 
               <div className="guided-original-validation-trace">
-                <span className="model-route-card__eyebrow">Original validation trace</span>
+                <span className="model-route-card__eyebrow">
+                  Original validation trace
+                </span>
                 <dl className="guided-review-checkpoint__facts">
                   <div>
                     <dt>Passed checks</dt>
@@ -277,7 +310,9 @@ export function GuidedValidationReviewStep({
                   </div>
                 </dl>
 
-                <small>Evidence coverage: {qualitySummary.evidenceCoverage}</small>
+                <small>
+                  Evidence coverage: {qualitySummary.evidenceCoverage}
+                </small>
               </div>
             </section>
 
@@ -286,8 +321,9 @@ export function GuidedValidationReviewStep({
                 <div>
                   <h4>Current run review records</h4>
                   <p>
-                    Each card shows the normalized record, current review state, source
-                    evidence, warning signals, retry outcome, and suggested next action.
+                    Each card shows the normalized record, current review state,
+                    source evidence, warning signals, retry outcome, and
+                    suggested next action.
                   </p>
                 </div>
                 <span>{recordsStillNeedingAttention.length} active</span>
@@ -314,7 +350,9 @@ export function GuidedValidationReviewStep({
             <RunLevelAuditSection
               unassignedRunLevelSignalCount={unassignedRunLevelSignalCount}
               unmappedActionableRetryEvents={unmappedActionableRetryEvents}
-              unmappedActionableValidationChecks={unmappedActionableValidationChecks}
+              unmappedActionableValidationChecks={
+                unmappedActionableValidationChecks
+              }
             />
 
             <section className="guided-validation-section">
@@ -322,11 +360,11 @@ export function GuidedValidationReviewStep({
                 <div>
                   <h4>Current review handoff</h4>
                   <p>
-                    The record cards make review work visible before final reporting.
-                    Records requiring human approval are resolved through the controlled
-                    correction flow. Suggestions remain proposals. Only a saved human
-                    correction becomes authoritative and writes reusable learning
-                    evidence.
+                    The record cards make review work visible before final
+                    reporting. Records requiring human approval are resolved
+                    through the controlled correction flow. Suggestions remain
+                    proposals. Only a saved human correction becomes
+                    authoritative and writes reusable learning evidence.
                   </p>
                 </div>
                 <span>

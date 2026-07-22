@@ -9,7 +9,9 @@ import {
 } from "./adminOpsPresentation";
 
 export function AdminOpsKnowledgePanel() {
-  const [summary, setSummary] = useState<GetAdminOpsSummaryResponse | null>(null);
+  const [summary, setSummary] = useState<GetAdminOpsSummaryResponse | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,18 +40,20 @@ export function AdminOpsKnowledgePanel() {
 
   const aiReadyRecords = summary?.aiReadyRecords ?? null;
   const activeSourceCount =
-    aiReadyRecords?.sourceQuality.filter((entry) => entry.active > 0).length ?? 0;
+    aiReadyRecords?.sourceQuality.filter((entry) => entry.active > 0).length ??
+    0;
 
   const sourceWithMostReview = aiReadyRecords
-    ? [...aiReadyRecords.sourceQuality]
+    ? ([...aiReadyRecords.sourceQuality]
         .filter((entry) => entry.active > 0)
         .sort((left, right) => {
-          const leftRate = left.active > 0 ? left.reviewNeeded / left.active : 0;
+          const leftRate =
+            left.active > 0 ? left.reviewNeeded / left.active : 0;
           const rightRate =
             right.active > 0 ? right.reviewNeeded / right.active : 0;
 
           return rightRate - leftRate || right.reviewNeeded - left.reviewNeeded;
-        })[0] ?? null
+        })[0] ?? null)
     : null;
 
   const attentionText = aiReadyRecords

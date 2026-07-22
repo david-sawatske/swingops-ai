@@ -1,24 +1,27 @@
 import { LEGACY_FREEFORM_NOTES_INTAKE_SOURCE_TYPE } from "../intake/legacy-intake-source-types.js";
-import type { AiReadyIntakeRecord, Prisma, ReviewQueueItem, ToolCallLog } from "@prisma/client";
+import type {
+  AiReadyIntakeRecord,
+  Prisma,
+  ReviewQueueItem,
+  ToolCallLog,
+} from "@prisma/client";
 
 import { prisma } from "../lib/prisma.js";
-import type {
-  ProductReferenceProvider
-} from "../product-reference/product-reference-provider.js";
+import type { ProductReferenceProvider } from "../product-reference/product-reference-provider.js";
 import {
   applyDataHandlingPolicy,
-  attachDataHandlingDiagnostics
+  attachDataHandlingDiagnostics,
 } from "../security/data-handling-policy.js";
 import {
   buildRecord,
   cleanText,
   detectTimestamps,
   splitSourceIntoRecordFragments,
-  unique
+  unique,
 } from "./multi-source-intake-parser.js";
 import {
   executePersistedWorkflowStep,
-  requireWorkflowStep
+  requireWorkflowStep,
 } from "./workflow-step-persistence.js";
 import { failIntakeBatchAfterWorkflowSetupError } from "./workflow-run-failure.js";
 import type {
@@ -27,7 +30,7 @@ import type {
   MultiSourceIntakeRecord,
   MultiSourceIntakeSourceInput,
   MultiSourceIntakeSourceResult,
-  MultiSourceIntakeSourceType
+  MultiSourceIntakeSourceType,
 } from "./multi-source-intake-types.js";
 export type {
   MultiSourceIntakeAuditEvent,
@@ -35,7 +38,7 @@ export type {
   MultiSourceIntakeRecord,
   MultiSourceIntakeSourceInput,
   MultiSourceIntakeSourceResult,
-  MultiSourceIntakeSourceType
+  MultiSourceIntakeSourceType,
 } from "./multi-source-intake-types.js";
 
 type MultiSourceInput = {
@@ -50,7 +53,7 @@ const MULTI_SOURCE_WORKFLOW_STEP_NAMES = {
   persistRecords: "persist-ai-ready-records",
   createReviewItems: "create-human-review-work",
   recordToolAudit: "record-asset-tool-audit",
-  finalize: "finalize-intake-workflow"
+  finalize: "finalize-intake-workflow",
 } as const;
 
 const DEFAULT_MULTI_SOURCE_INPUTS: MultiSourceInput[] = [
@@ -64,8 +67,8 @@ const DEFAULT_MULTI_SOURCE_INPUTS: MultiSourceInput[] = [
       "2) Ping g425 irons 5-pw reg flex condition 7.0 Below Average needs manager look.",
       "3) Cleveland RTX 6 ZipCore wedge senior flex condition 9.0 Above Average value $72 serial CLV-001.",
       "4) Odyssey White Hot OG putter condition 8.0 Average value $95 serial ODS-002.",
-      "Store 104 / associate jules"
-    ].join("\n")
+      "Store 104 / associate jules",
+    ].join("\n"),
   },
   {
     id: "source_csv",
@@ -79,8 +82,8 @@ const DEFAULT_MULTI_SOURCE_INPUTS: MultiSourceInput[] = [
       "Cleveland|RTX 6 ZipCore wedge|Senior|9.0 Above Average|$72|104",
       "Odyssey|White Hot OG putter|putter||8.0 Average|$95|104",
       "Mizuno|JPX 923 Hot Metal irons|Tour X-Stiff|9.0 Above Average|$390|STORE-104",
-      "PING|G430 Max driver|Tour X-Stiff|9.5 Mint|$240|STORE-207"
-    ].join("\n")
+      "PING|G430 Max driver|Tour X-Stiff|9.5 Mint|$240|STORE-207",
+    ].join("\n"),
   },
   {
     id: "source_email",
@@ -97,8 +100,8 @@ const DEFAULT_MULTI_SOURCE_INPUTS: MultiSourceInput[] = [
       "One more: Cleveland RTX 6 ZipCore wedge with Senior flex, condition 9.0 Above Average, estimated value 72.",
       "Also Odyssey White Hot OG putter with condition 8.0 Average, value 95.",
       "Attached: trade_sheet_8821.pdf, driver_photos.zip",
-      "Preferred store: 207"
-    ].join("\n")
+      "Preferred store: 207",
+    ].join("\n"),
   },
   {
     id: "source_log",
@@ -110,8 +113,8 @@ const DEFAULT_MULTI_SOURCE_INPUTS: MultiSourceInput[] = [
       "2026-05-18T14:33:07Z ERROR row=18 missing category payload={brand:'PING', model:'G425', condition:'6.0 Poor', notes:'irons 5-PW reg'}",
       "2026-05-18T14:33:11Z INFO normalized sku match Callaway Rogue ST Max driver store=207",
       "2026-05-18T14:33:14Z INFO normalized payload brand=Cleveland model=RTX 6 ZipCore cat=wedge shaft='Senior' condition='9.0 Above Average' value=72",
-      "2026-05-18T14:33:18Z INFO normalized payload brand=Mizuno model=JPX 923 Hot Metal cat=irons shaft='Tour X-Stiff' condition='9.0 Above Average' value=390"
-    ].join("\n")
+      "2026-05-18T14:33:18Z INFO normalized payload brand=Mizuno model=JPX 923 Hot Metal cat=irons shaft='Tour X-Stiff' condition='9.0 Above Average' value=390",
+    ].join("\n"),
   },
 ];
 
@@ -121,71 +124,102 @@ const SHARED_SCHEMA: MultiSourceIntakeSourceResult["inferredSchema"] = [
     type: "string",
     nullable: true,
     description: "Normalized equipment brand.",
-    examples: ["TaylorMade", "Titleist", "Callaway", "PING", "Cleveland", "Odyssey", "Mizuno"]
+    examples: [
+      "TaylorMade",
+      "Titleist",
+      "Callaway",
+      "PING",
+      "Cleveland",
+      "Odyssey",
+      "Mizuno",
+    ],
   },
   {
     fieldName: "productLine",
     type: "string",
     nullable: true,
     description: "Normalized product family or model line.",
-    examples: ["Stealth 2", "TSR", "Rogue ST Max", "G425", "G430 Max", "RTX 6 ZipCore", "White Hot OG", "JPX 923 Hot Metal"]
+    examples: [
+      "Stealth 2",
+      "TSR",
+      "Rogue ST Max",
+      "G425",
+      "G430 Max",
+      "RTX 6 ZipCore",
+      "White Hot OG",
+      "JPX 923 Hot Metal",
+    ],
   },
   {
     fieldName: "category",
     type: "string",
     nullable: true,
     description: "Normalized equipment category.",
-    examples: ["DRIVER", "FAIRWAY_WOOD", "IRON_SET", "WEDGE", "PUTTER"]
+    examples: ["DRIVER", "FAIRWAY_WOOD", "IRON_SET", "WEDGE", "PUTTER"],
   },
   {
     fieldName: "shaftFlex",
     type: "string",
     nullable: true,
     description: "Normalized shaft flex when present.",
-    examples: ["STIFF", "X_STIFF", "REGULAR", "SENIOR", "LADIES", "TOUR_X_STIFF"]
+    examples: [
+      "STIFF",
+      "X_STIFF",
+      "REGULAR",
+      "SENIOR",
+      "LADIES",
+      "TOUR_X_STIFF",
+    ],
   },
   {
     fieldName: "conditionGrade",
     type: "string",
     nullable: true,
     description: "Normalized condition grade supplied by the intake source.",
-    examples: ["9.5 Mint", "9.0 Above Average", "8.0 Average", "7.0 Below Average", "6.0 Poor"]
+    examples: [
+      "9.5 Mint",
+      "9.0 Above Average",
+      "8.0 Average",
+      "7.0 Below Average",
+      "6.0 Poor",
+    ],
   },
   {
     fieldName: "tradeInValue",
     type: "number",
     nullable: true,
     description: "Estimated trade-in value when present.",
-    examples: ["210", "145"]
+    examples: ["210", "145"],
   },
   {
     fieldName: "customerEmail",
     type: "string",
     nullable: true,
     description: "Customer email extracted from source metadata.",
-    examples: ["hannah.lee@example.com"]
+    examples: ["hannah.lee@example.com"],
   },
   {
     fieldName: "storeId",
     type: "string",
     nullable: true,
-    description: "Store identifier extracted from notes, logs, emails, or statements.",
-    examples: ["104", "207", "STORE-207"]
+    description:
+      "Store identifier extracted from notes, logs, emails, or statements.",
+    examples: ["104", "207", "STORE-207"],
   },
   {
     fieldName: "eventTimestamp",
     type: "datetime",
     nullable: true,
     description: "Operational timestamp extracted from logs or statements.",
-    examples: ["2026-05-18T14:33:04Z"]
+    examples: ["2026-05-18T14:33:04Z"],
   },
   {
     fieldName: "reviewNeeded",
     type: "boolean",
     nullable: false,
     description: "Human review flag for incomplete or low-confidence records.",
-    examples: ["true", "false"]
-  }
+    examples: ["true", "false"],
+  },
 ];
 
 function toInputJson(value: unknown): Prisma.InputJsonValue {
@@ -196,61 +230,68 @@ function toPersistedToolAuditJson(value: unknown): Prisma.InputJsonValue {
   return attachDataHandlingDiagnostics(
     applyDataHandlingPolicy({
       value,
-      context: "TOOL_AUDIT_LOG"
-    })
+      context: "TOOL_AUDIT_LOG",
+    }),
   ) as Prisma.InputJsonObject;
 }
 
 function getOperationalTags(source: MultiSourceInput): string[] {
   return [
-    source.sourceType === "POORLY_FORMED_CSV" ? "delimiter-normalization" : null,
+    source.sourceType === "POORLY_FORMED_CSV"
+      ? "delimiter-normalization"
+      : null,
     source.sourceType === "EMAIL" ? "customer-message" : null,
     source.sourceType === "LOG" ? "import-observability" : null,
     /missing|unclear|malformed|ERROR|pending review/i.test(source.rawContent)
       ? "review-signal"
-      : null
+      : null,
   ].filter((tag): tag is string => Boolean(tag));
 }
 
 function buildSourceResult(
   source: MultiSourceInput,
-  productReferenceProvider?: ProductReferenceProvider
+  productReferenceProvider?: ProductReferenceProvider,
 ): MultiSourceIntakeSourceResult {
   const cleanedText = cleanText(source.rawContent);
   const fragments = splitSourceIntoRecordFragments(
     source,
-    productReferenceProvider
+    productReferenceProvider,
   );
   const extractedRecords = fragments.map((fragment, index) =>
-    buildRecord(
-      source,
-      fragment,
-      index,
-      productReferenceProvider
-    )
+    buildRecord(source, fragment, index, productReferenceProvider),
   );
 
   const metadata = {
     detectedBrands: unique(extractedRecords.map((record) => record.brand)),
-    detectedCategories: unique(extractedRecords.map((record) => record.category)),
+    detectedCategories: unique(
+      extractedRecords.map((record) => record.category),
+    ),
     detectedStoreIds: unique(extractedRecords.map((record) => record.storeId)),
-    customerEmails: unique(extractedRecords.map((record) => record.customerEmail)),
-    attachmentNames: unique(extractedRecords.flatMap((record) => record.attachmentsMentioned)),
+    customerEmails: unique(
+      extractedRecords.map((record) => record.customerEmail),
+    ),
+    attachmentNames: unique(
+      extractedRecords.flatMap((record) => record.attachmentsMentioned),
+    ),
     eventTimestamps: unique([
       ...detectTimestamps(source.rawContent),
-      ...extractedRecords.map((record) => record.eventTimestamp)
+      ...extractedRecords.map((record) => record.eventTimestamp),
     ]),
-    operationalTags: getOperationalTags(source)
+    operationalTags: getOperationalTags(source),
   };
 
-  const missingFields = unique(extractedRecords.flatMap((record) => record.missingFields));
+  const missingFields = unique(
+    extractedRecords.flatMap((record) => record.missingFields),
+  );
   const confidence =
     extractedRecords.length > 0
       ? Number(
           (
-            extractedRecords.reduce((sum, record) => sum + record.confidence, 0) /
-            extractedRecords.length
-          ).toFixed(2)
+            extractedRecords.reduce(
+              (sum, record) => sum + record.confidence,
+              0,
+            ) / extractedRecords.length
+          ).toFixed(2),
         )
       : 0;
 
@@ -259,34 +300,39 @@ function buildSourceResult(
       ? {
           signal: "NO_RECORDS_EXTRACTED",
           severity: "REVIEW" as const,
-          message: "No equipment records were extracted from this source."
+          message: "No equipment records were extracted from this source.",
         }
       : null,
     missingFields.length > 0
       ? {
           signal: "MISSING_FIELDS",
           severity: "REVIEW" as const,
-          message: `Missing normalized fields: ${missingFields.join(", ")}.`
+          message: `Missing normalized fields: ${missingFields.join(", ")}.`,
         }
       : null,
     /malformed|ERROR|unclear|pending review/i.test(source.rawContent)
       ? {
           signal: "SOURCE_QUALITY",
           severity: "WARNING" as const,
-          message: "Source content includes malformed, unclear, or review-oriented language."
+          message:
+            "Source content includes malformed, unclear, or review-oriented language.",
         }
       : null,
     {
       signal: "NORMALIZED",
       severity: "INFO" as const,
-      message: `${extractedRecords.length} record(s) normalized into the shared intake schema.`
-    }
-  ].filter((signal): signal is MultiSourceIntakeSourceResult["qualitySignals"][number] =>
-    Boolean(signal)
+      message: `${extractedRecords.length} record(s) normalized into the shared intake schema.`,
+    },
+  ].filter(
+    (
+      signal,
+    ): signal is MultiSourceIntakeSourceResult["qualitySignals"][number] =>
+      Boolean(signal),
   );
 
   const readyRecordCount = extractedRecords.filter(
-    (record) => record.normalizedText.length > 20 && record.brand && record.category
+    (record) =>
+      record.normalizedText.length > 20 && record.brand && record.category,
   ).length;
 
   return {
@@ -309,7 +355,7 @@ function buildSourceResult(
           ? "Cleaned text and normalized records can be chunked with source metadata."
           : "Needs at least one normalized record with brand and category before embedding.",
       suggestedChunkStrategy:
-        "Chunk by source record, attach sourceType, storeId, brand, category, confidence, and reviewNeeded metadata."
+        "Chunk by source record, attach sourceType, storeId, brand, category, confidence, and reviewNeeded metadata.",
     },
     ragIndexReadiness: {
       ready: readyRecordCount > 0,
@@ -321,13 +367,13 @@ function buildSourceResult(
         "category",
         "storeId",
         "confidence",
-        "reviewNeeded"
+        "reviewNeeded",
       ],
       reason:
         readyRecordCount > 0
           ? "Records have enough normalized text and metadata for retrieval filtering."
-          : "RAG index entry should wait for review or additional extraction."
-    }
+          : "RAG index entry should wait for review or additional extraction.",
+    },
   };
 }
 
@@ -346,35 +392,37 @@ function buildAuditTrail(input: {
       status: "INFO",
       summary: `${input.sourceResults.length} messy operational source types were loaded for deterministic normalization.`,
       details: {
-        sourceTypes: input.sourceResults.map((source) => source.sourceType)
-      }
+        sourceTypes: input.sourceResults.map((source) => source.sourceType),
+      },
     },
     {
       orderIndex: 2,
       label: "Source text cleaned",
       status: "SUCCEEDED",
-      summary: "Delimiters, spacing, and extracted document text were cleaned into readable source previews.",
+      summary:
+        "Delimiters, spacing, and extracted document text were cleaned into readable source previews.",
       details: input.sourceResults.map((source) => ({
         sourceType: source.sourceType,
         sourceName: source.sourceName,
-        cleanedLength: source.cleanedText.length
-      }))
+        cleanedLength: source.cleanedText.length,
+      })),
     },
     {
       orderIndex: 3,
       label: "Structured records extracted",
       status: "SUCCEEDED",
       summary: `${input.recordsExtracted} normalized equipment/customer/store records were extracted.`,
-      details: input.sourceResults.flatMap((source) => source.extractedRecords)
+      details: input.sourceResults.flatMap((source) => source.extractedRecords),
     },
     {
       orderIndex: 4,
       label: "Schema and metadata inferred",
       status: "SUCCEEDED",
-      summary: "Shared dataset fields, source metadata, customer emails, attachments, timestamps, and operational tags were inferred.",
+      summary:
+        "Shared dataset fields, source metadata, customer emails, attachments, timestamps, and operational tags were inferred.",
       details: {
-        schema: SHARED_SCHEMA
-      }
+        schema: SHARED_SCHEMA,
+      },
     },
     {
       orderIndex: 5,
@@ -386,15 +434,15 @@ function buildAuditTrail(input: {
           : "No records require review.",
       details: input.sourceResults.map((source) => ({
         sourceType: source.sourceType,
-        qualitySignals: source.qualitySignals
-      }))
+        qualitySignals: source.qualitySignals,
+      })),
     },
     {
       orderIndex: 6,
       label: "AI-ready assets summarized",
       status: "SUCCEEDED",
       summary: `${input.assetsCreated} cleaned dataset, schema, metadata, review, embedding, and RAG assets were created.`,
-      details: input.ragReadinessSummary
+      details: input.ragReadinessSummary,
     },
     {
       orderIndex: 7,
@@ -403,9 +451,9 @@ function buildAuditTrail(input: {
       summary: input.finalSummary,
       details: {
         recordsExtracted: input.recordsExtracted,
-        reviewNeeded: input.reviewNeeded
-      }
-    }
+        reviewNeeded: input.reviewNeeded,
+      },
+    },
   ];
 }
 
@@ -427,99 +475,105 @@ async function persistDemoAudit(input: {
       itemCount: input.cleanedDatasetPreview.length,
       items: {
         create: input.cleanedDatasetPreview.map((record, index) => ({
-          rawText: record.sourceText || record.normalizedText || record.sourceType,
+          rawText:
+            record.sourceText || record.normalizedText || record.sourceType,
           sourceRowNumber: index + 1,
-          status: record.reviewNeeded ? "NEEDS_REVIEW" : "STRUCTURED"
-        }))
-      }
+          status: record.reviewNeeded ? "NEEDS_REVIEW" : "STRUCTURED",
+        })),
+      },
     },
     include: {
       items: {
         orderBy: {
-          sourceRowNumber: "asc"
-        }
-      }
-    }
+          sourceRowNumber: "asc",
+        },
+      },
+    },
   });
 
-  const workflowRun = await prisma.workflowRun.create({
-    data: {
-      intakeBatchId: intakeBatch.id,
-      workflowName: "multi-source-intake-demo",
-      status: "RUNNING",
-      startedAt: input.normalizationStartedAt,
-      steps: {
-        create: [
-          {
-            stepName: MULTI_SOURCE_WORKFLOW_STEP_NAMES.normalizeSources,
-            stepType: "NORMALIZE_DATA",
-            status: "COMPLETED",
-            orderIndex: 1,
-            inputJson: {
-              sourceCount: input.sourceResults.length,
-              sourceTypes: input.sourceResults.map((source) => source.sourceType)
+  const workflowRun = await prisma.workflowRun
+    .create({
+      data: {
+        intakeBatchId: intakeBatch.id,
+        workflowName: "multi-source-intake-demo",
+        status: "RUNNING",
+        startedAt: input.normalizationStartedAt,
+        steps: {
+          create: [
+            {
+              stepName: MULTI_SOURCE_WORKFLOW_STEP_NAMES.normalizeSources,
+              stepType: "NORMALIZE_DATA",
+              status: "COMPLETED",
+              orderIndex: 1,
+              inputJson: {
+                sourceCount: input.sourceResults.length,
+                sourceTypes: input.sourceResults.map(
+                  (source) => source.sourceType,
+                ),
+              },
+              outputJson: {
+                normalizedRecordCount: input.cleanedDatasetPreview.length,
+                reviewCandidateCount: input.reviewRecords.length,
+              },
+              startedAt: input.normalizationStartedAt,
+              completedAt: input.normalizationCompletedAt,
             },
-            outputJson: {
-              normalizedRecordCount: input.cleanedDatasetPreview.length,
-              reviewCandidateCount: input.reviewRecords.length
+            {
+              stepName: MULTI_SOURCE_WORKFLOW_STEP_NAMES.persistRecords,
+              stepType: "PERSIST_AI_READY_RECORDS",
+              orderIndex: 2,
             },
-            startedAt: input.normalizationStartedAt,
-            completedAt: input.normalizationCompletedAt
+            {
+              stepName: MULTI_SOURCE_WORKFLOW_STEP_NAMES.createReviewItems,
+              stepType: "CREATE_REVIEW_ITEM",
+              orderIndex: 3,
+            },
+            {
+              stepName: MULTI_SOURCE_WORKFLOW_STEP_NAMES.recordToolAudit,
+              stepType: "EXECUTE_TOOL_CALLS",
+              orderIndex: 4,
+            },
+            {
+              stepName: MULTI_SOURCE_WORKFLOW_STEP_NAMES.finalize,
+              stepType: "FINALIZE_WORKFLOW",
+              orderIndex: 5,
+            },
+          ],
+        },
+      },
+      include: {
+        steps: {
+          orderBy: {
+            orderIndex: "asc",
           },
-          {
-            stepName: MULTI_SOURCE_WORKFLOW_STEP_NAMES.persistRecords,
-            stepType: "PERSIST_AI_READY_RECORDS",
-            orderIndex: 2
-          },
-          {
-            stepName: MULTI_SOURCE_WORKFLOW_STEP_NAMES.createReviewItems,
-            stepType: "CREATE_REVIEW_ITEM",
-            orderIndex: 3
-          },
-          {
-            stepName: MULTI_SOURCE_WORKFLOW_STEP_NAMES.recordToolAudit,
-            stepType: "EXECUTE_TOOL_CALLS",
-            orderIndex: 4
-          },
-          {
-            stepName: MULTI_SOURCE_WORKFLOW_STEP_NAMES.finalize,
-            stepType: "FINALIZE_WORKFLOW",
-            orderIndex: 5
-          }
-        ]
-      }
-    },
-    include: {
-      steps: {
-        orderBy: {
-          orderIndex: "asc"
-        }
-      }
-    }
-  }).catch(async (error) => {
-    await failIntakeBatchAfterWorkflowSetupError(intakeBatch.id)
-      .catch(() => undefined);
-    throw error;
-  });
+        },
+      },
+    })
+    .catch(async (error) => {
+      await failIntakeBatchAfterWorkflowSetupError(intakeBatch.id).catch(
+        () => undefined,
+      );
+      throw error;
+    });
 
   const intakeItemByRecordId = new Map(
     input.cleanedDatasetPreview.map((record, index) => [
       record.id,
-      intakeBatch.items[index] ?? null
-    ])
+      intakeBatch.items[index] ?? null,
+    ]),
   );
   const sourceResultById = new Map(
-    input.sourceResults.map((sourceResult) => [sourceResult.id, sourceResult])
+    input.sourceResults.map((sourceResult) => [sourceResult.id, sourceResult]),
   );
 
   const aiReadyIntakeRecords = await executePersistedWorkflowStep({
     step: requireWorkflowStep(
       workflowRun.steps,
-      MULTI_SOURCE_WORKFLOW_STEP_NAMES.persistRecords
+      MULTI_SOURCE_WORKFLOW_STEP_NAMES.persistRecords,
     ),
     inputJson: {
       normalizedRecordCount: input.cleanedDatasetPreview.length,
-      intakeBatchId: intakeBatch.id
+      intakeBatchId: intakeBatch.id,
     },
     async execute() {
       const persistedRecords: AiReadyIntakeRecord[] = [];
@@ -527,7 +581,9 @@ async function persistDemoAudit(input: {
       for (const record of input.cleanedDatasetPreview) {
         const sourceResult = sourceResultById.get(record.sourceId);
         const intakeItem = intakeItemByRecordId.get(record.id) ?? null;
-        const hasRagReadyShape = record.normalizedText.length > 20 && Boolean(record.brand && record.category);
+        const hasRagReadyShape =
+          record.normalizedText.length > 20 &&
+          Boolean(record.brand && record.category);
 
         const aiReadyIntakeRecord = await prisma.aiReadyIntakeRecord.create({
           data: {
@@ -538,16 +594,21 @@ async function persistDemoAudit(input: {
             sourceType: record.sourceType,
             sourceName: sourceResult?.sourceName ?? record.sourceType,
             rawText: record.sourceText || record.normalizedText,
-            cleanedText: record.normalizedText || sourceResult?.cleanedText || record.sourceText,
+            cleanedText:
+              record.normalizedText ||
+              sourceResult?.cleanedText ||
+              record.sourceText,
             normalizedJson: toInputJson(record),
-            inferredSchemaJson: toInputJson(sourceResult?.inferredSchema ?? SHARED_SCHEMA),
+            inferredSchemaJson: toInputJson(
+              sourceResult?.inferredSchema ?? SHARED_SCHEMA,
+            ),
             metadataJson: toInputJson(sourceResult?.metadata ?? {}),
             qualitySignalsJson: toInputJson(sourceResult?.qualitySignals ?? []),
             status: record.reviewNeeded ? "NEEDS_REVIEW" : "READY_FOR_RAG",
             reviewNeeded: record.reviewNeeded,
             embeddingReady: hasRagReadyShape,
-            ragReady: hasRagReadyShape && !record.reviewNeeded
-          }
+            ragReady: hasRagReadyShape && !record.reviewNeeded,
+          },
         });
 
         persistedRecords.push(aiReadyIntakeRecord);
@@ -560,24 +621,30 @@ async function persistDemoAudit(input: {
         aiReadyIntakeRecordCount: records.length,
         aiReadyIntakeRecordIds: records.map((record) => record.id),
         ragReadyCount: records.filter((record) => record.ragReady).length,
-        reviewNeededCount: records.filter((record) => record.reviewNeeded).length
+        reviewNeededCount: records.filter((record) => record.reviewNeeded)
+          .length,
       };
-    }
+    },
   });
 
   const reviewQueueItems = await executePersistedWorkflowStep({
     step: requireWorkflowStep(
       workflowRun.steps,
-      MULTI_SOURCE_WORKFLOW_STEP_NAMES.createReviewItems
+      MULTI_SOURCE_WORKFLOW_STEP_NAMES.createReviewItems,
     ),
     inputJson: {
-      reviewCandidateCount: input.reviewRecords.length
+      reviewCandidateCount: input.reviewRecords.length,
     },
     async execute() {
       const createdItems: ReviewQueueItem[] = [];
       for (const reviewRecord of input.reviewRecords) {
         const intakeItem = intakeBatch.items.find(
-          (item) => item.sourceRowNumber === input.cleanedDatasetPreview.findIndex((record) => record.id === reviewRecord.id) + 1
+          (item) =>
+            item.sourceRowNumber ===
+            input.cleanedDatasetPreview.findIndex(
+              (record) => record.id === reviewRecord.id,
+            ) +
+              1,
         );
 
         const reviewQueueItem = await prisma.reviewQueueItem.create({
@@ -589,15 +656,16 @@ async function persistDemoAudit(input: {
                 ? "MISSING_REQUIRED_FIELDS"
                 : "LOW_CONFIDENCE",
             status: "OPEN",
-            originalText: reviewRecord.sourceText || reviewRecord.normalizedText,
+            originalText:
+              reviewRecord.sourceText || reviewRecord.normalizedText,
             proposedGolfClubJson: toInputJson({
               ...reviewRecord,
               reviewReasonSummary:
                 reviewRecord.missingFields.length > 0
                   ? `Missing ${reviewRecord.missingFields.join(", ")}`
-                  : `Confidence ${reviewRecord.confidence}`
-            })
-          }
+                  : `Confidence ${reviewRecord.confidence}`,
+            }),
+          },
         });
 
         createdItems.push(reviewQueueItem);
@@ -608,19 +676,19 @@ async function persistDemoAudit(input: {
     buildOutputJson(items) {
       return {
         reviewQueueItemCount: items.length,
-        reviewQueueItemIds: items.map((item) => item.id)
+        reviewQueueItemIds: items.map((item) => item.id),
       };
-    }
+    },
   });
 
   const toolCallLogs = await executePersistedWorkflowStep({
     step: requireWorkflowStep(
       workflowRun.steps,
-      MULTI_SOURCE_WORKFLOW_STEP_NAMES.recordToolAudit
+      MULTI_SOURCE_WORKFLOW_STEP_NAMES.recordToolAudit,
     ),
     inputJson: {
       auditOnly: true,
-      externalExecutionAttempted: false
+      externalExecutionAttempted: false,
     },
     async execute(step) {
       const persistedLogs: ToolCallLog[] = [];
@@ -630,25 +698,25 @@ async function persistDemoAudit(input: {
           outputJson: {
             previewOnly: true,
             assetType: "cleaned_dataset",
-            rowCount: input.cleanedDatasetPreview.length
-          }
+            rowCount: input.cleanedDatasetPreview.length,
+          },
         },
         {
           toolName: "swingops.intakeAssets.inferSchema",
           outputJson: {
             previewOnly: true,
             assetType: "inferred_schema",
-            fieldCount: SHARED_SCHEMA.length
-          }
+            fieldCount: SHARED_SCHEMA.length,
+          },
         },
         {
           toolName: "swingops.intakeAssets.prepareRagIndex",
           outputJson: {
             previewOnly: true,
             assetType: "rag_index_summary",
-            sourceCount: input.sourceResults.length
-          }
-        }
+            sourceCount: input.sourceResults.length,
+          },
+        },
       ];
 
       for (const auditToolOutput of auditToolOutputs) {
@@ -661,16 +729,16 @@ async function persistDemoAudit(input: {
             status: "SUCCEEDED",
             inputJson: toPersistedToolAuditJson({
               workflowRunId: workflowRun.id,
-              demo: "multi-source-intake-demo"
+              demo: "multi-source-intake-demo",
             }),
             outputJson: toPersistedToolAuditJson({
               ...auditToolOutput.outputJson,
               persistedPurpose:
-                "Audit-only deterministic demo asset summary. No external connector execution was attempted."
+                "Audit-only deterministic demo asset summary. No external connector execution was attempted.",
             }),
             startedAt: now,
-            completedAt: now
-          }
+            completedAt: now,
+          },
         });
 
         persistedLogs.push(toolCallLog);
@@ -682,25 +750,25 @@ async function persistDemoAudit(input: {
       return {
         auditToolCallCount: logs.length,
         toolCallLogIds: logs.map((log) => log.id),
-        externalExecutionAttempted: false
+        externalExecutionAttempted: false,
       };
-    }
+    },
   });
 
   await executePersistedWorkflowStep({
     step: requireWorkflowStep(
       workflowRun.steps,
-      MULTI_SOURCE_WORKFLOW_STEP_NAMES.finalize
+      MULTI_SOURCE_WORKFLOW_STEP_NAMES.finalize,
     ),
     inputJson: {
-      reviewQueueItemCount: reviewQueueItems.length
+      reviewQueueItemCount: reviewQueueItems.length,
     },
     execute() {
       const status = reviewQueueItems.length > 0 ? "NEEDS_REVIEW" : "COMPLETED";
 
       return {
         workflowStatus: status,
-        intakeBatchStatus: status
+        intakeBatchStatus: status,
       } as const;
     },
     buildOutputJson(result) {
@@ -709,31 +777,31 @@ async function persistDemoAudit(input: {
     async onCompleted({ transaction, result, completedAt }) {
       await transaction.intakeBatch.update({
         where: {
-          id: intakeBatch.id
+          id: intakeBatch.id,
         },
         data: {
-          status: result.intakeBatchStatus
-        }
+          status: result.intakeBatchStatus,
+        },
       });
 
       await transaction.workflowRun.update({
         where: {
-          id: workflowRun.id
+          id: workflowRun.id,
         },
         data: {
           status: result.workflowStatus,
           completedAt:
             result.workflowStatus === "COMPLETED" ? completedAt : null,
-          errorMessage: null
-        }
+          errorMessage: null,
+        },
       });
-    }
+    },
   });
 
   const completedWorkflowRun = await prisma.workflowRun.findUniqueOrThrow({
     where: {
-      id: workflowRun.id
-    }
+      id: workflowRun.id,
+    },
   });
 
   return {
@@ -741,11 +809,13 @@ async function persistDemoAudit(input: {
     workflowRun: completedWorkflowRun,
     reviewQueueItems,
     toolCallLogs,
-    aiReadyIntakeRecords
+    aiReadyIntakeRecords,
   };
 }
 
-function getFallbackSourceName(sourceType: MultiSourceIntakeSourceType): string {
+function getFallbackSourceName(
+  sourceType: MultiSourceIntakeSourceType,
+): string {
   if (sourceType === "FREE_TEXT") {
     return "Pasted free text source";
   }
@@ -761,58 +831,80 @@ function getFallbackSourceName(sourceType: MultiSourceIntakeSourceType): string 
   return "Uploaded or pasted log source";
 }
 
-function buildCustomSourceInputs(sources: MultiSourceIntakeSourceInput[]): MultiSourceInput[] {
+function buildCustomSourceInputs(
+  sources: MultiSourceIntakeSourceInput[],
+): MultiSourceInput[] {
   return sources.map((source, index) => ({
     id: `custom_source_${index + 1}`,
     sourceType: source.sourceType,
-    sourceName: source.sourceName?.trim() || getFallbackSourceName(source.sourceType),
-    rawContent: source.rawContent.trim()
+    sourceName:
+      source.sourceName?.trim() || getFallbackSourceName(source.sourceType),
+    rawContent: source.rawContent.trim(),
   }));
 }
 
-export async function executeMultiSourceIntakeDemo(input: {
-  sourceTypes?: MultiSourceIntakeSourceType[];
-  sources?: MultiSourceIntakeSourceInput[];
-  productReferenceProvider?: ProductReferenceProvider;
-} = {}): Promise<MultiSourceIntakeDemoResult> {
+export async function executeMultiSourceIntakeDemo(
+  input: {
+    sourceTypes?: MultiSourceIntakeSourceType[];
+    sources?: MultiSourceIntakeSourceInput[];
+    productReferenceProvider?: ProductReferenceProvider;
+  } = {},
+): Promise<MultiSourceIntakeDemoResult> {
   const requestedSourceTypes = input.sourceTypes;
   const selectedInputs =
     input.sources && input.sources.length > 0
       ? buildCustomSourceInputs(input.sources)
       : requestedSourceTypes && requestedSourceTypes.length > 0
         ? DEFAULT_MULTI_SOURCE_INPUTS.filter((source) =>
-            requestedSourceTypes.includes(source.sourceType)
+            requestedSourceTypes.includes(source.sourceType),
           )
         : DEFAULT_MULTI_SOURCE_INPUTS;
 
   const normalizationStartedAt = new Date();
   const sourceResults = selectedInputs.map((source) =>
-    buildSourceResult(
-      source,
-      input.productReferenceProvider
-    )
+    buildSourceResult(source, input.productReferenceProvider),
   );
-  const cleanedDatasetPreview = sourceResults.flatMap((source) => source.extractedRecords);
+  const cleanedDatasetPreview = sourceResults.flatMap(
+    (source) => source.extractedRecords,
+  );
   const recordsExtracted = cleanedDatasetPreview.length;
-  const reviewRecords = cleanedDatasetPreview.filter((record) => record.reviewNeeded);
+  const reviewRecords = cleanedDatasetPreview.filter(
+    (record) => record.reviewNeeded,
+  );
   const reviewNeeded = reviewRecords.length;
 
   const metadataSummary = {
     sourceTypes: sourceResults.map((source) => source.sourceType),
-    detectedBrands: unique(sourceResults.flatMap((source) => source.metadata.detectedBrands)),
-    detectedCategories: unique(sourceResults.flatMap((source) => source.metadata.detectedCategories)),
-    detectedStoreIds: unique(sourceResults.flatMap((source) => source.metadata.detectedStoreIds)),
-    customerEmails: unique(sourceResults.flatMap((source) => source.metadata.customerEmails)),
-    attachmentNames: unique(sourceResults.flatMap((source) => source.metadata.attachmentNames)),
-    eventTimestamps: unique(sourceResults.flatMap((source) => source.metadata.eventTimestamps)),
-    operationalTags: unique(sourceResults.flatMap((source) => source.metadata.operationalTags))
+    detectedBrands: unique(
+      sourceResults.flatMap((source) => source.metadata.detectedBrands),
+    ),
+    detectedCategories: unique(
+      sourceResults.flatMap((source) => source.metadata.detectedCategories),
+    ),
+    detectedStoreIds: unique(
+      sourceResults.flatMap((source) => source.metadata.detectedStoreIds),
+    ),
+    customerEmails: unique(
+      sourceResults.flatMap((source) => source.metadata.customerEmails),
+    ),
+    attachmentNames: unique(
+      sourceResults.flatMap((source) => source.metadata.attachmentNames),
+    ),
+    eventTimestamps: unique(
+      sourceResults.flatMap((source) => source.metadata.eventTimestamps),
+    ),
+    operationalTags: unique(
+      sourceResults.flatMap((source) => source.metadata.operationalTags),
+    ),
   };
 
   const readySourceCount = sourceResults.filter(
-    (source) => source.embeddingReadiness.ready && source.ragIndexReadiness.ready
+    (source) =>
+      source.embeddingReadiness.ready && source.ragIndexReadiness.ready,
   ).length;
   const readyRecordCount = cleanedDatasetPreview.filter(
-    (record) => record.normalizedText.length > 20 && record.brand && record.category
+    (record) =>
+      record.normalizedText.length > 20 && record.brand && record.category,
   ).length;
 
   const ragReadinessSummary = {
@@ -822,12 +914,11 @@ export async function executeMultiSourceIntakeDemo(input: {
     totalRecordCount: recordsExtracted,
     embeddingReady: readyRecordCount > 0,
     ragIndexReady: readySourceCount > 0,
-    summary: `${readyRecordCount}/${recordsExtracted} records are ready to embed with source metadata; ${readySourceCount}/${sourceResults.length} sources are ready for the trade_in_intake_assets RAG index.`
+    summary: `${readyRecordCount}/${recordsExtracted} records are ready to embed with source metadata; ${readySourceCount}/${sourceResults.length} sources are ready for the trade_in_intake_assets RAG index.`,
   };
 
   const assetsCreated = 6;
-  const finalSummary =
-    `Processed ${sourceResults.length} source types into normalized records, inferred schema fields, metadata, review signals, and RAG-ready asset summaries.`;
+  const finalSummary = `Processed ${sourceResults.length} source types into normalized records, inferred schema fields, metadata, review signals, and RAG-ready asset summaries.`;
   const normalizationCompletedAt = new Date();
 
   const persisted = await persistDemoAudit({
@@ -836,7 +927,7 @@ export async function executeMultiSourceIntakeDemo(input: {
     reviewRecords,
     finalSummary,
     normalizationStartedAt,
-    normalizationCompletedAt
+    normalizationCompletedAt,
   });
 
   const resultWithoutAuditTrail = {
@@ -856,12 +947,14 @@ export async function executeMultiSourceIntakeDemo(input: {
       workflowRunId: persisted.workflowRun.id,
       reviewQueueItemIds: persisted.reviewQueueItems.map((item) => item.id),
       toolCallLogIds: persisted.toolCallLogs.map((log) => log.id),
-      aiReadyIntakeRecordIds: persisted.aiReadyIntakeRecords.map((record) => record.id)
-    }
+      aiReadyIntakeRecordIds: persisted.aiReadyIntakeRecords.map(
+        (record) => record.id,
+      ),
+    },
   };
 
   return {
     ...resultWithoutAuditTrail,
-    auditTrail: buildAuditTrail(resultWithoutAuditTrail)
+    auditTrail: buildAuditTrail(resultWithoutAuditTrail),
   };
 }

@@ -8,7 +8,7 @@ import { PrismaClient } from "@prisma/client";
 import {
   getDatabaseDisplayName,
   getDatabaseNameFromUrl,
-  resolveTestDatabaseUrl
+  resolveTestDatabaseUrl,
 } from "../config/database-urls.js";
 import { apiEnvSchema } from "../config/env-schema.js";
 
@@ -18,14 +18,16 @@ const testDatabaseName = getDatabaseNameFromUrl(testDatabaseUrl);
 const apiRoot = fileURLToPath(new URL("../../", import.meta.url));
 
 if (!/^[a-zA-Z0-9_]+$/.test(testDatabaseName)) {
-  throw new Error("Test database names may contain only letters, numbers, and underscores.");
+  throw new Error(
+    "Test database names may contain only letters, numbers, and underscores.",
+  );
 }
 
 const maintenanceDatabaseUrl = new URL(testDatabaseUrl);
 maintenanceDatabaseUrl.pathname = "/postgres";
 
 const maintenanceClient = new PrismaClient({
-  datasourceUrl: maintenanceDatabaseUrl.toString()
+  datasourceUrl: maintenanceDatabaseUrl.toString(),
 });
 
 try {
@@ -37,15 +39,19 @@ try {
 
   if (!rows[0]?.exists) {
     await maintenanceClient.$executeRawUnsafe(
-      `CREATE DATABASE "${testDatabaseName}"`
+      `CREATE DATABASE "${testDatabaseName}"`,
     );
-    console.log(`Created test database ${getDatabaseDisplayName(testDatabaseUrl)}.`);
+    console.log(
+      `Created test database ${getDatabaseDisplayName(testDatabaseUrl)}.`,
+    );
   }
 } finally {
   await maintenanceClient.$disconnect();
 }
 
-console.log(`Resetting test database ${getDatabaseDisplayName(testDatabaseUrl)}.`);
+console.log(
+  `Resetting test database ${getDatabaseDisplayName(testDatabaseUrl)}.`,
+);
 
 const migrationResult = spawnSync(
   "pnpm",
@@ -55,10 +61,10 @@ const migrationResult = spawnSync(
     env: {
       ...process.env,
       DATABASE_URL: testDatabaseUrl,
-      NODE_ENV: "test"
+      NODE_ENV: "test",
     },
-    stdio: "inherit"
-  }
+    stdio: "inherit",
+  },
 );
 
 if (migrationResult.error) {
@@ -67,7 +73,7 @@ if (migrationResult.error) {
 
 if (migrationResult.status !== 0) {
   throw new Error(
-    `Test database migration reset failed with exit code ${migrationResult.status ?? "unknown"}.`
+    `Test database migration reset failed with exit code ${migrationResult.status ?? "unknown"}.`,
   );
 }
 

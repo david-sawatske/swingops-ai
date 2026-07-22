@@ -4,7 +4,7 @@ import {
   serializeIntakeItem,
   serializeWorkflowStep,
   serializeToolCallLog,
-  serializeReviewQueueItem
+  serializeReviewQueueItem,
 } from "../serializers/shared-workflow-serializers.js";
 
 export {
@@ -13,7 +13,7 @@ export {
   serializeIntakeItem,
   serializeWorkflowStep,
   serializeToolCallLog,
-  serializeReviewQueueItem
+  serializeReviewQueueItem,
 };
 
 export function serializeModelCallLog(log: {
@@ -52,7 +52,7 @@ export function serializeModelCallLog(log: {
     errorMessage: log.errorMessage,
     startedAt: log.startedAt.toISOString(),
     completedAt: log.completedAt?.toISOString() ?? null,
-    createdAt: log.createdAt.toISOString()
+    createdAt: log.createdAt.toISOString(),
   };
 }
 
@@ -123,7 +123,7 @@ export function serializeWorkflowRunListItem(run: {
   }[];
 }) {
   const openReviewQueueItemCount = run.reviewQueueItems.filter(
-    (item) => item.status === "OPEN" || item.status === "IN_REVIEW"
+    (item) => item.status === "OPEN" || item.status === "IN_REVIEW",
   ).length;
 
   const auditOnlyToolCallLogCount = run.toolCallLogs.filter(
@@ -132,7 +132,7 @@ export function serializeWorkflowRunListItem(run: {
       log.outputJson !== null &&
       !Array.isArray(log.outputJson) &&
       "previewOnly" in log.outputJson &&
-      log.outputJson.previewOnly === true
+      log.outputJson.previewOnly === true,
   ).length;
 
   return {
@@ -148,7 +148,7 @@ export function serializeWorkflowRunListItem(run: {
     totalToolCallLogCount: run.toolCallLogs.length,
     auditOnlyToolCallLogCount,
     totalReviewQueueItemCount: run.reviewQueueItems.length,
-    openReviewQueueItemCount
+    openReviewQueueItemCount,
   };
 }
 
@@ -199,10 +199,12 @@ export function serializeReviewQueueItemWithContext(item: {
 }) {
   return {
     ...serializeReviewQueueItem(item),
-    workflowRun: item.workflowRun ? serializeWorkflowRun(item.workflowRun) : null,
+    workflowRun: item.workflowRun
+      ? serializeWorkflowRun(item.workflowRun)
+      : null,
     intakeItem: item.intakeItem ? serializeIntakeItem(item.intakeItem) : null,
     intakeBatch: item.intakeItem
       ? serializeIntakeBatch(item.intakeItem.intakeBatch)
-      : null
+      : null,
   };
 }

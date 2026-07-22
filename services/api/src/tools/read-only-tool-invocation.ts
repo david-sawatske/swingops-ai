@@ -4,35 +4,33 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import {
   findSimilarInventoryProducts,
-  lookupInventoryProduct
+  lookupInventoryProduct,
 } from "../internal-systems/inventory-service.js";
 import {
   estimateTradeInValuation,
-  explainTradeInValuationAdjustments
+  explainTradeInValuationAdjustments,
 } from "../internal-systems/trade-in-valuation-service.js";
 import { searchKnowledgeBase } from "../knowledge/knowledge-search.js";
 import {
   applyDataHandlingPolicy,
   attachDataHandlingDiagnostics,
-  sanitizeAuditText
+  sanitizeAuditText,
 } from "../security/data-handling-policy.js";
 import { searchClubReference } from "./club-reference.js";
 import {
   evaluateToolExecutionPolicy,
   type ToolExecutionMode,
-  type ToolExecutionPolicyEvaluation
+  type ToolExecutionPolicyEvaluation,
 } from "./tool-execution-policy.js";
 import type { AgentToolDefinition } from "./tool-registry.types.js";
 import {
-  serializeIntakeBatch,
-  serializeIntakeItem,
   serializeModelCallLog,
   serializeReviewQueueItem,
   serializeReviewQueueItemWithContext,
   serializeToolCallLog,
   serializeWorkflowRun,
   serializeWorkflowRunListItem,
-  serializeWorkflowStep
+  serializeWorkflowStep,
 } from "./read-only-tool-serializers.js";
 
 type ReadOnlyToolInvocationStatus = "SUCCEEDED" | "FAILED" | "BLOCKED";
@@ -88,7 +86,7 @@ const inputObjectSchema = z.record(z.unknown()).default({});
 
 const getByIdInputSchema = z
   .object({
-    id: z.string().min(1)
+    id: z.string().min(1),
   })
   .strict();
 
@@ -97,19 +95,19 @@ const workflowRunsListInputSchema = z
     status: z
       .enum(["QUEUED", "RUNNING", "NEEDS_REVIEW", "COMPLETED", "FAILED"])
       .optional(),
-    maxResults: z.number().int().min(1).max(25).optional()
+    maxResults: z.number().int().min(1).max(25).optional(),
   })
   .strict();
 
 const reviewQueueItemsListInputSchema = z
   .object({
-    status: z.enum(["OPEN", "IN_REVIEW", "RESOLVED", "DISMISSED"]).optional()
+    status: z.enum(["OPEN", "IN_REVIEW", "RESOLVED", "DISMISSED"]).optional(),
   })
   .strict();
 
 const clubReferenceSearchInputSchema = z
   .object({
-    query: z.string().min(1)
+    query: z.string().min(1),
   })
   .strict();
 
@@ -118,7 +116,7 @@ const knowledgeChunkTypeSchema = z.enum([
   "TRADE_IN_POLICY",
   "CONDITION_GUIDE",
   "BRAND_ALIAS",
-  "SHAFT_FLEX_GUIDE"
+  "SHAFT_FLEX_GUIDE",
 ]);
 
 const knowledgeBaseSearchInputSchema = z
@@ -128,7 +126,7 @@ const knowledgeBaseSearchInputSchema = z
     brand: z.string().min(1).optional(),
     category: z.string().min(1).optional(),
     chunkType: knowledgeChunkTypeSchema.optional(),
-    maxResults: z.number().int().min(1).max(10).optional()
+    maxResults: z.number().int().min(1).max(10).optional(),
   })
   .strict();
 
@@ -140,7 +138,7 @@ const inventoryLookupInputSchema = z
     year: z.number().int().optional(),
     shaftBrand: z.string().min(1).optional(),
     shaftModel: z.string().min(1).optional(),
-    rawText: z.string().min(1).optional()
+    rawText: z.string().min(1).optional(),
   })
   .strict();
 
@@ -149,7 +147,7 @@ const inventorySimilarProductsInputSchema = z
     brand: z.string().min(1).optional(),
     productLine: z.string().min(1).optional(),
     category: z.string().min(1).optional(),
-    rawText: z.string().min(1).optional()
+    rawText: z.string().min(1).optional(),
   })
   .strict();
 
@@ -162,7 +160,7 @@ const pipeSeparatedNotesSchema = z
           .split("|")
           .map((part) => part.trim())
           .filter(Boolean)
-      : []
+      : [],
   );
 
 const tradeInValuationInputSchema = z
@@ -175,13 +173,13 @@ const tradeInValuationInputSchema = z
     shaftModel: z.string().min(1).optional(),
     rawText: z.string().min(1).optional(),
     conditionNotes: pipeSeparatedNotesSchema,
-    accessoriesNotes: pipeSeparatedNotesSchema
+    accessoriesNotes: pipeSeparatedNotesSchema,
   })
   .strict();
 
 function omitUndefinedFields<T extends Record<string, unknown>>(value: T): T {
   return Object.fromEntries(
-    Object.entries(value).filter(([, entryValue]) => entryValue !== undefined)
+    Object.entries(value).filter(([, entryValue]) => entryValue !== undefined),
   ) as T;
 }
 
@@ -193,8 +191,8 @@ function connectorResult(data: unknown): ConnectorResult {
       source: "swingops.internal-db",
       readOnly: true,
       mutatesData: false,
-      externalTransport: false
-    }
+      externalTransport: false,
+    },
   };
 }
 
@@ -213,7 +211,7 @@ function blockedOutputJson(input: {
     policyReasonCodes:
       input.readOnlyReasonCode &&
       !input.policyEvaluation.reasonCodes.includes(
-        input.readOnlyReasonCode as never
+        input.readOnlyReasonCode as never,
       )
         ? [...input.policyEvaluation.reasonCodes, input.readOnlyReasonCode]
         : input.policyEvaluation.reasonCodes,
@@ -221,7 +219,7 @@ function blockedOutputJson(input: {
     executionMode: input.policyEvaluation.executionMode,
     executionEnabled: input.policyEvaluation.executionEnabled,
     humanApprovalGranted: input.policyEvaluation.humanApprovalGranted,
-    failureReason: input.reason
+    failureReason: input.reason,
   };
 }
 
@@ -239,7 +237,7 @@ function successOutputJson(input: {
     executionMode: input.policyEvaluation.executionMode,
     executionEnabled: input.policyEvaluation.executionEnabled,
     humanApprovalGranted: input.policyEvaluation.humanApprovalGranted,
-    connectorResult: input.connectorResult as unknown as Prisma.InputJsonObject
+    connectorResult: input.connectorResult as unknown as Prisma.InputJsonObject,
   };
 }
 
@@ -247,8 +245,8 @@ function toPersistedToolAuditJson(value: unknown): Prisma.InputJsonObject {
   return attachDataHandlingDiagnostics(
     applyDataHandlingPolicy({
       value,
-      context: "TOOL_AUDIT_LOG"
-    })
+      context: "TOOL_AUDIT_LOG",
+    }),
   ) as Prisma.InputJsonObject;
 }
 
@@ -265,12 +263,16 @@ async function createStartedToolCallLog(input: {
 
   return prisma.toolCallLog.create({
     data: {
-      ...(input.workflowRunId === null ? {} : { workflowRunId: input.workflowRunId }),
-      ...(input.workflowStepId === null ? {} : { workflowStepId: input.workflowStepId }),
+      ...(input.workflowRunId === null
+        ? {}
+        : { workflowRunId: input.workflowRunId }),
+      ...(input.workflowStepId === null
+        ? {}
+        : { workflowStepId: input.workflowStepId }),
       toolName: input.toolName,
       status: "STARTED",
-      ...(inputJson === undefined ? {} : { inputJson })
-    }
+      ...(inputJson === undefined ? {} : { inputJson }),
+    },
   });
 }
 
@@ -284,7 +286,7 @@ async function completeToolCallLog(input: {
 
   return prisma.toolCallLog.update({
     where: {
-      id: input.toolCallLogId
+      id: input.toolCallLogId,
     },
     data: {
       status: input.status,
@@ -295,10 +297,10 @@ async function completeToolCallLog(input: {
         : {
             errorMessage: sanitizeAuditText(
               input.errorMessage,
-              "TOOL_AUDIT_LOG"
-            )
-          })
-    }
+              "TOOL_AUDIT_LOG",
+            ),
+          }),
+    },
   });
 }
 
@@ -329,7 +331,7 @@ function toResult(input: {
       executionAttempted: input.executionAttempted,
       startedAt: input.startedAt.toISOString(),
       completedAt: input.completedAt.toISOString(),
-      toolCallLogId: input.toolCallLog.id
+      toolCallLogId: input.toolCallLog.id,
     },
     policyEvaluation: input.policyEvaluation,
     connectorResult: input.connectorResult,
@@ -339,8 +341,8 @@ function toResult(input: {
       externalTransport: false,
       readOnlyOnly: true,
       mutationToolsEnabled: false,
-      policyCheckedBeforeExecution: true
-    }
+      policyCheckedBeforeExecution: true,
+    },
   };
 }
 
@@ -349,19 +351,19 @@ function getInputObject(inputJson: unknown | undefined) {
 }
 
 function ensureExecutableReadOnlyTool(
-  tool: AgentToolDefinition | null
+  tool: AgentToolDefinition | null,
 ): { reason: string; reasonCode: string } | null {
   if (!tool) {
     return {
       reason: "Tool is not registered and cannot be executed.",
-      reasonCode: "TOOL_NOT_FOUND"
+      reasonCode: "TOOL_NOT_FOUND",
     };
   }
 
   if (!tool.enabled) {
     return {
       reason: "Tool is disabled and cannot be executed.",
-      reasonCode: "TOOL_DISABLED"
+      reasonCode: "TOOL_DISABLED",
     };
   }
 
@@ -369,7 +371,7 @@ function ensureExecutableReadOnlyTool(
     return {
       reason:
         "Mutation tools are not enabled on the read-only connector invocation surface.",
-      reasonCode: "MUTATION_BLOCKED_IN_READ_ONLY_MODE"
+      reasonCode: "MUTATION_BLOCKED_IN_READ_ONLY_MODE",
     };
   }
 
@@ -377,7 +379,7 @@ function ensureExecutableReadOnlyTool(
     return {
       reason:
         "Approval-required tools are not enabled on the read-only connector invocation surface.",
-      reasonCode: "HUMAN_APPROVAL_REQUIRED"
+      reasonCode: "HUMAN_APPROVAL_REQUIRED",
     };
   }
 
@@ -385,7 +387,7 @@ function ensureExecutableReadOnlyTool(
     return {
       reason:
         "Only low-risk tools are enabled on the read-only connector invocation surface.",
-      reasonCode: "HUMAN_APPROVAL_REQUIRED"
+      reasonCode: "HUMAN_APPROVAL_REQUIRED",
     };
   }
 
@@ -402,7 +404,7 @@ async function executeConnectorTool(input: {
     const parsedInput = clubReferenceSearchInputSchema.parse(inputObject);
 
     return connectorResult({
-      clubReferenceSearch: searchClubReference(parsedInput.query)
+      clubReferenceSearch: searchClubReference(parsedInput.query),
     });
   }
 
@@ -415,7 +417,9 @@ async function executeConnectorTool(input: {
         ...(parsedInput.sourceName === undefined
           ? {}
           : { sourceName: parsedInput.sourceName }),
-        ...(parsedInput.brand === undefined ? {} : { brand: parsedInput.brand }),
+        ...(parsedInput.brand === undefined
+          ? {}
+          : { brand: parsedInput.brand }),
         ...(parsedInput.category === undefined
           ? {}
           : { category: parsedInput.category }),
@@ -424,8 +428,8 @@ async function executeConnectorTool(input: {
           : { chunkType: parsedInput.chunkType }),
         ...(parsedInput.maxResults === undefined
           ? {}
-          : { maxResults: parsedInput.maxResults })
-      })
+          : { maxResults: parsedInput.maxResults }),
+      }),
     });
   }
 
@@ -433,7 +437,9 @@ async function executeConnectorTool(input: {
     const parsedInput = inventoryLookupInputSchema.parse(inputObject);
 
     return connectorResult({
-      inventoryProductLookup: lookupInventoryProduct(omitUndefinedFields(parsedInput))
+      inventoryProductLookup: lookupInventoryProduct(
+        omitUndefinedFields(parsedInput),
+      ),
     });
   }
 
@@ -441,7 +447,9 @@ async function executeConnectorTool(input: {
     const parsedInput = inventorySimilarProductsInputSchema.parse(inputObject);
 
     return connectorResult({
-      similarInventoryProducts: findSimilarInventoryProducts(omitUndefinedFields(parsedInput))
+      similarInventoryProducts: findSimilarInventoryProducts(
+        omitUndefinedFields(parsedInput),
+      ),
     });
   }
 
@@ -449,7 +457,9 @@ async function executeConnectorTool(input: {
     const parsedInput = tradeInValuationInputSchema.parse(inputObject);
 
     return connectorResult({
-      tradeInValuationEstimate: estimateTradeInValuation(omitUndefinedFields(parsedInput))
+      tradeInValuationEstimate: estimateTradeInValuation(
+        omitUndefinedFields(parsedInput),
+      ),
     });
   }
 
@@ -457,22 +467,23 @@ async function executeConnectorTool(input: {
     const parsedInput = tradeInValuationInputSchema.parse(inputObject);
 
     return connectorResult({
-      tradeInValuationAdjustmentExplanation:
-        explainTradeInValuationAdjustments(omitUndefinedFields(parsedInput))
+      tradeInValuationAdjustmentExplanation: explainTradeInValuationAdjustments(
+        omitUndefinedFields(parsedInput),
+      ),
     });
   }
 
-      if (input.toolName === "swingops.workflowRuns.list") {
+  if (input.toolName === "swingops.workflowRuns.list") {
     const parsedInput = workflowRunsListInputSchema.parse(inputObject);
 
     const workflowRuns = await prisma.workflowRun.findMany({
       where: parsedInput.status
         ? {
-            status: parsedInput.status
+            status: parsedInput.status,
           }
         : {},
       orderBy: {
-        createdAt: "desc"
+        createdAt: "desc",
       },
       take: parsedInput.maxResults ?? 10,
       include: {
@@ -480,26 +491,26 @@ async function executeConnectorTool(input: {
         intakeItem: true,
         modelCallLogs: {
           orderBy: {
-            createdAt: "desc"
+            createdAt: "desc",
           },
-          take: 1
+          take: 1,
         },
         toolCallLogs: {
           orderBy: {
-            createdAt: "desc"
+            createdAt: "desc",
           },
-          take: 1
+          take: 1,
         },
         reviewQueueItems: {
           select: {
-            status: true
-          }
-        }
-      }
+            status: true,
+          },
+        },
+      },
     });
 
     return connectorResult({
-      workflowRuns: workflowRuns.map(serializeWorkflowRunListItem)
+      workflowRuns: workflowRuns.map(serializeWorkflowRunListItem),
     });
   }
 
@@ -508,30 +519,30 @@ async function executeConnectorTool(input: {
 
     const workflowRun = await prisma.workflowRun.findUnique({
       where: {
-        id: parsedInput.id
+        id: parsedInput.id,
       },
       include: {
         steps: {
           orderBy: {
-            orderIndex: "asc"
-          }
+            orderIndex: "asc",
+          },
         },
         toolCallLogs: {
           orderBy: {
-            createdAt: "asc"
-          }
+            createdAt: "asc",
+          },
         },
         modelCallLogs: {
           orderBy: {
-            createdAt: "asc"
-          }
+            createdAt: "asc",
+          },
         },
         reviewQueueItems: {
           orderBy: {
-            createdAt: "asc"
-          }
-        }
-      }
+            createdAt: "asc",
+          },
+        },
+      },
     });
 
     if (!workflowRun) {
@@ -543,7 +554,9 @@ async function executeConnectorTool(input: {
       steps: workflowRun.steps.map(serializeWorkflowStep),
       toolCallLogs: workflowRun.toolCallLogs.map(serializeToolCallLog),
       modelCallLogs: workflowRun.modelCallLogs.map(serializeModelCallLog),
-      reviewQueueItems: workflowRun.reviewQueueItems.map(serializeReviewQueueItem)
+      reviewQueueItems: workflowRun.reviewQueueItems.map(
+        serializeReviewQueueItem,
+      ),
     });
   }
 
@@ -553,24 +566,26 @@ async function executeConnectorTool(input: {
     const reviewQueueItems = await prisma.reviewQueueItem.findMany({
       where: parsedInput.status
         ? {
-            status: parsedInput.status
+            status: parsedInput.status,
           }
         : {},
       include: {
         workflowRun: true,
         intakeItem: {
           include: {
-            intakeBatch: true
-          }
-        }
+            intakeBatch: true,
+          },
+        },
       },
       orderBy: {
-        createdAt: "desc"
-      }
+        createdAt: "desc",
+      },
     });
 
     return connectorResult({
-      reviewQueueItems: reviewQueueItems.map(serializeReviewQueueItemWithContext)
+      reviewQueueItems: reviewQueueItems.map(
+        serializeReviewQueueItemWithContext,
+      ),
     });
   }
 
@@ -579,16 +594,16 @@ async function executeConnectorTool(input: {
 
     const reviewQueueItem = await prisma.reviewQueueItem.findUnique({
       where: {
-        id: parsedInput.id
+        id: parsedInput.id,
       },
       include: {
         workflowRun: true,
         intakeItem: {
           include: {
-            intakeBatch: true
-          }
-        }
-      }
+            intakeBatch: true,
+          },
+        },
+      },
     });
 
     if (!reviewQueueItem) {
@@ -596,7 +611,7 @@ async function executeConnectorTool(input: {
     }
 
     return connectorResult({
-      reviewQueueItem: serializeReviewQueueItemWithContext(reviewQueueItem)
+      reviewQueueItem: serializeReviewQueueItemWithContext(reviewQueueItem),
     });
   }
 
@@ -604,7 +619,7 @@ async function executeConnectorTool(input: {
 }
 
 export async function executeReadOnlyToolInvocation(
-  input: ReadOnlyToolInvocationInput
+  input: ReadOnlyToolInvocationInput,
 ): Promise<ReadOnlyToolInvocationResult> {
   const requestedBy = input.requestedBy ?? "agent.readonly";
   const workflowRunId = input.workflowRunId ?? null;
@@ -615,14 +630,14 @@ export async function executeReadOnlyToolInvocation(
   const policyEvaluation = evaluateToolExecutionPolicy({
     toolName: input.toolName,
     executionMode: input.executionMode ?? "AGENT_AUTONOMOUS",
-    humanApprovalGranted: input.humanApprovalGranted ?? false
+    humanApprovalGranted: input.humanApprovalGranted ?? false,
   });
 
   const startedLog = await createStartedToolCallLog({
     toolName: input.toolName,
     workflowRunId,
     workflowStepId,
-    inputJson
+    inputJson,
   });
 
   const readOnlyBlock =
@@ -630,7 +645,8 @@ export async function executeReadOnlyToolInvocation(
       ? ensureExecutableReadOnlyTool(policyEvaluation.tool)
       : {
           reason: policyEvaluation.reason,
-          reasonCode: policyEvaluation.reasonCodes[0] ?? "TOOL_EXECUTION_FAILED"
+          reasonCode:
+            policyEvaluation.reasonCodes[0] ?? "TOOL_EXECUTION_FAILED",
         };
 
   if (readOnlyBlock) {
@@ -638,14 +654,14 @@ export async function executeReadOnlyToolInvocation(
       requestedBy,
       policyEvaluation,
       reason: readOnlyBlock.reason,
-      readOnlyReasonCode: readOnlyBlock.reasonCode
+      readOnlyReasonCode: readOnlyBlock.reasonCode,
     });
 
     const completedLog = await completeToolCallLog({
       toolCallLogId: startedLog.id,
       status: "FAILED",
       outputJson,
-      errorMessage: readOnlyBlock.reason
+      errorMessage: readOnlyBlock.reason,
     });
 
     const completedAt = completedLog.completedAt ?? new Date();
@@ -663,25 +679,25 @@ export async function executeReadOnlyToolInvocation(
       completedAt,
       policyEvaluation,
       connectorResult: null,
-      toolCallLog: completedLog
+      toolCallLog: completedLog,
     });
   }
 
   try {
     const result = await executeConnectorTool({
       toolName: input.toolName,
-      inputJson: input.inputJson
+      inputJson: input.inputJson,
     });
     const outputJson = successOutputJson({
       requestedBy,
       policyEvaluation,
-      connectorResult: result
+      connectorResult: result,
     });
 
     const completedLog = await completeToolCallLog({
       toolCallLogId: startedLog.id,
       status: "SUCCEEDED",
-      outputJson
+      outputJson,
     });
 
     const completedAt = completedLog.completedAt ?? new Date();
@@ -699,11 +715,13 @@ export async function executeReadOnlyToolInvocation(
       completedAt,
       policyEvaluation,
       connectorResult: result,
-      toolCallLog: completedLog
+      toolCallLog: completedLog,
     });
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : "Read-only tool execution failed.";
+      error instanceof Error
+        ? error.message
+        : "Read-only tool execution failed.";
     const outputJson = {
       connectorInvocation: true,
       executionAttempted: true,
@@ -714,14 +732,14 @@ export async function executeReadOnlyToolInvocation(
       executionMode: policyEvaluation.executionMode,
       executionEnabled: policyEvaluation.executionEnabled,
       humanApprovalGranted: policyEvaluation.humanApprovalGranted,
-      failureReason: errorMessage
+      failureReason: errorMessage,
     };
 
     const completedLog = await completeToolCallLog({
       toolCallLogId: startedLog.id,
       status: "FAILED",
       outputJson,
-      errorMessage
+      errorMessage,
     });
 
     const completedAt = completedLog.completedAt ?? new Date();
@@ -739,7 +757,7 @@ export async function executeReadOnlyToolInvocation(
       completedAt,
       policyEvaluation,
       connectorResult: null,
-      toolCallLog: completedLog
+      toolCallLog: completedLog,
     });
   }
 }

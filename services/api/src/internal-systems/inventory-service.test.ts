@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   findSimilarInventoryProducts,
-  lookupInventoryProduct
+  lookupInventoryProduct,
 } from "./inventory-service.js";
 
 describe("inventory-service", () => {
@@ -12,7 +12,7 @@ describe("inventory-service", () => {
       productLine: "stealth2",
       category: "drv",
       shaftBrand: "Ventus",
-      rawText: "TM stealth2 drv 10.5 Ventus stiff, no hc, sky mark on crown"
+      rawText: "TM stealth2 drv 10.5 Ventus stiff, no hc, sky mark on crown",
     });
 
     expect(result.productId).toBe("prod_taylormade_stealth2_driver_2023");
@@ -28,14 +28,15 @@ describe("inventory-service", () => {
       productLine: "TSR maybe TS2",
       category: "3w",
       shaftBrand: "Tensei",
-      rawText: "Titleist TSR maybe TS2 3w 15 deg Tensei s flex, face wear, hc included"
+      rawText:
+        "Titleist TSR maybe TS2 3w 15 deg Tensei s flex, face wear, hc included",
     });
 
     expect(result.brand).toBe("Titleist");
     expect(result.confidence).toBeLessThan(0.9);
     expect(result.similarProducts.length).toBeGreaterThanOrEqual(1);
     expect(result.similarProducts.map((product) => product.sku)).toContain(
-      "TITLEIST-TSR2-FWY-2023"
+      "TITLEIST-TSR2-FWY-2023",
     );
   });
 
@@ -44,13 +45,15 @@ describe("inventory-service", () => {
       brand: "PING",
       productLine: "G425",
       category: "irons",
-      rawText: "PING G425 irons 5-PW reg, worn grips, condition unclear"
+      rawText: "PING G425 irons 5-PW reg, worn grips, condition unclear",
     });
 
     expect(result.similarProducts[0]?.sku).toBe("PING-G425-IRONSET-2021");
-    expect(result.similarProducts.some((product) => product.sku === "PING-G430-IRONSET-2023")).toBe(
-      true
-    );
+    expect(
+      result.similarProducts.some(
+        (product) => product.sku === "PING-G430-IRONSET-2023",
+      ),
+    ).toBe(true);
   });
   it("matches expanded QA fixture products to seeded internal SKUs", () => {
     const cases = [
@@ -60,10 +63,10 @@ describe("inventory-service", () => {
           productLine: "G430 Max",
           category: "driver",
           shaftBrand: "PING Alta",
-          rawText: "PING G430 Max driver Tour X-Stiff condition 9.5 Mint"
+          rawText: "PING G430 Max driver Tour X-Stiff condition 9.5 Mint",
         },
         productId: "prod_ping_g430_max_driver_2023",
-        sku: "PING-G430MAX-DRV-2023"
+        sku: "PING-G430MAX-DRV-2023",
       },
       {
         input: {
@@ -71,10 +74,11 @@ describe("inventory-service", () => {
           productLine: "RTX 6 ZipCore",
           category: "wedge",
           shaftBrand: "True Temper",
-          rawText: "Cleveland RTX 6 ZipCore wedge Senior flex condition 9.0 Above Average"
+          rawText:
+            "Cleveland RTX 6 ZipCore wedge Senior flex condition 9.0 Above Average",
         },
         productId: "prod_cleveland_rtx6_zipcore_wedge_2023",
-        sku: "CLEVELAND-RTX6ZIPCORE-WEDGE-2023"
+        sku: "CLEVELAND-RTX6ZIPCORE-WEDGE-2023",
       },
       {
         input: {
@@ -82,10 +86,10 @@ describe("inventory-service", () => {
           productLine: "White Hot OG",
           category: "putter",
           shaftBrand: "Odyssey Stroke Lab",
-          rawText: "Odyssey White Hot OG putter condition 8.0 Average"
+          rawText: "Odyssey White Hot OG putter condition 8.0 Average",
         },
         productId: "prod_odyssey_white_hot_og_putter_2021",
-        sku: "ODYSSEY-WHITEHOTOG-PUTTER-2021"
+        sku: "ODYSSEY-WHITEHOTOG-PUTTER-2021",
       },
       {
         input: {
@@ -93,11 +97,12 @@ describe("inventory-service", () => {
           productLine: "JPX 923 Hot Metal",
           category: "irons",
           shaftBrand: "Nippon",
-          rawText: "Mizuno JPX 923 Hot Metal irons Tour X-Stiff condition 9.0 Above Average"
+          rawText:
+            "Mizuno JPX 923 Hot Metal irons Tour X-Stiff condition 9.0 Above Average",
         },
         productId: "prod_mizuno_jpx923_hot_metal_iron_set_2023",
-        sku: "MIZUNO-JPX923HOTMETAL-IRONSET-2023"
-      }
+        sku: "MIZUNO-JPX923HOTMETAL-IRONSET-2023",
+      },
     ];
 
     for (const testCase of cases) {
@@ -109,25 +114,24 @@ describe("inventory-service", () => {
     }
   });
 
-
   it("does not select an arbitrary product for a broad shared family", () => {
     const result = lookupInventoryProduct({
       brand: "Titleist",
       productLine: "TSR",
       category: "fairway wood",
-      rawText: "Titleist TSR fairway wood"
+      rawText: "Titleist TSR fairway wood",
     });
 
     expect(result.productId).toBeNull();
     expect(result.sku).toBeNull();
     expect(result.matchReasons).toContain(
-      "Multiple internal products had similar evidence and require generation confirmation."
+      "Multiple internal products had similar evidence and require generation confirmation.",
     );
     expect(result.similarProducts.map((product) => product.productId)).toEqual(
       expect.arrayContaining([
         "prod_titleist_tsr2_fairway_2023",
-        "prod_titleist_tsr3_fairway_2023"
-      ])
+        "prod_titleist_tsr3_fairway_2023",
+      ]),
     );
   });
 
@@ -136,18 +140,18 @@ describe("inventory-service", () => {
       {
         productLine: "TSR2",
         rawText: "Titleist TSR2 3w",
-        expectedProductId: "prod_titleist_tsr2_fairway_2023"
+        expectedProductId: "prod_titleist_tsr2_fairway_2023",
       },
       {
         productLine: "TSR3",
         rawText: "Titleist TSR3 fairway wood",
-        expectedProductId: "prod_titleist_tsr3_fairway_2023"
+        expectedProductId: "prod_titleist_tsr3_fairway_2023",
       },
       {
         productLine: "TS2",
         rawText: "Titleist TS2 3w",
-        expectedProductId: "prod_titleist_ts2_fairway_2019"
-      }
+        expectedProductId: "prod_titleist_ts2_fairway_2019",
+      },
     ];
 
     for (const testCase of cases) {
@@ -155,7 +159,7 @@ describe("inventory-service", () => {
         brand: "Titleist",
         productLine: testCase.productLine,
         category: "fairway wood",
-        rawText: testCase.rawText
+        rawText: testCase.rawText,
       });
 
       expect(result.productId).toBe(testCase.expectedProductId);
@@ -163,20 +167,19 @@ describe("inventory-service", () => {
     }
   });
 
-
   it("matches a curated hybrid alias to the correct internal product", () => {
     const result = lookupInventoryProduct({
       brand: "PING",
       productLine: "G430 Hybrid",
       category: "hy",
       shaftBrand: "PING Alta",
-      rawText: "PING G430 hybrid Senior flex condition 8.0 Average"
+      rawText: "PING G430 hybrid Senior flex condition 8.0 Average",
     });
 
     expect(result).toMatchObject({
       productId: "prod_ping_g430_hybrid_2023",
       sku: "PING-G430-HYB-2023",
-      category: "HYBRID"
+      category: "HYBRID",
     });
     expect(result.confidence).toBeGreaterThanOrEqual(0.86);
   });
@@ -185,30 +188,27 @@ describe("inventory-service", () => {
     const result = lookupInventoryProduct({
       brand: "PING",
       productLine: "G430",
-      rawText: "PING G430 condition 8.0 Average"
+      rawText: "PING G430 condition 8.0 Average",
     });
 
     expect(result.productId).toBeNull();
     expect(result.similarProducts.length).toBeGreaterThanOrEqual(2);
   });
 
-
   it("keeps an exact product match when only condition is unclear", () => {
     const result = lookupInventoryProduct({
       brand: "PING",
       productLine: "G425",
       category: "irons",
-      rawText:
-        "PING G425 irons 5-PW regular flex condition unclear"
+      rawText: "PING G425 irons 5-PW regular flex condition unclear",
     });
 
     expect(result).toMatchObject({
       productId: "prod_ping_g425_iron_set_2021",
       sku: "PING-G425-IRONSET-2021",
-      category: "IRON_SET"
+      category: "IRON_SET",
     });
   });
-
 
   it("prefers an explicit parsed Stealth 2 model over the shorter Stealth family", () => {
     const result = lookupInventoryProduct({
@@ -217,20 +217,16 @@ describe("inventory-service", () => {
       category: "DRIVER",
       shaftBrand: "Fujikura",
       shaftModel: "Ventus",
-      rawText:
-        "TM stealth2 drv 10.5 Ventus stiff, no hc, sky mark on crown"
+      rawText: "TM stealth2 drv 10.5 Ventus stiff, no hc, sky mark on crown",
     });
 
     expect(result).toMatchObject({
       productId: "prod_taylormade_stealth2_driver_2023",
       sku: "TM-STEALTH2-DRV-2023",
-      category: "DRIVER"
+      category: "DRIVER",
     });
-    expect(result.matchReasons).toContain(
-      "Product line matched Stealth 2."
-    );
+    expect(result.matchReasons).toContain("Product line matched Stealth 2.");
   });
-
 
   it("ignores serial uncertainty when the product identity is exact", () => {
     const result = lookupInventoryProduct({
@@ -238,19 +234,18 @@ describe("inventory-service", () => {
       productLine: "White Hot Versa",
       category: "PUTTER",
       rawText:
-        "normalized payload brand=Odyssey model='White Hot Versa' cat=putter condition='9.0 Above Average' value=110 serial=UNKNOWN"
+        "normalized payload brand=Odyssey model='White Hot Versa' cat=putter condition='9.0 Above Average' value=110 serial=UNKNOWN",
     });
 
     expect(result).toMatchObject({
       productId: "prod_odyssey_white_hot_versa_putter_2023",
       sku: "ODYSSEY-WHITEHOTVERSA-PUTTER-2023",
       productLine: "White Hot Versa",
-      category: "PUTTER"
+      category: "PUTTER",
     });
     expect(result.confidence).toBeGreaterThanOrEqual(0.86);
     expect(result.matchReasons).toContain(
-      "Product line matched White Hot Versa."
+      "Product line matched White Hot Versa.",
     );
   });
-
 });

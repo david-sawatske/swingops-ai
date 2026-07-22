@@ -1,20 +1,13 @@
-import type { ReviewQueueIntakeBatchSummary, ReviewQueueIntakeItemSummary, ReviewQueueItem } from "./reviewQueue";
+import type {
+  ReviewQueueIntakeBatchSummary,
+  ReviewQueueIntakeItemSummary,
+} from "./reviewQueue";
 
 export type WorkflowRunStatus =
-  | "QUEUED"
-  | "RUNNING"
-  | "COMPLETED"
-  | "FAILED"
-  | "NEEDS_REVIEW"
-  | "CANCELLED";
+  "QUEUED" | "RUNNING" | "COMPLETED" | "FAILED" | "NEEDS_REVIEW" | "CANCELLED";
 
 export type WorkflowStepStatus =
-  | "PENDING"
-  | "RUNNING"
-  | "COMPLETED"
-  | "FAILED"
-  | "SKIPPED"
-  | "RETRYING";
+  "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "SKIPPED" | "RETRYING";
 
 export type WorkflowStepType =
   | "PARSE_INPUT"
@@ -47,18 +40,10 @@ export type WorkflowFailureDetails = {
 };
 
 export type ModelProviderName =
-  | "MOCK"
-  | "OPENAI"
-  | "ANTHROPIC"
-  | "AZURE_OPENAI"
-  | "OLLAMA";
+  "MOCK" | "OPENAI" | "ANTHROPIC" | "AZURE_OPENAI" | "OLLAMA";
 
 export type ModelCallStatus =
-  | "STARTED"
-  | "SUCCEEDED"
-  | "FAILED"
-  | "RETRIED"
-  | "SKIPPED";
+  "STARTED" | "SUCCEEDED" | "FAILED" | "RETRIED" | "SKIPPED";
 
 export type ModelCallAttemptStatus =
   | "SUCCESS"
@@ -172,11 +157,7 @@ export type ListWorkflowRunsResponse = {
 };
 
 export type WorkflowToolCallingPlanStatus =
-  | "PLANNED"
-  | "EXECUTED"
-  | "PARTIALLY_EXECUTED"
-  | "FAILED"
-  | "BLOCKED";
+  "PLANNED" | "EXECUTED" | "PARTIALLY_EXECUTED" | "FAILED" | "BLOCKED";
 
 export type WorkflowToolCallingPlannedCall = {
   planCallId: string;
@@ -189,13 +170,14 @@ export type WorkflowToolCallingPlannedCall = {
   expectedRequiresHumanApproval: boolean;
 };
 
-export type WorkflowToolCallingPlanCallResult = WorkflowToolCallingPlannedCall & {
-  status: "SUCCEEDED" | "FAILED" | "BLOCKED";
-  policyDecision: "ALLOW" | "REQUIRE_HUMAN_APPROVAL" | "BLOCK";
-  policyReasonCodes: string[];
-  policyReason: string;
-  executionAttempted: boolean;
-  toolCallLogId: string;
-  connectorResultPreview: unknown | null;
-  failurePreview: string | null;
-};
+export type WorkflowToolCallingPlanCallResult =
+  WorkflowToolCallingPlannedCall & {
+    status: "SUCCEEDED" | "FAILED" | "BLOCKED";
+    policyDecision: "ALLOW" | "REQUIRE_HUMAN_APPROVAL" | "BLOCK";
+    policyReasonCodes: string[];
+    policyReason: string;
+    executionAttempted: boolean;
+    toolCallLogId: string;
+    connectorResultPreview: unknown | null;
+    failurePreview: string | null;
+  };

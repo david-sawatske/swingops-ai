@@ -1,13 +1,8 @@
 import type { ParserEvidence } from "./parser-evidence.js";
-import type {
-  ProductResolution
-} from "../product-reference/product-reference-resolver.js";
+import type { ProductResolution } from "../product-reference/product-reference-resolver.js";
 
 export type MultiSourceIntakeSourceType =
-  | "FREE_TEXT"
-  | "POORLY_FORMED_CSV"
-  | "EMAIL"
-  | "LOG";
+  "FREE_TEXT" | "POORLY_FORMED_CSV" | "EMAIL" | "LOG";
 
 export type MultiSourceIntakeRecord = {
   id: string;

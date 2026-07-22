@@ -31,12 +31,13 @@ export function FinalAuditTrace({
   result: ExecuteEndToEndAgenticTradeInDemoResponse;
   reviewStatusSummary: string;
 }) {
-  const priorReviewSuggestions = result.priorReviewLearningSuggestionsByItem.flatMap(
-    (item) => item.suggestions,
-  );
-  const fieldRepairOutcomes =
-    result.fieldRepairExecution.recordOutcomes ?? [];
-  const finalProviderAttempt = result.providerFallbackTrace.attempts.at(-1) ?? null;
+  const priorReviewSuggestions =
+    result.priorReviewLearningSuggestionsByItem.flatMap(
+      (item) => item.suggestions,
+    );
+  const fieldRepairOutcomes = result.fieldRepairExecution.recordOutcomes ?? [];
+  const finalProviderAttempt =
+    result.providerFallbackTrace.attempts.at(-1) ?? null;
 
   return (
     <details className="guided-final-section guided-run-validation-detail guided-final-audit-trace">
@@ -45,8 +46,8 @@ export function FinalAuditTrace({
           <span className="model-route-card__eyebrow">Audit trace</span>
           <h4>Systems, safety, and identifiers</h4>
           <p>
-            Technical trace data is kept for auditability, but it is secondary to
-            the five-step workflow recap above.
+            Technical trace data is kept for auditability, but it is secondary
+            to the five-step workflow recap above.
           </p>
         </div>
       </summary>
@@ -55,12 +56,20 @@ export function FinalAuditTrace({
         <div className="guided-final-system-list">
           <article>
             <strong>Model router</strong>
-            <p>{formatProvider(finalSummary.selectedProvider, finalSummary.selectedModel)}</p>
+            <p>
+              {formatProvider(
+                finalSummary.selectedProvider,
+                finalSummary.selectedModel,
+              )}
+            </p>
           </article>
           <article>
             <strong>Provider execution</strong>
             <p>
-              {formatProvider(result.providerFallbackTrace.finalProvider, result.providerFallbackTrace.finalModel)}
+              {formatProvider(
+                result.providerFallbackTrace.finalProvider,
+                result.providerFallbackTrace.finalModel,
+              )}
               {" · "}
               {getModelExecutionValidationLabel(result.fieldRepairExecution)}
             </p>
@@ -71,7 +80,9 @@ export function FinalAuditTrace({
           </article>
           <article>
             <strong>Knowledge / RAG</strong>
-            <p>{finalSummary.knowledgeMatchCount} grounded match(es) returned.</p>
+            <p>
+              {finalSummary.knowledgeMatchCount} grounded match(es) returned.
+            </p>
           </article>
           <article>
             <strong>Inventory system</strong>
@@ -79,7 +90,9 @@ export function FinalAuditTrace({
           </article>
           <article>
             <strong>Valuation system</strong>
-            <p>{finalSummary.valuationRangeCount} valuation range(s) generated.</p>
+            <p>
+              {finalSummary.valuationRangeCount} valuation range(s) generated.
+            </p>
           </article>
           <article>
             <strong>Review queue</strong>
@@ -96,12 +109,16 @@ export function FinalAuditTrace({
           <article>
             <strong>AI-ready record store</strong>
             <p>
-              {candidateRecordCount} candidate record(s); {finalRecordCount} run-scoped final record(s).
+              {candidateRecordCount} candidate record(s); {finalRecordCount}{" "}
+              run-scoped final record(s).
             </p>
           </article>
           <article>
             <strong>Safety policy</strong>
-            <p>{finalSummary.blockedMutationToolCallCount} unsafe mutation request(s) blocked.</p>
+            <p>
+              {finalSummary.blockedMutationToolCallCount} unsafe mutation
+              request(s) blocked.
+            </p>
           </article>
           <article>
             <strong>Quality status</strong>
@@ -124,7 +141,9 @@ export function FinalAuditTrace({
           </div>
           <div>
             <dt>Provider fallback</dt>
-            <dd>{result.providerFallbackTrace.fallbackUsed ? "Used" : "Not used"}</dd>
+            <dd>
+              {result.providerFallbackTrace.fallbackUsed ? "Used" : "Not used"}
+            </dd>
           </div>
           <div>
             <dt>Outage simulation</dt>
@@ -152,11 +171,17 @@ export function FinalAuditTrace({
           </div>
           <div>
             <dt>Est. model cost</dt>
-            <dd>{formatCostEstimate(finalProviderAttempt?.estimatedCostUsd ?? null)}</dd>
+            <dd>
+              {formatCostEstimate(
+                finalProviderAttempt?.estimatedCostUsd ?? null,
+              )}
+            </dd>
           </div>
           <div>
             <dt>Model assistance validation</dt>
-            <dd>{getModelExecutionValidationLabel(result.fieldRepairExecution)}</dd>
+            <dd>
+              {getModelExecutionValidationLabel(result.fieldRepairExecution)}
+            </dd>
           </div>
           <div>
             <dt>Record outcomes</dt>
@@ -183,11 +208,11 @@ export function FinalAuditTrace({
         <div className="guided-final-review-callout guided-model-execution-note">
           <strong>Model assistance is advisory and evidence-bound</strong>
           <p>
-            Deterministic parsing, product resolution, reference data, internal tools,
-            and prior approved corrections remain stronger evidence sources. The model
-            can suggest a repair, compare supplied candidates, or explain why no safe
-            repair is available. Every displayed outcome passed the record-aware
-            contract.
+            Deterministic parsing, product resolution, reference data, internal
+            tools, and prior approved corrections remain stronger evidence
+            sources. The model can suggest a repair, compare supplied
+            candidates, or explain why no safe repair is available. Every
+            displayed outcome passed the record-aware contract.
           </p>
         </div>
 
@@ -206,9 +231,11 @@ export function FinalAuditTrace({
         {result.fieldRepairExecution.validationErrors.length > 0 ? (
           <div className="guided-final-review-callout">
             <strong>Model assistance validation errors</strong>
-            {result.fieldRepairExecution.validationErrors.slice(0, 4).map((error) => (
-              <p key={error}>{error}</p>
-            ))}
+            {result.fieldRepairExecution.validationErrors
+              .slice(0, 4)
+              .map((error) => (
+                <p key={error}>{error}</p>
+              ))}
           </div>
         ) : null}
 
@@ -220,7 +247,8 @@ export function FinalAuditTrace({
             ))}
             {priorReviewSuggestions.length > 4 ? (
               <p className="guided-validation-empty-note">
-                Showing 4 of {priorReviewSuggestions.length} prior review suggestion(s).
+                Showing 4 of {priorReviewSuggestions.length} prior review
+                suggestion(s).
               </p>
             ) : null}
           </div>

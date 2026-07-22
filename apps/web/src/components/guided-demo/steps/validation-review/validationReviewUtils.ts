@@ -29,7 +29,9 @@ export function asRecord(value: unknown): Record<string, unknown> | null {
 }
 
 export function asString(value: unknown): string | null {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : null;
 }
 
 export function asNumber(value: unknown): number | null {
@@ -38,7 +40,10 @@ export function asNumber(value: unknown): number | null {
 
 export function asStringArray(value: unknown): string[] {
   return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    ? value.filter(
+        (item): item is string =>
+          typeof item === "string" && item.trim().length > 0,
+      )
     : [];
 }
 
@@ -61,40 +66,58 @@ export function formatFieldLabel(value: string) {
     .replace(/^./, (first) => first.toUpperCase());
 }
 
-export function normalizeCategoryValue(value: unknown): ReviewCorrectionCategory | "" {
+export function normalizeCategoryValue(
+  value: unknown,
+): ReviewCorrectionCategory | "" {
   const normalized = normalizeComparable(value);
 
   const match = CATEGORY_OPTIONS.find((option) => {
-    return normalizeComparable(option.value) === normalized || normalizeComparable(option.label) === normalized;
+    return (
+      normalizeComparable(option.value) === normalized ||
+      normalizeComparable(option.label) === normalized
+    );
   });
 
   return match?.value ?? "";
 }
 
-export function normalizeShaftFlexValue(value: unknown): ReviewCorrectionShaftFlex | "" {
+export function normalizeShaftFlexValue(
+  value: unknown,
+): ReviewCorrectionShaftFlex | "" {
   const normalized = normalizeComparable(value);
 
   const match = SHAFT_FLEX_OPTIONS.find((option) => {
-    return normalizeComparable(option.value) === normalized || normalizeComparable(option.label) === normalized;
+    return (
+      normalizeComparable(option.value) === normalized ||
+      normalizeComparable(option.label) === normalized
+    );
   });
 
   return match?.value ?? "";
 }
 
-export function normalizeConditionGradeValue(value: unknown): ReviewConditionGrade | "" {
+export function normalizeConditionGradeValue(
+  value: unknown,
+): ReviewConditionGrade | "" {
   const stringValue = asString(value);
 
   if (!stringValue) {
     return "";
   }
 
-  const match = CONDITION_GRADE_OPTIONS.find((option) => option === stringValue);
+  const match = CONDITION_GRADE_OPTIONS.find(
+    (option) => option === stringValue,
+  );
 
   return match ?? "";
 }
 
-export function inferConditionGradeFromText(value: string): ReviewConditionGrade | "" {
-  const match = value.match(/\b(9\.5 Mint|9\.0 Above Average|8\.0 Average|7\.0 Below Average|6\.0 Poor)\b/i);
+export function inferConditionGradeFromText(
+  value: string,
+): ReviewConditionGrade | "" {
+  const match = value.match(
+    /\b(9\.5 Mint|9\.0 Above Average|8\.0 Average|7\.0 Below Average|6\.0 Poor)\b/i,
+  );
 
   if (!match) {
     return "";
@@ -109,11 +132,16 @@ export function inferConditionGradeFromText(value: string): ReviewConditionGrade
   );
 }
 
-export function formatDisplayValue(value: unknown, options: { currency?: boolean } = {}) {
+export function formatDisplayValue(
+  value: unknown,
+  options: { currency?: boolean } = {},
+) {
   const numberValue = asNumber(value);
 
   if (numberValue !== null) {
-    return options.currency ? `$${numberValue.toLocaleString()}` : numberValue.toLocaleString();
+    return options.currency
+      ? `$${numberValue.toLocaleString()}`
+      : numberValue.toLocaleString();
   }
 
   const stringValue = asString(value);
@@ -129,7 +157,10 @@ export function formatDisplayValue(value: unknown, options: { currency?: boolean
   return formatEnumLabel(stringValue);
 }
 
-export function getFirstValue(record: Record<string, unknown> | null, keys: string[]) {
+export function getFirstValue(
+  record: Record<string, unknown> | null,
+  keys: string[],
+) {
   if (!record) {
     return null;
   }
@@ -176,7 +207,10 @@ export function getParserEvidenceForField(
   return null;
 }
 
-export function getFirstString(record: Record<string, unknown> | null, keys: string[]) {
+export function getFirstString(
+  record: Record<string, unknown> | null,
+  keys: string[],
+) {
   const value = getFirstValue(record, keys);
   const stringValue = asString(value);
 
@@ -189,8 +223,13 @@ export function getProposedRecord(reviewItem: ReviewQueueItem | null) {
 
 export function getRecordIdentity(record: Record<string, unknown>) {
   return (
-    getFirstString(record, ["id", "itemId", "parsedItemId", "sourceRecordId", "recordId"]) ??
-    null
+    getFirstString(record, [
+      "id",
+      "itemId",
+      "parsedItemId",
+      "sourceRecordId",
+      "recordId",
+    ]) ?? null
   );
 }
 
@@ -210,9 +249,11 @@ export function getRecordLabel(input: {
     getFirstString(input.parsedRecord, ["category"]) ??
     getFirstString(proposedRecord, ["category"]);
 
-  const labelParts = [brand, productLine, category ? formatEnumLabel(category) : null].filter(
-    Boolean,
-  );
+  const labelParts = [
+    brand,
+    productLine,
+    category ? formatEnumLabel(category) : null,
+  ].filter(Boolean);
 
   return labelParts.length > 0
     ? labelParts.join(" · ")
@@ -294,7 +335,9 @@ export function getReviewOutcomeForItem(
   }
 
   return (
-    reviewOutcomes.find((outcome) => outcome.reviewQueueItemId === reviewItem.id) ?? null
+    reviewOutcomes.find(
+      (outcome) => outcome.reviewQueueItemId === reviewItem.id,
+    ) ?? null
   );
 }
 
@@ -307,9 +350,8 @@ export function getModelReviewOutcomeForRecord(
   }
 
   return (
-    recordOutcomes?.find(
-      (outcome) => outcome.recordId === recordIdentity,
-    ) ?? null
+    recordOutcomes?.find((outcome) => outcome.recordId === recordIdentity) ??
+    null
   );
 }
 
@@ -326,10 +368,16 @@ export function getPriorReviewSuggestionsForRecord(input: {
     return directMatch.suggestions;
   }
 
-  return input.result.priorReviewLearningSuggestionsByItem[input.index]?.suggestions ?? [];
+  return (
+    input.result.priorReviewLearningSuggestionsByItem[input.index]
+      ?.suggestions ?? []
+  );
 }
 
-export function findRecordIndexFromText(values: unknown[], recordCount: number) {
+export function findRecordIndexFromText(
+  values: unknown[],
+  recordCount: number,
+) {
   for (const value of values) {
     const text = asString(value);
 
@@ -348,14 +396,19 @@ export function findRecordIndexFromText(values: unknown[], recordCount: number) 
   return null;
 }
 
-export function fieldMatches(field: string | null | undefined, fields: string[]) {
+export function fieldMatches(
+  field: string | null | undefined,
+  fields: string[],
+) {
   if (!field) {
     return false;
   }
 
   const normalizedField = normalizeComparable(field);
 
-  return fields.some((candidate) => normalizeComparable(candidate) === normalizedField);
+  return fields.some(
+    (candidate) => normalizeComparable(candidate) === normalizedField,
+  );
 }
 
 export function getEvidenceForRecord<T>(
@@ -373,8 +426,12 @@ export function getEvidenceForRecord<T>(
     }
 
     const evidenceIdentity =
-      getFirstString(record, ["itemId", "recordId", "parsedItemId", "sourceRecordId"]) ??
-      getFirstString(asRecord(record.lookup), ["itemId", "recordId"]);
+      getFirstString(record, [
+        "itemId",
+        "recordId",
+        "parsedItemId",
+        "sourceRecordId",
+      ]) ?? getFirstString(asRecord(record.lookup), ["itemId", "recordId"]);
 
     return evidenceIdentity === input.recordIdentity;
   });
@@ -403,11 +460,19 @@ export function findMatchingReviewItem(input: {
       const reviewIntakeItem = asRecord(reviewItemRecord?.intakeItem);
       const reviewSourceRowNumber = asNumber(reviewIntakeItem?.sourceRowNumber);
 
-      if (recordIdentity && proposedIdentity && recordIdentity === proposedIdentity) {
+      if (
+        recordIdentity &&
+        proposedIdentity &&
+        recordIdentity === proposedIdentity
+      ) {
         return true;
       }
 
-      if (intakeItemId && reviewItem.intakeItemId && intakeItemId === reviewItem.intakeItemId) {
+      if (
+        intakeItemId &&
+        reviewItem.intakeItemId &&
+        intakeItemId === reviewItem.intakeItemId
+      ) {
         return true;
       }
 
@@ -431,8 +496,12 @@ export function getInventorySummary(evidence: Record<string, unknown> | null) {
 
   const lookup = asRecord(evidence.lookup);
   const productId = getFirstString(lookup, ["productId", "sku", "id"]);
-  const confidence = asNumber(lookup?.confidence) ?? asNumber(evidence.confidence);
-  const matched = evidence.matched === true || evidence.hasMatch === true || Boolean(productId);
+  const confidence =
+    asNumber(lookup?.confidence) ?? asNumber(evidence.confidence);
+  const matched =
+    evidence.matched === true ||
+    evidence.hasMatch === true ||
+    Boolean(productId);
 
   if (!matched) {
     return "No internal inventory match found.";
@@ -565,12 +634,7 @@ export function shouldValidationCheckBelongToCard(input: {
   recordCount: number;
 }) {
   const checkRecordIndex = findRecordIndexFromText(
-    [
-      input.check.id,
-      input.check.label,
-      input.check.message,
-      input.check.field,
-    ],
+    [input.check.id, input.check.label, input.check.message, input.check.field],
     input.recordCount,
   );
 
@@ -586,7 +650,10 @@ export function shouldValidationCheckBelongToCard(input: {
     return true;
   }
 
-  if (input.check.reviewRequired && fieldMatches(input.check.field, input.card.missingFields)) {
+  if (
+    input.check.reviewRequired &&
+    fieldMatches(input.check.field, input.card.missingFields)
+  ) {
     return true;
   }
 
@@ -629,72 +696,94 @@ export function buildRecordReviewCards(
       : result.reviewQueueItemsCreated;
   const usedReviewItemIds = new Set<string>();
 
-  const cards: RecordReviewCard[] = result.parsedItems.map((parsedItem: ParsedItem, index) => {
-    const parsedRecord = asRecord(parsedItem) ?? {};
-    const recordIdentity = getRecordIdentity(parsedRecord);
-    const reviewItem = findMatchingReviewItem({
-      parsedRecord,
-      reviewItems,
-      usedReviewItemIds,
-    });
+  const cards: RecordReviewCard[] = result.parsedItems.map(
+    (parsedItem: ParsedItem, index) => {
+      const parsedRecord = asRecord(parsedItem) ?? {};
+      const recordIdentity = getRecordIdentity(parsedRecord);
+      const reviewItem = findMatchingReviewItem({
+        parsedRecord,
+        reviewItems,
+        usedReviewItemIds,
+      });
 
-    if (reviewItem) {
-      usedReviewItemIds.add(reviewItem.id);
-    }
+      if (reviewItem) {
+        usedReviewItemIds.add(reviewItem.id);
+      }
 
-    const inventoryEvidence = getEvidenceForRecord(result.inventoryMatchesByItem, {
-      index,
-      recordIdentity,
-    });
-    const valuationEvidence = getEvidenceForRecord(result.valuationEvidenceByItem, {
-      index,
-      recordIdentity,
-    });
-    const reviewOutcome = getReviewOutcomeForItem(reviewItem, result.reviewOutcomes);
-    const modelReviewOutcome = getModelReviewOutcomeForRecord(
-      result.fieldRepairExecution.recordOutcomes,
-      recordIdentity,
-    );
-    const missingFields = getMissingFields({ parsedRecord, reviewItem });
-    const reviewReasons = getReviewReasons({ parsedRecord, reviewItem, valuationEvidence });
-
-    return {
-      id: recordIdentity ?? reviewItem?.id ?? `record-${index + 1}`,
-      index,
-      label: getRecordLabel({ parsedRecord, reviewItem, fallbackIndex: index }),
-      status:
-        reviewItem?.status === "RESOLVED" || reviewItem?.status === "DISMISSED"
-          ? "resolved"
-          : reviewItem || missingFields.length > 0 || reviewReasons.length > 0
-            ? "needs-review"
-            : "ready",
-      statusLabel:
-        reviewItem?.status === "RESOLVED"
-          ? "Resolved"
-          : reviewItem?.status === "DISMISSED"
-            ? "Dismissed"
-            : reviewItem || missingFields.length > 0 || reviewReasons.length > 0
-              ? "Needs review"
-              : "Passed gates",
-      parsedRecord,
-      reviewItem,
-      reviewOutcome,
-      modelReviewOutcome,
-      inventoryEvidence,
-      valuationEvidence,
-      sourceEvidence: getSourceEvidence({ parsedRecord, reviewItem }),
-      priorReviewSuggestions: getPriorReviewSuggestionsForRecord({
-        result,
-        index,
+      const inventoryEvidence = getEvidenceForRecord(
+        result.inventoryMatchesByItem,
+        {
+          index,
+          recordIdentity,
+        },
+      );
+      const valuationEvidence = getEvidenceForRecord(
+        result.valuationEvidenceByItem,
+        {
+          index,
+          recordIdentity,
+        },
+      );
+      const reviewOutcome = getReviewOutcomeForItem(
+        reviewItem,
+        result.reviewOutcomes,
+      );
+      const modelReviewOutcome = getModelReviewOutcomeForRecord(
+        result.fieldRepairExecution.recordOutcomes,
         recordIdentity,
-      }),
-      missingFields,
-      reviewReasons,
-      validationChecks: [],
-      retryEvents: [],
-      suggestedAction: "",
-    };
-  });
+      );
+      const missingFields = getMissingFields({ parsedRecord, reviewItem });
+      const reviewReasons = getReviewReasons({
+        parsedRecord,
+        reviewItem,
+        valuationEvidence,
+      });
+
+      return {
+        id: recordIdentity ?? reviewItem?.id ?? `record-${index + 1}`,
+        index,
+        label: getRecordLabel({
+          parsedRecord,
+          reviewItem,
+          fallbackIndex: index,
+        }),
+        status:
+          reviewItem?.status === "RESOLVED" ||
+          reviewItem?.status === "DISMISSED"
+            ? "resolved"
+            : reviewItem || missingFields.length > 0 || reviewReasons.length > 0
+              ? "needs-review"
+              : "ready",
+        statusLabel:
+          reviewItem?.status === "RESOLVED"
+            ? "Resolved"
+            : reviewItem?.status === "DISMISSED"
+              ? "Dismissed"
+              : reviewItem ||
+                  missingFields.length > 0 ||
+                  reviewReasons.length > 0
+                ? "Needs review"
+                : "Passed gates",
+        parsedRecord,
+        reviewItem,
+        reviewOutcome,
+        modelReviewOutcome,
+        inventoryEvidence,
+        valuationEvidence,
+        sourceEvidence: getSourceEvidence({ parsedRecord, reviewItem }),
+        priorReviewSuggestions: getPriorReviewSuggestionsForRecord({
+          result,
+          index,
+          recordIdentity,
+        }),
+        missingFields,
+        reviewReasons,
+        validationChecks: [],
+        retryEvents: [],
+        suggestedAction: "",
+      };
+    },
+  );
 
   for (const reviewItem of reviewItems) {
     if (usedReviewItemIds.has(reviewItem.id)) {
@@ -704,14 +793,21 @@ export function buildRecordReviewCards(
     const parsedRecord = getProposedRecord(reviewItem) ?? {};
     const index = cards.length;
     const recordIdentity = getRecordIdentity(parsedRecord);
-    const reviewOutcome = getReviewOutcomeForItem(reviewItem, result.reviewOutcomes);
+    const reviewOutcome = getReviewOutcomeForItem(
+      reviewItem,
+      result.reviewOutcomes,
+    );
     const modelReviewOutcome = getModelReviewOutcomeForRecord(
       result.fieldRepairExecution.recordOutcomes,
       recordIdentity,
     );
     const missingFields = getMissingFields({ parsedRecord, reviewItem });
     const valuationEvidence = null;
-    const reviewReasons = getReviewReasons({ parsedRecord, reviewItem, valuationEvidence });
+    const reviewReasons = getReviewReasons({
+      parsedRecord,
+      reviewItem,
+      valuationEvidence,
+    });
 
     cards.push({
       id: reviewItem.id,
@@ -761,9 +857,14 @@ export function buildRecordReviewCards(
     );
 
     const hasBlockingValidation = card.validationChecks.some(
-      (check) => check.reviewRequired || check.status === "FAIL" || check.status === "WARNING",
+      (check) =>
+        check.reviewRequired ||
+        check.status === "FAIL" ||
+        check.status === "WARNING",
     );
-    const hasUnresolvedRetry = card.retryEvents.some((event) => event.status === "UNRESOLVED");
+    const hasUnresolvedRetry = card.retryEvents.some(
+      (event) => event.status === "UNRESOLVED",
+    );
 
     if (
       card.status === "ready" &&
@@ -806,7 +907,9 @@ export function buildRecordReviewCards(
   const initiallyAssignedRetryEventIds = new Set(
     cards.flatMap((card) => card.retryEvents.map((event) => event.id)),
   );
-  const activeReviewCards = cards.filter((card) => card.status === "needs-review");
+  const activeReviewCards = cards.filter(
+    (card) => card.status === "needs-review",
+  );
   const singleActiveReviewCard =
     activeReviewCards.length === 1 ? activeReviewCards[0] : null;
 

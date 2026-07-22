@@ -4,7 +4,7 @@ import {
   getModelConfig,
   getModelProvider,
   listModelConfigs,
-  listModelProviders
+  listModelProviders,
 } from "./model-provider-registry.js";
 
 describe("model provider registry", () => {
@@ -16,7 +16,7 @@ describe("model provider registry", () => {
       "OPENAI",
       "ANTHROPIC",
       "AZURE_OPENAI",
-      "OLLAMA"
+      "OLLAMA",
     ]);
   });
 
@@ -31,7 +31,7 @@ describe("model provider registry", () => {
   it("looks up a specific model config", () => {
     const config = getModelConfig({
       provider: "ANTHROPIC",
-      model: "claude-3-5-sonnet"
+      model: "claude-3-5-sonnet",
     });
 
     expect(config?.qualityTier).toBe("HIGH");
@@ -40,17 +40,17 @@ describe("model provider registry", () => {
 
   it("filters model configs by supported task type", () => {
     const validationModels = listModelConfigs({
-      taskType: "VALIDATION"
+      taskType: "VALIDATION",
     });
 
     expect(validationModels.map((model) => model.provider)).toEqual([
       "MOCK",
       "OPENAI",
       "ANTHROPIC",
-      "AZURE_OPENAI"
+      "AZURE_OPENAI",
     ]);
     expect(validationModels.some((model) => model.provider === "OLLAMA")).toBe(
-      false
+      false,
     );
   });
 
@@ -59,7 +59,7 @@ describe("model provider registry", () => {
       supportsJson: true,
       costTier: "FREE",
       latencyTier: "LOW",
-      qualityTier: "LOW"
+      qualityTier: "LOW",
     });
 
     expect(configs).toHaveLength(1);
@@ -68,7 +68,7 @@ describe("model provider registry", () => {
 
   it("filters enabled configs using both provider and model enabled flags", () => {
     const enabledConfigs = listModelConfigs({
-      enabled: true
+      enabled: true,
     });
 
     expect(enabledConfigs.map((config) => config.provider)).toEqual(["MOCK"]);

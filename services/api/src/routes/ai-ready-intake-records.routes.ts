@@ -5,21 +5,21 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 
 const aiReadyIntakeRecordParamsSchema = z.object({
-  id: z.string().min(1)
+  id: z.string().min(1),
 });
 
 const aiReadyIntakeRecordSourceTypeSchema = z.enum([
   "FREE_TEXT",
   "POORLY_FORMED_CSV",
   "EMAIL",
-  "LOG"
+  "LOG",
 ]);
 
 const aiReadyIntakeRecordStatusSchema = z.enum([
   "READY_FOR_REVIEW",
   "READY_FOR_RAG",
   "NEEDS_REVIEW",
-  "SUPERSEDED"
+  "SUPERSEDED",
 ]);
 
 const booleanQuerySchema = z.preprocess((value) => {
@@ -46,7 +46,7 @@ const listAiReadyIntakeRecordsSortSchema = z.enum([
   "createdAt_desc",
   "createdAt_asc",
   "status_asc",
-  "sourceType_asc"
+  "sourceType_asc",
 ]);
 
 const listAiReadyIntakeRecordsQuerySchema = z.object({
@@ -63,7 +63,7 @@ const listAiReadyIntakeRecordsQuerySchema = z.object({
   createdTo: z.coerce.date().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
   offset: z.coerce.number().int().min(0).default(0),
-  sort: listAiReadyIntakeRecordsSortSchema.default("createdAt_desc")
+  sort: listAiReadyIntakeRecordsSortSchema.default("createdAt_desc"),
 });
 
 function serializeAiReadyIntakeRecord(record: {
@@ -109,13 +109,14 @@ function serializeAiReadyIntakeRecord(record: {
     embeddingReady: record.embeddingReady,
     ragReady: record.ragReady,
     supersededByAiReadyIntakeRecordId: record.supersededByAiReadyIntakeRecordId,
-    supersededAt: record.supersededAt ? record.supersededAt.toISOString() : null,
+    supersededAt: record.supersededAt
+      ? record.supersededAt.toISOString()
+      : null,
     supersededReason: record.supersededReason,
     createdAt: record.createdAt.toISOString(),
-    updatedAt: record.updatedAt.toISOString()
+    updatedAt: record.updatedAt.toISOString(),
   };
 }
-
 
 function buildAiReadyRecordSearchWhere(
   searchTerm: string,
@@ -127,91 +128,92 @@ function buildAiReadyRecordSearchWhere(
     {
       rawText: {
         contains: normalizedSearchTerm,
-        mode: "insensitive"
-      }
+        mode: "insensitive",
+      },
     },
     {
       cleanedText: {
         contains: normalizedSearchTerm,
-        mode: "insensitive"
-      }
+        mode: "insensitive",
+      },
     },
     {
       sourceName: {
         contains: normalizedSearchTerm,
-        mode: "insensitive"
-      }
+        mode: "insensitive",
+      },
     },
     {
       sourceRecordId: {
         contains: normalizedSearchTerm,
-        mode: "insensitive"
-      }
+        mode: "insensitive",
+      },
     },
     {
       normalizedJson: {
         path: ["brand"],
-        string_contains: normalizedSearchTerm
-      }
+        string_contains: normalizedSearchTerm,
+      },
     },
     {
       normalizedJson: {
         path: ["productLine"],
-        string_contains: normalizedSearchTerm
-      }
+        string_contains: normalizedSearchTerm,
+      },
     },
     {
       normalizedJson: {
         path: ["category"],
-        string_contains: normalizedSearchTerm
-      }
+        string_contains: normalizedSearchTerm,
+      },
     },
     {
       normalizedJson: {
         path: ["shaftFlex"],
-        string_contains: normalizedSearchTerm
-      }
+        string_contains: normalizedSearchTerm,
+      },
     },
     {
       normalizedJson: {
         path: ["conditionGrade"],
-        string_contains: normalizedSearchTerm
-      }
+        string_contains: normalizedSearchTerm,
+      },
     },
     {
       normalizedJson: {
         path: ["missingFields"],
-        array_contains: [normalizedSearchTerm]
-      }
-    }
+        array_contains: [normalizedSearchTerm],
+      },
+    },
   ];
 
-  const matchingSourceTypes = aiReadyIntakeRecordSourceTypeSchema.options.filter((sourceType) =>
-    sourceType.toLowerCase().includes(normalizedSearchText)
-  );
+  const matchingSourceTypes =
+    aiReadyIntakeRecordSourceTypeSchema.options.filter((sourceType) =>
+      sourceType.toLowerCase().includes(normalizedSearchText),
+    );
 
   if (matchingSourceTypes.length > 0) {
     searchConditions.push({
       sourceType: {
-        in: matchingSourceTypes
-      }
+        in: matchingSourceTypes,
+      },
     });
   }
 
-  const matchingStatuses = aiReadyIntakeRecordStatusSchema.options.filter((status) =>
-    status.toLowerCase().includes(normalizedSearchText)
+  const matchingStatuses = aiReadyIntakeRecordStatusSchema.options.filter(
+    (status) => status.toLowerCase().includes(normalizedSearchText),
   );
 
   if (matchingStatuses.length > 0) {
     searchConditions.push({
       status: {
-        in: matchingStatuses
-      }
+        in: matchingStatuses,
+      },
     });
   }
 
   return {
-    OR: searchConditions
+    OR: searchConditions,
   };
 }
 
@@ -221,25 +223,29 @@ function buildAiReadyMissingFieldsWhere(
   const noMissingFieldsWhere: Prisma.AiReadyIntakeRecordWhereInput = {
     normalizedJson: {
       path: ["missingFields"],
-      equals: []
-    }
+      equals: [],
+    },
   };
 
   return hasMissingFields
     ? {
-        NOT: noMissingFieldsWhere
+        NOT: noMissingFieldsWhere,
       }
     : noMissingFieldsWhere;
 }
 
-export async function aiReadyIntakeRecordRoutes(app: FastifyInstance): Promise<void> {
+export async function aiReadyIntakeRecordRoutes(
+  app: FastifyInstance,
+): Promise<void> {
   app.get("/ai-ready-intake-records", async (request, reply) => {
-    const parsedQuery = listAiReadyIntakeRecordsQuerySchema.safeParse(request.query ?? {});
+    const parsedQuery = listAiReadyIntakeRecordsQuerySchema.safeParse(
+      request.query ?? {},
+    );
 
     if (!parsedQuery.success) {
       return reply.status(400).send({
         error: "Invalid AI-ready intake record filters",
-        details: parsedQuery.error.flatten()
+        details: parsedQuery.error.flatten(),
       });
     }
 
@@ -262,7 +268,7 @@ export async function aiReadyIntakeRecordRoutes(app: FastifyInstance): Promise<v
       where.status = parsedQuery.data.status;
     } else if (parsedQuery.data.activeOnly === true) {
       where.status = {
-        not: "SUPERSEDED"
+        not: "SUPERSEDED",
       };
     }
 
@@ -276,17 +282,25 @@ export async function aiReadyIntakeRecordRoutes(app: FastifyInstance): Promise<v
 
     if (parsedQuery.data.createdFrom || parsedQuery.data.createdTo) {
       where.createdAt = {
-        ...(parsedQuery.data.createdFrom ? { gte: parsedQuery.data.createdFrom } : {}),
-        ...(parsedQuery.data.createdTo ? { lte: parsedQuery.data.createdTo } : {})
+        ...(parsedQuery.data.createdFrom
+          ? { gte: parsedQuery.data.createdFrom }
+          : {}),
+        ...(parsedQuery.data.createdTo
+          ? { lte: parsedQuery.data.createdTo }
+          : {}),
       };
     }
 
     if (parsedQuery.data.missingFields !== undefined) {
-      andConditions.push(buildAiReadyMissingFieldsWhere(parsedQuery.data.missingFields));
+      andConditions.push(
+        buildAiReadyMissingFieldsWhere(parsedQuery.data.missingFields),
+      );
     }
 
     if (parsedQuery.data.search) {
-      andConditions.push(buildAiReadyRecordSearchWhere(parsedQuery.data.search));
+      andConditions.push(
+        buildAiReadyRecordSearchWhere(parsedQuery.data.search),
+      );
     }
 
     if (andConditions.length > 0) {
@@ -307,11 +321,11 @@ export async function aiReadyIntakeRecordRoutes(app: FastifyInstance): Promise<v
         where,
         orderBy,
         skip: parsedQuery.data.offset,
-        take: parsedQuery.data.limit
+        take: parsedQuery.data.limit,
       }),
       prisma.aiReadyIntakeRecord.count({
-        where
-      })
+        where,
+      }),
     ]);
 
     return {
@@ -320,34 +334,36 @@ export async function aiReadyIntakeRecordRoutes(app: FastifyInstance): Promise<v
       totalCount,
       limit: parsedQuery.data.limit,
       offset: parsedQuery.data.offset,
-      hasMore: parsedQuery.data.offset + records.length < totalCount
+      hasMore: parsedQuery.data.offset + records.length < totalCount,
     };
   });
 
   app.get("/ai-ready-intake-records/:id", async (request, reply) => {
-    const parsedParams = aiReadyIntakeRecordParamsSchema.safeParse(request.params);
+    const parsedParams = aiReadyIntakeRecordParamsSchema.safeParse(
+      request.params,
+    );
 
     if (!parsedParams.success) {
       return reply.status(400).send({
         error: "Invalid AI-ready intake record id",
-        details: parsedParams.error.flatten()
+        details: parsedParams.error.flatten(),
       });
     }
 
     const record = await prisma.aiReadyIntakeRecord.findUnique({
       where: {
-        id: parsedParams.data.id
-      }
+        id: parsedParams.data.id,
+      },
     });
 
     if (!record) {
       return reply.status(404).send({
-        error: "AI-ready intake record not found"
+        error: "AI-ready intake record not found",
       });
     }
 
     return {
-      record: serializeAiReadyIntakeRecord(record)
+      record: serializeAiReadyIntakeRecord(record),
     };
   });
 }

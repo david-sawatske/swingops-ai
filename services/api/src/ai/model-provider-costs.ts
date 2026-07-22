@@ -1,6 +1,6 @@
 import type {
   ModelProviderModelConfig,
-  ModelProviderName
+  ModelProviderName,
 } from "./model-provider.types.js";
 
 export type ModelProviderCostMetadata = {
@@ -15,7 +15,7 @@ export type ModelProviderCostMetadata = {
 
 const defaultTokenEstimate = {
   estimatedInputTokens: 1200,
-  estimatedOutputTokens: 450
+  estimatedOutputTokens: 450,
 };
 
 const costByProviderAndModel: Record<
@@ -27,33 +27,33 @@ const costByProviderAndModel: Record<
 > = {
   "MOCK:mock-golf-workflow-model": {
     inputCostPer1MTokensUsd: 0,
-    outputCostPer1MTokensUsd: 0
+    outputCostPer1MTokensUsd: 0,
   },
   "OPENAI:gpt-4.1-mini": {
     inputCostPer1MTokensUsd: 0.4,
-    outputCostPer1MTokensUsd: 1.6
+    outputCostPer1MTokensUsd: 1.6,
   },
   "ANTHROPIC:claude-3-5-sonnet": {
     inputCostPer1MTokensUsd: 3,
-    outputCostPer1MTokensUsd: 15
+    outputCostPer1MTokensUsd: 15,
   },
   "AZURE_OPENAI:azure-gpt-4.1-mini": {
     inputCostPer1MTokensUsd: 0.45,
-    outputCostPer1MTokensUsd: 1.8
+    outputCostPer1MTokensUsd: 1.8,
   },
   "OLLAMA:llama3.1": {
     inputCostPer1MTokensUsd: 0,
-    outputCostPer1MTokensUsd: 0
-  }
+    outputCostPer1MTokensUsd: 0,
+  },
 };
 
 export function estimateModelProviderCost(
-  modelConfig: ModelProviderModelConfig
+  modelConfig: ModelProviderModelConfig,
 ): ModelProviderCostMetadata {
   const costKey = `${modelConfig.provider}:${modelConfig.model}`;
   const unitCosts = costByProviderAndModel[costKey] ?? {
     inputCostPer1MTokensUsd: 1,
-    outputCostPer1MTokensUsd: 3
+    outputCostPer1MTokensUsd: 3,
   };
 
   const estimatedInputTokens = defaultTokenEstimate.estimatedInputTokens;
@@ -68,6 +68,6 @@ export function estimateModelProviderCost(
     ...unitCosts,
     estimatedInputTokens,
     estimatedOutputTokens,
-    estimatedCostUsd: Number(estimatedCostUsd.toFixed(6))
+    estimatedCostUsd: Number(estimatedCostUsd.toFixed(6)),
   };
 }

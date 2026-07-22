@@ -1,7 +1,7 @@
 import type {
   MultiSourceIntakeRecord,
   MultiSourceIntakeSourceInput,
-  MultiSourceIntakeSourceType
+  MultiSourceIntakeSourceType,
 } from "../workflows/multi-source-intake-demo.js";
 
 export type WorkflowEvalFieldName =
@@ -13,8 +13,7 @@ export type WorkflowEvalFieldName =
   | "tradeInValue";
 
 export type WorkflowEvalExecutionMode =
-  | "MULTI_SOURCE_INTAKE"
-  | "GUARDED_AGENT_WORKFLOW";
+  "MULTI_SOURCE_INTAKE" | "GUARDED_AGENT_WORKFLOW";
 
 export type WorkflowEvalStatus = "PASSED" | "FAILED";
 

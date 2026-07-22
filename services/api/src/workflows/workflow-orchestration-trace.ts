@@ -8,12 +8,11 @@ export const TRADE_IN_WORKFLOW_STEP_NAMES = {
   targetedRetry: "retry-targeted-field-extraction",
   createReviewItems: "create-human-review-work",
   executeTools: "execute-guarded-tool-plan",
-  finalize: "finalize-workflow-run"
+  finalize: "finalize-workflow-run",
 } as const;
 
 export type WorkflowOrchestrationExecutionKind =
-  | "DETERMINISTIC"
-  | "BOUNDED_MODEL_ASSISTANCE";
+  "DETERMINISTIC" | "BOUNDED_MODEL_ASSISTANCE";
 
 export type WorkflowOrchestrationState = {
   stateId: string;
@@ -60,69 +59,69 @@ type OrchestrationStateDefinition = {
   executionKind: WorkflowOrchestrationExecutionKind;
 };
 
-const TRADE_IN_ORCHESTRATION_STATE_DEFINITIONS: OrchestrationStateDefinition[] = [
-  {
-    stateId: TRADE_IN_WORKFLOW_STEP_NAMES.parseInput,
-    label: "Parse and persist intake",
-    transitionGuard:
-      "Validated source input is parsed and persisted before the run is created.",
-    executionKind: "DETERMINISTIC"
-  },
-  {
-    stateId: TRADE_IN_WORKFLOW_STEP_NAMES.retrieveEvidence,
-    label: "Retrieve grounding evidence",
-    transitionGuard:
-      "The run is active and the intake state has completed.",
-    executionKind: "DETERMINISTIC"
-  },
-  {
-    stateId: TRADE_IN_WORKFLOW_STEP_NAMES.modelAssistance,
-    label: "Request bounded field-repair advice",
-    transitionGuard:
-      "The run is active, evidence retrieval has completed, and application code selected the records and evidence packet.",
-    executionKind: "BOUNDED_MODEL_ASSISTANCE"
-  },
-  {
-    stateId: TRADE_IN_WORKFLOW_STEP_NAMES.validateOutput,
-    label: "Validate field-repair output",
-    transitionGuard:
-      "The run is active and model assistance returned or safely withheld an advisory result.",
-    executionKind: "DETERMINISTIC"
-  },
-  {
-    stateId: TRADE_IN_WORKFLOW_STEP_NAMES.targetedRetry,
-    label: "Evaluate one targeted field retry",
-    transitionGuard:
-      "The run is active, validation has completed, and application code found one retry-eligible field.",
-    executionKind: "BOUNDED_MODEL_ASSISTANCE"
-  },
-  {
-    stateId: TRADE_IN_WORKFLOW_STEP_NAMES.createReviewItems,
-    label: "Create human-review work",
-    transitionGuard:
-      "The run is active and all bounded repair and retry paths have reached a terminal state.",
-    executionKind: "DETERMINISTIC"
-  },
-  {
-    stateId: TRADE_IN_WORKFLOW_STEP_NAMES.executeTools,
-    label: "Execute the guarded tool plan",
-    transitionGuard:
-      "The run is active, review routing has completed, and application policy has classified every tool call.",
-    executionKind: "DETERMINISTIC"
-  },
-  {
-    stateId: TRADE_IN_WORKFLOW_STEP_NAMES.finalize,
-    label: "Finalize the workflow run",
-    transitionGuard:
-      "All preceding states are completed or intentionally skipped and the application has computed the terminal run status.",
-    executionKind: "DETERMINISTIC"
-  }
-];
+const TRADE_IN_ORCHESTRATION_STATE_DEFINITIONS: OrchestrationStateDefinition[] =
+  [
+    {
+      stateId: TRADE_IN_WORKFLOW_STEP_NAMES.parseInput,
+      label: "Parse and persist intake",
+      transitionGuard:
+        "Validated source input is parsed and persisted before the run is created.",
+      executionKind: "DETERMINISTIC",
+    },
+    {
+      stateId: TRADE_IN_WORKFLOW_STEP_NAMES.retrieveEvidence,
+      label: "Retrieve grounding evidence",
+      transitionGuard: "The run is active and the intake state has completed.",
+      executionKind: "DETERMINISTIC",
+    },
+    {
+      stateId: TRADE_IN_WORKFLOW_STEP_NAMES.modelAssistance,
+      label: "Request bounded field-repair advice",
+      transitionGuard:
+        "The run is active, evidence retrieval has completed, and application code selected the records and evidence packet.",
+      executionKind: "BOUNDED_MODEL_ASSISTANCE",
+    },
+    {
+      stateId: TRADE_IN_WORKFLOW_STEP_NAMES.validateOutput,
+      label: "Validate field-repair output",
+      transitionGuard:
+        "The run is active and model assistance returned or safely withheld an advisory result.",
+      executionKind: "DETERMINISTIC",
+    },
+    {
+      stateId: TRADE_IN_WORKFLOW_STEP_NAMES.targetedRetry,
+      label: "Evaluate one targeted field retry",
+      transitionGuard:
+        "The run is active, validation has completed, and application code found one retry-eligible field.",
+      executionKind: "BOUNDED_MODEL_ASSISTANCE",
+    },
+    {
+      stateId: TRADE_IN_WORKFLOW_STEP_NAMES.createReviewItems,
+      label: "Create human-review work",
+      transitionGuard:
+        "The run is active and all bounded repair and retry paths have reached a terminal state.",
+      executionKind: "DETERMINISTIC",
+    },
+    {
+      stateId: TRADE_IN_WORKFLOW_STEP_NAMES.executeTools,
+      label: "Execute the guarded tool plan",
+      transitionGuard:
+        "The run is active, review routing has completed, and application policy has classified every tool call.",
+      executionKind: "DETERMINISTIC",
+    },
+    {
+      stateId: TRADE_IN_WORKFLOW_STEP_NAMES.finalize,
+      label: "Finalize the workflow run",
+      transitionGuard:
+        "All preceding states are completed or intentionally skipped and the application has computed the terminal run status.",
+      executionKind: "DETERMINISTIC",
+    },
+  ];
 
 const ALLOWED_MODEL_ACTIONS = [
   "Assess only records selected by application code using the supplied evidence packet.",
   "Return schema-validated advisory field-repair outcomes.",
-  "Attempt one application-selected field retry when the retry guard allows it."
+  "Attempt one application-selected field retry when the retry guard allows it.",
 ];
 
 const PROHIBITED_MODEL_ACTIONS = [
@@ -130,21 +129,21 @@ const PROHIBITED_MODEL_ACTIONS = [
   "Select or execute tools.",
   "Authorize mutations.",
   "Write final records.",
-  "Approve, dismiss, or resolve human-review work."
+  "Approve, dismiss, or resolve human-review work.",
 ];
 
 export function buildTradeInWorkflowOrchestrationTrace(
-  persistedSteps: PersistedOrchestrationStep[]
+  persistedSteps: PersistedOrchestrationStep[],
 ): WorkflowOrchestrationTrace {
   const states = TRADE_IN_ORCHESTRATION_STATE_DEFINITIONS.map(
     (definition, index) => {
       const matchingSteps = persistedSteps.filter(
-        (step) => step.stepName === definition.stateId
+        (step) => step.stepName === definition.stateId,
       );
 
       if (matchingSteps.length !== 1) {
         throw new Error(
-          `Expected exactly one persisted workflow state named "${definition.stateId}", found ${matchingSteps.length}.`
+          `Expected exactly one persisted workflow state named "${definition.stateId}", found ${matchingSteps.length}.`,
         );
       }
 
@@ -153,7 +152,7 @@ export function buildTradeInWorkflowOrchestrationTrace(
 
       if (persistedStep.orderIndex !== expectedOrderIndex) {
         throw new Error(
-          `Workflow state "${definition.stateId}" has order ${persistedStep.orderIndex}; expected ${expectedOrderIndex}.`
+          `Workflow state "${definition.stateId}" has order ${persistedStep.orderIndex}; expected ${expectedOrderIndex}.`,
         );
       }
 
@@ -173,9 +172,9 @@ export function buildTradeInWorkflowOrchestrationTrace(
             : "NONE",
         retryCount: persistedStep.retryCount,
         startedAt: persistedStep.startedAt?.toISOString() ?? null,
-        completedAt: persistedStep.completedAt?.toISOString() ?? null
+        completedAt: persistedStep.completedAt?.toISOString() ?? null,
       } satisfies WorkflowOrchestrationState;
-    }
+    },
   );
 
   return {
@@ -190,7 +189,7 @@ export function buildTradeInWorkflowOrchestrationTrace(
         .filter((state) => state.executionKind === "BOUNDED_MODEL_ASSISTANCE")
         .map((state) => state.stateId),
       allowedActions: [...ALLOWED_MODEL_ACTIONS],
-      prohibitedActions: [...PROHIBITED_MODEL_ACTIONS]
-    }
+      prohibitedActions: [...PROHIBITED_MODEL_ACTIONS],
+    },
   };
 }

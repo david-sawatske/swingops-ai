@@ -1,7 +1,7 @@
 import type { AgentToolDefinition } from "../tool-registry.types.js";
 
 export const workflowGroundingAgentTools: AgentToolDefinition[] = [
-{
+  {
     name: "swingops.clubReference.search",
     displayName: "Search club reference",
     description:
@@ -14,9 +14,9 @@ export const workflowGroundingAgentTools: AgentToolDefinition[] = [
           name: "query",
           type: "string",
           required: true,
-          description: "Ambiguous club text to search, such as TSR maybe TS2."
-        }
-      ]
+          description: "Ambiguous club text to search, such as TSR maybe TS2.",
+        },
+      ],
     },
     riskLevel: "LOW",
     requiresHumanApproval: false,
@@ -25,11 +25,12 @@ export const workflowGroundingAgentTools: AgentToolDefinition[] = [
     implementationStatus: "REGISTERED",
     statusReason:
       "Safe read-only lookup against a local demo club reference dataset. It does not mutate operational data.",
-    outputSummary: "Returns local club-reference matches for ambiguous golf shorthand.",
+    outputSummary:
+      "Returns local club-reference matches for ambiguous golf shorthand.",
     auditBehavior: "PERSIST_TOOL_CALL_LOG",
-    redactionNotes: "Returns intentionally public demo reference data only."
+    redactionNotes: "Returns intentionally public demo reference data only.",
   },
-{
+  {
     name: "swingops.knowledgeBase.search",
     displayName: "Search knowledge base",
     description:
@@ -43,26 +44,27 @@ export const workflowGroundingAgentTools: AgentToolDefinition[] = [
           type: "string",
           required: true,
           description:
-            "Messy golf trade-in text to ground, such as TM stealth2 drv 10.5 stiff no hc."
+            "Messy golf trade-in text to ground, such as TM stealth2 drv 10.5 stiff no hc.",
         },
         {
           name: "sourceName",
           type: "string",
           required: false,
           description:
-            "Optional knowledge source filter for deterministic tests or scoped connector calls."
+            "Optional knowledge source filter for deterministic tests or scoped connector calls.",
         },
         {
           name: "brand",
           type: "string",
           required: false,
-          description: "Optional brand filter, such as TaylorMade or PING."
+          description: "Optional brand filter, such as TaylorMade or PING.",
         },
         {
           name: "category",
           type: "string",
           required: false,
-          description: "Optional category filter, such as DRIVER or FAIRWAY_WOOD."
+          description:
+            "Optional category filter, such as DRIVER or FAIRWAY_WOOD.",
         },
         {
           name: "chunkType",
@@ -74,16 +76,16 @@ export const workflowGroundingAgentTools: AgentToolDefinition[] = [
             "TRADE_IN_POLICY",
             "CONDITION_GUIDE",
             "BRAND_ALIAS",
-            "SHAFT_FLEX_GUIDE"
-          ]
+            "SHAFT_FLEX_GUIDE",
+          ],
         },
         {
           name: "maxResults",
           type: "number",
           required: false,
-          description: "Maximum number of grounded chunks to return."
-        }
-      ]
+          description: "Maximum number of grounded chunks to return.",
+        },
+      ],
     },
     riskLevel: "LOW",
     requiresHumanApproval: false,
@@ -94,18 +96,18 @@ export const workflowGroundingAgentTools: AgentToolDefinition[] = [
       "Safe read-only search over local RAG-ready golf trade-in knowledge chunks. Retrieval is deterministic for local development and can be upgraded to vector embeddings later.",
     existingHttpRoute: {
       method: "POST",
-      path: "/knowledge/search"
+      path: "/knowledge/search",
     },
     outputSummary:
       "Returns grounded knowledge chunks with citations, matched terms, and weighted scoreBreakdown components.",
     auditBehavior: "PERSIST_TOOL_CALL_LOG",
     redactionNotes:
-      "Returns curated knowledge chunks and scoring metadata only; connector response is sanitized before MCP-compatible exposure."
-  }
+      "Returns curated knowledge chunks and scoring metadata only; connector response is sanitized before MCP-compatible exposure.",
+  },
 ];
 
 export const workflowRunAgentTools: AgentToolDefinition[] = [
-{
+  {
     name: "swingops.workflowRuns.list",
     displayName: "List workflow runs",
     description:
@@ -124,16 +126,16 @@ export const workflowRunAgentTools: AgentToolDefinition[] = [
             "RUNNING",
             "NEEDS_REVIEW",
             "COMPLETED",
-            "FAILED"
-          ]
+            "FAILED",
+          ],
         },
         {
           name: "maxResults",
           type: "number",
           required: false,
-          description: "Maximum workflow runs to return, capped at 25."
-        }
-      ]
+          description: "Maximum workflow runs to return, capped at 25.",
+        },
+      ],
     },
     riskLevel: "LOW",
     requiresHumanApproval: false,
@@ -144,15 +146,15 @@ export const workflowRunAgentTools: AgentToolDefinition[] = [
       "Safe read-only lookup backed by the existing GET /workflow-runs route.",
     existingHttpRoute: {
       method: "GET",
-      path: "/workflow-runs"
+      path: "/workflow-runs",
     },
     outputSummary:
       "Returns serialized workflow run summaries with latest model/tool/review context.",
     auditBehavior: "PERSIST_TOOL_CALL_LOG",
     redactionNotes:
-      "Returns summary fields only; detailed request/response internals stay behind explicit get-by-id calls."
+      "Returns summary fields only; detailed request/response internals stay behind explicit get-by-id calls.",
   },
-{
+  {
     name: "swingops.workflowRuns.get",
     displayName: "Get workflow run",
     description:
@@ -165,9 +167,9 @@ export const workflowRunAgentTools: AgentToolDefinition[] = [
           name: "id",
           type: "string",
           required: true,
-          description: "The workflow run ID to retrieve."
-        }
-      ]
+          description: "The workflow run ID to retrieve.",
+        },
+      ],
     },
     riskLevel: "LOW",
     requiresHumanApproval: false,
@@ -178,12 +180,12 @@ export const workflowRunAgentTools: AgentToolDefinition[] = [
       "Safe read-only lookup backed by the existing GET /workflow-runs/:id route.",
     existingHttpRoute: {
       method: "GET",
-      path: "/workflow-runs/:id"
+      path: "/workflow-runs/:id",
     },
     outputSummary:
       "Returns one workflow run with serialized steps, model logs, tool logs, and review queue items.",
     auditBehavior: "PERSIST_TOOL_CALL_LOG",
     redactionNotes:
-      "Serializers expose audit-relevant fields while omitting database/client internals and external provider secrets."
-  }
+      "Serializers expose audit-relevant fields while omitting database/client internals and external provider secrets.",
+  },
 ];

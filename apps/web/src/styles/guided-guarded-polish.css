@@ -13,15 +13,15 @@
 
 .guided-guarded-rerun-action {
   order: 2;
-  border: 1px solid rgba(42, 62, 41, 0.18) !important;
-  background: rgba(248, 250, 246, 0.85) !important;
+  border: 1px solid rgb(42 62 41 / 18%) !important;
+  background: rgb(248 250 246 / 85%) !important;
   color: #213522 !important;
   box-shadow: none !important;
 }
 
 .guided-guarded-rerun-action:hover:not(:disabled) {
-  border-color: rgba(42, 62, 41, 0.32) !important;
-  background: rgba(236, 245, 232, 0.95) !important;
+  border-color: rgb(42 62 41 / 32%) !important;
+  background: rgb(236 245 232 / 95%) !important;
 }
 
 .guided-guarded-completion-strip {
@@ -31,10 +31,10 @@
   gap: 0.35rem 0.7rem;
   margin-top: 0.85rem;
   padding: 0.65rem 0.75rem;
-  border: 1px solid rgba(42, 62, 41, 0.12);
+  border: 1px solid rgb(42 62 41 / 12%);
   border-radius: 14px;
-  background: rgba(248, 250, 246, 0.82);
-  color: rgba(33, 53, 34, 0.72);
+  background: rgb(248 250 246 / 82%);
+  color: rgb(33 53 34 / 72%);
   font-size: 0.88rem;
   line-height: 1.35;
 }
@@ -47,14 +47,14 @@
 .guided-guarded-completion-strip span:not(:last-child)::after {
   content: "·";
   margin-left: 0.6rem;
-  color: rgba(33, 53, 34, 0.35);
+  color: rgb(33 53 34 / 35%);
 }
 
 .guided-guarded-run-result {
   margin-top: 1rem;
 }
 
-@media (max-width: 720px) {
+@media (width <= 720px) {
   .guided-guarded-action-row {
     align-items: stretch;
     flex-direction: column;
@@ -93,8 +93,8 @@
 .guided-guarded-action-row .guided-step-primary-action {
   border: 1px solid #27452a !important;
   background: #27452a !important;
-  color: #ffffff !important;
-  box-shadow: 0 8px 18px rgba(39, 69, 42, 0.16) !important;
+  color: #fff !important;
+  box-shadow: 0 8px 18px rgb(39 69 42 / 16%) !important;
   transition:
     background 160ms ease,
     border-color 160ms ease,
@@ -105,12 +105,12 @@
 .guided-guarded-action-row .guided-step-primary-action:hover:not(:disabled) {
   border-color: #18301d !important;
   background: #18301d !important;
-  box-shadow: 0 11px 24px rgba(24, 48, 29, 0.22) !important;
+  box-shadow: 0 11px 24px rgb(24 48 29 / 22%) !important;
   transform: translateY(-1px) !important;
 }
 
 .guided-guarded-action-row .guided-step-primary-action:focus-visible {
-  outline: 3px solid rgba(39, 69, 42, 0.24) !important;
+  outline: 3px solid rgb(39 69 42 / 24%) !important;
   outline-offset: 3px !important;
 }
 
@@ -119,7 +119,7 @@
   box-shadow: none !important;
 }
 
-@media (max-width: 720px) {
+@media (width <= 720px) {
   .guided-guarded-action-row button {
     width: 100% !important;
   }
@@ -155,33 +155,34 @@
 .guided-guarded-action-row .guided-guarded-continue-action {
   border: 1px solid #27452a !important;
   background-color: #27452a !important;
-  color: #ffffff !important;
-  box-shadow: 0 8px 18px rgba(39, 69, 42, 0.16) !important;
+  color: #fff !important;
+  box-shadow: 0 8px 18px rgb(39 69 42 / 16%) !important;
 }
 
-.guided-guarded-action-row .guided-guarded-continue-action:hover:not(:disabled) {
+.guided-guarded-action-row
+  .guided-guarded-continue-action:hover:not(:disabled) {
   border-color: #132817 !important;
   background-color: #132817 !important;
-  color: #ffffff !important;
-  box-shadow: 0 12px 26px rgba(19, 40, 23, 0.26) !important;
+  color: #fff !important;
+  box-shadow: 0 12px 26px rgb(19 40 23 / 26%) !important;
   transform: translateY(-2px) !important;
 }
 
 .guided-guarded-action-row .guided-guarded-rerun-action {
-  border: 1px solid rgba(42, 62, 41, 0.18) !important;
-  background-color: rgba(255, 255, 255, 0.78) !important;
+  border: 1px solid rgb(42 62 41 / 18%) !important;
+  background-color: rgb(255 255 255 / 78%) !important;
   color: #213522 !important;
   box-shadow: none !important;
 }
 
 .guided-guarded-action-row .guided-guarded-rerun-action:hover:not(:disabled) {
-  border-color: rgba(42, 62, 41, 0.34) !important;
-  background-color: rgba(236, 245, 232, 0.9) !important;
+  border-color: rgb(42 62 41 / 34%) !important;
+  background-color: rgb(236 245 232 / 90%) !important;
   color: #102015 !important;
   transform: none !important;
 }
 
-@media (max-width: 720px) {
+@media (width <= 720px) {
   .guided-guarded-action-row {
     align-items: stretch !important;
     flex-direction: column !important;
@@ -221,34 +222,35 @@
 .guided-guarded-action-row .guided-guarded-continue-action {
   border: 1px solid #27452a !important;
   background-color: #27452a !important;
-  color: #ffffff !important;
+  color: #fff !important;
   box-shadow: none !important;
 }
 
-.guided-guarded-action-row .guided-guarded-continue-action:hover:not(:disabled) {
+.guided-guarded-action-row
+  .guided-guarded-continue-action:hover:not(:disabled) {
   border-color: #27452a !important;
   background-color: #27452a !important;
-  color: #ffffff !important;
+  color: #fff !important;
   box-shadow: none !important;
   transform: none !important;
 }
 
 .guided-guarded-action-row .guided-guarded-rerun-action {
-  border: 1px solid rgba(42, 62, 41, 0.22) !important;
-  background-color: rgba(255, 255, 255, 0.78) !important;
+  border: 1px solid rgb(42 62 41 / 22%) !important;
+  background-color: rgb(255 255 255 / 78%) !important;
   color: #213522 !important;
   box-shadow: none !important;
 }
 
 .guided-guarded-action-row .guided-guarded-rerun-action:hover:not(:disabled) {
-  border-color: rgba(42, 62, 41, 0.32) !important;
-  background-color: rgba(248, 250, 246, 0.9) !important;
+  border-color: rgb(42 62 41 / 32%) !important;
+  background-color: rgb(248 250 246 / 90%) !important;
   color: #213522 !important;
   box-shadow: none !important;
   transform: none !important;
 }
 
-@media (max-width: 720px) {
+@media (width <= 720px) {
   .guided-guarded-action-row {
     align-items: stretch !important;
     flex-direction: column !important;
@@ -270,8 +272,12 @@
 }
 
 .guided-guarded-run-form .guided-guarded-action-row button,
-.guided-guarded-run-form .guided-guarded-action-row .guided-guarded-continue-action,
-.guided-guarded-run-form .guided-guarded-action-row .guided-guarded-rerun-action {
+.guided-guarded-run-form
+  .guided-guarded-action-row
+  .guided-guarded-continue-action,
+.guided-guarded-run-form
+  .guided-guarded-action-row
+  .guided-guarded-rerun-action {
   appearance: none !important;
   box-sizing: border-box !important;
   display: inline-flex !important;
@@ -292,49 +298,61 @@
   box-shadow: none !important;
 }
 
-.guided-guarded-run-form .guided-guarded-action-row .guided-guarded-continue-action {
+.guided-guarded-run-form
+  .guided-guarded-action-row
+  .guided-guarded-continue-action {
   border: 1px solid #27452a !important;
   background: #27452a !important;
-  color: #ffffff !important;
+  color: #fff !important;
 }
 
-.guided-guarded-run-form .guided-guarded-action-row .guided-guarded-continue-action:hover:not(:disabled) {
+.guided-guarded-run-form
+  .guided-guarded-action-row
+  .guided-guarded-continue-action:hover:not(:disabled) {
   border-color: #27452a !important;
   background: #27452a !important;
-  color: #ffffff !important;
+  color: #fff !important;
   transform: none !important;
   box-shadow: none !important;
 }
 
-.guided-guarded-run-form .guided-guarded-action-row .guided-guarded-rerun-action {
-  border: 1px solid rgba(42, 62, 41, 0.22) !important;
-  background: rgba(255, 255, 255, 0.78) !important;
+.guided-guarded-run-form
+  .guided-guarded-action-row
+  .guided-guarded-rerun-action {
+  border: 1px solid rgb(42 62 41 / 22%) !important;
+  background: rgb(255 255 255 / 78%) !important;
   color: #213522 !important;
 }
 
-.guided-guarded-run-form .guided-guarded-action-row .guided-guarded-rerun-action:hover:not(:disabled) {
-  border-color: rgba(42, 62, 41, 0.32) !important;
-  background: rgba(248, 250, 246, 0.9) !important;
+.guided-guarded-run-form
+  .guided-guarded-action-row
+  .guided-guarded-rerun-action:hover:not(:disabled) {
+  border-color: rgb(42 62 41 / 32%) !important;
+  background: rgb(248 250 246 / 90%) !important;
   color: #213522 !important;
   transform: none !important;
   box-shadow: none !important;
 }
 
-@media (max-width: 720px) {
+@media (width <= 720px) {
   .guided-guarded-run-form .guided-guarded-action-row {
     align-items: stretch !important;
     flex-direction: column !important;
   }
 
   .guided-guarded-run-form .guided-guarded-action-row button,
-  .guided-guarded-run-form .guided-guarded-action-row .guided-guarded-continue-action,
-  .guided-guarded-run-form .guided-guarded-action-row .guided-guarded-rerun-action {
+  .guided-guarded-run-form
+    .guided-guarded-action-row
+    .guided-guarded-continue-action,
+  .guided-guarded-run-form
+    .guided-guarded-action-row
+    .guided-guarded-rerun-action {
     width: 100% !important;
   }
 }
 
 /* Guided workflow medium-width sticky stepper spacing */
-@media (max-width: 1100px) and (min-width: 821px) {
+@media (width <= 1100px) and (width >= 821px) {
   .guided-workflow-shell {
     gap: 0.85rem !important;
     padding-top: 0 !important;
@@ -349,4 +367,3 @@
     margin-top: 0 !important;
   }
 }
-

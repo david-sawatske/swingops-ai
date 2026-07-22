@@ -8,7 +8,7 @@ import {
   serializeReviewedTradeInRecord,
   serializeReviewQueueItem,
   serializeReviewQueueItemWithContext,
-  serializeWorkflowRun
+  serializeWorkflowRun,
 } from "./review-queue-items.serializers.js";
 
 const REVIEW_CONDITION_GRADES = [
@@ -16,7 +16,7 @@ const REVIEW_CONDITION_GRADES = [
   "9.0 Above Average",
   "8.0 Average",
   "7.0 Below Average",
-  "6.0 Poor"
+  "6.0 Poor",
 ] as const;
 
 const REVIEW_CATEGORY_VALUES = [
@@ -25,7 +25,7 @@ const REVIEW_CATEGORY_VALUES = [
   "HYBRID",
   "IRON_SET",
   "WEDGE",
-  "PUTTER"
+  "PUTTER",
 ] as const;
 
 const REVIEW_SHAFT_FLEX_VALUES = [
@@ -34,11 +34,11 @@ const REVIEW_SHAFT_FLEX_VALUES = [
   "SENIOR",
   "X_STIFF",
   "LADIES",
-  "TOUR_X_STIFF"
+  "TOUR_X_STIFF",
 ] as const;
 
 const reviewQueueItemParamsSchema = z.object({
-  id: z.string().min(1)
+  id: z.string().min(1),
 });
 
 const reviewQueueItemStatusSchema = z.enum([
@@ -46,16 +46,16 @@ const reviewQueueItemStatusSchema = z.enum([
   "IN_REVIEW",
   "RESOLVED",
   "DISMISSED",
-  "SUPERSEDED"
+  "SUPERSEDED",
 ]);
 
 const listReviewQueueItemsQuerySchema = z.object({
   status: reviewQueueItemStatusSchema.optional(),
-  workflowRunId: z.string().min(1).optional()
+  workflowRunId: z.string().min(1).optional(),
 });
 
 const reviewQueueActionBodySchema = z.object({
-  reviewerNotes: z.string().min(1).optional()
+  reviewerNotes: z.string().min(1).optional(),
 });
 
 const correctedTradeInRecordSchema = z.object({
@@ -66,7 +66,7 @@ const correctedTradeInRecordSchema = z.object({
   conditionGrade: z.enum(REVIEW_CONDITION_GRADES).optional(),
   conditionEvidenceText: z.string().min(1).optional(),
   demoValue: z.number().int().nonnegative().optional(),
-  demoValuationNote: z.string().min(1).optional()
+  demoValuationNote: z.string().min(1).optional(),
 });
 
 const humanReviewLearningEventSchema = z.object({
@@ -75,13 +75,13 @@ const humanReviewLearningEventSchema = z.object({
   proposedValue: z.string().min(1).optional(),
   correctedValue: z.string().min(1).optional(),
   evidenceText: z.string().min(1).optional(),
-  confidenceImpact: z.string().min(1).optional()
+  confidenceImpact: z.string().min(1).optional(),
 });
 
 const resolveWithCorrectionsBodySchema = z.object({
   reviewerNotes: z.string().min(1).optional(),
   correctedRecord: correctedTradeInRecordSchema,
-  learningEvents: z.array(humanReviewLearningEventSchema).default([])
+  learningEvents: z.array(humanReviewLearningEventSchema).default([]),
 });
 
 function toJsonObject(value: unknown): Record<string, unknown> {
@@ -96,7 +96,7 @@ const REQUIRED_REVIEW_READY_FIELDS = [
   "brand",
   "productLine",
   "category",
-  "conditionGrade"
+  "conditionGrade",
 ] as const;
 
 class ReviewCorrectionValidationError extends Error {
@@ -104,7 +104,7 @@ class ReviewCorrectionValidationError extends Error {
 
   constructor(missingFields: string[]) {
     super(
-      `Review correction is incomplete. Missing required field(s): ${missingFields.join(", ")}.`
+      `Review correction is incomplete. Missing required field(s): ${missingFields.join(", ")}.`,
     );
     this.name = "ReviewCorrectionValidationError";
     this.missingFields = missingFields;
@@ -117,10 +117,6 @@ function getMissingReviewReadyFields(record: Record<string, unknown>) {
 
     return !(typeof value === "string" && value.trim().length > 0);
   });
-}
-
-function hasRagReadyReviewShape(record: Record<string, unknown>) {
-  return getMissingReviewReadyFields(record).length === 0;
 }
 
 function getProposedClubField(
@@ -173,7 +169,9 @@ async function supersedeUpstreamAiReadyCandidates(input: {
   finalIntakeItemId: string | null;
   finalSourceText: string | null;
 }) {
-  const normalizedFinalSourceText = normalizeReviewSourceText(input.finalSourceText);
+  const normalizedFinalSourceText = normalizeReviewSourceText(
+    input.finalSourceText,
+  );
 
   if (!normalizedFinalSourceText) {
     return 0;
@@ -182,25 +180,25 @@ async function supersedeUpstreamAiReadyCandidates(input: {
   const finalIntakeItem = input.finalIntakeItemId
     ? await input.tx.intakeItem.findUnique({
         where: {
-          id: input.finalIntakeItemId
+          id: input.finalIntakeItemId,
         },
         select: {
-          sourceRowNumber: true
-        }
+          sourceRowNumber: true,
+        },
       })
     : null;
 
   const upstreamCandidates = await input.tx.aiReadyIntakeRecord.findMany({
     where: {
       id: {
-        not: input.finalAiReadyIntakeRecordId
+        not: input.finalAiReadyIntakeRecordId,
       },
-      status: "NEEDS_REVIEW"
+      status: "NEEDS_REVIEW",
     },
     include: {
       workflowRun: true,
-      intakeItem: true
-    }
+      intakeItem: true,
+    },
   });
 
   const matchingCandidateIds = upstreamCandidates
@@ -208,8 +206,10 @@ async function supersedeUpstreamAiReadyCandidates(input: {
       return (
         candidate.workflowRun?.workflowName === "multi-source-intake-demo" &&
         candidate.workflowRunId !== input.finalWorkflowRunId &&
-        candidate.intakeItem?.sourceRowNumber === finalIntakeItem?.sourceRowNumber &&
-        normalizeReviewSourceText(candidate.rawText) === normalizedFinalSourceText
+        candidate.intakeItem?.sourceRowNumber ===
+          finalIntakeItem?.sourceRowNumber &&
+        normalizeReviewSourceText(candidate.rawText) ===
+          normalizedFinalSourceText
       );
     })
     .map((candidate) => candidate.id);
@@ -221,8 +221,8 @@ async function supersedeUpstreamAiReadyCandidates(input: {
   const result = await input.tx.aiReadyIntakeRecord.updateMany({
     where: {
       id: {
-        in: matchingCandidateIds
-      }
+        in: matchingCandidateIds,
+      },
     },
     data: {
       status: "SUPERSEDED",
@@ -231,8 +231,8 @@ async function supersedeUpstreamAiReadyCandidates(input: {
       ragReady: false,
       supersededByAiReadyIntakeRecordId: input.finalAiReadyIntakeRecordId,
       supersededAt: new Date(),
-      supersededReason: `Superseded by human-reviewed AI-ready record ${input.finalAiReadyIntakeRecordId} from review item ${input.finalReviewQueueItemId}.`
-    }
+      supersededReason: `Superseded by human-reviewed AI-ready record ${input.finalAiReadyIntakeRecordId} from review item ${input.finalReviewQueueItemId}.`,
+    },
   });
 
   return result.count;
@@ -249,27 +249,27 @@ async function maybeCompleteWorkflowRunAfterReview(input: {
     where: {
       workflowRunId: input.workflowRunId,
       status: {
-        in: ["OPEN", "IN_REVIEW"]
-      }
-    }
+        in: ["OPEN", "IN_REVIEW"],
+      },
+    },
   });
 
   if (remainingOpenReviewCount > 0) {
     return prisma.workflowRun.findUnique({
       where: {
-        id: input.workflowRunId
-      }
+        id: input.workflowRunId,
+      },
     });
   }
 
   return prisma.workflowRun.update({
     where: {
-      id: input.workflowRunId
+      id: input.workflowRunId,
     },
     data: {
       status: "COMPLETED",
-      completedAt: new Date()
-    }
+      completedAt: new Date(),
+    },
   });
 }
 
@@ -280,8 +280,8 @@ async function updateReviewQueueItemStatus(input: {
 }) {
   const existingItem = await prisma.reviewQueueItem.findUnique({
     where: {
-      id: input.reviewQueueItemId
-    }
+      id: input.reviewQueueItemId,
+    },
   });
 
   if (!existingItem) {
@@ -290,24 +290,24 @@ async function updateReviewQueueItemStatus(input: {
 
   const reviewQueueItem = await prisma.reviewQueueItem.update({
     where: {
-      id: input.reviewQueueItemId
+      id: input.reviewQueueItemId,
     },
     data: {
       status: input.status,
       ...(input.reviewerNotes === undefined
         ? {}
         : { reviewerNotes: input.reviewerNotes }),
-      resolvedAt: new Date()
-    }
+      resolvedAt: new Date(),
+    },
   });
 
   const workflowRun = await maybeCompleteWorkflowRunAfterReview({
-    workflowRunId: reviewQueueItem.workflowRunId
+    workflowRunId: reviewQueueItem.workflowRunId,
   });
 
   return {
     reviewQueueItem,
-    workflowRun
+    workflowRun,
   };
 }
 
@@ -319,8 +319,8 @@ async function resolveReviewQueueItemWithCorrections(input: {
 }) {
   const existingItem = await prisma.reviewQueueItem.findUnique({
     where: {
-      id: input.reviewQueueItemId
-    }
+      id: input.reviewQueueItemId,
+    },
   });
 
   if (!existingItem) {
@@ -341,18 +341,18 @@ async function resolveReviewQueueItemWithCorrections(input: {
   const correctionResult = await prisma.$transaction(async (tx) => {
     const reviewQueueItem = await tx.reviewQueueItem.update({
       where: {
-        id: input.reviewQueueItemId
+        id: input.reviewQueueItemId,
       },
       data: {
         status: "RESOLVED",
         reviewerNotes,
-        resolvedAt: new Date()
-      }
+        resolvedAt: new Date(),
+      },
     });
 
     const reviewedTradeInRecord = await tx.reviewedTradeInRecord.upsert({
       where: {
-        reviewQueueItemId: reviewQueueItem.id
+        reviewQueueItemId: reviewQueueItem.id,
       },
       create: {
         reviewQueueItemId: reviewQueueItem.id,
@@ -367,7 +367,7 @@ async function resolveReviewQueueItemWithCorrections(input: {
         conditionEvidenceText,
         correctedDemoValue,
         demoValuationNote,
-        reviewerNotes
+        reviewerNotes,
       },
       update: {
         workflowRunId: reviewQueueItem.workflowRunId,
@@ -382,8 +382,8 @@ async function resolveReviewQueueItemWithCorrections(input: {
         correctedDemoValue,
         demoValuationNote,
         reviewerNotes,
-        approvedAt: new Date()
-      }
+        approvedAt: new Date(),
+      },
     });
 
     const existingAiReadyRecord = reviewQueueItem.workflowRunId
@@ -392,50 +392,66 @@ async function resolveReviewQueueItemWithCorrections(input: {
             workflowRunId: reviewQueueItem.workflowRunId,
             ...(reviewQueueItem.intakeItemId
               ? { intakeItemId: reviewQueueItem.intakeItemId }
-              : {})
+              : {}),
           },
           orderBy: {
-            createdAt: "desc"
-          }
+            createdAt: "desc",
+          },
         })
       : reviewQueueItem.intakeItemId
         ? await tx.aiReadyIntakeRecord.findFirst({
             where: {
-              intakeItemId: reviewQueueItem.intakeItemId
+              intakeItemId: reviewQueueItem.intakeItemId,
             },
             orderBy: {
-              createdAt: "desc"
-            }
+              createdAt: "desc",
+            },
           })
         : null;
 
-    const existingAiReadyJson = toJsonObject(existingAiReadyRecord?.normalizedJson);
+    const existingAiReadyJson = toJsonObject(
+      existingAiReadyRecord?.normalizedJson,
+    );
     const proposedBrand =
       getProposedClubField(reviewQueueItem.proposedGolfClubJson, "brand") ??
-      getProposedClubField(reviewQueueItem.proposedGolfClubJson, "correctedBrand");
+      getProposedClubField(
+        reviewQueueItem.proposedGolfClubJson,
+        "correctedBrand",
+      );
     const proposedProductLine =
-      getProposedClubField(reviewQueueItem.proposedGolfClubJson, "productLine") ??
-      getProposedClubField(reviewQueueItem.proposedGolfClubJson, "model");
-    const proposedCategory =
-      getProposedClubField(reviewQueueItem.proposedGolfClubJson, "category");
-    const proposedShaftFlex =
-      getProposedClubField(reviewQueueItem.proposedGolfClubJson, "shaftFlex");
-    const proposedConditionGrade =
-      getProposedClubField(reviewQueueItem.proposedGolfClubJson, "conditionGrade");
+      getProposedClubField(
+        reviewQueueItem.proposedGolfClubJson,
+        "productLine",
+      ) ?? getProposedClubField(reviewQueueItem.proposedGolfClubJson, "model");
+    const proposedCategory = getProposedClubField(
+      reviewQueueItem.proposedGolfClubJson,
+      "category",
+    );
+    const proposedShaftFlex = getProposedClubField(
+      reviewQueueItem.proposedGolfClubJson,
+      "shaftFlex",
+    );
+    const proposedConditionGrade = getProposedClubField(
+      reviewQueueItem.proposedGolfClubJson,
+      "conditionGrade",
+    );
 
     const currentLearningEventValues: Record<string, string | null> = {
       brand: getJsonStringField(existingAiReadyJson, "brand") ?? proposedBrand,
       productLine:
-        getJsonStringField(existingAiReadyJson, "productLine") ?? proposedProductLine,
-      category: getJsonStringField(existingAiReadyJson, "category") ?? proposedCategory,
+        getJsonStringField(existingAiReadyJson, "productLine") ??
+        proposedProductLine,
+      category:
+        getJsonStringField(existingAiReadyJson, "category") ?? proposedCategory,
       shaftFlex:
-        getJsonStringField(existingAiReadyJson, "shaftFlex") ?? proposedShaftFlex,
+        getJsonStringField(existingAiReadyJson, "shaftFlex") ??
+        proposedShaftFlex,
       conditionGrade:
         getJsonStringField(existingAiReadyJson, "conditionGrade") ??
         proposedConditionGrade,
       demoValue:
         getJsonStringField(existingAiReadyJson, "tradeInValue") ??
-        getJsonStringField(existingAiReadyJson, "demoValue")
+        getJsonStringField(existingAiReadyJson, "demoValue"),
     };
 
     const filteredLearningEvents = input.learningEvents.filter((event) => {
@@ -446,7 +462,9 @@ async function resolveReviewQueueItemWithCorrections(input: {
       }
 
       const currentValue =
-        currentLearningEventValues[event.fieldName] ?? event.proposedValue ?? null;
+        currentLearningEventValues[event.fieldName] ??
+        event.proposedValue ??
+        null;
 
       return (
         normalizeLearningEventComparable(currentValue) !==
@@ -456,8 +474,8 @@ async function resolveReviewQueueItemWithCorrections(input: {
 
     await tx.humanReviewLearningEvent.deleteMany({
       where: {
-        reviewedTradeInRecordId: reviewedTradeInRecord.id
-      }
+        reviewedTradeInRecordId: reviewedTradeInRecord.id,
+      },
     });
 
     if (filteredLearningEvents.length > 0) {
@@ -473,8 +491,8 @@ async function resolveReviewQueueItemWithCorrections(input: {
           correctedValue: event.correctedValue ?? null,
           evidenceText: event.evidenceText ?? null,
           confidenceImpact: event.confidenceImpact ?? null,
-          reviewerNotes
-        }))
+          reviewerNotes,
+        })),
       });
     }
 
@@ -512,9 +530,11 @@ async function resolveReviewQueueItemWithCorrections(input: {
         (typeof existingAiReadyJson.conditionGrade === "string"
           ? existingAiReadyJson.conditionGrade
           : proposedConditionGrade),
-      ...(correctedDemoValue === null ? {} : { tradeInValue: correctedDemoValue }),
+      ...(correctedDemoValue === null
+        ? {}
+        : { tradeInValue: correctedDemoValue }),
       reviewNeeded: false,
-      missingFields: []
+      missingFields: [],
     };
 
     const reviewedAiReadyMissingFields =
@@ -529,7 +549,7 @@ async function resolveReviewQueueItemWithCorrections(input: {
     const updatedAiReadyIntakeRecord = existingAiReadyRecord
       ? await tx.aiReadyIntakeRecord.update({
           where: {
-            id: existingAiReadyRecord.id
+            id: existingAiReadyRecord.id,
           },
           data: {
             normalizedJson: reviewedAiReadyJson,
@@ -538,8 +558,8 @@ async function resolveReviewQueueItemWithCorrections(input: {
               : "READY_FOR_REVIEW",
             reviewNeeded: false,
             embeddingReady: true,
-            ragReady: reviewedAiReadyShapeIsRagReady
-          }
+            ragReady: reviewedAiReadyShapeIsRagReady,
+          },
         })
       : await tx.aiReadyIntakeRecord.create({
           data: {
@@ -554,7 +574,7 @@ async function resolveReviewQueueItemWithCorrections(input: {
             metadataJson: {
               createdFrom: "HUMAN_REVIEW_RESOLUTION",
               reviewQueueItemId: reviewQueueItem.id,
-              reviewedTradeInRecordId: reviewedTradeInRecord.id
+              reviewedTradeInRecordId: reviewedTradeInRecord.id,
             },
             qualitySignalsJson: filteredLearningEvents,
             status: reviewedAiReadyShapeIsRagReady
@@ -562,8 +582,8 @@ async function resolveReviewQueueItemWithCorrections(input: {
               : "READY_FOR_REVIEW",
             reviewNeeded: false,
             embeddingReady: true,
-            ragReady: reviewedAiReadyShapeIsRagReady
-          }
+            ragReady: reviewedAiReadyShapeIsRagReady,
+          },
         });
 
     await supersedeUpstreamAiReadyCandidates({
@@ -572,46 +592,48 @@ async function resolveReviewQueueItemWithCorrections(input: {
       finalReviewQueueItemId: reviewQueueItem.id,
       finalWorkflowRunId: reviewQueueItem.workflowRunId,
       finalIntakeItemId: reviewQueueItem.intakeItemId,
-      finalSourceText: reviewQueueItem.originalText
+      finalSourceText: reviewQueueItem.originalText,
     });
 
     const learningEvents = await tx.humanReviewLearningEvent.findMany({
       where: {
-        reviewedTradeInRecordId: reviewedTradeInRecord.id
+        reviewedTradeInRecordId: reviewedTradeInRecord.id,
       },
       orderBy: {
-        createdAt: "asc"
-      }
+        createdAt: "asc",
+      },
     });
 
     return {
       reviewQueueItem,
       reviewedTradeInRecord,
       updatedAiReadyIntakeRecord,
-      learningEvents
+      learningEvents,
     };
   });
 
   const workflowRun = await maybeCompleteWorkflowRunAfterReview({
-    workflowRunId: correctionResult.reviewQueueItem.workflowRunId
+    workflowRunId: correctionResult.reviewQueueItem.workflowRunId,
   });
 
   return {
     ...correctionResult,
-    workflowRun
+    workflowRun,
   };
 }
 
 export async function reviewQueueItemRoutes(
-  app: FastifyInstance
+  app: FastifyInstance,
 ): Promise<void> {
   app.get("/review-queue-items", async (request, reply) => {
-    const parsedQuery = listReviewQueueItemsQuerySchema.safeParse(request.query);
+    const parsedQuery = listReviewQueueItemsQuerySchema.safeParse(
+      request.query,
+    );
 
     if (!parsedQuery.success) {
       return reply.status(400).send({
         error: "Invalid review queue item list query",
-        details: parsedQuery.error.flatten()
+        details: parsedQuery.error.flatten(),
       });
     }
 
@@ -619,54 +641,58 @@ export async function reviewQueueItemRoutes(
       where: {
         ...(parsedQuery.data.status
           ? {
-              status: parsedQuery.data.status
+              status: parsedQuery.data.status,
             }
           : {}),
         ...(parsedQuery.data.workflowRunId
           ? {
-              workflowRunId: parsedQuery.data.workflowRunId
+              workflowRunId: parsedQuery.data.workflowRunId,
             }
-          : {})
+          : {}),
       },
       include: {
         workflowRun: true,
         intakeItem: {
           include: {
-            intakeBatch: true
-          }
+            intakeBatch: true,
+          },
         },
         reviewedTradeInRecord: true,
         humanReviewLearningEvents: {
           orderBy: {
-            createdAt: "asc"
-          }
-        }
+            createdAt: "asc",
+          },
+        },
       },
       orderBy: {
-        createdAt: "desc"
-      }
+        createdAt: "desc",
+      },
     });
 
     return {
-      reviewQueueItems: reviewQueueItems.map(serializeReviewQueueItemWithContext)
+      reviewQueueItems: reviewQueueItems.map(
+        serializeReviewQueueItemWithContext,
+      ),
     };
   });
 
   app.post("/review-queue-items/:id/resolve", async (request, reply) => {
     const parsedParams = reviewQueueItemParamsSchema.safeParse(request.params);
-    const parsedBody = reviewQueueActionBodySchema.safeParse(request.body ?? {});
+    const parsedBody = reviewQueueActionBodySchema.safeParse(
+      request.body ?? {},
+    );
 
     if (!parsedParams.success) {
       return reply.status(400).send({
         error: "Invalid review queue item id",
-        details: parsedParams.error.flatten()
+        details: parsedParams.error.flatten(),
       });
     }
 
     if (!parsedBody.success) {
       return reply.status(400).send({
         error: "Invalid review queue item resolution request",
-        details: parsedBody.error.flatten()
+        details: parsedBody.error.flatten(),
       });
     }
 
@@ -675,12 +701,12 @@ export async function reviewQueueItemRoutes(
       status: "RESOLVED",
       ...(parsedBody.data.reviewerNotes === undefined
         ? {}
-        : { reviewerNotes: parsedBody.data.reviewerNotes })
+        : { reviewerNotes: parsedBody.data.reviewerNotes }),
     });
 
     if (!result) {
       return reply.status(404).send({
-        error: "Review queue item not found"
+        error: "Review queue item not found",
       });
     }
 
@@ -688,29 +714,31 @@ export async function reviewQueueItemRoutes(
       reviewQueueItem: serializeReviewQueueItem(result.reviewQueueItem),
       workflowRun: result.workflowRun
         ? serializeWorkflowRun(result.workflowRun)
-        : null
+        : null,
     };
   });
 
   app.post(
     "/review-queue-items/:id/resolve-with-corrections",
     async (request, reply) => {
-      const parsedParams = reviewQueueItemParamsSchema.safeParse(request.params);
+      const parsedParams = reviewQueueItemParamsSchema.safeParse(
+        request.params,
+      );
       const parsedBody = resolveWithCorrectionsBodySchema.safeParse(
-        request.body ?? {}
+        request.body ?? {},
       );
 
       if (!parsedParams.success) {
         return reply.status(400).send({
           error: "Invalid review queue item id",
-          details: parsedParams.error.flatten()
+          details: parsedParams.error.flatten(),
         });
       }
 
       if (!parsedBody.success) {
         return reply.status(400).send({
           error: "Invalid structured review queue item resolution request",
-          details: parsedBody.error.flatten()
+          details: parsedBody.error.flatten(),
         });
       }
 
@@ -723,13 +751,13 @@ export async function reviewQueueItemRoutes(
             ? {}
             : { reviewerNotes: parsedBody.data.reviewerNotes }),
           correctedRecord: parsedBody.data.correctedRecord,
-          learningEvents: parsedBody.data.learningEvents
+          learningEvents: parsedBody.data.learningEvents,
         });
       } catch (error) {
         if (error instanceof ReviewCorrectionValidationError) {
           return reply.status(400).send({
             error: error.message,
-            missingFields: error.missingFields
+            missingFields: error.missingFields,
           });
         }
 
@@ -738,7 +766,7 @@ export async function reviewQueueItemRoutes(
 
       if (!result) {
         return reply.status(404).send({
-          error: "Review queue item not found"
+          error: "Review queue item not found",
         });
       }
 
@@ -748,31 +776,33 @@ export async function reviewQueueItemRoutes(
           ? serializeWorkflowRun(result.workflowRun)
           : null,
         reviewedTradeInRecord: serializeReviewedTradeInRecord(
-          result.reviewedTradeInRecord
+          result.reviewedTradeInRecord,
         ),
         aiReadyIntakeRecord: result.updatedAiReadyIntakeRecord,
         learningEvents: result.learningEvents.map(
-          serializeHumanReviewLearningEvent
-        )
+          serializeHumanReviewLearningEvent,
+        ),
       };
-    }
+    },
   );
 
   app.post("/review-queue-items/:id/dismiss", async (request, reply) => {
     const parsedParams = reviewQueueItemParamsSchema.safeParse(request.params);
-    const parsedBody = reviewQueueActionBodySchema.safeParse(request.body ?? {});
+    const parsedBody = reviewQueueActionBodySchema.safeParse(
+      request.body ?? {},
+    );
 
     if (!parsedParams.success) {
       return reply.status(400).send({
         error: "Invalid review queue item id",
-        details: parsedParams.error.flatten()
+        details: parsedParams.error.flatten(),
       });
     }
 
     if (!parsedBody.success) {
       return reply.status(400).send({
         error: "Invalid review queue item dismissal request",
-        details: parsedBody.error.flatten()
+        details: parsedBody.error.flatten(),
       });
     }
 
@@ -781,12 +811,12 @@ export async function reviewQueueItemRoutes(
       status: "DISMISSED",
       ...(parsedBody.data.reviewerNotes === undefined
         ? {}
-        : { reviewerNotes: parsedBody.data.reviewerNotes })
+        : { reviewerNotes: parsedBody.data.reviewerNotes }),
     });
 
     if (!result) {
       return reply.status(404).send({
-        error: "Review queue item not found"
+        error: "Review queue item not found",
       });
     }
 
@@ -794,7 +824,7 @@ export async function reviewQueueItemRoutes(
       reviewQueueItem: serializeReviewQueueItem(result.reviewQueueItem),
       workflowRun: result.workflowRun
         ? serializeWorkflowRun(result.workflowRun)
-        : null
+        : null,
     };
   });
 }

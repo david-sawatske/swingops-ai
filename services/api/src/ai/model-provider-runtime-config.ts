@@ -1,7 +1,7 @@
 import type {
   ModelProviderExecuteInput,
   ModelProviderExecuteResult,
-  ModelProviderName
+  ModelProviderName,
 } from "./model-provider.types.js";
 import { ModelProviderAdapterError } from "./model-provider-errors.js";
 
@@ -35,13 +35,13 @@ export type ModelProviderFetch = (
     headers: Record<string, string>;
     body: string;
     signal?: AbortSignal;
-  }
+  },
 ) => Promise<ModelProviderFetchResponse>;
 
 type RuntimeEnv = Partial<Record<string, string | undefined>>;
 
 export function getModelProviderRuntimeConfig(
-  env: RuntimeEnv = process.env
+  env: RuntimeEnv = process.env,
 ): ModelProviderRuntimeConfig {
   const realModelCallsBlockedByTest =
     (env.NODE_ENV === "test" || env.VITEST === "true") &&
@@ -49,14 +49,14 @@ export function getModelProviderRuntimeConfig(
 
   const config: ModelProviderRuntimeConfig = {
     enableRealModelCalls:
-      env.ENABLE_REAL_MODEL_CALLS === "true" && !realModelCallsBlockedByTest
+      env.ENABLE_REAL_MODEL_CALLS === "true" && !realModelCallsBlockedByTest,
   };
 
   const providerAttemptTimeoutMs = readPositiveInteger(
-    env.MODEL_PROVIDER_ATTEMPT_TIMEOUT_MS
+    env.MODEL_PROVIDER_ATTEMPT_TIMEOUT_MS,
   );
   const providerWorkflowTimeoutMs = readPositiveInteger(
-    env.MODEL_PROVIDER_WORKFLOW_TIMEOUT_MS
+    env.MODEL_PROVIDER_WORKFLOW_TIMEOUT_MS,
   );
 
   if (providerAttemptTimeoutMs !== undefined) {
@@ -136,7 +136,7 @@ export function assertRealModelCallsEnabled(input: {
       message:
         `${input.provider} real model calls are disabled. ` +
         "Set ENABLE_REAL_MODEL_CALLS=true and configure provider credentials. " +
-        input.missingConfigHint
+        input.missingConfigHint,
     });
   }
 }
@@ -150,7 +150,7 @@ export function assertConfiguredString(input: {
     throw new ModelProviderAdapterError({
       code: "MODEL_PROVIDER_NOT_CONFIGURED",
       provider: input.provider,
-      message: `${input.provider} adapter is not configured. Missing ${input.envName}.`
+      message: `${input.provider} adapter is not configured. Missing ${input.envName}.`,
     });
   }
 
@@ -171,7 +171,7 @@ export function buildProviderPrompt(input: ModelProviderExecuteInput): string {
     `Model: ${input.model}`,
     "Return a compact JSON object only.",
     "Input JSON:",
-    JSON.stringify(input.inputJson, null, 2)
+    JSON.stringify(input.inputJson, null, 2),
   ].join("\n");
 }
 
@@ -210,9 +210,9 @@ export function normalizeTextModelOutput(input: {
       model: input.model,
       taskType: input.taskType,
       text: input.text,
-      parsedJson: parseJsonObject(input.text)
+      parsedJson: parseJsonObject(input.text),
     },
-    ...(input.usage ? { usage: input.usage } : {})
+    ...(input.usage ? { usage: input.usage } : {}),
   };
 }
 
@@ -230,16 +230,19 @@ export async function assertSuccessfulResponse(input: {
     statusCode: input.response.status,
     message:
       `${input.provider} adapter request failed with ` +
-      `${input.response.status} ${input.response.statusText}.`
+      `${input.response.status} ${input.response.statusText}.`,
   });
 }
 
-export function readObject(value: unknown, provider: ModelProviderName): Record<string, unknown> {
+export function readObject(
+  value: unknown,
+  provider: ModelProviderName,
+): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new ModelProviderAdapterError({
       code: "MODEL_PROVIDER_INVALID_RESPONSE",
       provider,
-      message: `${provider} provider returned a non-object JSON response.`
+      message: `${provider} provider returned a non-object JSON response.`,
     });
   }
 

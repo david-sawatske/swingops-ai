@@ -2,11 +2,7 @@ import type { AiReadyIntakeRecord } from "./aiReadyRecords";
 import type { WorkflowRunSummary } from "./workflowRun";
 
 export type ReviewQueueItemStatus =
-  | "OPEN"
-  | "IN_REVIEW"
-  | "RESOLVED"
-  | "DISMISSED"
-  | "SUPERSEDED";
+  "OPEN" | "IN_REVIEW" | "RESOLVED" | "DISMISSED" | "SUPERSEDED";
 
 export type ReviewedTradeInRecord = {
   id: string;
@@ -111,20 +107,10 @@ export type ReviewConditionGrade =
   | "6.0 Poor";
 
 export type ReviewCorrectionCategory =
-  | "DRIVER"
-  | "FAIRWAY_WOOD"
-  | "HYBRID"
-  | "IRON_SET"
-  | "WEDGE"
-  | "PUTTER";
+  "DRIVER" | "FAIRWAY_WOOD" | "HYBRID" | "IRON_SET" | "WEDGE" | "PUTTER";
 
 export type ReviewCorrectionShaftFlex =
-  | "STIFF"
-  | "REGULAR"
-  | "SENIOR"
-  | "X_STIFF"
-  | "LADIES"
-  | "TOUR_X_STIFF";
+  "STIFF" | "REGULAR" | "SENIOR" | "X_STIFF" | "LADIES" | "TOUR_X_STIFF";
 
 export type StructuredReviewCorrectedRecord = {
   brand?: string;

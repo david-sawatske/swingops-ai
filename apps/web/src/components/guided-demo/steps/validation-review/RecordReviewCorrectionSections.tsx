@@ -17,9 +17,7 @@ import type {
   ReviewCorrectionDraft,
   ReviewQueueItem,
 } from "./validationReviewTypes";
-import {
-  getModelReviewOutcomeLabel,
-} from "../GuidedModelReviewAssistance";
+import { getModelReviewOutcomeLabel } from "../GuidedModelReviewAssistance";
 import {
   applyPriorReviewSuggestionToDraft,
   canResolveReviewItem,
@@ -73,23 +71,18 @@ function CorrectionFocusCallout({
   const focusFields = focusFieldsOverride ?? getCorrectionFocusFields(card);
 
   if (
-    isSourceSupportedProductCatalogConfirmation(
-      card,
-    ) &&
+    isSourceSupportedProductCatalogConfirmation(card) &&
     focusFields.includes("productLine")
   ) {
-    const currentProductLine =
-      getCurrentValueForField(
-        card,
-        "productLine",
-      );
+    const currentProductLine = getCurrentValueForField(card, "productLine");
 
     return (
       <div className="guided-correction-focus">
         <strong>Catalog identity to confirm</strong>
         <p>
-          The source-supported product line is {currentProductLine}. Keep this value
-          unless the available evidence verifies a more specific catalog product.
+          The source-supported product line is {currentProductLine}. Keep this
+          value unless the available evidence verifies a more specific catalog
+          product.
         </p>
       </div>
     );
@@ -138,9 +131,7 @@ function AppliedCorrectionSummary({
       className="guided-applied-correction-summary"
     >
       <span className="guided-applied-correction-summary__label">
-        {summaries.length === 1
-          ? "Applied correction"
-          : "Applied corrections"}
+        {summaries.length === 1 ? "Applied correction" : "Applied corrections"}
       </span>
 
       <dl>
@@ -168,7 +159,8 @@ function PriorReviewSuggestionsPanel({
   onRequestManualValue: (suggestion: PriorReviewLearningSuggestion) => void;
   suggestions: PriorReviewLearningSuggestion[];
 }) {
-  const actionableSuggestions = getActionablePriorReviewSuggestions(suggestions);
+  const actionableSuggestions =
+    getActionablePriorReviewSuggestions(suggestions);
   const openSuggestions = getOpenPriorReviewSuggestions(
     suggestions,
     handledSuggestionIds,
@@ -184,12 +176,13 @@ function PriorReviewSuggestionsPanel({
   const fieldName = getSuggestionDraftFieldName(currentSuggestion.fieldName);
   const suggestedValue = String(currentSuggestion.suggestedValue ?? "").trim();
   const canApply = Boolean(fieldName && suggestedValue);
-  const draftValue = fieldName ? getCorrectedValueForField(draft, fieldName) : "";
-  const suggestionIsLoaded =
-    isPriorReviewSuggestionLoadedInDraft(
-      draft,
-      currentSuggestion,
-    );
+  const draftValue = fieldName
+    ? getCorrectedValueForField(draft, fieldName)
+    : "";
+  const suggestionIsLoaded = isPriorReviewSuggestionLoadedInDraft(
+    draft,
+    currentSuggestion,
+  );
 
   return (
     <div className="guided-prior-review-suggestions">
@@ -218,7 +211,11 @@ function PriorReviewSuggestionsPanel({
             </div>
             <div>
               <dt>Source phrase</dt>
-              <dd>{currentSuggestion.rawTextMatch ? '"' + currentSuggestion.rawTextMatch + '"' : "—"}</dd>
+              <dd>
+                {currentSuggestion.rawTextMatch
+                  ? '"' + currentSuggestion.rawTextMatch + '"'
+                  : "—"}
+              </dd>
             </div>
             <div>
               <dt>Previously approved value</dt>
@@ -238,8 +235,8 @@ function PriorReviewSuggestionsPanel({
 
           {suggestionIsLoaded ? (
             <p className="form-message form-message--success">
-              Suggested correction loaded. Review the prefilled value below, then
-              save the correction or enter a different value.
+              Suggested correction loaded. Review the prefilled value below,
+              then save the correction or enter a different value.
             </p>
           ) : (
             <div className="guided-prior-review-suggestion__actions">
@@ -270,14 +267,10 @@ export function ModelReviewAssistancePanel({
   onApplySuggestion,
   outcome,
 }: {
-  onApplySuggestion:
-    | ((suggestion: ModelReviewSuggestion) => void)
-    | null;
+  onApplySuggestion: ((suggestion: ModelReviewSuggestion) => void) | null;
   outcome: ModelReviewOutcome;
 }) {
-  const outcomeModifier = outcome.outcomeType
-    .toLowerCase()
-    .replace(/_/g, "-");
+  const outcomeModifier = outcome.outcomeType.toLowerCase().replace(/_/g, "-");
 
   return (
     <section
@@ -286,9 +279,7 @@ export function ModelReviewAssistancePanel({
     >
       <div className="guided-record-model-assistance__header">
         <div>
-          <span className="model-route-card__eyebrow">
-            Advisory evidence
-          </span>
+          <span className="model-route-card__eyebrow">Advisory evidence</span>
           <strong>Model review assistance</strong>
         </div>
 
@@ -336,11 +327,7 @@ export function ModelReviewAssistancePanel({
                 <div className="guided-prior-review-suggestion__actions">
                   <button
                     className="guided-step-primary-action"
-                    onClick={() =>
-                      onApplySuggestion(
-                        suggestion,
-                      )
-                    }
+                    onClick={() => onApplySuggestion(suggestion)}
                     type="button"
                   >
                     Review and save correction
@@ -368,9 +355,7 @@ export function ModelReviewAssistancePanel({
           <strong>Why the model withheld a repair</strong>
           <ul>
             {outcome.reasonCodes.map((reasonCode) => (
-              <li key={reasonCode}>
-                {formatEnumLabel(reasonCode)}
-              </li>
+              <li key={reasonCode}>{formatEnumLabel(reasonCode)}</li>
             ))}
           </ul>
         </div>
@@ -460,7 +445,10 @@ export function RecordCorrectionPanel({
     return (
       <div className="guided-record-correction-panel guided-record-correction-panel--muted">
         <strong>No review queue item</strong>
-        <p>This record has no persisted review item to resolve from this checkpoint.</p>
+        <p>
+          This record has no persisted review item to resolve from this
+          checkpoint.
+        </p>
       </div>
     );
   }
@@ -468,7 +456,9 @@ export function RecordCorrectionPanel({
   if (!canResolveReviewItem(card.reviewItem)) {
     return (
       <div className="guided-record-correction-panel guided-record-correction-panel--resolved">
-        <strong>Review status: {getReviewItemStatusLabel(card.reviewItem)}</strong>
+        <strong>
+          Review status: {getReviewItemStatusLabel(card.reviewItem)}
+        </strong>
         <p>This review item has already been handled.</p>
       </div>
     );
@@ -479,16 +469,11 @@ export function RecordCorrectionPanel({
     appliedSuggestionIds,
   );
 
-  for (
-    const fieldName of
-      getLoadedPriorReviewSuggestionFieldNames(
-        draft,
-        card.priorReviewSuggestions,
-      )
-  ) {
-    appliedSuggestionFieldNames.add(
-      fieldName,
-    );
+  for (const fieldName of getLoadedPriorReviewSuggestionFieldNames(
+    draft,
+    card.priorReviewSuggestions,
+  )) {
+    appliedSuggestionFieldNames.add(fieldName);
   }
 
   const visibleFields = getVisibleCorrectionFieldsAfterAppliedSuggestions(
@@ -499,9 +484,7 @@ export function RecordCorrectionPanel({
   const inventoryProductLineCandidates =
     getInventoryProductLineCandidates(card);
   const isCatalogIdentityConfirmation =
-    isSourceSupportedProductCatalogConfirmation(
-      card,
-    );
+    isSourceSupportedProductCatalogConfirmation(card);
   const hasOpenPriorReviewSuggestions =
     getOpenPriorReviewSuggestions(
       card.priorReviewSuggestions,
@@ -527,7 +510,10 @@ export function RecordCorrectionPanel({
           </p>
         </div>
         {hasOpenPriorReviewSuggestions ? null : (
-          <CorrectionFocusCallout card={card} focusFieldsOverride={visibleFields} />
+          <CorrectionFocusCallout
+            card={card}
+            focusFieldsOverride={visibleFields}
+          />
         )}
         <PriorReviewSuggestionsPanel
           draft={draft}
@@ -537,7 +523,11 @@ export function RecordCorrectionPanel({
           suggestions={card.priorReviewSuggestions}
         />
         {hasOpenPriorReviewSuggestions ? null : (
-          <button className="guided-step-primary-action" onClick={onStartEditing} type="button">
+          <button
+            className="guided-step-primary-action"
+            onClick={onStartEditing}
+            type="button"
+          >
             {hasPriorReviewSuggestions
               ? "Review remaining fields"
               : isCatalogIdentityConfirmation
@@ -559,8 +549,8 @@ export function RecordCorrectionPanel({
           <div>
             <strong>Review prior suggestions first</strong>
             <p>
-              Apply a surfaced suggestion or enter a different value before resolving
-              the remaining fields.
+              Apply a surfaced suggestion or enter a different value before
+              resolving the remaining fields.
             </p>
           </div>
           <button disabled={isSaving} onClick={onCancelEditing} type="button">
@@ -612,7 +602,10 @@ export function RecordCorrectionPanel({
       />
 
       {blockingCorrectionFields.length > 0 ? (
-        <div className="guided-correction-focus guided-correction-focus--warning" role="alert">
+        <div
+          className="guided-correction-focus guided-correction-focus--warning"
+          role="alert"
+        >
           <strong>Complete the required correction before resolving</strong>
           <p>
             Choose or enter a corrected value for:{" "}
@@ -626,7 +619,9 @@ export function RecordCorrectionPanel({
           <label>
             Brand
             <input
-              onChange={(event) => onDraftChange({ ...draft, brand: event.target.value })}
+              onChange={(event) =>
+                onDraftChange({ ...draft, brand: event.target.value })
+              }
               value={draft.brand}
             />
           </label>
@@ -644,68 +639,67 @@ export function RecordCorrectionPanel({
           </label>
         ) : null}
 
-      {visibleFields.includes("productLine") &&
-      inventoryProductLineCandidates.length > 0 ? (
-        <section
-          aria-label="Inventory product-line candidates"
-          className="guided-inventory-candidate-suggestions"
-        >
-          <div className="guided-inventory-candidate-suggestions__header">
-            <strong>Matching catalog candidates</strong>
-            <p>
-              {isCatalogIdentityConfirmation
-                ? "Keep the source-supported value unless a candidate is verified by the available evidence."
-                : "Select the verified generation. Manual entry remains available."}
-            </p>
-          </div>
+        {visibleFields.includes("productLine") &&
+        inventoryProductLineCandidates.length > 0 ? (
+          <section
+            aria-label="Inventory product-line candidates"
+            className="guided-inventory-candidate-suggestions"
+          >
+            <div className="guided-inventory-candidate-suggestions__header">
+              <strong>Matching catalog candidates</strong>
+              <p>
+                {isCatalogIdentityConfirmation
+                  ? "Keep the source-supported value unless a candidate is verified by the available evidence."
+                  : "Select the verified generation. Manual entry remains available."}
+              </p>
+            </div>
 
-          <div className="guided-inventory-candidate-suggestions__list">
-            {inventoryProductLineCandidates.map((candidate) => {
-              const isSelected =
-                normalizeComparable(draft.productLine) ===
-                normalizeComparable(candidate.productLine);
+            <div className="guided-inventory-candidate-suggestions__list">
+              {inventoryProductLineCandidates.map((candidate) => {
+                const isSelected =
+                  normalizeComparable(draft.productLine) ===
+                  normalizeComparable(candidate.productLine);
 
-              return (
-                <button
-                  aria-pressed={isSelected}
-                  className={
-                    isSelected
-                      ? "guided-inventory-candidate guided-inventory-candidate--selected"
-                      : "guided-inventory-candidate"
-                  }
-                  key={
-                    candidate.productId ??
-                    candidate.sku ??
-                    candidate.productLine
-                  }
-                  onClick={() =>
-                    onDraftChange({
-                      ...draft,
-                      productLine: candidate.productLine,
-                    })
-                  }
-                  title={
-                    candidate.sku
-                      ? candidate.productLine + " · " + candidate.sku
-                      : candidate.productLine
-                  }
-                  type="button"
-                >
-                  <span>{candidate.productLine}</span>
-                  <small>
-                    {Math.round(candidate.confidence * 100)}% catalog match
-                  </small>
-                </button>
-              );
-            })}
-          </div>
+                return (
+                  <button
+                    aria-pressed={isSelected}
+                    className={
+                      isSelected
+                        ? "guided-inventory-candidate guided-inventory-candidate--selected"
+                        : "guided-inventory-candidate"
+                    }
+                    key={
+                      candidate.productId ??
+                      candidate.sku ??
+                      candidate.productLine
+                    }
+                    onClick={() =>
+                      onDraftChange({
+                        ...draft,
+                        productLine: candidate.productLine,
+                      })
+                    }
+                    title={
+                      candidate.sku
+                        ? candidate.productLine + " · " + candidate.sku
+                        : candidate.productLine
+                    }
+                    type="button"
+                  >
+                    <span>{candidate.productLine}</span>
+                    <small>
+                      {Math.round(candidate.confidence * 100)}% catalog match
+                    </small>
+                  </button>
+                );
+              })}
+            </div>
 
-          <small className="guided-inventory-candidate-suggestions__note">
-            Selecting a candidate fills the Product line field above.
-          </small>
-        </section>
-      ) : null}
-
+            <small className="guided-inventory-candidate-suggestions__note">
+              Selecting a candidate fills the Product line field above.
+            </small>
+          </section>
+        ) : null}
 
         {visibleFields.includes("category") ? (
           <label>
@@ -736,7 +730,8 @@ export function RecordCorrectionPanel({
               onChange={(event) =>
                 onDraftChange({
                   ...draft,
-                  shaftFlex: event.target.value as ReviewCorrectionShaftFlex | "",
+                  shaftFlex: event.target.value as
+                    ReviewCorrectionShaftFlex | "",
                 })
               }
               value={draft.shaftFlex}
@@ -758,7 +753,8 @@ export function RecordCorrectionPanel({
               onChange={(event) =>
                 onDraftChange({
                   ...draft,
-                  conditionGrade: event.target.value as ReviewConditionGrade | "",
+                  conditionGrade: event.target.value as
+                    ReviewConditionGrade | "",
                 })
               }
               value={draft.conditionGrade}
@@ -778,7 +774,9 @@ export function RecordCorrectionPanel({
             Trade-in value
             <input
               min="0"
-              onChange={(event) => onDraftChange({ ...draft, demoValue: event.target.value })}
+              onChange={(event) =>
+                onDraftChange({ ...draft, demoValue: event.target.value })
+              }
               type="number"
               value={draft.demoValue}
             />
@@ -793,14 +791,18 @@ export function RecordCorrectionPanel({
             {secondaryFields.map((field) => {
               const parserEvidence = getParserEvidenceForField(
                 card.parsedRecord,
-                field === "demoValue" ? ["tradeInValue", "demoValue", "value"] : [field],
+                field === "demoValue"
+                  ? ["tradeInValue", "demoValue", "value"]
+                  : [field],
               );
 
               return (
                 <div key={field}>
                   <dt>{getCorrectionFieldLabel(field)}</dt>
                   <dd>
-                    <span>{getCorrectedValueForField(draft, field) || "—"}</span>
+                    <span>
+                      {getCorrectedValueForField(draft, field) || "—"}
+                    </span>
                     {parserEvidence ? (
                       <small className="guided-parser-field-evidence">
                         Parsed from “{parserEvidence.sourceText}”
@@ -813,13 +815,12 @@ export function RecordCorrectionPanel({
           </dl>
         </details>
       ) : null}
-        <SourceTextMatchEditor
+      <SourceTextMatchEditor
         appliedSuggestionFieldNames={appliedSuggestionFieldNames}
         card={card}
         draft={draft}
         onDraftChange={onDraftChange}
       />
-
 
       {visibleFields.includes("demoValue") ||
       appliedSuggestionFieldNames.has("demoValue") ? (
@@ -889,8 +890,8 @@ function SourceTextMatchEditor({
       <div>
         <strong>Matching source text</strong>
         <p>
-          Tie each correction to the exact phrase in the original record. This is
-          what future runs can safely use as prior review evidence.
+          Tie each correction to the exact phrase in the original record. This
+          is what future runs can safely use as prior review evidence.
         </p>
       </div>
 

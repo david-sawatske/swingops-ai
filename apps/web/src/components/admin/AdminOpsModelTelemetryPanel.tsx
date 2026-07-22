@@ -17,10 +17,7 @@ import {
 } from "./adminOpsPresentation";
 
 type AdminOpsModelTelemetryTab =
-  | "PROVIDER_MIX"
-  | "ASSISTANCE"
-  | "LATENCY_COST"
-  | "VALIDATION";
+  "PROVIDER_MIX" | "ASSISTANCE" | "LATENCY_COST" | "VALIDATION";
 
 const ADMIN_OPS_MODEL_TELEMETRY_TABS: {
   label: string;
@@ -37,7 +34,9 @@ export function AdminOpsModelTelemetryPanel({
 }: {
   workflowRuns: GlobalWorkflowRunSummary[];
 }) {
-  const [summary, setSummary] = useState<GetAdminOpsSummaryResponse | null>(null);
+  const [summary, setSummary] = useState<GetAdminOpsSummaryResponse | null>(
+    null,
+  );
   const [isSummaryLoading, setIsSummaryLoading] = useState(true);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [activeTab, setActiveTab] =
@@ -57,9 +56,7 @@ export function AdminOpsModelTelemetryPanel({
         entry,
       ): entry is {
         run: GlobalWorkflowRunSummary;
-        modelCall: NonNullable<
-          GlobalWorkflowRunSummary["latestModelCallLog"]
-        >;
+        modelCall: NonNullable<GlobalWorkflowRunSummary["latestModelCallLog"]>;
       } => entry !== null,
     )
     .slice(0, 8);
@@ -121,10 +118,15 @@ export function AdminOpsModelTelemetryPanel({
   }, []);
 
   return (
-    <section className="admin-ops-panel" aria-labelledby="admin-ops-model-title">
+    <section
+      className="admin-ops-panel"
+      aria-labelledby="admin-ops-model-title"
+    >
       <div className="admin-ops-panel-heading">
         <span className="model-route-card__eyebrow">Model telemetry</span>
-        <h3 id="admin-ops-model-title">Execution cost, latency and reliability</h3>
+        <h3 id="admin-ops-model-title">
+          Execution cost, latency and reliability
+        </h3>
         <p>
           Tracks model execution health across recent model calls, then keeps
           recent workflow call evidence visible for audit.
@@ -297,13 +299,16 @@ export function AdminOpsModelTelemetryPanel({
                     </strong>
                     <small>
                       {modelExecutions.assistance.validationPassedCalls} passed
-                      / {modelExecutions.assistance.validationFailedCalls} failed
+                      / {modelExecutions.assistance.validationFailedCalls}{" "}
+                      failed
                     </small>
                   </div>
 
                   <div className="admin-ops-insight-row">
                     <span>Repair suggested</span>
-                    <strong>{modelExecutions.assistance.repairSuggested}</strong>
+                    <strong>
+                      {modelExecutions.assistance.repairSuggested}
+                    </strong>
                     <small>
                       Source-supported field repairs returned for review.
                     </small>
@@ -394,7 +399,10 @@ export function AdminOpsModelTelemetryPanel({
                       </span>
                       <strong>{formatLatency(entry.averageLatencyMs)}</strong>
                       <small>
-                        {formatAdminOpsCountLabel(entry.attemptCount, "attempt")}{" "}
+                        {formatAdminOpsCountLabel(
+                          entry.attemptCount,
+                          "attempt",
+                        )}{" "}
                         · {formatCurrency(entry.estimatedCostTotal)} estimated
                       </small>
                     </div>

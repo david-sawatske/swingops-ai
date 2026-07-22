@@ -11,7 +11,9 @@ import {
 } from "./RecordReviewCardView";
 import type { RecordReviewCard } from "./validationReviewTypes";
 
-function buildReviewCard(overrides: Partial<RecordReviewCard> = {}): RecordReviewCard {
+function buildReviewCard(
+  overrides: Partial<RecordReviewCard> = {},
+): RecordReviewCard {
   return {
     id: "card-1",
     index: 0,
@@ -29,7 +31,8 @@ function buildReviewCard(overrides: Partial<RecordReviewCard> = {}): RecordRevie
       intakeItemId: "intake-item-1",
       status: "OPEN",
       golfClubId: null,
-      reason: "Shaft flex, condition, and trade-in value need reviewer confirmation.",
+      reason:
+        "Shaft flex, condition, and trade-in value need reviewer confirmation.",
       resolvedAt: null,
       proposedGolfClubJson: {
         brand: "PING",
@@ -39,7 +42,8 @@ function buildReviewCard(overrides: Partial<RecordReviewCard> = {}): RecordRevie
         conditionGrade: "8.0 Average",
         tradeInValue: 100,
       },
-      originalText: "PING G425 4-PW shaft unknown condition unclear value pending review",
+      originalText:
+        "PING G425 4-PW shaft unknown condition unclear value pending review",
       reviewerNotes: null,
       createdAt: "2026-07-04T00:00:00.000Z",
       updatedAt: "2026-07-04T00:00:00.000Z",
@@ -48,13 +52,17 @@ function buildReviewCard(overrides: Partial<RecordReviewCard> = {}): RecordRevie
     modelReviewOutcome: null,
     inventoryEvidence: null,
     valuationEvidence: null,
-    sourceEvidence: "PING G425 4-PW shaft unknown condition unclear value pending review",
+    sourceEvidence:
+      "PING G425 4-PW shaft unknown condition unclear value pending review",
     priorReviewSuggestions: [],
     missingFields: ["shaftFlex", "conditionGrade", "demoValue"],
-    reviewReasons: ["Shaft flex, condition, and trade-in value need reviewer confirmation."],
+    reviewReasons: [
+      "Shaft flex, condition, and trade-in value need reviewer confirmation.",
+    ],
     validationChecks: [],
     retryEvents: [],
-    suggestedAction: "Open the review correction form and confirm the missing fields.",
+    suggestedAction:
+      "Open the review correction form and confirm the missing fields.",
     ...overrides,
   };
 }
@@ -82,7 +90,8 @@ describe("buildCorrectionDraft", () => {
           conditionGrade: "8.0 Average",
           tradeInValue: 145,
         },
-        sourceEvidence: "Titleist TSR2 3w shaft stiff condition 8.0 Average trade value $145",
+        sourceEvidence:
+          "Titleist TSR2 3w shaft stiff condition 8.0 Average trade value $145",
         missingFields: [],
         reviewReasons: [],
       }),
@@ -189,7 +198,6 @@ describe("buildCorrectionDraft", () => {
     expect(draft.demoValue).toBe("135");
   });
 
-
   it("returns only the strongest same-brand inventory candidates", () => {
     const card = buildReviewCard({
       parsedRecord: {
@@ -252,7 +260,6 @@ describe("buildCorrectionDraft", () => {
     ).toEqual(["TSR2", "TSR3"]);
   });
 
-
   it("requires an ambiguous product line to be replaced before resolution", () => {
     const card = buildReviewCard({
       parsedRecord: {
@@ -296,9 +303,9 @@ describe("buildCorrectionDraft", () => {
     const initialDraft = buildCorrectionDraft(card);
 
     expect(initialDraft.productLine).toBe("");
-    expect(
-      getBlockingCorrectionFields(card, initialDraft),
-    ).toEqual(["productLine"]);
+    expect(getBlockingCorrectionFields(card, initialDraft)).toEqual([
+      "productLine",
+    ]);
 
     expect(
       getBlockingCorrectionFields(card, {
@@ -314,7 +321,6 @@ describe("buildCorrectionDraft", () => {
       }),
     ).toEqual([]);
   });
-
 
   it("allows explicit confirmation of a provisional value when it is a supplied catalog candidate", () => {
     const card = buildReviewCard({
@@ -384,9 +390,9 @@ describe("buildCorrectionDraft", () => {
     const initialDraft = buildCorrectionDraft(card);
 
     expect(initialDraft.productLine).toBe("");
-    expect(
-      getBlockingCorrectionFields(card, initialDraft),
-    ).toEqual(["productLine"]);
+    expect(getBlockingCorrectionFields(card, initialDraft)).toEqual([
+      "productLine",
+    ]);
 
     expect(
       getBlockingCorrectionFields(card, {
@@ -455,10 +461,7 @@ describe("buildCorrectionDraft", () => {
         ],
         reviewerQuestion:
           "Can the catalog identity for the source-supported PING G430 be confirmed?",
-        reasonCodes: [
-          "PRODUCT_UNRESOLVED",
-          "VALUATION_REVIEW_REQUIRED",
-        ],
+        reasonCodes: ["PRODUCT_UNRESOLVED", "VALUATION_REVIEW_REQUIRED"],
       },
       sourceEvidence:
         "PING G430 DRIVER — shaft flex REGULAR; condition 8.0 Average; trade value $180; store 207; source evidence: PING,G430,driver,R,8.0 Average,$180,207",
@@ -486,35 +489,18 @@ describe("buildCorrectionDraft", () => {
       },
     });
 
-    const draft =
-      buildCorrectionDraft(card);
+    const draft = buildCorrectionDraft(card);
 
-    expect(
-      getRecordCardSummary(card),
-    ).toBe(
+    expect(getRecordCardSummary(card)).toBe(
       "Catalog identity confirmation: G430",
     );
 
-    expect(draft.productLine).toBe(
-      "G430",
-    );
+    expect(draft.productLine).toBe("G430");
 
-    expect(
-      getBlockingCorrectionFields(
-        card,
-        draft,
-      ),
-    ).toEqual([]);
+    expect(getBlockingCorrectionFields(card, draft)).toEqual([]);
 
-    expect(
-      buildLearningEvents(
-        card,
-        draft,
-      ),
-    ).toEqual([]);
+    expect(buildLearningEvents(card, draft)).toEqual([]);
   });
-
-
 
   it("summarizes the value applied from a prior review suggestion", () => {
     const draft = {
@@ -523,10 +509,7 @@ describe("buildCorrectionDraft", () => {
     };
 
     expect(
-      getAppliedCorrectionSummaries(
-        draft,
-        new Set(["productLine"]),
-      ),
+      getAppliedCorrectionSummaries(draft, new Set(["productLine"])),
     ).toEqual([
       {
         fieldName: "productLine",
@@ -535,21 +518,15 @@ describe("buildCorrectionDraft", () => {
       },
     ]);
   });
-
 });
-
 
 describe("model suggestion action availability", () => {
   const repairOutcome = {
     outcomeType: "REPAIR_SUGGESTED" as const,
     recordId: "parsed_item_1",
-    summary:
-      "A reviewer-controlled repair is available.",
-    evidenceIds: [
-      "parsed_item_1:parser"
-    ],
-    reviewerQuestion:
-      "Should the suggested value be applied?",
+    summary: "A reviewer-controlled repair is available.",
+    evidenceIds: ["parsed_item_1:parser"],
+    reviewerQuestion: "Should the suggested value be applied?",
     suggestions: [
       {
         recordId: "parsed_item_1",
@@ -557,30 +534,26 @@ describe("model suggestion action availability", () => {
         sourcePhrase: "shaft firm",
         candidateValue: "STIFF",
         confidence: 0.94,
-        reason:
-          "Prior approved evidence supports Stiff.",
-        reviewRequired: true
-      }
-    ]
+        reason: "Prior approved evidence supports Stiff.",
+        reviewRequired: true,
+      },
+    ],
   };
 
   it("allows the model suggestion action for active review work", () => {
     expect(
       canApplyModelReviewSuggestion(
         buildReviewCard({
-          modelReviewOutcome:
-            repairOutcome
-        })
-      )
+          modelReviewOutcome: repairOutcome,
+        }),
+      ),
     ).toBe(true);
   });
 
   it("withholds the model suggestion action after resolution", () => {
-    const openCard =
-      buildReviewCard({
-        modelReviewOutcome:
-          repairOutcome
-      });
+    const openCard = buildReviewCard({
+      modelReviewOutcome: repairOutcome,
+    });
 
     expect(
       canApplyModelReviewSuggestion({
@@ -591,20 +564,17 @@ describe("model suggestion action availability", () => {
           ? {
               ...openCard.reviewItem,
               status: "RESOLVED",
-              resolvedAt:
-                "2026-07-18T18:00:00.000Z"
+              resolvedAt: "2026-07-18T18:00:00.000Z",
             }
-          : null
-      })
+          : null,
+      }),
     ).toBe(false);
   });
 
   it("withholds the model suggestion action after dismissal", () => {
-    const openCard =
-      buildReviewCard({
-        modelReviewOutcome:
-          repairOutcome
-      });
+    const openCard = buildReviewCard({
+      modelReviewOutcome: repairOutcome,
+    });
 
     expect(
       canApplyModelReviewSuggestion({
@@ -615,11 +585,10 @@ describe("model suggestion action availability", () => {
           ? {
               ...openCard.reviewItem,
               status: "DISMISSED",
-              resolvedAt:
-                "2026-07-18T18:00:00.000Z"
+              resolvedAt: "2026-07-18T18:00:00.000Z",
             }
-          : null
-      })
+          : null,
+      }),
     ).toBe(false);
   });
 });

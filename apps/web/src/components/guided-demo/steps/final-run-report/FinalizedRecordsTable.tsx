@@ -17,8 +17,8 @@ export function FinalizedRecordsTable({
       <div className="guided-final-review-callout">
         <strong>No current records loaded for this run</strong>
         <p>
-          Step 5 did not receive any current-run records to merge. Start a new intake run
-          or rerun Step 3 after Step 2 records are available.
+          Step 5 did not receive any current-run records to merge. Start a new
+          intake run or rerun Step 3 after Step 2 records are available.
         </p>
       </div>
     );
@@ -77,20 +77,21 @@ export function FinalizedRecordsTable({
                 </span>
                 <h4>Full record outcomes table</h4>
                 <p>
-                  This table shows the current values assembled from the evidence and
-                  saved review decisions that applied to each record.
+                  This table shows the current values assembled from the
+                  evidence and saved review decisions that applied to each
+                  record.
                 </p>
               </div>
 
               <button
-              aria-label="Close expanded record outcome view"
-              className="guided-expanded-table-close-button"
-              onClick={() => setIsFullTableOpen(false)}
-              title="Close"
-              type="button"
-            >
-              ×
-            </button>
+                aria-label="Close expanded record outcome view"
+                className="guided-expanded-table-close-button"
+                onClick={() => setIsFullTableOpen(false)}
+                title="Close"
+                type="button"
+              >
+                ×
+              </button>
             </div>
 
             <div className="multi-source-intake-table-wrap guided-expanded-table-wrap guided-finalized-table-wrap">
@@ -119,7 +120,8 @@ export function FinalizedRecordsTable({
                       <td>{record.valueLabel}</td>
                       <td>{record.sourceStageLabel}</td>
                       <td>
-                        {formatEnumLabel(record.status)} · {record.finalReviewLabel}
+                        {formatEnumLabel(record.status)} ·{" "}
+                        {record.finalReviewLabel}
                       </td>
                       <td>{getFinalizedBySummary(record)}</td>
                     </tr>

@@ -1,25 +1,21 @@
 import type {
   AgentToolCategory,
   AgentToolDefinition,
-  AgentToolRiskLevel
+  AgentToolRiskLevel,
 } from "./tool-registry.types.js";
-import {
-  customerCommunicationAgentTools
-} from "./tool-definitions/customer-communication-tools.js";
+import { customerCommunicationAgentTools } from "./tool-definitions/customer-communication-tools.js";
 import {
   inventoryMutationAgentTools,
-  inventoryReadOnlyAgentTools
+  inventoryReadOnlyAgentTools,
 } from "./tool-definitions/inventory-tools.js";
-import {
-  reviewQueueAgentTools
-} from "./tool-definitions/review-queue-tools.js";
+import { reviewQueueAgentTools } from "./tool-definitions/review-queue-tools.js";
 import {
   valuationMutationAgentTools,
-  valuationReadOnlyAgentTools
+  valuationReadOnlyAgentTools,
 } from "./tool-definitions/valuation-tools.js";
 import {
   workflowGroundingAgentTools,
-  workflowRunAgentTools
+  workflowRunAgentTools,
 } from "./tool-definitions/workflow-tools.js";
 
 export type AgentToolRegistryFilter = {
@@ -38,7 +34,7 @@ const registeredAgentTools: AgentToolDefinition[] = [
   ...valuationMutationAgentTools,
   ...customerCommunicationAgentTools,
   ...workflowRunAgentTools,
-  ...reviewQueueAgentTools
+  ...reviewQueueAgentTools,
 ];
 
 function cloneTool(tool: AgentToolDefinition): AgentToolDefinition {
@@ -46,8 +42,8 @@ function cloneTool(tool: AgentToolDefinition): AgentToolDefinition {
     ...tool,
     inputShape: {
       ...tool.inputShape,
-      fields: tool.inputShape.fields.map((field) => ({ ...field }))
-    }
+      fields: tool.inputShape.fields.map((field) => ({ ...field })),
+    },
   };
 
   if (tool.existingHttpRoute) {
@@ -58,7 +54,7 @@ function cloneTool(tool: AgentToolDefinition): AgentToolDefinition {
 }
 
 export function listAgentTools(
-  filter: AgentToolRegistryFilter = {}
+  filter: AgentToolRegistryFilter = {},
 ): AgentToolDefinition[] {
   return registeredAgentTools
     .filter((tool) => {
@@ -94,7 +90,9 @@ export function listAgentTools(
 }
 
 export function getAgentTool(name: string): AgentToolDefinition | null {
-  const tool = registeredAgentTools.find((candidate) => candidate.name === name);
+  const tool = registeredAgentTools.find(
+    (candidate) => candidate.name === name,
+  );
 
   return tool ? cloneTool(tool) : null;
 }

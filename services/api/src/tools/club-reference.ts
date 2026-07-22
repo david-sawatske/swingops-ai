@@ -1,10 +1,5 @@
 export type ClubReferenceCategory =
-  | "DRIVER"
-  | "FAIRWAY_WOOD"
-  | "HYBRID"
-  | "IRON_SET"
-  | "WEDGE"
-  | "PUTTER";
+  "DRIVER" | "FAIRWAY_WOOD" | "HYBRID" | "IRON_SET" | "WEDGE" | "PUTTER";
 
 export type ClubReferenceRecord = {
   brand: string;
@@ -50,7 +45,12 @@ const CLUB_REFERENCE_DATASET: ClubReferenceRecord[] = [
     model: "Stealth 2",
     category: "DRIVER",
     releaseYear: 2023,
-    commonAliases: ["Stealth2", "Stealth two", "TM Stealth 2", "TaylorMade Stealth2"],
+    commonAliases: [
+      "Stealth2",
+      "Stealth two",
+      "TM Stealth 2",
+      "TaylorMade Stealth2",
+    ],
     confidenceNotes:
       "Stealth 2 often appears in shorthand as TM Stealth or Stealth2 in trade-in notes.",
   },
@@ -84,14 +84,20 @@ const CLUB_REFERENCE_DATASET: ClubReferenceRecord[] = [
 ];
 
 function normalize(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 function unique(values: string[]): string[] {
   return [...new Set(values)];
 }
 
-function scoreRecord(record: ClubReferenceRecord, query: string): ClubReferenceMatch | null {
+function scoreRecord(
+  record: ClubReferenceRecord,
+  query: string,
+): ClubReferenceMatch | null {
   const normalizedQuery = normalize(query);
   const queryTerms = normalizedQuery.split(" ").filter(Boolean);
   const searchableValues = [
@@ -124,7 +130,10 @@ function scoreRecord(record: ClubReferenceRecord, query: string): ClubReferenceM
     }
   }
 
-  if (normalizedQuery.includes("maybe") || normalizedQuery.includes("possibly")) {
+  if (
+    normalizedQuery.includes("maybe") ||
+    normalizedQuery.includes("possibly")
+  ) {
     score += 0.08;
   }
 

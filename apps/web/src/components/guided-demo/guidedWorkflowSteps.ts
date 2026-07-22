@@ -17,7 +17,8 @@ export const GUIDED_STEPS: GuidedWorkflowStepDefinition[] = [
     id: "MESSY_SOURCE_INTAKE",
     label: "Messy Source Intake",
     eyebrow: "Step 1",
-    description: "Normalize messy operational source text into candidate records.",
+    description:
+      "Normalize messy operational source text into candidate records.",
   },
   {
     id: "AI_READY_RECORDS",

@@ -28,7 +28,7 @@
 
 .guided-review-issue-list li {
   align-items: flex-start;
-  background: rgba(255, 255, 255, 0.72);
+  background: rgb(255 255 255 / 72%);
   border: 1px solid var(--border);
   border-radius: 1rem;
   display: grid;
@@ -74,7 +74,7 @@
 }
 
 .guided-review-evidence-grid article {
-  background: rgba(255, 255, 255, 0.62);
+  background: rgb(255 255 255 / 62%);
   border: 1px solid var(--border);
   border-radius: 1rem;
   padding: 0.85rem;
@@ -87,7 +87,7 @@
 }
 
 .guided-review-issue-list__item {
-  background: rgba(255, 255, 255, 0.72);
+  background: rgb(255 255 255 / 72%);
   border: 1px solid var(--border);
   border-radius: 1rem;
   display: grid;
@@ -100,7 +100,7 @@
 }
 
 .guided-review-issue-list__item--resolved {
-  background: rgba(236, 246, 232, 0.78);
+  background: rgb(236 246 232 / 78%);
 }
 
 .guided-review-issue-button {
@@ -158,7 +158,7 @@
 /* Guided human review issue editor layout override */
 .guided-review-issue-list .guided-review-issue-list__item {
   align-items: stretch;
-  background: rgba(255, 255, 255, 0.72);
+  background: rgb(255 255 255 / 72%);
   border: 1px solid var(--border);
   border-radius: 1rem;
   display: block;
@@ -167,11 +167,11 @@
 
 .guided-review-issue-list .guided-review-issue-list__item--active {
   border-color: var(--text-strong);
-  box-shadow: 0 0 0 2px rgba(35, 64, 37, 0.08);
+  box-shadow: 0 0 0 2px rgb(35 64 37 / 8%);
 }
 
 .guided-review-issue-list .guided-review-issue-list__item--resolved {
-  background: rgba(236, 246, 232, 0.78);
+  background: rgb(236 246 232 / 78%);
 }
 
 .guided-review-issue-list .guided-review-issue-button {
@@ -192,7 +192,7 @@
 }
 
 .guided-review-issue-list .guided-review-issue-button:hover {
-  background: rgba(236, 246, 232, 0.58);
+  background: rgb(236 246 232 / 58%);
   transform: none;
 }
 
@@ -261,7 +261,9 @@
   width: 100%;
 }
 
-.guided-review-issue-list .guided-review-issue-editor .workflow-run-card__actions {
+.guided-review-issue-list
+  .guided-review-issue-editor
+  .workflow-run-card__actions {
   justify-content: flex-start;
 }
 
@@ -269,7 +271,7 @@
   width: auto;
 }
 
-@media (max-width: 760px) {
+@media (width <= 760px) {
   .guided-review-issue-list .guided-review-issue-button {
     grid-template-columns: auto minmax(0, 1fr);
   }
@@ -281,7 +283,7 @@
 }
 
 .guided-review-context {
-  background: rgba(236, 246, 232, 0.58);
+  background: rgb(236 246 232 / 58%);
   border: 1px solid var(--border);
   border-radius: 1rem;
   padding: 0.9rem 1rem;
@@ -318,7 +320,7 @@
 
 .guided-review-category-options label {
   align-items: center;
-  background: rgba(255, 255, 255, 0.72);
+  background: rgb(255 255 255 / 72%);
   border: 1px solid var(--border);
   border-radius: 999px;
   cursor: pointer;
@@ -348,7 +350,7 @@
   background:
     linear-gradient(45deg, transparent 50%, var(--text-strong) 50%),
     linear-gradient(135deg, var(--text-strong) 50%, transparent 50%),
-    rgba(255, 255, 255, 0.82);
+    rgb(255 255 255 / 82%);
   background-position:
     calc(100% - 1.05rem) 50%,
     calc(100% - 0.75rem) 50%,
@@ -370,7 +372,6 @@
 .guided-review-category-correction select:focus,
 .guided-review-category-correction input[type="text"]:focus {
   border-color: var(--text-strong);
-  outline: 2px solid rgba(35, 64, 37, 0.12);
+  outline: 2px solid rgb(35 64 37 / 12%);
   outline-offset: 2px;
 }
-

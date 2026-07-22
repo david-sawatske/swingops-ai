@@ -3,12 +3,12 @@ import type { Prisma, ToolCallLog } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import {
   applyDataHandlingPolicy,
-  attachDataHandlingDiagnostics
+  attachDataHandlingDiagnostics,
 } from "../security/data-handling-policy.js";
 import {
   previewToolInvocation,
   type PreviewToolInvocationInput,
-  type ToolInvocationPreview
+  type ToolInvocationPreview,
 } from "./tool-invocation-preview.js";
 
 export type PersistToolInvocationPreviewLogInput = PreviewToolInvocationInput;
@@ -34,14 +34,14 @@ export type PersistedToolInvocationPreview = Omit<
 export class ToolInvocationPreviewLogRequiresWorkflowContextError extends Error {
   constructor() {
     super(
-      "A workflowRunId or workflowStepId is required to persist a tool invocation preview log."
+      "A workflowRunId or workflowStepId is required to persist a tool invocation preview log.",
     );
     this.name = "ToolInvocationPreviewLogRequiresWorkflowContextError";
   }
 }
 
 function toAuditOutputJson(
-  preview: ToolInvocationPreview
+  preview: ToolInvocationPreview,
 ): Prisma.InputJsonObject {
   return {
     previewOnly: true,
@@ -58,7 +58,7 @@ function toAuditOutputJson(
     executionEnabled: preview.policyEvaluation.executionEnabled,
     humanApprovalGranted: preview.policyEvaluation.humanApprovalGranted,
     persistedPurpose:
-      "Audit-only planned invocation preview. No tool execution was attempted."
+      "Audit-only planned invocation preview. No tool execution was attempted.",
   };
 }
 
@@ -66,13 +66,13 @@ function toPersistedToolAuditJson(value: unknown): Prisma.InputJsonObject {
   return attachDataHandlingDiagnostics(
     applyDataHandlingPolicy({
       value,
-      context: "TOOL_AUDIT_LOG"
-    })
+      context: "TOOL_AUDIT_LOG",
+    }),
   ) as Prisma.InputJsonObject;
 }
 
 export async function persistToolInvocationPreviewLog(
-  input: PersistToolInvocationPreviewLogInput
+  input: PersistToolInvocationPreviewLogInput,
 ): Promise<PersistedToolInvocationPreview> {
   if (input.workflowRunId === undefined && input.workflowStepId === undefined) {
     throw new ToolInvocationPreviewLogRequiresWorkflowContextError();
@@ -92,16 +92,18 @@ export async function persistToolInvocationPreviewLog(
       status: "STARTED",
       ...(preview.invocation.inputJson === null
         ? {}
-        : { inputJson: toPersistedToolAuditJson(preview.invocation.inputJson) }),
-      outputJson: toPersistedToolAuditJson(toAuditOutputJson(preview))
-    }
+        : {
+            inputJson: toPersistedToolAuditJson(preview.invocation.inputJson),
+          }),
+      outputJson: toPersistedToolAuditJson(toAuditOutputJson(preview)),
+    },
   });
 
   return {
     invocation: {
       ...preview.invocation,
       persisted: true,
-      toolCallLogId: toolCallLog.id
+      toolCallLogId: toolCallLog.id,
     },
     policyEvaluation: preview.policyEvaluation,
     previewMetadata: {
@@ -109,8 +111,8 @@ export async function persistToolInvocationPreviewLog(
       persisted: true,
       toolCallLogId: toolCallLog.id,
       message:
-        "Tool invocation preview log persisted for audit only. No tool execution was attempted."
+        "Tool invocation preview log persisted for audit only. No tool execution was attempted.",
     },
-    toolCallLog
+    toolCallLog,
   };
 }

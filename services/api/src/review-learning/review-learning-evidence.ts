@@ -75,40 +75,40 @@ const FIELD_LABELS: Record<string, string> = {
   conditionGrade: "conditionGrade",
   demoValue: "tradeInValue",
   tradeInValue: "tradeInValue",
-  storeId: "storeId"
+  storeId: "storeId",
 };
 
 const CATEGORY_PATTERNS = [
   {
     category: "IRON_SET",
     pattern: /\b(?:[3-9]\s*-\s*(?:pw|gw|sw)|irons?|iron\s+set)\b/i,
-    reasonCode: "CATEGORY_SET_COMPOSITION_MATCH"
+    reasonCode: "CATEGORY_SET_COMPOSITION_MATCH",
   },
   {
     category: "FAIRWAY_WOOD",
     pattern: /\b(?:[357]\s*w|fairway|fw)\b/i,
-    reasonCode: "CATEGORY_FAIRWAY_TOKEN_MATCH"
+    reasonCode: "CATEGORY_FAIRWAY_TOKEN_MATCH",
   },
   {
     category: "DRIVER",
     pattern: /\b(?:driver|drv|1\s*w)\b/i,
-    reasonCode: "CATEGORY_DRIVER_TOKEN_MATCH"
+    reasonCode: "CATEGORY_DRIVER_TOKEN_MATCH",
   },
   {
     category: "HYBRID",
     pattern: /\b(?:hybrid|hy|rescue)\b/i,
-    reasonCode: "CATEGORY_HYBRID_TOKEN_MATCH"
+    reasonCode: "CATEGORY_HYBRID_TOKEN_MATCH",
   },
   {
     category: "WEDGE",
     pattern: /\b(?:wedge|gw|sw|lw|(?:5[02468]|6[024])\s*(?:deg|degree)?)\b/i,
-    reasonCode: "CATEGORY_WEDGE_TOKEN_MATCH"
+    reasonCode: "CATEGORY_WEDGE_TOKEN_MATCH",
   },
   {
     category: "PUTTER",
     pattern: /\b(?:putter|pt)\b/i,
-    reasonCode: "CATEGORY_PUTTER_TOKEN_MATCH"
-  }
+    reasonCode: "CATEGORY_PUTTER_TOKEN_MATCH",
+  },
 ];
 
 function normalizePhrase(value: unknown) {
@@ -130,7 +130,9 @@ function tokenSet(value: unknown) {
 function containsCompactPhrase(text: string, phrase: string | null) {
   const normalizedPhrase = compact(phrase);
 
-  return normalizedPhrase.length >= 2 && compact(text).includes(normalizedPhrase);
+  return (
+    normalizedPhrase.length >= 2 && compact(text).includes(normalizedPhrase)
+  );
 }
 
 function normalizeConditionPhrase(value: unknown) {
@@ -152,13 +154,13 @@ function containsConditionPhrase(text: string, phrase: string | null) {
 
 function hasShaftFlexAnchor(value: unknown) {
   return /\b(?:shaft|flex|stf|stiff|regular|reg|senior|lite|ladies|women|x\s*stiff|x\s*flex|tour\s*x|s\s*flex|r\s*flex|l\s*flex|sr|x|s|r|l)\b/i.test(
-    normalizePhrase(value)
+    normalizePhrase(value),
   );
 }
 
 function hasConditionGradeAnchor(value: unknown) {
   return /\b(?:cond|condition|avg|average|below\s*avg|below\s*average|ba|above\s*avg|above\s*average|aa|mint|poor|9\.5|9\.0|8\.0|7\.0|6\.0|9|8|7|6)\b/i.test(
-    normalizePhrase(value)
+    normalizePhrase(value),
   );
 }
 
@@ -176,13 +178,20 @@ function countTokenOverlap(left: unknown, right: unknown) {
   return overlap;
 }
 
-function hasSameCategoryPattern(inputText: string, evidenceText: string, correctedValue: string | null) {
+function hasSameCategoryPattern(
+  inputText: string,
+  evidenceText: string,
+  correctedValue: string | null,
+) {
   return CATEGORY_PATTERNS.some((categoryPattern) => {
     if (correctedValue && categoryPattern.category !== correctedValue) {
       return false;
     }
 
-    return categoryPattern.pattern.test(inputText) && categoryPattern.pattern.test(evidenceText);
+    return (
+      categoryPattern.pattern.test(inputText) &&
+      categoryPattern.pattern.test(evidenceText)
+    );
   });
 }
 
@@ -190,22 +199,23 @@ function categoryReasonCode(inputText: string, correctedValue: string | null) {
   return CATEGORY_PATTERNS.find(
     (categoryPattern) =>
       (!correctedValue || categoryPattern.category === correctedValue) &&
-      categoryPattern.pattern.test(inputText)
+      categoryPattern.pattern.test(inputText),
   )?.reasonCode;
 }
 
 function hasNumericValueMatch(
   inputText: string,
   rawTextMatch: string | null,
-  correctedValue: string | null
+  correctedValue: string | null,
 ) {
-  const rawNumbers: string[] = normalizePhrase(rawTextMatch).match(/\d+/g) ?? [];
+  const rawNumbers: string[] =
+    normalizePhrase(rawTextMatch).match(/\d+/g) ?? [];
   const correctedNumbers: string[] =
     normalizePhrase(correctedValue).match(/\d+/g) ?? [];
   const inputNumbers: string[] = normalizePhrase(inputText).match(/\d+/g) ?? [];
 
   return [...rawNumbers, ...correctedNumbers].some((value) =>
-    inputNumbers.includes(value)
+    inputNumbers.includes(value),
   );
 }
 
@@ -218,27 +228,29 @@ function scoreRawTextParsingField(input: {
   const reasonCodes: string[] = [];
 
   if (input.fieldName === "shaftFlex") {
-    const rawAnchorIsFlexSpecific = hasShaftFlexAnchor(input.event.rawTextMatch);
+    const rawAnchorIsFlexSpecific = hasShaftFlexAnchor(
+      input.event.rawTextMatch,
+    );
     const inputHasFlexText = hasShaftFlexAnchor(input.inputText);
 
     if (!rawAnchorIsFlexSpecific || !inputHasFlexText) {
       return {
         confidence: 0,
-        reasonCodes: ["SHAFT_FLEX_REQUIRES_RAW_FLEX_TEXT"]
+        reasonCodes: ["SHAFT_FLEX_REQUIRES_RAW_FLEX_TEXT"],
       };
     }
   }
 
   if (input.fieldName === "conditionGrade") {
     const rawAnchorIsConditionSpecific = hasConditionGradeAnchor(
-      input.event.rawTextMatch
+      input.event.rawTextMatch,
     );
     const inputHasConditionText = hasConditionGradeAnchor(input.inputText);
 
     if (!rawAnchorIsConditionSpecific || !inputHasConditionText) {
       return {
         confidence: 0,
-        reasonCodes: ["CONDITION_GRADE_REQUIRES_RAW_CONDITION_TEXT"]
+        reasonCodes: ["CONDITION_GRADE_REQUIRES_RAW_CONDITION_TEXT"],
       };
     }
   }
@@ -270,7 +282,7 @@ function scoreRawTextParsingField(input: {
   if (
     input.fieldName === "shaftFlex" &&
     /\b(?:shaft|flex|stf|stiff|regular|senior|ladies|x)\b/i.test(
-      input.inputText
+      input.inputText,
     )
   ) {
     reasonCodes.push("SHAFT_FLEX_CONTEXT_MATCH");
@@ -279,20 +291,20 @@ function scoreRawTextParsingField(input: {
   if (evidencePhraseMatched) {
     return {
       confidence: reasonCodes.length > 2 ? 0.94 : 0.9,
-      reasonCodes
+      reasonCodes,
     };
   }
 
   if (evidenceTextMatched) {
     return {
       confidence: 0.78,
-      reasonCodes
+      reasonCodes,
     };
   }
 
   return {
     confidence: 0,
-    reasonCodes
+    reasonCodes,
   };
 }
 
@@ -302,11 +314,17 @@ function scoreBrandField(input: {
   event: HumanReviewLearningEventLike;
 }): FieldScore {
   const reasonCodes: string[] = [];
-  const rawAliasMatched = containsCompactPhrase(input.inputText, input.event.rawTextMatch);
-  const correctedValueMatched = containsCompactPhrase(input.inputText, input.event.correctedValue);
+  const rawAliasMatched = containsCompactPhrase(
+    input.inputText,
+    input.event.rawTextMatch,
+  );
+  const correctedValueMatched = containsCompactPhrase(
+    input.inputText,
+    input.event.correctedValue,
+  );
   const productContextOverlap = countTokenOverlap(
     input.parsedFields?.productLine,
-    input.event.evidenceText ?? input.event.rawTextMatch
+    input.event.evidenceText ?? input.event.rawTextMatch,
   );
 
   if (rawAliasMatched) {
@@ -324,20 +342,20 @@ function scoreBrandField(input: {
   if (rawAliasMatched) {
     return {
       confidence: productContextOverlap > 0 ? 0.9 : 0.84,
-      reasonCodes
+      reasonCodes,
     };
   }
 
   if (correctedValueMatched && productContextOverlap > 0) {
     return {
       confidence: 0.74,
-      reasonCodes
+      reasonCodes,
     };
   }
 
   return {
     confidence: 0,
-    reasonCodes
+    reasonCodes,
   };
 }
 
@@ -347,14 +365,23 @@ function scoreProductLineField(input: {
   event: HumanReviewLearningEventLike;
 }): FieldScore {
   const reasonCodes: string[] = [];
-  const rawModelMatched = containsCompactPhrase(input.inputText, input.event.rawTextMatch);
-  const correctedModelMatched = containsCompactPhrase(input.inputText, input.event.correctedValue);
+  const rawModelMatched = containsCompactPhrase(
+    input.inputText,
+    input.event.rawTextMatch,
+  );
+  const correctedModelMatched = containsCompactPhrase(
+    input.inputText,
+    input.event.correctedValue,
+  );
   const brandSupport = countTokenOverlap(
     input.parsedFields?.brand,
-    `${input.event.evidenceText ?? ""} ${input.event.rawTextMatch ?? ""}`
+    `${input.event.evidenceText ?? ""} ${input.event.rawTextMatch ?? ""}`,
   );
   const categorySupport = input.parsedFields?.category
-    ? containsCompactPhrase(`${input.event.evidenceText ?? ""} ${input.event.rawTextMatch ?? ""}`, input.parsedFields.category)
+    ? containsCompactPhrase(
+        `${input.event.evidenceText ?? ""} ${input.event.rawTextMatch ?? ""}`,
+        input.parsedFields.category,
+      )
     : false;
 
   if (rawModelMatched) {
@@ -376,20 +403,20 @@ function scoreProductLineField(input: {
   if (rawModelMatched) {
     return {
       confidence: brandSupport > 0 || categorySupport ? 0.92 : 0.86,
-      reasonCodes
+      reasonCodes,
     };
   }
 
   if (correctedModelMatched && brandSupport > 0) {
     return {
       confidence: 0.76,
-      reasonCodes
+      reasonCodes,
     };
   }
 
   return {
     confidence: 0,
-    reasonCodes
+    reasonCodes,
   };
 }
 
@@ -400,14 +427,23 @@ function scoreCategoryField(input: {
 }): FieldScore {
   const reasonCodes: string[] = [];
   const evidenceText = `${input.event.rawTextMatch ?? ""} ${input.event.evidenceText ?? ""}`;
-  const rawCategoryMatched = containsCompactPhrase(input.inputText, input.event.rawTextMatch);
+  const rawCategoryMatched = containsCompactPhrase(
+    input.inputText,
+    input.event.rawTextMatch,
+  );
   const samePatternMatched = hasSameCategoryPattern(
     input.inputText,
     evidenceText,
-    input.event.correctedValue
+    input.event.correctedValue,
   );
-  const matchedPatternReason = categoryReasonCode(input.inputText, input.event.correctedValue);
-  const productTokenSupport = countTokenOverlap(input.parsedFields?.productLine, evidenceText);
+  const matchedPatternReason = categoryReasonCode(
+    input.inputText,
+    input.event.correctedValue,
+  );
+  const productTokenSupport = countTokenOverlap(
+    input.parsedFields?.productLine,
+    evidenceText,
+  );
 
   if (rawCategoryMatched) {
     reasonCodes.push("CATEGORY_RAW_TEXT_MATCH", "RAW_TEXT_MATCH");
@@ -424,20 +460,20 @@ function scoreCategoryField(input: {
   if (samePatternMatched) {
     return {
       confidence: productTokenSupport > 0 ? 0.92 : 0.87,
-      reasonCodes
+      reasonCodes,
     };
   }
 
   if (rawCategoryMatched) {
     return {
       confidence: 0.84,
-      reasonCodes
+      reasonCodes,
     };
   }
 
   return {
     confidence: 0,
-    reasonCodes
+    reasonCodes,
   };
 }
 
@@ -445,16 +481,22 @@ function scoreTradeValueField(input: {
   inputText: string;
   event: HumanReviewLearningEventLike;
 }): FieldScore {
-  if (!hasNumericValueMatch(input.inputText, input.event.rawTextMatch, input.event.correctedValue)) {
+  if (
+    !hasNumericValueMatch(
+      input.inputText,
+      input.event.rawTextMatch,
+      input.event.correctedValue,
+    )
+  ) {
     return {
       confidence: 0,
-      reasonCodes: []
+      reasonCodes: [],
     };
   }
 
   return {
     confidence: 0.76,
-    reasonCodes: ["EXPLICIT_NUMERIC_VALUE_MATCH", "EVIDENCE_ONLY_VALUE_FIELD"]
+    reasonCodes: ["EXPLICIT_NUMERIC_VALUE_MATCH", "EVIDENCE_ONLY_VALUE_FIELD"],
   };
 }
 
@@ -464,9 +506,13 @@ function scoreStoreField(input: {
   sourceType?: string | null | undefined;
 }): FieldScore {
   const reasonCodes: string[] = [];
-  const rawStoreMatched = containsCompactPhrase(input.inputText, input.event.rawTextMatch);
+  const rawStoreMatched = containsCompactPhrase(
+    input.inputText,
+    input.event.rawTextMatch,
+  );
   const sourceContextMatched =
-    input.sourceType && containsCompactPhrase(input.event.evidenceText ?? "", input.sourceType);
+    input.sourceType &&
+    containsCompactPhrase(input.event.evidenceText ?? "", input.sourceType);
 
   if (rawStoreMatched) {
     reasonCodes.push("STORE_LOCATION_TOKEN_MATCH", "RAW_TEXT_MATCH");
@@ -479,13 +525,13 @@ function scoreStoreField(input: {
   if (rawStoreMatched) {
     return {
       confidence: sourceContextMatched ? 0.88 : 0.82,
-      reasonCodes
+      reasonCodes,
     };
   }
 
   return {
     confidence: 0,
-    reasonCodes
+    reasonCodes,
   };
 }
 
@@ -495,12 +541,13 @@ function scoreLearningEvent(input: {
   sourceType?: string | null | undefined;
   event: HumanReviewLearningEventLike;
 }): FieldScore {
-  const fieldName = FIELD_LABELS[input.event.fieldName] ?? input.event.fieldName;
+  const fieldName =
+    FIELD_LABELS[input.event.fieldName] ?? input.event.fieldName;
 
   if (fieldName === "reviewNeeded" || fieldName === "missingFields") {
     return {
       confidence: 0,
-      reasonCodes: ["DERIVED_FIELD_NOT_REUSED"]
+      reasonCodes: ["DERIVED_FIELD_NOT_REUSED"],
     };
   }
 
@@ -509,7 +556,7 @@ function scoreLearningEvent(input: {
       fieldName,
       inputText: input.rawText,
       event: input.event,
-      fieldReasonCode: "SHAFT_FLEX_RAW_TOKEN_MATCH"
+      fieldReasonCode: "SHAFT_FLEX_RAW_TOKEN_MATCH",
     });
   }
 
@@ -518,7 +565,7 @@ function scoreLearningEvent(input: {
       fieldName,
       inputText: input.rawText,
       event: input.event,
-      fieldReasonCode: "CONDITION_GRADE_RAW_TOKEN_MATCH"
+      fieldReasonCode: "CONDITION_GRADE_RAW_TOKEN_MATCH",
     });
   }
 
@@ -526,7 +573,7 @@ function scoreLearningEvent(input: {
     return scoreCategoryField({
       inputText: input.rawText,
       parsedFields: input.parsedFields,
-      event: input.event
+      event: input.event,
     });
   }
 
@@ -534,7 +581,7 @@ function scoreLearningEvent(input: {
     return scoreProductLineField({
       inputText: input.rawText,
       parsedFields: input.parsedFields,
-      event: input.event
+      event: input.event,
     });
   }
 
@@ -542,14 +589,14 @@ function scoreLearningEvent(input: {
     return scoreBrandField({
       inputText: input.rawText,
       parsedFields: input.parsedFields,
-      event: input.event
+      event: input.event,
     });
   }
 
   if (fieldName === "tradeInValue" || fieldName === "demoValue") {
     return scoreTradeValueField({
       inputText: input.rawText,
-      event: input.event
+      event: input.event,
     });
   }
 
@@ -557,17 +604,19 @@ function scoreLearningEvent(input: {
     return scoreStoreField({
       inputText: input.rawText,
       event: input.event,
-      sourceType: input.sourceType ?? null
+      sourceType: input.sourceType ?? null,
     });
   }
 
   return {
     confidence: 0,
-    reasonCodes: ["UNSUPPORTED_FIELD"]
+    reasonCodes: ["UNSUPPORTED_FIELD"],
   };
 }
 
-function strengthForConfidence(confidence: number): PriorReviewLearningEvidenceStrength {
+function strengthForConfidence(
+  confidence: number,
+): PriorReviewLearningEvidenceStrength {
   if (confidence >= 0.85) {
     return "STRONG";
   }
@@ -583,7 +632,7 @@ function fieldSummaryLabel(fieldName: string) {
   return FIELD_LABELS[fieldName] ?? fieldName;
 }
 
-function buildSummary(event: HumanReviewLearningEventLike, confidence: number) {
+function buildSummary(event: HumanReviewLearningEventLike) {
   const fieldName = fieldSummaryLabel(event.fieldName);
   const correctedValue = event.correctedValue ?? "the reviewed value";
   const rawTextMatch = event.rawTextMatch?.trim();
@@ -607,12 +656,12 @@ export function findMatchingEvidenceFromEvents(input: {
         rawText: input.rawText,
         parsedFields: input.parsedFields,
         sourceType: input.sourceType ?? null,
-        event
+        event,
       });
 
       return {
         event,
-        score
+        score,
       };
     })
     .filter(({ score }) => score.confidence >= 0.7)
@@ -625,46 +674,47 @@ export function findMatchingEvidenceFromEvents(input: {
       confidence: Number(score.confidence.toFixed(2)),
       strength: strengthForConfidence(score.confidence),
       reasonCodes: score.reasonCodes,
-      summary: buildSummary(event, score.confidence),
+      summary: buildSummary(event),
       learningEventId: event.id,
       createdAt:
         event.createdAt instanceof Date
           ? event.createdAt.toISOString()
-          : event.createdAt
+          : event.createdAt,
     }))
     .sort((left, right) => right.confidence - left.confidence)
     .slice(0, 5);
 }
 
 export async function findPriorReviewLearningEvidence(
-  input: PriorReviewLearningEvidenceInput
+  input: PriorReviewLearningEvidenceInput,
 ): Promise<PriorReviewLearningEvidence[]> {
   const events = await prisma.humanReviewLearningEvent.findMany({
     where: {
       ...(input.excludeWorkflowRunId
         ? {
             NOT: {
-              workflowRunId: input.excludeWorkflowRunId
-            }
+              workflowRunId: input.excludeWorkflowRunId,
+            },
           }
-        : {})
+        : {}),
     },
     orderBy: {
-      createdAt: "desc"
+      createdAt: "desc",
     },
-    take: input.limit ?? 100
+    take: input.limit ?? 100,
   });
 
   return findMatchingEvidenceFromEvents({
     rawText: input.rawText,
     parsedFields: input.parsedFields,
     sourceType: input.sourceType ?? null,
-    events
+    events,
   });
 }
 
-
-function buildSuggestionConfidenceImpact(evidence: PriorReviewLearningEvidence) {
+function buildSuggestionConfidenceImpact(
+  evidence: PriorReviewLearningEvidence,
+) {
   if (evidence.strength === "STRONG") {
     return "Strong prior review match. Surface as a suggestion, but require reviewer action before changing the record.";
   }
@@ -677,9 +727,10 @@ function buildSuggestionConfidenceImpact(evidence: PriorReviewLearningEvidence) 
 }
 
 function buildSuggestionReason(evidence: PriorReviewLearningEvidence) {
-  const reason = evidence.reasonCodes.length > 0
-    ? evidence.reasonCodes.join(", ")
-    : "No reason code captured";
+  const reason =
+    evidence.reasonCodes.length > 0
+      ? evidence.reasonCodes.join(", ")
+      : "No reason code captured";
 
   return `Matched prior approved correction using: ${reason}.`;
 }
@@ -726,7 +777,10 @@ function shouldReplacePriorSuggestionCandidate(
     return candidate.confidence > current.confidence;
   }
 
-  return new Date(candidate.createdAt).getTime() > new Date(current.createdAt).getTime();
+  return (
+    new Date(candidate.createdAt).getTime() >
+    new Date(current.createdAt).getTime()
+  );
 }
 
 function dedupePriorReviewLearningEvidenceForSuggestions(
@@ -749,23 +803,25 @@ function dedupePriorReviewLearningEvidenceForSuggestions(
 export function buildPriorReviewLearningSuggestionsFromEvidence(
   evidence: PriorReviewLearningEvidence[],
 ): PriorReviewLearningSuggestion[] {
-  return dedupePriorReviewLearningEvidenceForSuggestions(evidence).map((item) => ({
-    fieldName: item.fieldName,
-    rawTextMatch: item.rawTextMatch,
-    suggestedValue: item.correctedValue,
-    previousCorrectedValue: item.correctedValue,
-    proposedValue: item.proposedValue,
-    evidenceText: item.evidenceText,
-    confidence: item.confidence,
-    strength: item.strength,
-    confidenceImpact: buildSuggestionConfidenceImpact(item),
-    reasonCodes: item.reasonCodes,
-    summary: item.correctedValue
-      ? `Prior review suggestion: ${item.fieldName} = ${item.correctedValue} from prior approved source text${item.rawTextMatch ? `: ${item.rawTextMatch}` : "."}`
-      : item.summary,
-    whySuggestionExists: buildSuggestionReason(item),
-    sourceLearningEventId: item.learningEventId,
-    status: "SUGGESTED",
-    createdAt: item.createdAt
-  }));
+  return dedupePriorReviewLearningEvidenceForSuggestions(evidence).map(
+    (item) => ({
+      fieldName: item.fieldName,
+      rawTextMatch: item.rawTextMatch,
+      suggestedValue: item.correctedValue,
+      previousCorrectedValue: item.correctedValue,
+      proposedValue: item.proposedValue,
+      evidenceText: item.evidenceText,
+      confidence: item.confidence,
+      strength: item.strength,
+      confidenceImpact: buildSuggestionConfidenceImpact(item),
+      reasonCodes: item.reasonCodes,
+      summary: item.correctedValue
+        ? `Prior review suggestion: ${item.fieldName} = ${item.correctedValue} from prior approved source text${item.rawTextMatch ? `: ${item.rawTextMatch}` : "."}`
+        : item.summary,
+      whySuggestionExists: buildSuggestionReason(item),
+      sourceLearningEventId: item.learningEventId,
+      status: "SUGGESTED",
+      createdAt: item.createdAt,
+    }),
+  );
 }

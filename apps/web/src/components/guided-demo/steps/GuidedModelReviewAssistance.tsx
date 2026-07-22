@@ -1,9 +1,5 @@
-import type {
-  FieldRepairRecordOutcome,
-} from "../../../types/workflow";
-import {
-  formatFieldRepairValue,
-} from "./final-run-report/finalRunReportUtils";
+import type { FieldRepairRecordOutcome } from "../../../types/workflow";
+import { formatFieldRepairValue } from "./final-run-report/finalRunReportUtils";
 
 type GuidedModelReviewAssistanceProps = {
   outcomes: FieldRepairRecordOutcome[];
@@ -85,7 +81,9 @@ export function GuidedModelReviewAssistance({
             <div className="guided-model-assistance-card__heading">
               <div>
                 <span>Selected record {index + 1}</span>
-                <strong>{getModelReviewOutcomeLabel(outcome.outcomeType)}</strong>
+                <strong>
+                  {getModelReviewOutcomeLabel(outcome.outcomeType)}
+                </strong>
               </div>
               <code>{outcome.recordId}</code>
             </div>
@@ -146,9 +144,7 @@ export function GuidedModelReviewAssistance({
             </div>
 
             <details className="guided-model-assistance-card__evidence">
-              <summary>
-                Evidence cited ({outcome.evidenceIds.length})
-              </summary>
+              <summary>Evidence cited ({outcome.evidenceIds.length})</summary>
               {outcome.evidenceIds.length > 0 ? (
                 <ul>
                   {outcome.evidenceIds.map((evidenceId) => (
@@ -164,7 +160,6 @@ export function GuidedModelReviewAssistance({
           </article>
         ))}
       </div>
-
     </section>
   );
 }

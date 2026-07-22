@@ -68,7 +68,9 @@ export function useReviewQueueActions({
     }));
   }
 
-  async function handleReviewQueueItemAction(input: ReviewQueueItemActionInput) {
+  async function handleReviewQueueItemAction(
+    input: ReviewQueueItemActionInput,
+  ) {
     const reviewerNotes =
       reviewQueueNotesById[input.reviewQueueItemId]?.trim() ||
       getReviewActionFallbackNote(input.action);

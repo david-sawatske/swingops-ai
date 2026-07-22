@@ -28,11 +28,13 @@ export function SourceBuilderActions({
 
       <div className="guided-source-builder__final-action">
         <div>
-          <span className="model-route-card__eyebrow">Final action for this step</span>
+          <span className="model-route-card__eyebrow">
+            Final action for this step
+          </span>
           <strong>Normalize the staged sources into AI-ready assets.</strong>
           <p>
-            This creates cleaned records, inferred schema, metadata, quality signals,
-            and RAG readiness for the next workflow step.
+            This creates cleaned records, inferred schema, metadata, quality
+            signals, and RAG readiness for the next workflow step.
           </p>
         </div>
         <button

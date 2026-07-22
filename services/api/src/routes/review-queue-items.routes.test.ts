@@ -1,4 +1,7 @@
-import { LEGACY_FREEFORM_NOTES_INTAKE_SOURCE_TYPE, LEGACY_MANUAL_ENTRY_INTAKE_SOURCE_TYPE } from "../intake/legacy-intake-source-types.js";
+import {
+  LEGACY_FREEFORM_NOTES_INTAKE_SOURCE_TYPE,
+  LEGACY_MANUAL_ENTRY_INTAKE_SOURCE_TYPE,
+} from "../intake/legacy-intake-source-types.js";
 import { describe, expect, it } from "vitest";
 
 import { buildApp } from "../app.js";
@@ -6,8 +9,8 @@ import { prisma } from "../lib/prisma.js";
 
 async function createWorkflowRunWithReviewItems(
   reviewItemStatuses: Array<"OPEN" | "IN_REVIEW" | "RESOLVED" | "DISMISSED"> = [
-    "OPEN"
-  ]
+    "OPEN",
+  ],
 ) {
   return prisma.workflowRun.create({
     data: {
@@ -22,18 +25,18 @@ async function createWorkflowRunWithReviewItems(
           proposedGolfClubJson: {
             brand: "TaylorMade",
             model: "Unknown Driver",
-            confidenceScore: 0.58
-          }
-        }))
-      }
+            confidenceScore: 0.58,
+          },
+        })),
+      },
     },
     include: {
       reviewQueueItems: {
         orderBy: {
-          createdAt: "asc"
-        }
-      }
-    }
+          createdAt: "asc",
+        },
+      },
+    },
   });
 }
 
@@ -47,14 +50,15 @@ async function createWorkflowRunWithIntakeReviewItem() {
       itemCount: 1,
       items: {
         create: {
-          rawText: "Callaway Rogue ST Max driver, stiff shaft, condition unclear",
-          sourceRowNumber: 1
-        }
-      }
+          rawText:
+            "Callaway Rogue ST Max driver, stiff shaft, condition unclear",
+          sourceRowNumber: 1,
+        },
+      },
     },
     include: {
-      items: true
-    }
+      items: true,
+    },
   });
 
   const intakeItem = intakeBatch.items[0]!;
@@ -77,14 +81,14 @@ async function createWorkflowRunWithIntakeReviewItem() {
             brand: "Callaway",
             model: "Rogue ST Max",
             category: "DRIVER",
-            missingFields: ["condition"]
-          }
-        }
-      }
+            missingFields: ["condition"],
+          },
+        },
+      },
     },
     include: {
-      reviewQueueItems: true
-    }
+      reviewQueueItems: true,
+    },
   });
 
   const resolvedReviewQueueItem = await prisma.reviewQueueItem.create({
@@ -95,11 +99,11 @@ async function createWorkflowRunWithIntakeReviewItem() {
       originalText: "Resolved historical review item for filter coverage",
       proposedGolfClubJson: {
         brand: "Ping",
-        model: "G425"
+        model: "G425",
       },
       reviewerNotes: "Already reviewed.",
-      resolvedAt: new Date()
-    }
+      resolvedAt: new Date(),
+    },
   });
 
   return {
@@ -108,9 +112,9 @@ async function createWorkflowRunWithIntakeReviewItem() {
       {
         ...intakeItem,
         workflowRuns: [workflowRun],
-        reviewQueueItems: [resolvedReviewQueueItem]
-      }
-    ]
+        reviewQueueItems: [resolvedReviewQueueItem],
+      },
+    ],
   };
 }
 
@@ -123,16 +127,16 @@ async function createReviewQueueItem() {
 async function deleteWorkflowRun(workflowRunId: string) {
   await prisma.workflowRun.delete({
     where: {
-      id: workflowRunId
-    }
+      id: workflowRunId,
+    },
   });
 }
 
 async function deleteIntakeBatch(intakeBatchId: string) {
   await prisma.intakeBatch.delete({
     where: {
-      id: intakeBatchId
-    }
+      id: intakeBatchId,
+    },
   });
 }
 
@@ -144,7 +148,7 @@ describe("review queue item routes", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: "/review-queue-items"
+        url: "/review-queue-items",
       });
 
       expect(response.statusCode).toBe(200);
@@ -156,7 +160,7 @@ describe("review queue item routes", () => {
       expect(body.reviewQueueItems.length).toBeGreaterThanOrEqual(2);
 
       const listedItem = body.reviewQueueItems.find(
-        (item: { id: string }) => item.id === openReviewItem.id
+        (item: { id: string }) => item.id === openReviewItem.id,
       );
 
       expect(listedItem).toMatchObject({
@@ -170,16 +174,17 @@ describe("review queue item routes", () => {
         workflowRun: {
           id: intakeBatch.items[0]!.workflowRuns[0]!.id,
           workflowName: "test-global-review-dashboard-workflow",
-          status: "NEEDS_REVIEW"
+          status: "NEEDS_REVIEW",
         },
         intakeItem: {
           id: intakeBatch.items[0]!.id,
-          rawText: "Callaway Rogue ST Max driver, stiff shaft, condition unclear"
+          rawText:
+            "Callaway Rogue ST Max driver, stiff shaft, condition unclear",
         },
         intakeBatch: {
           id: intakeBatch.id,
-          name: "Review Queue Dashboard Batch"
-        }
+          name: "Review Queue Dashboard Batch",
+        },
       });
 
       await deleteIntakeBatch(intakeBatch.id);
@@ -192,7 +197,7 @@ describe("review queue item routes", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: "/review-queue-items?status=OPEN"
+        url: "/review-queue-items?status=OPEN",
       });
 
       expect(response.statusCode).toBe(200);
@@ -202,8 +207,8 @@ describe("review queue item routes", () => {
       expect(body.reviewQueueItems.length).toBeGreaterThanOrEqual(1);
       expect(
         body.reviewQueueItems.every(
-          (item: { status: string }) => item.status === "OPEN"
-        )
+          (item: { status: string }) => item.status === "OPEN",
+        ),
       ).toBe(true);
 
       await deleteIntakeBatch(intakeBatch.id);
@@ -215,7 +220,7 @@ describe("review queue item routes", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: "/review-queue-items?status=IN_REVIEW"
+        url: "/review-queue-items?status=IN_REVIEW",
       });
 
       expect(response.statusCode).toBe(200);
@@ -233,7 +238,7 @@ describe("review queue item routes", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: `/review-queue-items?workflowRunId=${workflowRunId}`
+        url: `/review-queue-items?workflowRunId=${workflowRunId}`,
       });
 
       expect(response.statusCode).toBe(200);
@@ -244,8 +249,8 @@ describe("review queue item routes", () => {
       expect(
         body.reviewQueueItems.every(
           (item: { workflowRunId: string | null }) =>
-            item.workflowRunId === workflowRunId
-        )
+            item.workflowRunId === workflowRunId,
+        ),
       ).toBe(true);
 
       await deleteIntakeBatch(intakeBatch.id);
@@ -257,11 +262,13 @@ describe("review queue item routes", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: "/review-queue-items?status=NOT_A_STATUS"
+        url: "/review-queue-items?status=NOT_A_STATUS",
       });
 
       expect(response.statusCode).toBe(400);
-      expect(response.json().error).toBe("Invalid review queue item list query");
+      expect(response.json().error).toBe(
+        "Invalid review queue item list query",
+      );
 
       await app.close();
     });
@@ -276,8 +283,8 @@ describe("review queue item routes", () => {
         method: "POST",
         url: `/review-queue-items/${reviewQueueItem.id}/resolve`,
         payload: {
-          reviewerNotes: "Confirmed TaylorMade driver details."
-        }
+          reviewerNotes: "Confirmed TaylorMade driver details.",
+        },
       });
 
       expect(response.statusCode).toBe(200);
@@ -290,31 +297,31 @@ describe("review queue item routes", () => {
         reason: "LOW_CONFIDENCE",
         status: "RESOLVED",
         originalText: "TM driver maybe 10.5, shaft unknown 1",
-        reviewerNotes: "Confirmed TaylorMade driver details."
+        reviewerNotes: "Confirmed TaylorMade driver details.",
       });
       expect(body.reviewQueueItem.resolvedAt).not.toBeNull();
       expect(body.workflowRun).toMatchObject({
         id: reviewQueueItem.workflowRunId,
-        status: "COMPLETED"
+        status: "COMPLETED",
       });
       expect(body.workflowRun.completedAt).not.toBeNull();
 
       const persistedItem = await prisma.reviewQueueItem.findUniqueOrThrow({
         where: {
-          id: reviewQueueItem.id
-        }
+          id: reviewQueueItem.id,
+        },
       });
 
       expect(persistedItem.status).toBe("RESOLVED");
       expect(persistedItem.reviewerNotes).toBe(
-        "Confirmed TaylorMade driver details."
+        "Confirmed TaylorMade driver details.",
       );
       expect(persistedItem.resolvedAt).not.toBeNull();
 
       const persistedWorkflowRun = await prisma.workflowRun.findUniqueOrThrow({
         where: {
-          id: reviewQueueItem.workflowRunId!
-        }
+          id: reviewQueueItem.workflowRunId!,
+        },
       });
 
       expect(persistedWorkflowRun.status).toBe("COMPLETED");
@@ -329,7 +336,7 @@ describe("review queue item routes", () => {
       const app = buildApp();
       const workflowRun = await createWorkflowRunWithReviewItems([
         "OPEN",
-        "OPEN"
+        "OPEN",
       ]);
       const reviewQueueItem = workflowRun.reviewQueueItems[0]!;
 
@@ -337,8 +344,8 @@ describe("review queue item routes", () => {
         method: "POST",
         url: `/review-queue-items/${reviewQueueItem.id}/resolve`,
         payload: {
-          reviewerNotes: "Resolved one item, another remains."
-        }
+          reviewerNotes: "Resolved one item, another remains.",
+        },
       });
 
       expect(response.statusCode).toBe(200);
@@ -348,14 +355,14 @@ describe("review queue item routes", () => {
       expect(body.reviewQueueItem.status).toBe("RESOLVED");
       expect(body.workflowRun).toMatchObject({
         id: workflowRun.id,
-        status: "NEEDS_REVIEW"
+        status: "NEEDS_REVIEW",
       });
       expect(body.workflowRun.completedAt).toBeNull();
 
       const persistedWorkflowRun = await prisma.workflowRun.findUniqueOrThrow({
         where: {
-          id: workflowRun.id
-        }
+          id: workflowRun.id,
+        },
       });
 
       expect(persistedWorkflowRun.status).toBe("NEEDS_REVIEW");
@@ -373,8 +380,8 @@ describe("review queue item routes", () => {
         method: "POST",
         url: "/review-queue-items/not-real/resolve",
         payload: {
-          reviewerNotes: "Missing item."
-        }
+          reviewerNotes: "Missing item.",
+        },
       });
 
       expect(response.statusCode).toBe(404);
@@ -391,13 +398,13 @@ describe("review queue item routes", () => {
         method: "POST",
         url: `/review-queue-items/${reviewQueueItem.id}/resolve`,
         payload: {
-          reviewerNotes: ""
-        }
+          reviewerNotes: "",
+        },
       });
 
       expect(response.statusCode).toBe(400);
       expect(response.json().error).toBe(
-        "Invalid review queue item resolution request"
+        "Invalid review queue item resolution request",
       );
 
       await deleteWorkflowRun(reviewQueueItem.workflowRunId!);
@@ -424,7 +431,7 @@ describe("review queue item routes", () => {
             conditionGrade: "8.0 Average",
             conditionEvidenceText: "worn grips",
             demoValue: 185,
-            demoValuationNote: "Demo valuation range reviewed by human."
+            demoValuationNote: "Demo valuation range reviewed by human.",
           },
           learningEvents: [
             {
@@ -433,17 +440,17 @@ describe("review queue item routes", () => {
               proposedValue: "UNKNOWN",
               correctedValue: "DRIVER",
               evidenceText: "Original raw text used driver wording.",
-              confidenceImpact: "Boost future category normalization."
+              confidenceImpact: "Boost future category normalization.",
             },
             {
               fieldName: "conditionGrade",
               rawTextMatch: "worn grips",
               proposedValue: "condition unclear",
               correctedValue: "8.0 Average",
-              evidenceText: "worn grips"
-            }
-          ]
-        }
+              evidenceText: "worn grips",
+            },
+          ],
+        },
       });
 
       expect(response.statusCode).toBe(200);
@@ -453,11 +460,11 @@ describe("review queue item routes", () => {
       expect(body.reviewQueueItem).toMatchObject({
         id: reviewQueueItem.id,
         status: "RESOLVED",
-        reviewerNotes: "Human approved final trade-in record."
+        reviewerNotes: "Human approved final trade-in record.",
       });
       expect(body.workflowRun).toMatchObject({
         id: reviewQueueItem.workflowRunId,
-        status: "COMPLETED"
+        status: "COMPLETED",
       });
       expect(body.reviewedTradeInRecord).toMatchObject({
         reviewQueueItemId: reviewQueueItem.id,
@@ -471,7 +478,7 @@ describe("review queue item routes", () => {
         conditionEvidenceText: "worn grips",
         correctedDemoValue: 185,
         demoValuationNote: "Demo valuation range reviewed by human.",
-        reviewerNotes: "Human approved final trade-in record."
+        reviewerNotes: "Human approved final trade-in record.",
       });
       expect(body.reviewedTradeInRecord.approvedAt).not.toBeNull();
 
@@ -486,45 +493,47 @@ describe("review queue item routes", () => {
         correctedValue: "DRIVER",
         evidenceText: "Original raw text used driver wording.",
         confidenceImpact: "Boost future category normalization.",
-        reviewerNotes: "Human approved final trade-in record."
+        reviewerNotes: "Human approved final trade-in record.",
       });
       expect(body.learningEvents[1]).toMatchObject({
         fieldName: "conditionGrade",
         rawTextMatch: "worn grips",
         proposedValue: "condition unclear",
         correctedValue: "8.0 Average",
-        evidenceText: "worn grips"
+        evidenceText: "worn grips",
       });
 
-      const persistedRecord = await prisma.reviewedTradeInRecord.findUniqueOrThrow({
-        where: {
-          reviewQueueItemId: reviewQueueItem.id
-        }
-      });
+      const persistedRecord =
+        await prisma.reviewedTradeInRecord.findUniqueOrThrow({
+          where: {
+            reviewQueueItemId: reviewQueueItem.id,
+          },
+        });
 
       expect(persistedRecord.correctedConditionGrade).toBe("8.0 Average");
       expect(persistedRecord.conditionEvidenceText).toBe("worn grips");
 
-      const persistedLearningEvents = await prisma.humanReviewLearningEvent.findMany({
-        where: {
-          reviewedTradeInRecordId: persistedRecord.id
-        },
-        orderBy: {
-          createdAt: "asc"
-        }
-      });
+      const persistedLearningEvents =
+        await prisma.humanReviewLearningEvent.findMany({
+          where: {
+            reviewedTradeInRecordId: persistedRecord.id,
+          },
+          orderBy: {
+            createdAt: "asc",
+          },
+        });
 
       expect(persistedLearningEvents).toHaveLength(2);
       expect(persistedLearningEvents[0]).toMatchObject({
         fieldName: "category",
         rawTextMatch: "TM driver",
-        correctedValue: "DRIVER"
+        correctedValue: "DRIVER",
       });
       expect(persistedLearningEvents[1]).toMatchObject({
         fieldName: "conditionGrade",
         rawTextMatch: "worn grips",
         correctedValue: "8.0 Average",
-        evidenceText: "worn grips"
+        evidenceText: "worn grips",
       });
 
       await deleteWorkflowRun(reviewQueueItem.workflowRunId!);
@@ -559,13 +568,13 @@ describe("review queue item routes", () => {
             customerEmail: null,
             storeId: null,
             reviewNeeded: true,
-            missingFields: ["productLine", "category", "conditionGrade"]
+            missingFields: ["productLine", "category", "conditionGrade"],
           },
           status: "NEEDS_REVIEW",
           reviewNeeded: true,
           embeddingReady: false,
-          ragReady: false
-        }
+          ragReady: false,
+        },
       });
 
       const response = await app.inject({
@@ -579,17 +588,17 @@ describe("review queue item routes", () => {
             category: "DRIVER",
             shaftFlex: "STIFF",
             conditionGrade: "8.0 Average",
-            demoValue: 185
+            demoValue: 185,
           },
           learningEvents: [
             {
               fieldName: "conditionGrade",
               rawTextMatch: "8.0 Average",
               correctedValue: "8.0 Average",
-              evidenceText: "Condition grade supplied by review."
-            }
-          ]
-        }
+              evidenceText: "Condition grade supplied by review.",
+            },
+          ],
+        },
       });
 
       expect(response.statusCode).toBe(200);
@@ -610,15 +619,15 @@ describe("review queue item routes", () => {
           conditionGrade: "8.0 Average",
           tradeInValue: 185,
           reviewNeeded: false,
-          missingFields: []
-        })
+          missingFields: [],
+        }),
       });
 
       const persistedAiReadyRecord =
         await prisma.aiReadyIntakeRecord.findUniqueOrThrow({
           where: {
-            id: aiReadyRecord.id
-          }
+            id: aiReadyRecord.id,
+          },
         });
 
       expect(persistedAiReadyRecord.status).toBe("READY_FOR_RAG");
@@ -630,8 +639,8 @@ describe("review queue item routes", () => {
           productLine: "Stealth 2",
           category: "DRIVER",
           conditionGrade: "8.0 Average",
-          tradeInValue: 185
-        })
+          tradeInValue: 185,
+        }),
       );
 
       await deleteWorkflowRun(reviewQueueItem.workflowRunId!);
@@ -654,13 +663,13 @@ describe("review queue item routes", () => {
             create: {
               rawText: `1) ${sourceText}`,
               sourceRowNumber: 1,
-              status: "NEEDS_REVIEW"
-            }
-          }
+              status: "NEEDS_REVIEW",
+            },
+          },
         },
         include: {
-          items: true
-        }
+          items: true,
+        },
       });
 
       const upstreamWorkflowRun = await prisma.workflowRun.create({
@@ -668,8 +677,8 @@ describe("review queue item routes", () => {
           intakeBatchId: upstreamBatch.id,
           workflowName: "multi-source-intake-demo",
           status: "NEEDS_REVIEW",
-          startedAt: new Date()
-        }
+          startedAt: new Date(),
+        },
       });
 
       const upstreamAiReadyCandidate = await prisma.aiReadyIntakeRecord.create({
@@ -693,13 +702,13 @@ describe("review queue item routes", () => {
             conditionGrade: "8.0 Average",
             tradeInValue: 165,
             reviewNeeded: true,
-            missingFields: ["productLine", "category", "shaftFlex"]
+            missingFields: ["productLine", "category", "shaftFlex"],
           },
           status: "NEEDS_REVIEW",
           reviewNeeded: true,
           embeddingReady: false,
-          ragReady: false
-        }
+          ragReady: false,
+        },
       });
 
       const finalBatch = await prisma.intakeBatch.create({
@@ -712,13 +721,13 @@ describe("review queue item routes", () => {
             create: {
               rawText: sourceText,
               sourceRowNumber: 1,
-              status: "NEEDS_REVIEW"
-            }
-          }
+              status: "NEEDS_REVIEW",
+            },
+          },
         },
         include: {
-          items: true
-        }
+          items: true,
+        },
       });
 
       const finalWorkflowRun = await prisma.workflowRun.create({
@@ -726,8 +735,8 @@ describe("review queue item routes", () => {
           intakeBatchId: finalBatch.id,
           workflowName: "end-to-end-agentic-trade-in-demo",
           status: "NEEDS_REVIEW",
-          startedAt: new Date()
-        }
+          startedAt: new Date(),
+        },
       });
 
       const finalReviewQueueItem = await prisma.reviewQueueItem.create({
@@ -744,9 +753,9 @@ describe("review queue item routes", () => {
             shaftFlex: null,
             conditionGrade: "8.0 Average",
             tradeInValue: 165,
-            missingFields: ["productLine", "category", "shaftFlex"]
-          }
-        }
+            missingFields: ["productLine", "category", "shaftFlex"],
+          },
+        },
       });
 
       const response = await app.inject({
@@ -760,17 +769,17 @@ describe("review queue item routes", () => {
             category: "FAIRWAY_WOOD",
             shaftFlex: "REGULAR",
             conditionGrade: "8.0 Average",
-            demoValue: 165
+            demoValue: 165,
           },
           learningEvents: [
             {
               fieldName: "category",
               rawTextMatch: "Apex UW 19 degree",
               correctedValue: "Fairway Wood",
-              evidenceText: sourceText
-            }
-          ]
-        }
+              evidenceText: sourceText,
+            },
+          ],
+        },
       });
 
       expect(response.statusCode).toBe(200);
@@ -780,14 +789,14 @@ describe("review queue item routes", () => {
       expect(body.aiReadyIntakeRecord).toMatchObject({
         status: "READY_FOR_RAG",
         reviewNeeded: false,
-        ragReady: true
+        ragReady: true,
       });
 
       const supersededCandidate =
         await prisma.aiReadyIntakeRecord.findUniqueOrThrow({
           where: {
-            id: upstreamAiReadyCandidate.id
-          }
+            id: upstreamAiReadyCandidate.id,
+          },
         });
 
       expect(supersededCandidate.status).toBe("SUPERSEDED");
@@ -795,34 +804,34 @@ describe("review queue item routes", () => {
       expect(supersededCandidate.ragReady).toBe(false);
       expect(supersededCandidate.supersededAt).not.toBeNull();
       expect(supersededCandidate.supersededByAiReadyIntakeRecordId).toBe(
-        body.aiReadyIntakeRecord.id
+        body.aiReadyIntakeRecord.id,
       );
       expect(supersededCandidate.supersededReason).toContain(
-        finalReviewQueueItem.id
+        finalReviewQueueItem.id,
       );
 
       const supersededListResponse = await app.inject({
         method: "GET",
-        url: "/ai-ready-intake-records?status=SUPERSEDED"
+        url: "/ai-ready-intake-records?status=SUPERSEDED",
       });
 
       expect(supersededListResponse.statusCode).toBe(200);
 
       const supersededListBody = supersededListResponse.json();
       const serializedSupersededCandidate = supersededListBody.records.find(
-        (record: { id: string }) => record.id === upstreamAiReadyCandidate.id
+        (record: { id: string }) => record.id === upstreamAiReadyCandidate.id,
       );
 
       expect(serializedSupersededCandidate).toMatchObject({
         id: upstreamAiReadyCandidate.id,
         status: "SUPERSEDED",
-        supersededByAiReadyIntakeRecordId: body.aiReadyIntakeRecord.id
+        supersededByAiReadyIntakeRecordId: body.aiReadyIntakeRecord.id,
       });
       expect(serializedSupersededCandidate.supersededAt).toEqual(
-        expect.any(String)
+        expect.any(String),
       );
       expect(serializedSupersededCandidate.supersededReason).toContain(
-        finalReviewQueueItem.id
+        finalReviewQueueItem.id,
       );
 
       await deleteWorkflowRun(finalWorkflowRun.id);
@@ -841,8 +850,8 @@ describe("review queue item routes", () => {
           name: "Existing condition learning-event filter",
           sourceType: LEGACY_MANUAL_ENTRY_INTAKE_SOURCE_TYPE,
           status: "COMPLETED",
-          itemCount: 1
-        }
+          itemCount: 1,
+        },
       });
 
       const existingAiReadyRecord = await prisma.aiReadyIntakeRecord.create({
@@ -870,13 +879,13 @@ describe("review queue item routes", () => {
             customerEmail: null,
             storeId: null,
             reviewNeeded: true,
-            missingFields: ["shaftFlex"]
+            missingFields: ["shaftFlex"],
           },
           status: "NEEDS_REVIEW",
           reviewNeeded: true,
           embeddingReady: false,
-          ragReady: false
-        }
+          ragReady: false,
+        },
       });
 
       const response = await app.inject({
@@ -889,7 +898,7 @@ describe("review queue item routes", () => {
             productLine: "Rogue ST Max",
             category: "DRIVER",
             shaftFlex: "X_STIFF",
-            conditionGrade: "7.0 Below Average"
+            conditionGrade: "7.0 Below Average",
           },
           learningEvents: [
             {
@@ -897,17 +906,18 @@ describe("review queue item routes", () => {
               rawTextMatch: "x-stiff",
               proposedValue: "Missing",
               correctedValue: "X-Stiff",
-              evidenceText: "Reviewer supplied shaft flex."
+              evidenceText: "Reviewer supplied shaft flex.",
             },
             {
               fieldName: "conditionGrade",
               rawTextMatch: "condition 7.0 Below Average",
               proposedValue: "Missing",
               correctedValue: "7.0 Below Average",
-              evidenceText: "Condition was already present in the intake record."
-            }
-          ]
-        }
+              evidenceText:
+                "Condition was already present in the intake record.",
+            },
+          ],
+        },
       });
 
       expect(response.statusCode).toBe(200);
@@ -917,44 +927,46 @@ describe("review queue item routes", () => {
       expect(body.learningEvents).toHaveLength(1);
       expect(body.learningEvents[0]).toMatchObject({
         fieldName: "shaftFlex",
-        correctedValue: "X-Stiff"
+        correctedValue: "X-Stiff",
       });
 
-      const persistedLearningEvents = await prisma.humanReviewLearningEvent.findMany({
-        where: {
-          reviewQueueItemId: reviewQueueItem.id
-        }
-      });
+      const persistedLearningEvents =
+        await prisma.humanReviewLearningEvent.findMany({
+          where: {
+            reviewQueueItemId: reviewQueueItem.id,
+          },
+        });
 
       expect(persistedLearningEvents).toHaveLength(1);
       expect(persistedLearningEvents[0]).toMatchObject({
         fieldName: "shaftFlex",
-        correctedValue: "X-Stiff"
+        correctedValue: "X-Stiff",
       });
 
-      const updatedAiReadyRecord = await prisma.aiReadyIntakeRecord.findUniqueOrThrow({
-        where: {
-          id: existingAiReadyRecord.id
-        }
-      });
+      const updatedAiReadyRecord =
+        await prisma.aiReadyIntakeRecord.findUniqueOrThrow({
+          where: {
+            id: existingAiReadyRecord.id,
+          },
+        });
 
       expect(updatedAiReadyRecord.normalizedJson).toEqual(
         expect.objectContaining({
           shaftFlex: "X_STIFF",
-          conditionGrade: "7.0 Below Average"
-        })
+          conditionGrade: "7.0 Below Average",
+        }),
       );
 
       await deleteWorkflowRun(reviewQueueItem.workflowRunId!);
       await prisma.aiReadyIntakeRecord.deleteMany({
         where: {
-          intakeBatchId: intakeBatch.id
-        }
+          intakeBatchId: intakeBatch.id,
+        },
       });
       await prisma.intakeBatch.delete({
         where: {
-          id: intakeBatch.id
-        }
+          id: intakeBatch.id,
+        },
       });
 
       await app.close();
@@ -975,10 +987,10 @@ describe("review queue item routes", () => {
             category: "DRIVER",
             shaftFlex: "STIFF",
             conditionGrade: "8.0 Average",
-            demoValue: 185
+            demoValue: 185,
           },
-          learningEvents: []
-        }
+          learningEvents: [],
+        },
       });
 
       expect(response.statusCode).toBe(200);
@@ -1002,15 +1014,15 @@ describe("review queue item routes", () => {
           conditionGrade: "8.0 Average",
           tradeInValue: 185,
           reviewNeeded: false,
-          missingFields: []
-        })
+          missingFields: [],
+        }),
       });
 
       const persistedAiReadyRecord =
         await prisma.aiReadyIntakeRecord.findUniqueOrThrow({
           where: {
-            id: body.aiReadyIntakeRecord.id
-          }
+            id: body.aiReadyIntakeRecord.id,
+          },
         });
 
       expect(persistedAiReadyRecord.ragReady).toBe(true);
@@ -1032,21 +1044,21 @@ describe("review queue item routes", () => {
           correctedRecord: {
             brand: "TaylorMade",
             conditionGrade: "worn grips",
-            conditionEvidenceText: "worn grips"
+            conditionEvidenceText: "worn grips",
           },
-          learningEvents: []
-        }
+          learningEvents: [],
+        },
       });
 
       expect(response.statusCode).toBe(400);
       expect(response.json().error).toBe(
-        "Invalid structured review queue item resolution request"
+        "Invalid structured review queue item resolution request",
       );
 
       const persistedRecord = await prisma.reviewedTradeInRecord.findUnique({
         where: {
-          reviewQueueItemId: reviewQueueItem.id
-        }
+          reviewQueueItemId: reviewQueueItem.id,
+        },
       });
 
       expect(persistedRecord).toBeNull();
@@ -1067,7 +1079,7 @@ describe("review queue item routes", () => {
           reviewerNotes: "Approved category mapping.",
           correctedRecord: {
             category: "IRON_SET",
-            conditionGrade: "9.0 Above Average"
+            conditionGrade: "9.0 Above Average",
           },
           learningEvents: [
             {
@@ -1075,22 +1087,22 @@ describe("review queue item routes", () => {
               rawTextMatch: "IRON_SET",
               proposedValue: "UNKNOWN",
               correctedValue: "IRON_SET",
-              evidenceText: "Raw source included IRON_SET."
-            }
-          ]
-        }
+              evidenceText: "Raw source included IRON_SET.",
+            },
+          ],
+        },
       });
 
       const response = await app.inject({
         method: "GET",
-        url: "/review-queue-items?status=RESOLVED"
+        url: "/review-queue-items?status=RESOLVED",
       });
 
       expect(response.statusCode).toBe(200);
 
       const body = response.json();
       const listedItem = body.reviewQueueItems.find(
-        (item: { id: string }) => item.id === reviewQueueItem.id
+        (item: { id: string }) => item.id === reviewQueueItem.id,
       );
 
       expect(listedItem).toMatchObject({
@@ -1098,16 +1110,16 @@ describe("review queue item routes", () => {
         status: "RESOLVED",
         reviewedTradeInRecord: {
           correctedCategory: "IRON_SET",
-          correctedConditionGrade: "9.0 Above Average"
+          correctedConditionGrade: "9.0 Above Average",
         },
         humanReviewLearningEvents: [
           {
             fieldName: "category",
             rawTextMatch: "IRON_SET",
             correctedValue: "IRON_SET",
-            evidenceText: "Raw source included IRON_SET."
-          }
-        ]
+            evidenceText: "Raw source included IRON_SET.",
+          },
+        ],
       });
 
       await deleteWorkflowRun(reviewQueueItem.workflowRunId!);
@@ -1125,8 +1137,8 @@ describe("review queue item routes", () => {
         method: "POST",
         url: `/review-queue-items/${reviewQueueItem.id}/dismiss`,
         payload: {
-          reviewerNotes: "Duplicate or unusable intake item."
-        }
+          reviewerNotes: "Duplicate or unusable intake item.",
+        },
       });
 
       expect(response.statusCode).toBe(200);
@@ -1139,31 +1151,31 @@ describe("review queue item routes", () => {
         reason: "LOW_CONFIDENCE",
         status: "DISMISSED",
         originalText: "TM driver maybe 10.5, shaft unknown 1",
-        reviewerNotes: "Duplicate or unusable intake item."
+        reviewerNotes: "Duplicate or unusable intake item.",
       });
       expect(body.reviewQueueItem.resolvedAt).not.toBeNull();
       expect(body.workflowRun).toMatchObject({
         id: reviewQueueItem.workflowRunId,
-        status: "COMPLETED"
+        status: "COMPLETED",
       });
       expect(body.workflowRun.completedAt).not.toBeNull();
 
       const persistedItem = await prisma.reviewQueueItem.findUniqueOrThrow({
         where: {
-          id: reviewQueueItem.id
-        }
+          id: reviewQueueItem.id,
+        },
       });
 
       expect(persistedItem.status).toBe("DISMISSED");
       expect(persistedItem.reviewerNotes).toBe(
-        "Duplicate or unusable intake item."
+        "Duplicate or unusable intake item.",
       );
       expect(persistedItem.resolvedAt).not.toBeNull();
 
       const persistedWorkflowRun = await prisma.workflowRun.findUniqueOrThrow({
         where: {
-          id: reviewQueueItem.workflowRunId!
-        }
+          id: reviewQueueItem.workflowRunId!,
+        },
       });
 
       expect(persistedWorkflowRun.status).toBe("COMPLETED");
@@ -1181,8 +1193,8 @@ describe("review queue item routes", () => {
         method: "POST",
         url: "/review-queue-items/not-real/dismiss",
         payload: {
-          reviewerNotes: "Missing item."
-        }
+          reviewerNotes: "Missing item.",
+        },
       });
 
       expect(response.statusCode).toBe(404);
@@ -1199,13 +1211,13 @@ describe("review queue item routes", () => {
         method: "POST",
         url: `/review-queue-items/${reviewQueueItem.id}/dismiss`,
         payload: {
-          reviewerNotes: ""
-        }
+          reviewerNotes: "",
+        },
       });
 
       expect(response.statusCode).toBe(400);
       expect(response.json().error).toBe(
-        "Invalid review queue item dismissal request"
+        "Invalid review queue item dismissal request",
       );
 
       await deleteWorkflowRun(reviewQueueItem.workflowRunId!);

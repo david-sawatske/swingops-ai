@@ -22,7 +22,9 @@ export function formatGuidedWorkflowInputFromRecords(
       const details = [
         record.shaftFlex ? "shaft flex " + record.shaftFlex : null,
         record.conditionGrade ? "condition " + record.conditionGrade : null,
-        record.tradeInValue === null ? null : "trade value $" + record.tradeInValue,
+        record.tradeInValue === null
+          ? null
+          : "trade value $" + record.tradeInValue,
         record.storeId ? "store " + record.storeId : null,
         record.reviewNeeded ? "review needed" : "review clear",
         options.includeMissingFields && record.missingFields.length > 0

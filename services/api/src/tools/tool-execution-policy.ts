@@ -2,14 +2,10 @@ import type { AgentToolDefinition } from "./tool-registry.types.js";
 import { getAgentTool } from "./tool-registry.js";
 
 export type ToolExecutionMode =
-  | "PREVIEW_ONLY"
-  | "AGENT_AUTONOMOUS"
-  | "HUMAN_APPROVED";
+  "PREVIEW_ONLY" | "AGENT_AUTONOMOUS" | "HUMAN_APPROVED";
 
 export type ToolExecutionPolicyDecision =
-  | "ALLOW"
-  | "REQUIRE_HUMAN_APPROVAL"
-  | "BLOCK";
+  "ALLOW" | "REQUIRE_HUMAN_APPROVAL" | "BLOCK";
 
 export type ToolExecutionPolicyReasonCode =
   | "TOOL_NOT_FOUND"
@@ -49,7 +45,7 @@ export type ToolExecutionPolicyPreview = {
 };
 
 export function evaluateToolExecutionPolicy(
-  input: EvaluateToolExecutionPolicyInput
+  input: EvaluateToolExecutionPolicyInput,
 ): ToolExecutionPolicyEvaluation {
   const executionMode = input.executionMode ?? "PREVIEW_ONLY";
   const humanApprovalGranted = input.humanApprovalGranted ?? false;
@@ -64,7 +60,7 @@ export function evaluateToolExecutionPolicy(
       executionMode,
       executionEnabled: false,
       humanApprovalGranted,
-      tool: null
+      tool: null,
     };
   }
 
@@ -91,13 +87,13 @@ export function evaluateToolExecutionPolicy(
       executionMode,
       executionEnabled: false,
       humanApprovalGranted,
-      tool
+      tool,
     };
   }
 
   const approvalReasonCodes = getApprovalReasonCodes({
     tool,
-    humanApprovalGranted
+    humanApprovalGranted,
   });
 
   if (approvalReasonCodes.length > 0) {
@@ -109,7 +105,7 @@ export function evaluateToolExecutionPolicy(
       executionMode,
       executionEnabled: false,
       humanApprovalGranted,
-      tool
+      tool,
     };
   }
 
@@ -117,16 +113,17 @@ export function evaluateToolExecutionPolicy(
     toolName: tool.name,
     decision: "ALLOW",
     reasonCodes: ["TOOL_ALLOWED"],
-    reason: "Tool is enabled and policy allows execution in the requested mode.",
+    reason:
+      "Tool is enabled and policy allows execution in the requested mode.",
     executionMode,
     executionEnabled: true,
     humanApprovalGranted,
-    tool
+    tool,
   };
 }
 
 export function previewToolExecutionPolicy(
-  input: EvaluateToolExecutionPolicyInput
+  input: EvaluateToolExecutionPolicyInput,
 ): ToolExecutionPolicyPreview {
   return {
     requestedToolName: input.toolName,
@@ -135,8 +132,8 @@ export function previewToolExecutionPolicy(
       status: "PREVIEW_ONLY",
       executionAttempted: false,
       message:
-        "Policy preview only. No tool execution was attempted by this endpoint."
-    }
+        "Policy preview only. No tool execution was attempted by this endpoint.",
+    },
   };
 }
 

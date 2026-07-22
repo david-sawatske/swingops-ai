@@ -1,22 +1,19 @@
-import type {
-  PriorReviewLearningSuggestion
-} from "../review-learning/review-learning-evidence.js";
+import type { PriorReviewLearningSuggestion } from "../review-learning/review-learning-evidence.js";
 
 import {
   findDeterministicGolfTermAdvisoryMatches,
   getFieldRepairSuggestionMatrixValidationErrors,
   hasDeterministicGolfTermAdvisoryConflict,
-  hasDeterministicGolfTermAdvisoryNegativeEvidence
+  hasDeterministicGolfTermAdvisoryNegativeEvidence,
 } from "./golf-term-normalization.js";
 import {
   fieldRepairSuggestionSchema,
   type FieldRepairFieldName,
-  type FieldRepairSuggestion
+  type FieldRepairSuggestion,
 } from "./main-run-field-repair.js";
 
 export type MainRunFieldRepairAdvisoryCandidateSource =
-  | "DETERMINISTIC_POLICY"
-  | "PRIOR_REVIEW";
+  "DETERMINISTIC_POLICY" | "PRIOR_REVIEW";
 
 export type MainRunFieldRepairAdvisoryCandidate = {
   candidateId: string;
@@ -33,10 +30,7 @@ export type BuildPriorReviewFieldRepairAdvisoryCandidatesInput = {
   fieldApplicability: {
     shaftFlex: "REQUIRED" | "NOT_APPLICABLE";
   };
-  productResolutionStatus:
-    | "MATCHED"
-    | "AMBIGUOUS"
-    | "UNRESOLVED";
+  productResolutionStatus: "MATCHED" | "AMBIGUOUS" | "UNRESOLVED";
   sourceEvidenceId: string;
   priorReviewSuggestions: PriorReviewLearningSuggestion[];
 };
@@ -48,10 +42,7 @@ export type BuildDeterministicPolicyFieldRepairAdvisoryCandidatesInput = {
   fieldApplicability: {
     shaftFlex: "REQUIRED" | "NOT_APPLICABLE";
   };
-  productResolutionStatus:
-    | "MATCHED"
-    | "AMBIGUOUS"
-    | "UNRESOLVED";
+  productResolutionStatus: "MATCHED" | "AMBIGUOUS" | "UNRESOLVED";
   sourceEvidenceId: string;
 };
 
@@ -61,13 +52,13 @@ const SUPPORTED_FIELD_NAMES = new Set<FieldRepairFieldName>([
   "category",
   "shaftFlex",
   "conditionGrade",
-  "tradeInValue"
+  "tradeInValue",
 ]);
 
 const PRODUCT_IDENTITY_FIELDS = new Set<FieldRepairFieldName>([
   "brand",
   "productLine",
-  "category"
+  "category",
 ]);
 
 const FIELD_SORT_ORDER: Record<FieldRepairFieldName, number> = {
@@ -76,13 +67,10 @@ const FIELD_SORT_ORDER: Record<FieldRepairFieldName, number> = {
   category: 2,
   shaftFlex: 3,
   conditionGrade: 4,
-  tradeInValue: 5
+  tradeInValue: 5,
 };
 
-const SHAFT_FLEX_VALUE_BY_NORMALIZED_TEXT: Record<
-  string,
-  string
-> = {
+const SHAFT_FLEX_VALUE_BY_NORMALIZED_TEXT: Record<string, string> = {
   LADIES: "LADIES",
   LADY: "LADIES",
   WOMEN: "LADIES",
@@ -101,13 +89,10 @@ const SHAFT_FLEX_VALUE_BY_NORMALIZED_TEXT: Record<
   X: "X_STIFF",
   TOUR_X_STIFF: "TOUR_X_STIFF",
   TOURXSTIFF: "TOUR_X_STIFF",
-  TX: "TOUR_X_STIFF"
+  TX: "TOUR_X_STIFF",
 };
 
-const CATEGORY_VALUE_BY_NORMALIZED_TEXT: Record<
-  string,
-  string
-> = {
+const CATEGORY_VALUE_BY_NORMALIZED_TEXT: Record<string, string> = {
   DRIVER: "DRIVER",
   FAIRWAY_WOOD: "FAIRWAY_WOOD",
   FAIRWAYWOOD: "FAIRWAY_WOOD",
@@ -115,13 +100,10 @@ const CATEGORY_VALUE_BY_NORMALIZED_TEXT: Record<
   IRON_SET: "IRON_SET",
   IRONSET: "IRON_SET",
   WEDGE: "WEDGE",
-  PUTTER: "PUTTER"
+  PUTTER: "PUTTER",
 };
 
-const CONDITION_VALUE_BY_NORMALIZED_TEXT: Record<
-  string,
-  string
-> = {
+const CONDITION_VALUE_BY_NORMALIZED_TEXT: Record<string, string> = {
   "9.5 MINT": "9.5 Mint",
   "9.5": "9.5 Mint",
   MINT: "9.5 Mint",
@@ -133,19 +115,15 @@ const CONDITION_VALUE_BY_NORMALIZED_TEXT: Record<
   "7.0": "7.0 Below Average",
   "6.0 POOR": "6.0 Poor",
   "6.0": "6.0 Poor",
-  POOR: "6.0 Poor"
+  POOR: "6.0 Poor",
 };
 
-function normalizePriorReviewSuggestionFieldName(
-  fieldName: string
-): string {
-  return fieldName === "demoValue"
-    ? "tradeInValue"
-    : fieldName;
+function normalizePriorReviewSuggestionFieldName(fieldName: string): string {
+  return fieldName === "demoValue" ? "tradeInValue" : fieldName;
 }
 
 function normalizePriorReviewSuggestionValue(
-  value: string | number | null
+  value: string | number | null,
 ): string {
   return String(value ?? "")
     .trim()
@@ -153,80 +131,59 @@ function normalizePriorReviewSuggestionValue(
     .replace(/[^a-z0-9.]+/g, "");
 }
 
-export function filterPriorReviewLearningSuggestionsForSourceSafety(
-  input: {
-    sourceText: string;
-    suggestions:
-      PriorReviewLearningSuggestion[];
-  }
-): PriorReviewLearningSuggestion[] {
-  const valuesByField =
-    new Map<string, Set<string>>();
+export function filterPriorReviewLearningSuggestionsForSourceSafety(input: {
+  sourceText: string;
+  suggestions: PriorReviewLearningSuggestion[];
+}): PriorReviewLearningSuggestion[] {
+  const valuesByField = new Map<string, Set<string>>();
 
   for (const suggestion of input.suggestions) {
-    const fieldName =
-      normalizePriorReviewSuggestionFieldName(
-        suggestion.fieldName
-      );
-    const value =
-      normalizePriorReviewSuggestionValue(
-        suggestion.suggestedValue
-      );
+    const fieldName = normalizePriorReviewSuggestionFieldName(
+      suggestion.fieldName,
+    );
+    const value = normalizePriorReviewSuggestionValue(
+      suggestion.suggestedValue,
+    );
 
     if (!value) {
       continue;
     }
 
-    const fieldValues =
-      valuesByField.get(fieldName) ??
-      new Set<string>();
+    const fieldValues = valuesByField.get(fieldName) ?? new Set<string>();
 
     fieldValues.add(value);
-    valuesByField.set(
-      fieldName,
-      fieldValues
-    );
+    valuesByField.set(fieldName, fieldValues);
   }
 
   const conflictingFields = new Set(
     [...valuesByField.entries()]
-      .filter(
-        ([, values]) =>
-          values.size > 1
-      )
-      .map(
-        ([fieldName]) =>
-          fieldName
-      )
+      .filter(([, values]) => values.size > 1)
+      .map(([fieldName]) => fieldName),
   );
 
   if (
     hasDeterministicGolfTermAdvisoryConflict(
       input.sourceText,
-      "conditionGrade"
+      "conditionGrade",
     ) ||
     hasDeterministicGolfTermAdvisoryNegativeEvidence(
       input.sourceText,
-      "conditionGrade"
+      "conditionGrade",
     )
   ) {
-    conflictingFields.add(
-      "conditionGrade"
-    );
+    conflictingFields.add("conditionGrade");
   }
 
   return input.suggestions.filter(
     (suggestion) =>
       !conflictingFields.has(
-        normalizePriorReviewSuggestionFieldName(
-          suggestion.fieldName
-        )
-      )
+        normalizePriorReviewSuggestionFieldName(suggestion.fieldName),
+      ),
   );
 }
 
 export function buildPriorReviewFieldRepairAdvisoryCandidates(
-  input: BuildPriorReviewFieldRepairAdvisoryCandidatesInput
+  input: BuildPriorReviewFieldRepairAdvisoryCandidatesInput,
 ): MainRunFieldRepairAdvisoryCandidate[] {
   if (
     input.productResolutionStatus === "AMBIGUOUS" ||
@@ -235,23 +192,22 @@ export function buildPriorReviewFieldRepairAdvisoryCandidates(
     return [];
   }
 
-  const validCandidates =
-    input.priorReviewSuggestions.flatMap((priorSuggestion) => {
+  const validCandidates = input.priorReviewSuggestions.flatMap(
+    (priorSuggestion) => {
       const candidate = buildPriorReviewCandidate({
         input,
-        priorSuggestion
+        priorSuggestion,
       });
 
       return candidate ? [candidate] : [];
-    });
-
-  return mergeFieldRepairAdvisoryCandidates(
-    validCandidates
+    },
   );
+
+  return mergeFieldRepairAdvisoryCandidates(validCandidates);
 }
 
 export function buildDeterministicPolicyFieldRepairAdvisoryCandidates(
-  input: BuildDeterministicPolicyFieldRepairAdvisoryCandidatesInput
+  input: BuildDeterministicPolicyFieldRepairAdvisoryCandidatesInput,
 ): MainRunFieldRepairAdvisoryCandidate[] {
   if (
     input.productResolutionStatus === "AMBIGUOUS" ||
@@ -260,80 +216,56 @@ export function buildDeterministicPolicyFieldRepairAdvisoryCandidates(
     return [];
   }
 
-  const candidates =
-    findDeterministicGolfTermAdvisoryMatches(
-      input.sourceText
-    ).flatMap((match) => {
-      if (
-        !input.missingFields.includes(
-          match.fieldName
-        )
-      ) {
-        return [];
-      }
+  const candidates = findDeterministicGolfTermAdvisoryMatches(
+    input.sourceText,
+  ).flatMap((match) => {
+    if (!input.missingFields.includes(match.fieldName)) {
+      return [];
+    }
 
-      const parsedSuggestion =
-        fieldRepairSuggestionSchema.safeParse({
-          recordId: input.recordId,
-          fieldName: match.fieldName,
-          sourcePhrase: match.sourcePhrase,
-          candidateValue:
-            match.candidateValue,
-          confidence: match.confidence,
-          reason: match.reason,
-          reviewRequired: true
-        });
-
-      if (!parsedSuggestion.success) {
-        return [];
-      }
-
-      if (
-        getFieldRepairSuggestionMatrixValidationErrors(
-          parsedSuggestion.data
-        ).length > 0
-      ) {
-        return [];
-      }
-
-      return [
-        {
-          candidateId:
-            `deterministic-policy:${match.policyId}:${match.fieldName}`,
-          sourceType:
-            "DETERMINISTIC_POLICY" as const,
-          sourceEvidenceId:
-            input.sourceEvidenceId,
-          sourceReferenceId:
-            match.policyId,
-          suggestion:
-            parsedSuggestion.data
-        }
-      ];
+    const parsedSuggestion = fieldRepairSuggestionSchema.safeParse({
+      recordId: input.recordId,
+      fieldName: match.fieldName,
+      sourcePhrase: match.sourcePhrase,
+      candidateValue: match.candidateValue,
+      confidence: match.confidence,
+      reason: match.reason,
+      reviewRequired: true,
     });
 
-  return mergeFieldRepairAdvisoryCandidates(
-    candidates
-  );
+    if (!parsedSuggestion.success) {
+      return [];
+    }
+
+    if (
+      getFieldRepairSuggestionMatrixValidationErrors(parsedSuggestion.data)
+        .length > 0
+    ) {
+      return [];
+    }
+
+    return [
+      {
+        candidateId: `deterministic-policy:${match.policyId}:${match.fieldName}`,
+        sourceType: "DETERMINISTIC_POLICY" as const,
+        sourceEvidenceId: input.sourceEvidenceId,
+        sourceReferenceId: match.policyId,
+        suggestion: parsedSuggestion.data,
+      },
+    ];
+  });
+
+  return mergeFieldRepairAdvisoryCandidates(candidates);
 }
 
 export function mergeFieldRepairAdvisoryCandidates(
-  ...candidateGroups:
-    MainRunFieldRepairAdvisoryCandidate[][]
+  ...candidateGroups: MainRunFieldRepairAdvisoryCandidate[][]
 ): MainRunFieldRepairAdvisoryCandidate[] {
-  return withholdConflictingFieldCandidates(
-    candidateGroups.flat()
-  ).sort(
+  return withholdConflictingFieldCandidates(candidateGroups.flat()).sort(
     (left, right) =>
-      FIELD_SORT_ORDER[
-        left.suggestion.fieldName
-      ] -
-        FIELD_SORT_ORDER[
-          right.suggestion.fieldName
-        ] ||
-      left.candidateId.localeCompare(
-        right.candidateId
-      )
+      FIELD_SORT_ORDER[left.suggestion.fieldName] -
+        FIELD_SORT_ORDER[right.suggestion.fieldName] ||
+      left.candidateId.localeCompare(right.candidateId),
   );
 }
 
@@ -348,9 +280,7 @@ function buildPriorReviewCandidate(input: {
     priorSuggestion.strength !== "STRONG" ||
     priorSuggestion.confidence < 0.85 ||
     !isSupportedFieldName(priorSuggestion.fieldName) ||
-    !input.input.missingFields.includes(
-      priorSuggestion.fieldName
-    )
+    !input.input.missingFields.includes(priorSuggestion.fieldName)
   ) {
     return null;
   }
@@ -364,19 +294,18 @@ function buildPriorReviewCandidate(input: {
 
   if (
     priorSuggestion.fieldName === "shaftFlex" &&
-    input.input.fieldApplicability.shaftFlex ===
-      "NOT_APPLICABLE"
+    input.input.fieldApplicability.shaftFlex === "NOT_APPLICABLE"
   ) {
     return null;
   }
 
   const sourcePhrase = findExactSourcePhrase(
     input.input.sourceText,
-    priorSuggestion.rawTextMatch
+    priorSuggestion.rawTextMatch,
   );
   const candidateValue = normalizeCandidateValue({
     fieldName: priorSuggestion.fieldName,
-    value: priorSuggestion.suggestedValue
+    value: priorSuggestion.suggestedValue,
   });
 
   if (sourcePhrase === null || candidateValue === null) {
@@ -390,7 +319,7 @@ function buildPriorReviewCandidate(input: {
     candidateValue,
     confidence: priorSuggestion.confidence,
     reason: priorSuggestion.whySuggestionExists,
-    reviewRequired: true
+    reviewRequired: true,
   });
 
   if (!parsedSuggestion.success) {
@@ -398,9 +327,8 @@ function buildPriorReviewCandidate(input: {
   }
 
   if (
-    getFieldRepairSuggestionMatrixValidationErrors(
-      parsedSuggestion.data
-    ).length > 0
+    getFieldRepairSuggestionMatrixValidationErrors(parsedSuggestion.data)
+      .length > 0
   ) {
     return null;
   }
@@ -411,14 +339,13 @@ function buildPriorReviewCandidate(input: {
       priorSuggestion.fieldName,
     sourceType: "PRIOR_REVIEW",
     sourceEvidenceId: input.input.sourceEvidenceId,
-    sourceReferenceId:
-      priorSuggestion.sourceLearningEventId,
-    suggestion: parsedSuggestion.data
+    sourceReferenceId: priorSuggestion.sourceLearningEventId,
+    suggestion: parsedSuggestion.data,
   };
 }
 
 function withholdConflictingFieldCandidates(
-  candidates: MainRunFieldRepairAdvisoryCandidate[]
+  candidates: MainRunFieldRepairAdvisoryCandidate[],
 ): MainRunFieldRepairAdvisoryCandidate[] {
   const candidatesByField = new Map<
     FieldRepairFieldName,
@@ -427,27 +354,19 @@ function withholdConflictingFieldCandidates(
 
   for (const candidate of candidates) {
     const fieldCandidates =
-      candidatesByField.get(
-        candidate.suggestion.fieldName
-      ) ?? [];
+      candidatesByField.get(candidate.suggestion.fieldName) ?? [];
 
     fieldCandidates.push(candidate);
-    candidatesByField.set(
-      candidate.suggestion.fieldName,
-      fieldCandidates
-    );
+    candidatesByField.set(candidate.suggestion.fieldName, fieldCandidates);
   }
 
-  const acceptedCandidates:
-    MainRunFieldRepairAdvisoryCandidate[] = [];
+  const acceptedCandidates: MainRunFieldRepairAdvisoryCandidate[] = [];
 
   for (const fieldCandidates of candidatesByField.values()) {
     const candidateValueKeys = new Set(
       fieldCandidates.map((candidate) =>
-        getCandidateValueKey(
-          candidate.suggestion.candidateValue
-        )
-      )
+        getCandidateValueKey(candidate.suggestion.candidateValue),
+      ),
     );
 
     if (candidateValueKeys.size !== 1) {
@@ -456,9 +375,8 @@ function withholdConflictingFieldCandidates(
 
     const strongestCandidate = [...fieldCandidates].sort(
       (left, right) =>
-        right.suggestion.confidence -
-          left.suggestion.confidence ||
-        left.candidateId.localeCompare(right.candidateId)
+        right.suggestion.confidence - left.suggestion.confidence ||
+        left.candidateId.localeCompare(right.candidateId),
     )[0];
 
     if (strongestCandidate) {
@@ -479,18 +397,12 @@ function normalizeCandidateValue(input: {
     return null;
   }
 
-  if (
-    input.fieldName === "brand" ||
-    input.fieldName === "productLine"
-  ) {
+  if (input.fieldName === "brand" || input.fieldName === "productLine") {
     return trimmedValue;
   }
 
   if (input.fieldName === "tradeInValue") {
-    const numericText = trimmedValue.replace(
-      /[$,\s]/g,
-      ""
-    );
+    const numericText = trimmedValue.replace(/[$,\s]/g, "");
 
     if (!/^\d+(?:\.\d+)?$/.test(numericText)) {
       return null;
@@ -498,8 +410,7 @@ function normalizeCandidateValue(input: {
 
     const numericValue = Number(numericText);
 
-    return Number.isFinite(numericValue) &&
-      numericValue >= 0
+    return Number.isFinite(numericValue) && numericValue >= 0
       ? numericValue
       : null;
   }
@@ -510,11 +421,7 @@ function normalizeCandidateValue(input: {
       .replace(/[^A-Z0-9]+/g, "_")
       .replace(/^_+|_+$/g, "");
 
-    return (
-      SHAFT_FLEX_VALUE_BY_NORMALIZED_TEXT[
-        normalizedValue
-      ] ?? null
-    );
+    return SHAFT_FLEX_VALUE_BY_NORMALIZED_TEXT[normalizedValue] ?? null;
   }
 
   if (input.fieldName === "category") {
@@ -523,27 +430,17 @@ function normalizeCandidateValue(input: {
       .replace(/[^A-Z0-9]+/g, "_")
       .replace(/^_+|_+$/g, "");
 
-    return (
-      CATEGORY_VALUE_BY_NORMALIZED_TEXT[
-        normalizedValue
-      ] ?? null
-    );
+    return CATEGORY_VALUE_BY_NORMALIZED_TEXT[normalizedValue] ?? null;
   }
 
-  const normalizedValue = trimmedValue
-    .toUpperCase()
-    .replace(/\s+/g, " ");
+  const normalizedValue = trimmedValue.toUpperCase().replace(/\s+/g, " ");
 
-  return (
-    CONDITION_VALUE_BY_NORMALIZED_TEXT[
-      normalizedValue
-    ] ?? null
-  );
+  return CONDITION_VALUE_BY_NORMALIZED_TEXT[normalizedValue] ?? null;
 }
 
 function findExactSourcePhrase(
   sourceText: string,
-  rawTextMatch: string | null
+  rawTextMatch: string | null,
 ): string | null {
   const trimmedPhrase = rawTextMatch?.trim();
 
@@ -559,24 +456,13 @@ function findExactSourcePhrase(
     return null;
   }
 
-  return sourceText.slice(
-    matchIndex,
-    matchIndex + trimmedPhrase.length
-  );
+  return sourceText.slice(matchIndex, matchIndex + trimmedPhrase.length);
 }
 
-function getCandidateValueKey(
-  value: string | number
-): string {
-  return typeof value === "number"
-    ? `number:${value}`
-    : `string:${value}`;
+function getCandidateValueKey(value: string | number): string {
+  return typeof value === "number" ? `number:${value}` : `string:${value}`;
 }
 
-function isSupportedFieldName(
-  value: string
-): value is FieldRepairFieldName {
-  return SUPPORTED_FIELD_NAMES.has(
-    value as FieldRepairFieldName
-  );
+function isSupportedFieldName(value: string): value is FieldRepairFieldName {
+  return SUPPORTED_FIELD_NAMES.has(value as FieldRepairFieldName);
 }

@@ -1,13 +1,9 @@
-import type {
-  ProductReferenceProvider
-} from "../product-reference/product-reference-provider.js";
+import type { ProductReferenceProvider } from "../product-reference/product-reference-provider.js";
 import {
   resolveProductReference,
-  type ProductResolution
+  type ProductResolution,
 } from "../product-reference/product-reference-resolver.js";
-import type {
-  ParserFieldEvidence
-} from "./parser-evidence.js";
+import type { ParserFieldEvidence } from "./parser-evidence.js";
 
 export type ParsedProductIdentity = {
   brand: string | null;
@@ -19,33 +15,21 @@ export type ParsedProductIdentity = {
 };
 
 function getConsensusValue(
-  values: (string | null | undefined)[]
+  values: (string | null | undefined)[],
 ): string | null {
   const normalizedValues = [
-    ...new Set(
-      values.filter(
-        (value): value is string =>
-          Boolean(value)
-      )
-    )
+    ...new Set(values.filter((value): value is string => Boolean(value))),
   ];
 
-  return normalizedValues.length === 1
-    ? normalizedValues[0] ?? null
-    : null;
+  return normalizedValues.length === 1 ? (normalizedValues[0] ?? null) : null;
 }
 
 function getAmbiguousProductLine(
-  resolution: Extract<
-    ProductResolution,
-    { status: "AMBIGUOUS" }
-  >
+  resolution: Extract<ProductResolution, { status: "AMBIGUOUS" }>,
 ): string | null {
-  const familyCandidate =
-    resolution.candidates.find(
-      (candidate) =>
-        candidate.matchKind === "FAMILY"
-    );
+  const familyCandidate = resolution.candidates.find(
+    (candidate) => candidate.matchKind === "FAMILY",
+  );
 
   return (
     resolution.originalProductText ??
@@ -65,7 +49,7 @@ function buildProductLineEvidence(input: {
 
   return {
     value: input.value,
-    sourceText: input.sourceText
+    sourceText: input.sourceText,
   };
 }
 
@@ -83,93 +67,66 @@ export function resolveParsedProductIdentity(input: {
     ...(input.productText === undefined
       ? {}
       : {
-          productText: input.productText
-        })
+          productText: input.productText,
+        }),
   };
 
   const resolution = input.provider
-    ? resolveProductReference(
-        resolutionInput,
-        input.provider
-      )
-    : resolveProductReference(
-        resolutionInput
-      );
+    ? resolveProductReference(resolutionInput, input.provider)
+    : resolveProductReference(resolutionInput);
 
   if (resolution.status === "MATCHED") {
     return {
       brand: resolution.match.brand,
-      productLine:
-        resolution.match.productLine,
+      productLine: resolution.match.productLine,
       category: resolution.match.category,
-      productLineEvidence:
-        buildProductLineEvidence({
-          value:
-            resolution.match.productLine,
-          sourceText:
-            resolution.match.matchedPhrase
-        }),
+      productLineEvidence: buildProductLineEvidence({
+        value: resolution.match.productLine,
+        sourceText: resolution.match.matchedPhrase,
+      }),
       productResolution: resolution,
-      uncertaintyNotes: []
+      uncertaintyNotes: [],
     };
   }
 
   if (resolution.status === "AMBIGUOUS") {
-    const productLine =
-      getAmbiguousProductLine(resolution);
-    const familyCandidate =
-      resolution.candidates.find(
-        (candidate) =>
-          candidate.matchKind === "FAMILY"
-      );
+    const productLine = getAmbiguousProductLine(resolution);
+    const familyCandidate = resolution.candidates.find(
+      (candidate) => candidate.matchKind === "FAMILY",
+    );
 
     return {
       brand:
         getConsensusValue(
-          resolution.candidates.map(
-            (candidate) => candidate.brand
-          )
+          resolution.candidates.map((candidate) => candidate.brand),
         ) ?? input.detectedBrand,
       productLine,
       category:
         getConsensusValue(
-          resolution.candidates.map(
-            (candidate) =>
-              candidate.category
-          )
+          resolution.candidates.map((candidate) => candidate.category),
         ) ?? input.detectedCategory,
-      productLineEvidence:
-        buildProductLineEvidence({
-          value: productLine,
-          sourceText:
-            resolution.originalProductText ??
-            familyCandidate?.matchedPhrase ??
-            resolution.candidates[0]
-              ?.matchedPhrase ??
-            null
-        }),
+      productLineEvidence: buildProductLineEvidence({
+        value: productLine,
+        sourceText:
+          resolution.originalProductText ??
+          familyCandidate?.matchedPhrase ??
+          resolution.candidates[0]?.matchedPhrase ??
+          null,
+      }),
       productResolution: resolution,
-      uncertaintyNotes: [
-        "model uncertain"
-      ]
+      uncertaintyNotes: ["model uncertain"],
     };
   }
 
   return {
     brand: input.detectedBrand,
-    productLine:
-      resolution.originalProductText,
+    productLine: resolution.originalProductText,
     category: input.detectedCategory,
-    productLineEvidence:
-      buildProductLineEvidence({
-        value:
-          resolution.originalProductText,
-        sourceText:
-          resolution.originalProductText
-      }),
+    productLineEvidence: buildProductLineEvidence({
+      value: resolution.originalProductText,
+      sourceText: resolution.originalProductText,
+    }),
     productResolution: resolution,
-    uncertaintyNotes: [
-      "product reference unresolved"
-    ]
+    uncertaintyNotes: ["product reference unresolved"],
   };
 }

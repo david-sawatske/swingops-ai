@@ -2,26 +2,26 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
-  ListToolsRequestSchema
+  ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 
 import "../config/env.js";
 
 import {
   callExternalMcpTool,
-  listExternalMcpTools
+  listExternalMcpTools,
 } from "./external-mcp-server-transport.js";
 
 const server = new Server(
   {
     name: "swingops-external-readonly-mcp-server",
-    version: "0.1.0"
+    version: "0.1.0",
   },
   {
     capabilities: {
-      tools: {}
-    }
-  }
+      tools: {},
+    },
+  },
 );
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -32,8 +32,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       name: tool.name,
       description: tool.description,
       inputSchema: tool.inputSchema,
-      annotations: tool.annotations
-    }))
+      annotations: tool.annotations,
+    })),
   };
 });
 
@@ -42,7 +42,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     name: request.params.name,
     ...(request.params.arguments === undefined
       ? {}
-      : { arguments: request.params.arguments })
+      : { arguments: request.params.arguments }),
   });
 });
 

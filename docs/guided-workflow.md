@@ -395,13 +395,13 @@ Step 1 provides a **Load golden demonstration** action.
 
 The action prepares or reuses one earlier reviewer-approved correction for the phrase `shaft firm` and stages four editable source types containing five records.
 
-| Source | Record role | Expected intake behavior |
-| --- | --- | --- |
-| Free text | Cleveland RTX 6 ZipCore wedge | Complete deterministic control record |
-| Free text | TaylorMade Stealth 2 driver | Preserve `shaft firm`; shaft flex remains unresolved |
-| Poorly formed CSV | Odyssey White Hot OG putter | Preserve `cosmetics poor`; shaft flex is not applicable |
-| Email | Titleist TSR fairway wood | Preserve Stiff and 8.0 Average while keeping TSR generation ambiguous |
-| Log | Callaway mystery driver | Preserve unknown, unclear and pending values without inventing replacements |
+| Source            | Record role                   | Expected intake behavior                                                    |
+| ----------------- | ----------------------------- | --------------------------------------------------------------------------- |
+| Free text         | Cleveland RTX 6 ZipCore wedge | Complete deterministic control record                                       |
+| Free text         | TaylorMade Stealth 2 driver   | Preserve `shaft firm`; shaft flex remains unresolved                        |
+| Poorly formed CSV | Odyssey White Hot OG putter   | Preserve `cosmetics poor`; shaft flex is not applicable                     |
+| Email             | Titleist TSR fairway wood     | Preserve Stiff and 8.0 Average while keeping TSR generation ambiguous       |
+| Log               | Callaway mystery driver       | Preserve unknown, unclear and pending values without inventing replacements |
 
 The source-of-truth fixture is:
 
@@ -433,13 +433,13 @@ The normalized result should contain exactly five records.
 
 Expected state:
 
-| Record | Expected normalized result |
-| --- | --- |
-| Cleveland RTX 6 ZipCore | Wedge, Senior, 9.0 Above Average, $72, store 104, clear |
-| TaylorMade Stealth 2 | Driver, 9.0 Above Average, $155, store 104, missing only shaft flex |
-| Odyssey White Hot OG | Putter, $85, store 207, missing only condition grade |
-| Titleist TSR | Fairway Wood, Stiff, 8.0 Average, $135, store 104, review required with no missing fields |
-| Callaway mystery driver | Driver, store 207, unresolved shaft flex, condition and value |
+| Record                  | Expected normalized result                                                                |
+| ----------------------- | ----------------------------------------------------------------------------------------- |
+| Cleveland RTX 6 ZipCore | Wedge, Senior, 9.0 Above Average, $72, store 104, clear                                   |
+| TaylorMade Stealth 2    | Driver, 9.0 Above Average, $155, store 104, missing only shaft flex                       |
+| Odyssey White Hot OG    | Putter, $85, store 207, missing only condition grade                                      |
+| Titleist TSR            | Fairway Wood, Stiff, 8.0 Average, $135, store 104, review required with no missing fields |
+| Callaway mystery driver | Driver, store 207, unresolved shaft flex, condition and value                             |
 
 Important acceptance rules:
 
@@ -514,14 +514,14 @@ Continue to the Final Run Report without resolving Titleist or Callaway.
 
 Expected run outcome:
 
-| Metric | Expected value |
-| --- | --- |
-| Total records | 5 |
-| Ready or finalized records | 3 |
-| Unresolved records | 2 |
-| Reviewer-updated records | 2 |
-| Persisted corrections | 2 |
-| Current-run learning events | 2 |
+| Metric                      | Expected value |
+| --------------------------- | -------------- |
+| Total records               | 5              |
+| Ready or finalized records  | 3              |
+| Unresolved records          | 2              |
+| Reviewer-updated records    | 2              |
+| Persisted corrections       | 2              |
+| Current-run learning events | 2              |
 
 Expected record outcomes:
 

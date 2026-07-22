@@ -2,90 +2,82 @@ import { LEGACY_FREEFORM_NOTES_INTAKE_SOURCE_TYPE } from "../intake/legacy-intak
 import { describe, expect, it } from "vitest";
 
 import { prisma } from "../lib/prisma.js";
-import {
-  createInMemoryProductReferenceProvider
-} from "../product-reference/product-reference-provider.js";
+import { createInMemoryProductReferenceProvider } from "../product-reference/product-reference-provider.js";
 import {
   executeEndToEndAgenticTradeInDemo,
-  type EndToEndAgenticTradeInDemoResult
+  type EndToEndAgenticTradeInDemoResult,
 } from "./end-to-end-agentic-trade-in-demo.js";
 
-async function cleanupResult(result: EndToEndAgenticTradeInDemoResult): Promise<void> {
+async function cleanupResult(
+  result: EndToEndAgenticTradeInDemoResult,
+): Promise<void> {
   await prisma.reviewQueueItem.deleteMany({
     where: {
-      workflowRunId: result.persisted.workflowRunId
-    }
+      workflowRunId: result.persisted.workflowRunId,
+    },
   });
 
   await prisma.toolCallLog.deleteMany({
     where: {
-      workflowRunId: result.persisted.workflowRunId
-    }
+      workflowRunId: result.persisted.workflowRunId,
+    },
   });
 
   await prisma.modelCallLog.deleteMany({
     where: {
-      workflowRunId: result.persisted.workflowRunId
-    }
+      workflowRunId: result.persisted.workflowRunId,
+    },
   });
 
   await prisma.workflowRun.deleteMany({
     where: {
-      id: result.persisted.workflowRunId
-    }
+      id: result.persisted.workflowRunId,
+    },
   });
 
   await prisma.intakeBatch.deleteMany({
     where: {
-      id: result.persisted.intakeBatchId
-    }
+      id: result.persisted.intakeBatchId,
+    },
   });
 }
 
 function expectNoIndependentInventoryOrValuationToolCalls(
-  result: EndToEndAgenticTradeInDemoResult
+  result: EndToEndAgenticTradeInDemoResult,
 ): void {
-  const plannedToolNames =
-    result.toolCallingPlan.plannedCalls.map(
-      (call) => call.toolName
-    );
-  const executedToolNames =
-    result.toolCallResults.map(
-      (toolResult) => toolResult.toolName
-    );
+  const plannedToolNames = result.toolCallingPlan.plannedCalls.map(
+    (call) => call.toolName,
+  );
+  const executedToolNames = result.toolCallResults.map(
+    (toolResult) => toolResult.toolName,
+  );
 
-  expect(plannedToolNames).not.toContain(
-    "swingops.inventory.lookupProduct"
-  );
-  expect(plannedToolNames).not.toContain(
-    "swingops.tradeInValuation.estimate"
-  );
-  expect(executedToolNames).not.toContain(
-    "swingops.inventory.lookupProduct"
-  );
-  expect(executedToolNames).not.toContain(
-    "swingops.tradeInValuation.estimate"
-  );
+  expect(plannedToolNames).not.toContain("swingops.inventory.lookupProduct");
+  expect(plannedToolNames).not.toContain("swingops.tradeInValuation.estimate");
+  expect(executedToolNames).not.toContain("swingops.inventory.lookupProduct");
+  expect(executedToolNames).not.toContain("swingops.tradeInValuation.estimate");
 }
 
 describe("executeEndToEndAgenticTradeInDemo", () => {
   it("persists ordered workflow steps and links model and tool logs", async () => {
     const result = await executeEndToEndAgenticTradeInDemo({
       rawInput:
-        "TaylorMade Stealth 2 driver shaft stiff condition 8.0 Average trade value $150"
+        "TaylorMade Stealth 2 driver shaft stiff condition 8.0 Average trade value $150",
     });
 
     try {
       const steps = await prisma.workflowStep.findMany({
         where: {
-          workflowRunId: result.persisted.workflowRunId
+          workflowRunId: result.persisted.workflowRunId,
         },
         orderBy: {
-          orderIndex: "asc"
-        }
+          orderIndex: "asc",
+        },
       });
 
-      expect(steps.map((step) => [step.orderIndex, step.stepName, step.status])).toEqual([
+      expect(
+        steps.map((step) => [step.orderIndex, step.stepName, step.status]),
+      ).toEqual([
         [1, "parse-and-persist-intake", "COMPLETED"],
         [2, "retrieve-grounding-evidence", "COMPLETED"],
         [3, "run-field-repair-model", "COMPLETED"],
@@ -93,31 +85,33 @@ describe("executeEndToEndAgenticTradeInDemo", () => {
         [5, "retry-targeted-field-extraction", "SKIPPED"],
         [6, "create-human-review-work", "COMPLETED"],
         [7, "execute-guarded-tool-plan", "COMPLETED"],
-        [8, "finalize-workflow-run", "COMPLETED"]
+        [8, "finalize-workflow-run", "COMPLETED"],
       ]);
       expect(
-        steps.every((step) => step.startedAt !== null && step.completedAt !== null)
+        steps.every(
+          (step) => step.startedAt !== null && step.completedAt !== null,
+        ),
       ).toBe(true);
 
       const modelStep = steps.find(
-        (step) => step.stepName === "run-field-repair-model"
+        (step) => step.stepName === "run-field-repair-model",
       );
       const toolStep = steps.find(
-        (step) => step.stepName === "execute-guarded-tool-plan"
+        (step) => step.stepName === "execute-guarded-tool-plan",
       );
 
       expect(result.modelCallLog.workflowStepId).toBe(modelStep?.id);
 
       const toolCallLogs = await prisma.toolCallLog.findMany({
         where: {
-          workflowRunId: result.persisted.workflowRunId
-        }
+          workflowRunId: result.persisted.workflowRunId,
+        },
       });
 
       expect(toolCallLogs.length).toBeGreaterThan(0);
-      expect(toolCallLogs.every((log) => log.workflowStepId === toolStep?.id)).toBe(
-        true
-      );
+      expect(
+        toolCallLogs.every((log) => log.workflowStepId === toolStep?.id),
+      ).toBe(true);
     } finally {
       await cleanupResult(result);
     }
@@ -126,7 +120,7 @@ describe("executeEndToEndAgenticTradeInDemo", () => {
   it("does not send present shaft, condition, or trade value fields to review", async () => {
     const result = await executeEndToEndAgenticTradeInDemo({
       rawInput:
-        "TaylorMade Stealth 2 driver shaft stiff cond avg trade value $150"
+        "TaylorMade Stealth 2 driver shaft stiff cond avg trade value $150",
     });
 
     try {
@@ -142,17 +136,20 @@ describe("executeEndToEndAgenticTradeInDemo", () => {
         conditionGrade: "8.0 Average",
         tradeInValue: 150,
         conditionNotes: ["8.0 Average"],
-        missingFields: []
+        missingFields: [],
       });
       expect(parsedItem?.confidence).toBeGreaterThanOrEqual(0.9);
       expect(result.finalSummary.lowConfidenceItemCount).toBe(0);
 
       const warningFields = result.validationChecks
-        .filter((check) => check.recordId === parsedItem?.id && check.status !== "PASS")
+        .filter(
+          (check) =>
+            check.recordId === parsedItem?.id && check.status !== "PASS",
+        )
         .map((check) => check.field);
 
       expect(warningFields).not.toEqual(
-        expect.arrayContaining(["shaftFlex", "conditionGrade", "tradeInValue"])
+        expect.arrayContaining(["shaftFlex", "conditionGrade", "tradeInValue"]),
       );
 
       for (const reviewItem of result.reviewQueueItemsCreated) {
@@ -166,10 +163,15 @@ describe("executeEndToEndAgenticTradeInDemo", () => {
         expect(proposedRecord).toMatchObject({
           shaftFlex: "STIFF",
           conditionGrade: "8.0 Average",
-          tradeInValue: 150
+          tradeInValue: 150,
         });
         expect(proposedRecord.missingFields ?? []).not.toEqual(
-          expect.arrayContaining(["shaftFlex", "conditionGrade", "tradeInValue", "conditionNotes"])
+          expect.arrayContaining([
+            "shaftFlex",
+            "conditionGrade",
+            "tradeInValue",
+            "conditionNotes",
+          ]),
         );
       }
     } finally {
@@ -180,7 +182,7 @@ describe("executeEndToEndAgenticTradeInDemo", () => {
   it("keeps a missing trade-in value in human review when model assistance cannot safely repair it", async () => {
     const result = await executeEndToEndAgenticTradeInDemo({
       rawInput:
-        "TaylorMade Stealth 2 driver shaft stiff condition 8.0 Average store 104"
+        "TaylorMade Stealth 2 driver shaft stiff condition 8.0 Average store 104",
     });
 
     try {
@@ -191,15 +193,17 @@ describe("executeEndToEndAgenticTradeInDemo", () => {
         category: "DRIVER",
         shaftFlex: "STIFF",
         conditionGrade: "8.0 Average",
-        tradeInValue: null
+        tradeInValue: null,
       });
 
-      expect(result.valuationEvidenceByItem[0]?.estimate.highValue).toBeGreaterThan(0);
+      expect(
+        result.valuationEvidenceByItem[0]?.estimate.highValue,
+      ).toBeGreaterThan(0);
       expect(result.fieldRepairExecution.recordOutcomes).toEqual([
         expect.objectContaining({
           recordId: result.parsedItems[0]?.id,
-          outcomeType: "NO_SAFE_REPAIR"
-        })
+          outcomeType: "NO_SAFE_REPAIR",
+        }),
       ]);
 
       expect(result.reviewQueueItemsCreated).toHaveLength(1);
@@ -216,13 +220,13 @@ describe("executeEndToEndAgenticTradeInDemo", () => {
       expect(proposedRecord.tradeInValue).toBeNull();
       expect(proposedRecord.missingFields).toContain("tradeInValue");
       expect(proposedRecord.reviewReasonSummary).toContain(
-        "missing tradeInValue"
+        "missing tradeInValue",
       );
 
       const workflowRun = await prisma.workflowRun.findUniqueOrThrow({
         where: {
-          id: result.persisted.workflowRunId
-        }
+          id: result.persisted.workflowRunId,
+        },
       });
 
       expect(workflowRun.status).toBe("NEEDS_REVIEW");
@@ -237,41 +241,31 @@ describe("executeEndToEndAgenticTradeInDemo", () => {
       "PING G425 4-PW, shaft marked TX, condition 8.0 Average, trade value $210, store 207.",
       "Callaway mystery driver, shaft unknown, condition 7.0 Below Average, trade value pending, store 104.",
       "Odyssey White Hot OG #7 putter, 8.0 Average, trade value $85, store 207.",
-      "Callaway Rogue ST Max driver, Regular, 9.0 Above Average, trade value $190, store 104."
+      "Callaway Rogue ST Max driver, Regular, 9.0 Above Average, trade value $190, store 104.",
     ].join("\n");
 
-    const result =
-      await executeEndToEndAgenticTradeInDemo({
-        rawInput
-      });
+    const result = await executeEndToEndAgenticTradeInDemo({
+      rawInput,
+    });
 
     try {
       expect(result.parsedItems).toHaveLength(5);
 
-      const ambiguousItem = result.parsedItems.find(
-        (item) =>
-          item.rawLine.includes(
-            "Titleist TSR fairway wood"
-          )
+      const ambiguousItem = result.parsedItems.find((item) =>
+        item.rawLine.includes("Titleist TSR fairway wood"),
       );
-      const deterministicPingItem =
-        result.parsedItems.find((item) =>
-          item.rawLine.includes(
-            "PING G425 4-PW"
-          )
-        );
-      const unresolvedItem = result.parsedItems.find(
-        (item) =>
-          item.rawLine.includes(
-            "Callaway mystery driver"
-          )
+      const deterministicPingItem = result.parsedItems.find((item) =>
+        item.rawLine.includes("PING G425 4-PW"),
+      );
+      const unresolvedItem = result.parsedItems.find((item) =>
+        item.rawLine.includes("Callaway mystery driver"),
       );
 
       expect(ambiguousItem).toMatchObject({
         missingFields: [],
         productResolution: {
-          status: "AMBIGUOUS"
-        }
+          status: "AMBIGUOUS",
+        },
       });
 
       expect(deterministicPingItem).toMatchObject({
@@ -280,92 +274,72 @@ describe("executeEndToEndAgenticTradeInDemo", () => {
         confidence: 0.93,
         uncertaintyNotes: [],
         productResolution: {
-          status: "MATCHED"
+          status: "MATCHED",
         },
         parserEvidence: {
           shaftFlex: {
             value: "TOUR_X_STIFF",
-            sourceText: "shaft marked TX"
-          }
-        }
+            sourceText: "shaft marked TX",
+          },
+        },
       });
 
       expect(unresolvedItem).toMatchObject({
         productLine: null,
         shaftFlex: null,
-        missingFields: expect.arrayContaining([
-          "productLine",
-          "shaftFlex"
-        ]),
+        missingFields: expect.arrayContaining(["productLine", "shaftFlex"]),
         productResolution: {
-          status: "UNRESOLVED"
-        }
+          status: "UNRESOLVED",
+        },
       });
 
-      const modelCallLog =
-        await prisma.modelCallLog.findUniqueOrThrow({
-          where: {
-            id:
-              result.fieldRepairExecution
-                .modelCallLogId
-          }
-        });
-      const requestJson =
-        modelCallLog.requestJson as {
-          inputJson?: {
-            records?: Array<{
-              recordId?: string;
-              currentFields?: {
-                shaftFlex?: string | null;
-              };
-            }>;
-          };
+      const modelCallLog = await prisma.modelCallLog.findUniqueOrThrow({
+        where: {
+          id: result.fieldRepairExecution.modelCallLogId,
+        },
+      });
+      const requestJson = modelCallLog.requestJson as {
+        inputJson?: {
+          records?: Array<{
+            recordId?: string;
+            currentFields?: {
+              shaftFlex?: string | null;
+            };
+          }>;
         };
-      const selectedRecords =
-        requestJson.inputJson?.records ?? [];
-      const selectedRecordIds =
-        selectedRecords.map(
-          (record) => record.recordId
-        );
+      };
+      const selectedRecords = requestJson.inputJson?.records ?? [];
+      const selectedRecordIds = selectedRecords.map(
+        (record) => record.recordId,
+      );
 
       expect(selectedRecords).toHaveLength(2);
       expect(selectedRecordIds).toEqual([
         ambiguousItem?.id,
-        unresolvedItem?.id
+        unresolvedItem?.id,
       ]);
-      expect(selectedRecordIds).not.toContain(
-        deterministicPingItem?.id
-      );
+      expect(selectedRecordIds).not.toContain(deterministicPingItem?.id);
 
-      expect(
-        result.fieldRepairExecution.recordOutcomes
-      ).toHaveLength(2);
-      expect(
-        result.fieldRepairExecution.recordOutcomes
-      ).toEqual(
+      expect(result.fieldRepairExecution.recordOutcomes).toHaveLength(2);
+      expect(result.fieldRepairExecution.recordOutcomes).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             recordId: ambiguousItem?.id,
-            outcomeType:
-              "CANDIDATE_COMPARISON"
+            outcomeType: "CANDIDATE_COMPARISON",
           }),
           expect.objectContaining({
             recordId: unresolvedItem?.id,
-            outcomeType: "NO_SAFE_REPAIR"
-          })
-        ])
+            outcomeType: "NO_SAFE_REPAIR",
+          }),
+        ]),
       );
       expect(
         result.fieldRepairExecution.recordOutcomes.map(
-          (outcome) => outcome.recordId
-        )
+          (outcome) => outcome.recordId,
+        ),
       ).not.toContain(deterministicPingItem?.id);
-      expect(
-        result.fieldRepairExecution.suggestions
-      ).toEqual([]);
-      expect(
-        result.fieldRepairExecution.validationPassed
-      ).toBe(true);
+      expect(result.fieldRepairExecution.suggestions).toEqual([]);
+      expect(result.fieldRepairExecution.validationPassed).toBe(true);
 
       const retryEvent = result.retryEvents[0];
       expect(retryEvent).toMatchObject({
@@ -373,114 +347,92 @@ describe("executeEndToEndAgenticTradeInDemo", () => {
         targetField: "shaftFlex",
         status: "UNRESOLVED",
         attemptCount: 1,
-        maxAttempts: 1
+        maxAttempts: 1,
       });
       expect(retryEvent?.modelCallLogId).toEqual(expect.any(String));
 
-      const retryStep =
-        await prisma.workflowStep.findFirstOrThrow({
-          where: {
-            workflowRunId:
-              result.persisted.workflowRunId,
-            stepName:
-              "retry-targeted-field-extraction"
-          }
-        });
+      const retryStep = await prisma.workflowStep.findFirstOrThrow({
+        where: {
+          workflowRunId: result.persisted.workflowRunId,
+          stepName: "retry-targeted-field-extraction",
+        },
+      });
       expect(retryStep).toMatchObject({
         status: "COMPLETED",
-        retryCount: 1
+        retryCount: 1,
       });
 
-      const retryModelCallLog =
-        await prisma.modelCallLog.findUniqueOrThrow({
-          where: {
-            id: retryEvent!.modelCallLogId!
-          }
-        });
-      expect(retryModelCallLog.workflowStepId).toBe(
-        retryStep.id
-      );
+      const retryModelCallLog = await prisma.modelCallLog.findUniqueOrThrow({
+        where: {
+          id: retryEvent!.modelCallLogId!,
+        },
+      });
+      expect(retryModelCallLog.workflowStepId).toBe(retryStep.id);
     } finally {
       await cleanupResult(result);
     }
   });
 
   it("surfaces an approved prior correction as model review assistance without applying it", async () => {
-    const priorWorkflowRun =
-      await prisma.workflowRun.create({
-        data: {
-          workflowName:
-            "prior-review-advisory-candidate-source",
-          status: "COMPLETED"
-        }
-      });
+    const priorWorkflowRun = await prisma.workflowRun.create({
+      data: {
+        workflowName: "prior-review-advisory-candidate-source",
+        status: "COMPLETED",
+      },
+    });
 
-    const priorReviewQueueItem =
-      await prisma.reviewQueueItem.create({
-        data: {
-          workflowRunId: priorWorkflowRun.id,
-          reason: "MISSING_REQUIRED_FIELDS",
-          status: "RESOLVED",
-          originalText:
-            "Prior reviewed PING record with shaft firm",
-          proposedGolfClubJson: {
-            brand: "PING",
-            productLine: "G425",
-            category: "IRON_SET",
-            shaftFlex: null,
-            missingFields: ["shaftFlex"]
-          }
-        }
-      });
+    const priorReviewQueueItem = await prisma.reviewQueueItem.create({
+      data: {
+        workflowRunId: priorWorkflowRun.id,
+        reason: "MISSING_REQUIRED_FIELDS",
+        status: "RESOLVED",
+        originalText: "Prior reviewed PING record with shaft firm",
+        proposedGolfClubJson: {
+          brand: "PING",
+          productLine: "G425",
+          category: "IRON_SET",
+          shaftFlex: null,
+          missingFields: ["shaftFlex"],
+        },
+      },
+    });
 
-    const reviewedTradeInRecord =
-      await prisma.reviewedTradeInRecord.create({
-        data: {
-          reviewQueueItemId:
-            priorReviewQueueItem.id,
-          workflowRunId: priorWorkflowRun.id,
-          originalText:
-            "Prior reviewed PING record with shaft firm",
-          correctedBrand: "PING",
-          correctedProductLine: "G425",
-          correctedCategory: "IRON_SET",
-          correctedShaftFlex: "STIFF",
-          reviewerNotes:
-            "Reviewer confirmed shaft firm means STIFF."
-        }
-      });
+    const reviewedTradeInRecord = await prisma.reviewedTradeInRecord.create({
+      data: {
+        reviewQueueItemId: priorReviewQueueItem.id,
+        workflowRunId: priorWorkflowRun.id,
+        originalText: "Prior reviewed PING record with shaft firm",
+        correctedBrand: "PING",
+        correctedProductLine: "G425",
+        correctedCategory: "IRON_SET",
+        correctedShaftFlex: "STIFF",
+        reviewerNotes: "Reviewer confirmed shaft firm means STIFF.",
+      },
+    });
 
-    const learningEvent =
-      await prisma.humanReviewLearningEvent.create({
-        data: {
-          reviewedTradeInRecordId:
-            reviewedTradeInRecord.id,
-          reviewQueueItemId:
-            priorReviewQueueItem.id,
-          workflowRunId: priorWorkflowRun.id,
-          fieldName: "shaftFlex",
-          rawTextMatch: "shaft firm",
-          proposedValue: "Missing",
-          correctedValue: "STIFF",
-          evidenceText:
-            "Reviewer corrected shaft firm to STIFF.",
-          confidenceImpact:
-            "Require reviewer confirmation before applying."
-        }
-      });
+    const learningEvent = await prisma.humanReviewLearningEvent.create({
+      data: {
+        reviewedTradeInRecordId: reviewedTradeInRecord.id,
+        reviewQueueItemId: priorReviewQueueItem.id,
+        workflowRunId: priorWorkflowRun.id,
+        fieldName: "shaftFlex",
+        rawTextMatch: "shaft firm",
+        proposedValue: "Missing",
+        correctedValue: "STIFF",
+        evidenceText: "Reviewer corrected shaft firm to STIFF.",
+        confidenceImpact: "Require reviewer confirmation before applying.",
+      },
+    });
 
-    let result:
-      EndToEndAgenticTradeInDemoResult | null =
-      null;
+    let result: EndToEndAgenticTradeInDemoResult | null = null;
 
     try {
       const sourceText =
         "PING G425 4-PW shaft firm condition 8.0 Average trade value $210";
 
-      result =
-        await executeEndToEndAgenticTradeInDemo({
-          rawInput: sourceText
-        });
+      result = await executeEndToEndAgenticTradeInDemo({
+        rawInput: sourceText,
+      });
 
       expect(result.parsedItems).toHaveLength(1);
 
@@ -492,22 +444,16 @@ describe("executeEndToEndAgenticTradeInDemo", () => {
         productLine: "G425",
         category: "IRON_SET",
         shaftFlex: null,
-        missingFields:
-          expect.arrayContaining([
-            "shaftFlex"
-          ]),
+        missingFields: expect.arrayContaining(["shaftFlex"]),
         productResolution: {
-          status: "MATCHED"
-        }
+          status: "MATCHED",
+        },
       });
 
       const priorSuggestions =
-        result
-          .priorReviewLearningSuggestionsByItem
-          .find(
-            (item) =>
-              item.parsedItemId === parsedItem.id
-          )?.suggestions ?? [];
+        result.priorReviewLearningSuggestionsByItem.find(
+          (item) => item.parsedItemId === parsedItem.id,
+        )?.suggestions ?? [];
 
       expect(priorSuggestions).toEqual(
         expect.arrayContaining([
@@ -516,119 +462,98 @@ describe("executeEndToEndAgenticTradeInDemo", () => {
             rawTextMatch: "shaft firm",
             suggestedValue: "STIFF",
             strength: "STRONG",
-            sourceLearningEventId:
-              learningEvent.id,
-            status: "SUGGESTED"
-          })
-        ])
+            sourceLearningEventId: learningEvent.id,
+            status: "SUGGESTED",
+          }),
+        ]),
       );
 
-      const modelCallLog =
-        await prisma.modelCallLog.findUniqueOrThrow({
-          where: {
-            id:
-              result.fieldRepairExecution
-                .modelCallLogId
-          }
-        });
-      const requestJson =
-        modelCallLog.requestJson as {
-          inputJson?: {
-            records?: Array<{
-              recordId?: string;
-              currentFields?: {
-                shaftFlex?: string | null;
+      const modelCallLog = await prisma.modelCallLog.findUniqueOrThrow({
+        where: {
+          id: result.fieldRepairExecution.modelCallLogId,
+        },
+      });
+      const requestJson = modelCallLog.requestJson as {
+        inputJson?: {
+          records?: Array<{
+            recordId?: string;
+            currentFields?: {
+              shaftFlex?: string | null;
+            };
+            advisoryCandidates?: Array<{
+              candidateId?: string;
+              sourceType?: string;
+              sourceEvidenceId?: string;
+              sourceReferenceId?: string;
+              suggestion?: {
+                recordId?: string;
+                fieldName?: string;
+                sourcePhrase?: string;
+                candidateValue?: string | number;
+                confidence?: number;
+                reviewRequired?: boolean;
               };
-              advisoryCandidates?: Array<{
-                candidateId?: string;
-                sourceType?: string;
-                sourceEvidenceId?: string;
-                sourceReferenceId?: string;
-                suggestion?: {
-                  recordId?: string;
-                  fieldName?: string;
-                  sourcePhrase?: string;
-                  candidateValue?:
-                    string | number;
-                  confidence?: number;
-                  reviewRequired?: boolean;
-                };
-              }>;
             }>;
-          };
+          }>;
         };
+      };
 
-      const selectedRecord =
-        requestJson.inputJson?.records?.find(
-          (record) =>
-            record.recordId === parsedItem.id
-        );
+      const selectedRecord = requestJson.inputJson?.records?.find(
+        (record) => record.recordId === parsedItem.id,
+      );
 
       expect(selectedRecord).toMatchObject({
         currentFields: {
-          shaftFlex: null
+          shaftFlex: null,
         },
         advisoryCandidates: [
           {
-            candidateId:
-              `prior-review:${learningEvent.id}:shaftFlex`,
+            candidateId: `prior-review:${learningEvent.id}:shaftFlex`,
             sourceType: "PRIOR_REVIEW",
-            sourceEvidenceId:
-              `${parsedItem.id}:prior-review`,
-            sourceReferenceId:
-              learningEvent.id,
+            sourceEvidenceId: `${parsedItem.id}:prior-review`,
+            sourceReferenceId: learningEvent.id,
             suggestion: {
               recordId: parsedItem.id,
               fieldName: "shaftFlex",
               sourcePhrase: "shaft firm",
               candidateValue: "STIFF",
-              reviewRequired: true
-            }
-          }
-        ]
+              reviewRequired: true,
+            },
+          },
+        ],
       });
 
-      expect(
-        result.fieldRepairExecution
-          .validationPassed
-      ).toBe(true);
-      expect(
-        result.fieldRepairExecution.recordOutcomes
-      ).toEqual([
+      expect(result.fieldRepairExecution.validationPassed).toBe(true);
+      expect(result.fieldRepairExecution.recordOutcomes).toEqual([
         expect.objectContaining({
           outcomeType: "REPAIR_SUGGESTED",
           recordId: parsedItem.id,
-          evidenceIds:
-            expect.arrayContaining([
-              `${parsedItem.id}:prior-review`
-            ]),
+          evidenceIds: expect.arrayContaining([
+            `${parsedItem.id}:prior-review`,
+          ]),
           suggestions: [
             expect.objectContaining({
               recordId: parsedItem.id,
               fieldName: "shaftFlex",
               sourcePhrase: "shaft firm",
               candidateValue: "STIFF",
-              reviewRequired: true
-            })
-          ]
-        })
+              reviewRequired: true,
+            }),
+          ],
+        }),
       ]);
-      expect(
-        result.fieldRepairExecution.suggestions
-      ).toEqual([
+      expect(result.fieldRepairExecution.suggestions).toEqual([
         expect.objectContaining({
           recordId: parsedItem.id,
           fieldName: "shaftFlex",
           sourcePhrase: "shaft firm",
           candidateValue: "STIFF",
-          reviewRequired: true
-        })
+          reviewRequired: true,
+        }),
       ]);
 
       expect(parsedItem.shaftFlex).toBeNull();
-      expect(parsedItem.missingFields).toContain(
-        "shaftFlex"
-      );
+      expect(parsedItem.missingFields).toContain("shaftFlex");
     } finally {
       if (result) {
         await cleanupResult(result);
@@ -636,8 +561,8 @@ describe("executeEndToEndAgenticTradeInDemo", () => {
 
       await prisma.workflowRun.deleteMany({
         where: {
-          id: priorWorkflowRun.id
-        }
+          id: priorWorkflowRun.id,
+        },
       });
     }
   });
@@ -658,14 +583,14 @@ describe("executeEndToEndAgenticTradeInDemo", () => {
             {
               rawText: `1) ${sourceText}`,
               sourceRowNumber: 1,
-              status: "NEEDS_REVIEW"
-            }
-          ]
-        }
+              status: "NEEDS_REVIEW",
+            },
+          ],
+        },
       },
       include: {
-        items: true
-      }
+        items: true,
+      },
     });
 
     const upstreamWorkflowRun = await prisma.workflowRun.create({
@@ -673,8 +598,8 @@ describe("executeEndToEndAgenticTradeInDemo", () => {
         intakeBatchId: upstreamBatch.id,
         workflowName: "multi-source-intake-demo",
         status: "NEEDS_REVIEW",
-        startedAt: new Date()
-      }
+        startedAt: new Date(),
+      },
     });
 
     const upstreamReviewItem = await prisma.reviewQueueItem.create({
@@ -691,22 +616,24 @@ describe("executeEndToEndAgenticTradeInDemo", () => {
           shaftFlex: null,
           conditionGrade: null,
           tradeInValue: null,
-          missingFields: ["shaftFlex", "conditionGrade", "tradeInValue"]
-        }
-      }
+          missingFields: ["shaftFlex", "conditionGrade", "tradeInValue"],
+        },
+      },
     });
 
     const result = await executeEndToEndAgenticTradeInDemo({
-      rawInput: sourceText
+      rawInput: sourceText,
     });
 
     expect(result.reviewQueueItemsCreated).toHaveLength(1);
 
-    const supersededReviewItem = await prisma.reviewQueueItem.findUniqueOrThrow({
-      where: {
-        id: upstreamReviewItem.id
-      }
-    });
+    const supersededReviewItem = await prisma.reviewQueueItem.findUniqueOrThrow(
+      {
+        where: {
+          id: upstreamReviewItem.id,
+        },
+      },
+    );
 
     expect(supersededReviewItem.status).toBe("SUPERSEDED");
     expect(supersededReviewItem.resolvedAt).toBeNull();
@@ -718,90 +645,73 @@ describe("executeEndToEndAgenticTradeInDemo", () => {
       result.reviewQueueItemsCreated[0]!.id,
     );
 
-    const completedUpstreamWorkflowRun = await prisma.workflowRun.findUniqueOrThrow({
-      where: {
-        id: upstreamWorkflowRun.id
-      }
-    });
+    const completedUpstreamWorkflowRun =
+      await prisma.workflowRun.findUniqueOrThrow({
+        where: {
+          id: upstreamWorkflowRun.id,
+        },
+      });
 
     expect(completedUpstreamWorkflowRun.status).toBe("COMPLETED");
 
-    const listedSupersededReviewItem = await prisma.reviewQueueItem.findUniqueOrThrow({
-      where: {
-        id: upstreamReviewItem.id
-      }
-    });
+    const listedSupersededReviewItem =
+      await prisma.reviewQueueItem.findUniqueOrThrow({
+        where: {
+          id: upstreamReviewItem.id,
+        },
+      });
 
     expect(listedSupersededReviewItem.supersededByReviewQueueItemId).toBe(
       result.reviewQueueItemsCreated[0]!.id,
     );
   });
 
-
-
   it("does not assign inventory identity or valuation to an ambiguous product family", async () => {
     const result = await executeEndToEndAgenticTradeInDemo({
       rawInput:
-        "Titleist TSR fairway wood generation unclear shaft stiff condition 8.0 Average trade value $145"
+        "Titleist TSR fairway wood generation unclear shaft stiff condition 8.0 Average trade value $145",
     });
 
     try {
       expect(result.parsedItems).toHaveLength(1);
-      expect(
-        result.parsedItems[0]?.productResolution.status
-      ).toBe("AMBIGUOUS");
+      expect(result.parsedItems[0]?.productResolution.status).toBe("AMBIGUOUS");
 
-      expect(
-        result.inventoryMatchesByItem[0]?.lookup
-      ).toMatchObject({
+      expect(result.inventoryMatchesByItem[0]?.lookup).toMatchObject({
         productId: null,
         sku: null,
         brand: "Titleist",
         productLine: "TSR",
-        category: "FAIRWAY_WOOD"
+        category: "FAIRWAY_WOOD",
       });
 
       expect(
-        result.inventoryMatchesByItem[0]
-          ?.lookup.similarProducts.length
+        result.inventoryMatchesByItem[0]?.lookup.similarProducts.length,
       ).toBeGreaterThanOrEqual(2);
 
-      expect(
-        result.valuationEvidenceByItem[0]?.estimate
-      ).toMatchObject({
+      expect(result.valuationEvidenceByItem[0]?.estimate).toMatchObject({
         lowValue: 0,
         highValue: 0,
         confidence: "LOW",
-        reviewRequired: true
+        reviewRequired: true,
       });
 
-      expect(
-        result.reviewQueueItemsCreated
-      ).toHaveLength(1);
-      expect(
-        result.finalSummary.inventoryMatchCount
-      ).toBe(0);
-      expect(
-        result.finalSummary.valuationRangeCount
-      ).toBe(0);
+      expect(result.reviewQueueItemsCreated).toHaveLength(1);
+      expect(result.finalSummary.inventoryMatchCount).toBe(0);
+      expect(result.finalSummary.valuationRangeCount).toBe(0);
 
-      expectNoIndependentInventoryOrValuationToolCalls(
-        result
-      );
+      expectNoIndependentInventoryOrValuationToolCalls(result);
     } finally {
       await cleanupResult(result);
     }
   });
 
-
   it("does not invent inventory identity or valuation for an unresolved product", async () => {
     const sourceText =
       "Titleist ZX Prototype 11 driver shaft stiff condition 8.0 Average trade value $125";
 
-    const result =
-      await executeEndToEndAgenticTradeInDemo({
-        rawInput: sourceText
-      });
+    const result = await executeEndToEndAgenticTradeInDemo({
+      rawInput: sourceText,
+    });
 
     try {
       expect(result.parsedItems).toHaveLength(1);
@@ -811,104 +721,85 @@ describe("executeEndToEndAgenticTradeInDemo", () => {
         productLine: null,
         category: "DRIVER",
         productResolution: {
-          status: "UNRESOLVED"
-        }
+          status: "UNRESOLVED",
+        },
       });
 
-      expect(
-        result.inventoryMatchesByItem[0]?.lookup
-      ).toMatchObject({
+      expect(result.inventoryMatchesByItem[0]?.lookup).toMatchObject({
         productId: null,
         sku: null,
         brand: "Titleist",
         productLine: null,
         category: "DRIVER",
         confidence: 0,
-        similarProducts: []
+        similarProducts: [],
       });
 
-      expect(
-        result.valuationEvidenceByItem[0]?.estimate
-      ).toMatchObject({
+      expect(result.valuationEvidenceByItem[0]?.estimate).toMatchObject({
         lowValue: 0,
         highValue: 0,
         confidence: "LOW",
-        reviewRequired: true
+        reviewRequired: true,
       });
 
-      expect(
-        result.reviewQueueItemsCreated
-      ).toHaveLength(1);
-      expect(
-        result.finalSummary.inventoryMatchCount
-      ).toBe(0);
-      expect(
-        result.finalSummary.valuationRangeCount
-      ).toBe(0);
+      expect(result.reviewQueueItemsCreated).toHaveLength(1);
+      expect(result.finalSummary.inventoryMatchCount).toBe(0);
+      expect(result.finalSummary.valuationRangeCount).toBe(0);
 
-      const proposedRecord =
-        result.reviewQueueItemsCreated[0]
-          ?.proposedGolfClubJson as {
-            rawLine?: string;
-            productResolution?: {
-              status?: string;
-            };
-            inventoryMatch?: {
-              productId?: string | null;
-              sku?: string | null;
-            };
-            demoValuationRange?: {
-              highValue?: number;
-            };
-          };
+      const proposedRecord = result.reviewQueueItemsCreated[0]
+        ?.proposedGolfClubJson as {
+        rawLine?: string;
+        productResolution?: {
+          status?: string;
+        };
+        inventoryMatch?: {
+          productId?: string | null;
+          sku?: string | null;
+        };
+        demoValuationRange?: {
+          highValue?: number;
+        };
+      };
 
       expect(proposedRecord).toMatchObject({
         rawLine: sourceText,
         productResolution: {
-          status: "UNRESOLVED"
+          status: "UNRESOLVED",
         },
         inventoryMatch: {
           productId: null,
-          sku: null
+          sku: null,
         },
         demoValuationRange: {
-          highValue: 0
-        }
+          highValue: 0,
+        },
       });
 
-      expectNoIndependentInventoryOrValuationToolCalls(
-        result
-      );
+      expectNoIndependentInventoryOrValuationToolCalls(result);
     } finally {
       await cleanupResult(result);
     }
   });
 
-
   it("resolves an injected reference product through the guarded workflow", async () => {
-    const provider =
-      createInMemoryProductReferenceProvider([
-        {
-          productId:
-            "prod_test_nova_x_driver_2026",
-          sku: "TEST-NOVAX-DRV-2026",
-          brand: "Test Golf",
-          productLine: "Nova X",
-          category: "DRIVER",
-          year: 2026,
-          aliases: [
-            "nx prototype driver"
-          ],
-          shaftFamilies: []
-        }
-      ]);
+    const provider = createInMemoryProductReferenceProvider([
+      {
+        productId: "prod_test_nova_x_driver_2026",
+        sku: "TEST-NOVAX-DRV-2026",
+        brand: "Test Golf",
+        productLine: "Nova X",
+        category: "DRIVER",
+        year: 2026,
+        aliases: ["nx prototype driver"],
+        shaftFamilies: [],
+      },
+    ]);
 
-    const result =
-      await executeEndToEndAgenticTradeInDemo({
-        rawInput:
-          "Test Golf nx prototype driver shaft stiff condition 9.0 Above Average trade value $225",
-        productReferenceProvider: provider
-      });
+    const result = await executeEndToEndAgenticTradeInDemo({
+      rawInput:
+        "Test Golf nx prototype driver shaft stiff condition 9.0 Above Average trade value $225",
+      productReferenceProvider: provider,
+    });
 
     try {
       expect(result.parsedItems).toHaveLength(1);
@@ -919,34 +810,25 @@ describe("executeEndToEndAgenticTradeInDemo", () => {
         productResolution: {
           status: "MATCHED",
           match: {
-            productId:
-              "prod_test_nova_x_driver_2026",
-            sku: "TEST-NOVAX-DRV-2026"
-          }
-        }
+            productId: "prod_test_nova_x_driver_2026",
+            sku: "TEST-NOVAX-DRV-2026",
+          },
+        },
       });
 
-      expect(
-        result.inventoryMatchesByItem[0]?.lookup
-      ).toMatchObject({
-        productId:
-          "prod_test_nova_x_driver_2026",
+      expect(result.inventoryMatchesByItem[0]?.lookup).toMatchObject({
+        productId: "prod_test_nova_x_driver_2026",
         sku: "TEST-NOVAX-DRV-2026",
         brand: "Test Golf",
         productLine: "Nova X",
-        category: "DRIVER"
+        category: "DRIVER",
       });
 
-      expect(
-        result.finalSummary.inventoryMatchCount
-      ).toBe(1);
+      expect(result.finalSummary.inventoryMatchCount).toBe(1);
 
-      expectNoIndependentInventoryOrValuationToolCalls(
-        result
-      );
+      expectNoIndependentInventoryOrValuationToolCalls(result);
     } finally {
       await cleanupResult(result);
     }
   });
-
 });

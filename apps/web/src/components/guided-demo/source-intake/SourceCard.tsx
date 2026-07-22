@@ -73,7 +73,9 @@ export function SourceCard({
       <div className="multi-source-intake-editor-card__header guided-source-card-header">
         <div className="guided-source-card-title-row">
           <div className="guided-source-card-title-group">
-            <span className="model-route-card__eyebrow">Source {index + 1}</span>
+            <span className="model-route-card__eyebrow">
+              Source {index + 1}
+            </span>
             {sourceCount > 1 ? (
               <button
                 aria-label={`Remove source ${index + 1}`}
@@ -83,11 +85,7 @@ export function SourceCard({
                 title={`Remove source ${index + 1}`}
                 type="button"
               >
-                <svg
-                  aria-hidden="true"
-                  focusable="false"
-                  viewBox="0 0 24 24"
-                >
+                <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
                   <path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm1 7h2v8h-2v-8Zm4 0h2v8h-2v-8ZM6 8h12l-1 13H7L6 8Z" />
                 </svg>
               </button>
@@ -105,9 +103,7 @@ export function SourceCard({
             aria-label={`Source ${index + 1} name`}
             className="multi-source-intake-title-input"
             disabled={isRunning}
-            onChange={(event) =>
-              onSourceNameChange(index, event.target.value)
-            }
+            onChange={(event) => onSourceNameChange(index, event.target.value)}
             placeholder="Example: Counter notes"
             value={source.sourceName ?? ""}
           />
@@ -209,11 +205,11 @@ export function SourceCard({
           {sourceInputMode === "UPLOAD" ? (
             <div className="multi-source-intake-upload-panel">
               <label className="multi-source-intake-upload-control guided-upload-file-control">
-                <span className="guided-upload-file-control__button" aria-hidden="true">
-                  <svg
-                    focusable="false"
-                    viewBox="0 0 24 24"
-                  >
+                <span
+                  className="guided-upload-file-control__button"
+                  aria-hidden="true"
+                >
+                  <svg focusable="false" viewBox="0 0 24 24">
                     <path d="M12 3 7 8h3v6h4V8h3l-5-5ZM5 17h14v2H5v-2Z" />
                   </svg>
                   Choose file
@@ -223,10 +219,7 @@ export function SourceCard({
                   accept=".txt,.csv,.log,.eml,text/*"
                   disabled={isRunning}
                   onChange={(event) => {
-                    void onUploadSource(
-                      index,
-                      event.target.files?.[0] ?? null,
-                    );
+                    void onUploadSource(index, event.target.files?.[0] ?? null);
                     event.target.value = "";
                   }}
                   type="file"
@@ -250,7 +243,8 @@ export function SourceCard({
                     Use sample for {getSourceLabel(source.sourceType)}
                   </strong>
                   <small>
-                    Click to fill this source with realistic operational content.
+                    Click to fill this source with realistic operational
+                    content.
                   </small>
                 </span>
                 <span
@@ -269,7 +263,9 @@ export function SourceCard({
                       rawContent: event.target.value,
                     })
                   }
-                  placeholder={getRawSourceContentPlaceholder(selectedSourceType)}
+                  placeholder={getRawSourceContentPlaceholder(
+                    selectedSourceType,
+                  )}
                   rows={6}
                   value={source.rawContent}
                 />

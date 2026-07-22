@@ -126,11 +126,15 @@ export function getSourceTextMatchSuggestion(
   const proposedRecord = getProposedRecord(card.reviewItem);
   const rawValue =
     fieldName === "brand"
-      ? getFirstString(card.parsedRecord, ["brand"]) ??
-        getFirstString(proposedRecord, ["brand"])
+      ? (getFirstString(card.parsedRecord, ["brand"]) ??
+        getFirstString(proposedRecord, ["brand"]))
       : fieldName === "productLine"
-        ? getFirstString(card.parsedRecord, ["productLine", "model", "title"]) ??
-          getFirstString(proposedRecord, ["productLine", "model", "title"])
+        ? (getFirstString(card.parsedRecord, [
+            "productLine",
+            "model",
+            "title",
+          ]) ??
+          getFirstString(proposedRecord, ["productLine", "model", "title"]))
         : null;
 
   if (!rawValue) {
@@ -207,7 +211,11 @@ export function getCurrentValueForField(
 
   if (fieldName === "demoValue") {
     return formatDisplayValue(
-      getFirstValue(card.parsedRecord, ["tradeInValue", "demoValue", "value"]) ??
+      getFirstValue(card.parsedRecord, [
+        "tradeInValue",
+        "demoValue",
+        "value",
+      ]) ??
         getFirstValue(proposedRecord, ["tradeInValue", "demoValue", "value"]),
     );
   }
@@ -249,7 +257,10 @@ export function getUnresolvedMissingFields(card: RecordReviewCard) {
 export function isSourceSupportedProductCatalogConfirmation(
   card: RecordReviewCard,
 ) {
-  const currentProductLine = getCurrentValueForField(card, "productLine").trim();
+  const currentProductLine = getCurrentValueForField(
+    card,
+    "productLine",
+  ).trim();
 
   if (!currentProductLine || currentProductLine === "—") {
     return false;
@@ -311,7 +322,9 @@ export function getInventoryProductLineCandidates(
 ): InventoryProductLineCandidate[] {
   const proposedRecord = getProposedRecord(card.reviewItem);
   const inventoryLookup = asUnknownRecord(card.inventoryEvidence?.lookup);
-  const proposedInventoryMatch = asUnknownRecord(proposedRecord?.inventoryMatch);
+  const proposedInventoryMatch = asUnknownRecord(
+    proposedRecord?.inventoryMatch,
+  );
   const similarProductsValue =
     inventoryLookup?.similarProducts ?? proposedInventoryMatch?.similarProducts;
   const similarProducts = Array.isArray(similarProductsValue)
@@ -446,22 +459,46 @@ function addSourceMissingFieldSignals(
 ) {
   const sourceText = card.sourceEvidence.toLowerCase();
 
-  if (/missing\s+(?:trade\s*-?\s*in\s*)?value|missing\s+tradeinvalue|value\s+(?:missing|unknown|unclear|pending)|trade\s*-?\s*in\s+value\s+(?:missing|unknown|unclear|pending)/i.test(sourceText)) {
+  if (
+    /missing\s+(?:trade\s*-?\s*in\s*)?value|missing\s+tradeinvalue|value\s+(?:missing|unknown|unclear|pending)|trade\s*-?\s*in\s+value\s+(?:missing|unknown|unclear|pending)/i.test(
+      sourceText,
+    )
+  ) {
     fields.add("demoValue");
   }
-  if (/missing\s+condition|condition\s+(?:missing|unknown|unclear|pending)|conditionnotes/i.test(sourceText)) {
+  if (
+    /missing\s+condition|condition\s+(?:missing|unknown|unclear|pending)|conditionnotes/i.test(
+      sourceText,
+    )
+  ) {
     fields.add("conditionGrade");
   }
-  if (/missing\s+category|category\s+(?:missing|unknown|unclear|pending|could not be classified)/i.test(sourceText)) {
+  if (
+    /missing\s+category|category\s+(?:missing|unknown|unclear|pending|could not be classified)/i.test(
+      sourceText,
+    )
+  ) {
     fields.add("category");
   }
-  if (/missing\s+(?:shaft\s*)?flex|shaft(?:\s*flex)?\s+(?:missing|unknown|unclear|pending)|flex\s+(?:missing|unknown|unclear|pending)/i.test(sourceText)) {
+  if (
+    /missing\s+(?:shaft\s*)?flex|shaft(?:\s*flex)?\s+(?:missing|unknown|unclear|pending)|flex\s+(?:missing|unknown|unclear|pending)/i.test(
+      sourceText,
+    )
+  ) {
     fields.add("shaftFlex");
   }
-  if (/missing\s+product|product\s+(?:line\s+)?(?:missing|unknown|unclear|pending)/i.test(sourceText)) {
+  if (
+    /missing\s+product|product\s+(?:line\s+)?(?:missing|unknown|unclear|pending)/i.test(
+      sourceText,
+    )
+  ) {
     fields.add("productLine");
   }
-  if (/missing\s+brand|brand\s+(?:missing|unknown|unclear|pending)/i.test(sourceText)) {
+  if (
+    /missing\s+brand|brand\s+(?:missing|unknown|unclear|pending)/i.test(
+      sourceText,
+    )
+  ) {
     fields.add("brand");
   }
 }
@@ -504,7 +541,9 @@ function addBlankCorrectableFieldSignals(
 }
 
 function cardHasActiveCorrectionWork(card: RecordReviewCard) {
-  return card.status === "needs-review" && canResolveReviewItem(card.reviewItem);
+  return (
+    card.status === "needs-review" && canResolveReviewItem(card.reviewItem)
+  );
 }
 
 export function canApplyModelReviewSuggestion(card: RecordReviewCard) {
@@ -581,7 +620,9 @@ export function getCorrectionFocusFields(card: RecordReviewCard) {
   for (const event of card.retryEvents) {
     if (event.status === "RESOLVED") continue;
 
-    const signal = [event.targetField ?? "", event.reason, event.message].join(" ");
+    const signal = [event.targetField ?? "", event.reason, event.message].join(
+      " ",
+    );
     const correctionField =
       getCorrectionFieldFromSignal(event.targetField ?? "") ??
       getCorrectionFieldFromSignal(event.reason) ??
@@ -686,9 +727,8 @@ export function buildCorrectionDraft(
 export function buildCorrectedRecord(
   draft: ReviewCorrectionDraft,
 ): StructuredReviewCorrectedRecord {
-  const demoValue = draft.demoValue.trim().length > 0
-    ? Number(draft.demoValue)
-    : null;
+  const demoValue =
+    draft.demoValue.trim().length > 0 ? Number(draft.demoValue) : null;
 
   return {
     ...(draft.brand.trim() ? { brand: draft.brand.trim() } : {}),
@@ -730,7 +770,8 @@ export function buildLearningEvents(
 
     const proposedValue = getCurrentValueForField(card, fieldName);
     const changed =
-      normalizeComparable(proposedValue) !== normalizeComparable(correctedValue);
+      normalizeComparable(proposedValue) !==
+      normalizeComparable(correctedValue);
     const wasMissing = getUnresolvedMissingFields(card).some(
       (field) => normalizeComparable(field) === normalizeComparable(fieldName),
     );
@@ -805,7 +846,9 @@ export function getBlockingCorrectionFields(
     }
 
     if (!currentValue || currentValue === "—") return false;
-    return normalizeComparable(correctedValue) === normalizeComparable(currentValue);
+    return (
+      normalizeComparable(correctedValue) === normalizeComparable(currentValue)
+    );
   });
 }
 
@@ -1050,15 +1093,17 @@ export function getOpenPriorReviewSuggestions(
   handledSuggestionIds: Set<string>,
   draft?: ReviewCorrectionDraft,
 ) {
-  return getActionablePriorReviewSuggestions(suggestions).filter((suggestion) => {
-    if (handledSuggestionIds.has(getPriorReviewSuggestionKey(suggestion))) {
-      return false;
-    }
+  return getActionablePriorReviewSuggestions(suggestions).filter(
+    (suggestion) => {
+      if (handledSuggestionIds.has(getPriorReviewSuggestionKey(suggestion))) {
+        return false;
+      }
 
-    return draft
-      ? !isPriorReviewSuggestionLoadedInDraft(draft, suggestion)
-      : true;
-  });
+      return draft
+        ? !isPriorReviewSuggestionLoadedInDraft(draft, suggestion)
+        : true;
+    },
+  );
 }
 
 export function getLoadedPriorReviewSuggestionFieldNames(

@@ -19,29 +19,41 @@
   list-style: none !important;
 }
 
-.guided-final-report-step details summary:has(.model-route-card__eyebrow)::before,
-.guided-final-run-report details summary:has(.model-route-card__eyebrow)::before,
+.guided-final-report-step
+  details
+  summary:has(.model-route-card__eyebrow)::before,
+.guided-final-run-report
+  details
+  summary:has(.model-route-card__eyebrow)::before,
 .guided-final-audit-trace summary::before {
   content: "▸" !important;
   grid-column: 1 !important;
   align-self: start !important;
   justify-self: start !important;
   margin-top: 0.35rem !important;
-  color: rgba(20, 33, 22, 0.68) !important;
+  color: rgb(20 33 22 / 68%) !important;
   font-size: 0.75rem !important;
   line-height: 1 !important;
   transition: transform 0.16s ease !important;
 }
 
-.guided-final-report-step details[open] summary:has(.model-route-card__eyebrow)::before,
-.guided-final-run-report details[open] summary:has(.model-route-card__eyebrow)::before,
+.guided-final-report-step
+  details[open]
+  summary:has(.model-route-card__eyebrow)::before,
+.guided-final-run-report
+  details[open]
+  summary:has(.model-route-card__eyebrow)::before,
 .guided-final-audit-trace details[open] summary::before,
 .guided-final-audit-trace[open] summary::before {
   transform: rotate(90deg) !important;
 }
 
-.guided-final-report-step details summary:has(.model-route-card__eyebrow)::-webkit-details-marker,
-.guided-final-run-report details summary:has(.model-route-card__eyebrow)::-webkit-details-marker,
+.guided-final-report-step
+  details
+  summary:has(.model-route-card__eyebrow)::-webkit-details-marker,
+.guided-final-run-report
+  details
+  summary:has(.model-route-card__eyebrow)::-webkit-details-marker,
 .guided-final-audit-trace summary::-webkit-details-marker {
   display: none !important;
 }
@@ -67,7 +79,7 @@
 .guided-final-audit-trace summary p {
   max-width: none !important;
   margin: 0.35rem 0 0 !important;
-  color: rgba(20, 33, 22, 0.68) !important;
+  color: rgb(20 33 22 / 68%) !important;
   font-size: 0.95rem !important;
   line-height: 1.45 !important;
 }
@@ -109,7 +121,7 @@
   align-self: start !important;
   justify-self: start !important;
   margin-top: 0.38rem !important;
-  color: rgba(20, 33, 22, 0.68) !important;
+  color: rgb(20 33 22 / 68%) !important;
   font-size: 0.75rem !important;
   line-height: 1 !important;
   transition: transform 0.16s ease !important;
@@ -138,7 +150,7 @@
 .guided-final-audit-trace__summary p {
   max-width: none !important;
   margin: 0.35rem 0 0 !important;
-  color: rgba(20, 33, 22, 0.68) !important;
+  color: rgb(20 33 22 / 68%) !important;
   font-size: 0.95rem !important;
   line-height: 1.45 !important;
 }

@@ -1,29 +1,20 @@
 import { isShaftFlexApplicable } from "./golf-field-applicability.js";
 import {
   findTextParserEvidence,
-  omitEmptyParserEvidence
+  omitEmptyParserEvidence,
 } from "./parser-evidence.js";
 import {
   detectApprovedConditionGradeWithEvidence,
   detectShaftFlexWithEvidence,
-  detectTradeInValueWithEvidence
+  detectTradeInValueWithEvidence,
 } from "./parser-normalizers.js";
-import type {
-  ProductReferenceProvider
-} from "../product-reference/product-reference-provider.js";
-import {
-  resolveProductReference
-} from "../product-reference/product-reference-resolver.js";
-import {
-  resolveParsedProductIdentity
-} from "./product-resolution-parser.js";
-import type {
-  ParserEvidence,
-  ParserFieldEvidence
-} from "./parser-evidence.js";
+import type { ProductReferenceProvider } from "../product-reference/product-reference-provider.js";
+import { resolveProductReference } from "../product-reference/product-reference-resolver.js";
+import { resolveParsedProductIdentity } from "./product-resolution-parser.js";
+import type { ParserEvidence, ParserFieldEvidence } from "./parser-evidence.js";
 import type {
   MultiSourceIntakeRecord,
-  MultiSourceIntakeSourceType
+  MultiSourceIntakeSourceType,
 } from "./multi-source-intake-types.js";
 
 type MultiSourceParserInput = {
@@ -34,7 +25,9 @@ type MultiSourceParserInput = {
 };
 
 export function unique(values: (string | null | undefined)[]): string[] {
-  return [...new Set(values.filter((value): value is string => Boolean(value)))];
+  return [
+    ...new Set(values.filter((value): value is string => Boolean(value))),
+  ];
 }
 
 export function cleanText(rawContent: string): string {
@@ -91,7 +84,9 @@ function detectCategory(text: string): string | null {
     return "HYBRID";
   }
 
-  if (/\bwedge\b|\b(?:46|48|50|52|54|56|58|60)\s*(?:deg|degree|°)?\b/i.test(text)) {
+  if (
+    /\bwedge\b|\b(?:46|48|50|52|54|56|58|60)\s*(?:deg|degree|°)?\b/i.test(text)
+  ) {
     return "WEDGE";
   }
 
@@ -106,10 +101,7 @@ function detectCategory(text: string): string | null {
   return null;
 }
 
-
-function getDetectedBrandSourcePattern(
-  brand: string
-): RegExp | null {
+function getDetectedBrandSourcePattern(brand: string): RegExp | null {
   if (brand === "TaylorMade") {
     return /\b(?:taylormade|tm)\b/i;
   }
@@ -141,9 +133,7 @@ function getDetectedBrandSourcePattern(
   return null;
 }
 
-function getDetectedCategorySourcePattern(
-  category: string
-): RegExp | null {
+function getDetectedCategorySourcePattern(category: string): RegExp | null {
   if (category === "DRIVER") {
     return /\b(?:driver|drv)\b/i;
   }
@@ -178,31 +168,24 @@ function detectSourceSupportedProductText(input: {
   detectedCategory: string | null;
 }): string | null {
   if (
-    input.sourceType ===
-      "POORLY_FORMED_CSV" ||
+    input.sourceType === "POORLY_FORMED_CSV" ||
     !input.detectedBrand ||
     !input.detectedCategory
   ) {
     return null;
   }
 
-  const brandPattern =
-    getDetectedBrandSourcePattern(
-      input.detectedBrand
-    );
-  const categoryPattern =
-    getDetectedCategorySourcePattern(
-      input.detectedCategory
-    );
+  const brandPattern = getDetectedBrandSourcePattern(input.detectedBrand);
+  const categoryPattern = getDetectedCategorySourcePattern(
+    input.detectedCategory,
+  );
 
   if (!brandPattern || !categoryPattern) {
     return null;
   }
 
-  const brandMatch =
-    input.text.match(brandPattern);
-  const categoryMatch =
-    input.text.match(categoryPattern);
+  const brandMatch = input.text.match(brandPattern);
+  const categoryMatch = input.text.match(categoryPattern);
 
   if (
     !brandMatch?.[0] ||
@@ -213,31 +196,19 @@ function detectSourceSupportedProductText(input: {
     return null;
   }
 
-  const productStart =
-    brandMatch.index +
-    brandMatch[0].length;
-  const productEnd =
-    categoryMatch.index;
+  const productStart = brandMatch.index + brandMatch[0].length;
+  const productEnd = categoryMatch.index;
 
   if (productEnd <= productStart) {
     return null;
   }
 
-  const candidate =
-    input.text
-      .slice(
-        productStart,
-        productEnd
-      )
-      .replace(
-        /^[\s,;:|/\-]+|[\s,;:|/\-]+$/g,
-        ""
-      )
-      .trim();
+  const candidate = input.text
+    .slice(productStart, productEnd)
+    .replace(/^[\s,;:|/-]+|[\s,;:|/-]+$/g, "")
+    .trim();
 
-  return normalizeDelimitedProductText(
-    candidate
-  );
+  return normalizeDelimitedProductText(candidate);
 }
 
 function buildParserEvidence(
@@ -263,15 +234,23 @@ function buildParserEvidence(
     ]),
     ...(values.productLineEvidence
       ? {
-          productLine:
-            values.productLineEvidence
+          productLine: values.productLineEvidence,
         }
       : {}),
     category: findTextParserEvidence(text, values.category, [
       { value: "DRIVER", aliases: [/\bdriver\b/i, /\bdrv\b/i] },
-      { value: "FAIRWAY_WOOD", aliases: [/\b(?:3|4|5|7|9)\s*-?\s*(?:w|wood)\b/i, /\bfairway\b/i] },
+      {
+        value: "FAIRWAY_WOOD",
+        aliases: [/\b(?:3|4|5|7|9)\s*-?\s*(?:w|wood)\b/i, /\bfairway\b/i],
+      },
       { value: "HYBRID", aliases: [/\bhybrid\b/i, /\bhy\b/i, /\brescue\b/i] },
-      { value: "WEDGE", aliases: [/\bwedge\b/i, /\b(?:46|48|50|52|54|56|58|60)\s*(?:deg|degree|°)?\b/i] },
+      {
+        value: "WEDGE",
+        aliases: [
+          /\bwedge\b/i,
+          /\b(?:46|48|50|52|54|56|58|60)\s*(?:deg|degree|°)?\b/i,
+        ],
+      },
       { value: "PUTTER", aliases: [/\bputter\b/i] },
       { value: "IRON_SET", aliases: [/\birons?\b/i, /\b[4-9]-pw\b/i] },
     ]),
@@ -283,38 +262,24 @@ function buildParserEvidence(
   });
 }
 
-function detectStoreIds(
-  text: string
-): string[] {
-  const storePattern =
-    /\bstore(?:=|:|\s)?\s*(STORE-)?(\d{3})\b/gi;
+function detectStoreIds(text: string): string[] {
+  const storePattern = /\bstore(?:=|:|\s)?\s*(STORE-)?(\d{3})\b/gi;
   const storeIds = new Set<string>();
 
-  for (
-    const match of text.matchAll(
-      storePattern
-    )
-  ) {
-    const numericStoreId =
-      match[2];
+  for (const match of text.matchAll(storePattern)) {
+    const numericStoreId = match[2];
 
     if (!numericStoreId) {
       continue;
     }
 
-    storeIds.add(
-      match[1]
-        ? `STORE-${numericStoreId}`
-        : numericStoreId
-    );
+    storeIds.add(match[1] ? `STORE-${numericStoreId}` : numericStoreId);
   }
 
   return [...storeIds];
 }
 
-function detectStoreId(
-  text: string
-): string | null {
+function detectStoreId(text: string): string | null {
   return detectStoreIds(text)[0] ?? null;
 }
 
@@ -323,31 +288,19 @@ function resolveRecordStoreId(input: {
   fragment: string;
   csvStoreId: string | null;
 }): string | null {
-  if (
-    input.source.sourceType ===
-    "POORLY_FORMED_CSV"
-  ) {
-    return (
-      input.csvStoreId ??
-      detectStoreId(input.fragment)
-    );
+  if (input.source.sourceType === "POORLY_FORMED_CSV") {
+    return input.csvStoreId ?? detectStoreId(input.fragment);
   }
 
-  const fragmentStoreId =
-    detectStoreId(input.fragment);
+  const fragmentStoreId = detectStoreId(input.fragment);
 
   if (fragmentStoreId) {
     return fragmentStoreId;
   }
 
-  const sourceStoreIds =
-    detectStoreIds(
-      input.source.rawContent
-    );
+  const sourceStoreIds = detectStoreIds(input.source.rawContent);
 
-  return sourceStoreIds.length === 1
-    ? sourceStoreIds[0] ?? null
-    : null;
+  return sourceStoreIds.length === 1 ? (sourceStoreIds[0] ?? null) : null;
 }
 
 type PoorlyFormedCsvRowValues = {
@@ -360,9 +313,7 @@ type PoorlyFormedCsvRowValues = {
 };
 
 function normalizeDelimitedHeader(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "");
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
 function stripDelimitedCell(value: string): string {
@@ -372,16 +323,13 @@ function stripDelimitedCell(value: string): string {
     .trim();
 }
 
-function normalizeDelimitedProductText(
-  value: string | null
-): string | null {
-  const productText =
-    value?.trim() ?? "";
+function normalizeDelimitedProductText(value: string | null): string | null {
+  const productText = value?.trim() ?? "";
 
   if (
     !productText ||
     /^(?:unknown(?:\s+(?:item|club|model))?|mystery\s+club|n\/?a|none|null|tbd|\?)$/i.test(
-      productText
+      productText,
     )
   ) {
     return null;
@@ -426,185 +374,116 @@ const STRUCTURED_LOG_FIELD_KEYS = [
   "location",
   "locationid",
   "note",
-  "notes"
+  "notes",
 ] as const;
 
-function escapeRegularExpressionText(
-  value: string
-): string {
-  return value.replace(
-    /[.*+?^${}()|[\]\\]/g,
-    "\\$&"
-  );
+function escapeRegularExpressionText(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function extractStructuredLogFieldValue(
   fragment: string,
-  aliases: string[]
+  aliases: string[],
 ): string | null {
-  const aliasPattern = aliases
-    .map(escapeRegularExpressionText)
-    .join("|");
-  const allKeysPattern =
-    STRUCTURED_LOG_FIELD_KEYS
-      .map(escapeRegularExpressionText)
-      .join("|");
+  const aliasPattern = aliases.map(escapeRegularExpressionText).join("|");
+  const allKeysPattern = STRUCTURED_LOG_FIELD_KEYS.map(
+    escapeRegularExpressionText,
+  ).join("|");
   const pattern = new RegExp(
     `\\b(?:${aliasPattern})\\s*[:=]\\s*(?:'([^']*)'|"([^"]*)"|(.+?))(?=\\s+\\b(?:${allKeysPattern})\\b\\s*[:=]|[,}]|$)`,
-    "i"
+    "i",
   );
   const match = fragment.match(pattern);
-  const value =
-    match?.[1] ??
-    match?.[2] ??
-    match?.[3] ??
-    "";
+  const value = match?.[1] ?? match?.[2] ?? match?.[3] ?? "";
 
-  return (
-    stripDelimitedCell(value) ||
-    null
-  );
+  return stripDelimitedCell(value) || null;
 }
 
 function stripOtherStructuredFieldNegativeEvidence(
   value: string,
-  targetFieldAliases: string[]
+  targetFieldAliases: string[],
 ): string {
-  const normalizedTargetAliases =
-    new Set(
-      targetFieldAliases.map(
-        normalizeDelimitedHeader
-      )
-    );
-  const otherFieldPattern =
-    STRUCTURED_LOG_FIELD_KEYS
-      .filter(
-        (fieldName) =>
-          fieldName !== "note" &&
-          fieldName !== "notes" &&
-          !normalizedTargetAliases.has(
-            normalizeDelimitedHeader(
-              fieldName
-            )
-          )
-      )
-      .map(
-        escapeRegularExpressionText
-      )
-      .join("|");
+  const normalizedTargetAliases = new Set(
+    targetFieldAliases.map(normalizeDelimitedHeader),
+  );
+  const otherFieldPattern = STRUCTURED_LOG_FIELD_KEYS.filter(
+    (fieldName) =>
+      fieldName !== "note" &&
+      fieldName !== "notes" &&
+      !normalizedTargetAliases.has(normalizeDelimitedHeader(fieldName)),
+  )
+    .map(escapeRegularExpressionText)
+    .join("|");
   const negativePattern =
     "unknown|unclear|pending|not\\s+listed|tbd|not\\s+sure";
-  const fieldScopedNegativePattern =
-    new RegExp(
-      `(?:\\b(?:${otherFieldPattern})\\b\\s*(?:=|:|is)?\\s*\\b(?:${negativePattern})\\b)|(?:\\b(?:${negativePattern})\\b\\s+\\b(?:${otherFieldPattern})\\b)`,
-      "gi"
-    );
-
-  return value.replace(
-    fieldScopedNegativePattern,
-    " "
+  const fieldScopedNegativePattern = new RegExp(
+    `(?:\\b(?:${otherFieldPattern})\\b\\s*(?:=|:|is)?\\s*\\b(?:${negativePattern})\\b)|(?:\\b(?:${negativePattern})\\b\\s+\\b(?:${otherFieldPattern})\\b)`,
+    "gi",
   );
+
+  return value.replace(fieldScopedNegativePattern, " ");
 }
 
 function parseStructuredLogValues(
   source: MultiSourceParserInput,
-  fragment: string
+  fragment: string,
 ): StructuredLogValues | null {
   if (source.sourceType !== "LOG") {
     return null;
   }
 
-  const brandText =
-    extractStructuredLogFieldValue(
-      fragment,
-      [
-        "brand",
-        "make",
-        "manufacturer"
-      ]
-    );
-  const productText =
-    normalizeDelimitedProductText(
-      extractStructuredLogFieldValue(
-        fragment,
-        [
-          "model",
-          "product",
-          "productline",
-          "clubmodel"
-        ]
-      )
-    );
-  const categoryText =
-    extractStructuredLogFieldValue(
-      fragment,
-      [
-        "cat",
-        "category",
-        "type"
-      ]
-    );
-  const explicitShaftText =
-    extractStructuredLogFieldValue(
-      fragment,
-      [
-        "shaft",
-        "shaftflex",
-        "flex"
-      ]
-    );
-  const explicitConditionText =
-    extractStructuredLogFieldValue(
-      fragment,
-      [
-        "condition",
-        "conditiongrade",
-        "grade"
-      ]
-    );
-  const notesText =
-    extractStructuredLogFieldValue(
-      fragment,
-      [
-        "note",
-        "notes"
-      ]
-    );
+  const brandText = extractStructuredLogFieldValue(fragment, [
+    "brand",
+    "make",
+    "manufacturer",
+  ]);
+  const productText = normalizeDelimitedProductText(
+    extractStructuredLogFieldValue(fragment, [
+      "model",
+      "product",
+      "productline",
+      "clubmodel",
+    ]),
+  );
+  const categoryText = extractStructuredLogFieldValue(fragment, [
+    "cat",
+    "category",
+    "type",
+  ]);
+  const explicitShaftText = extractStructuredLogFieldValue(fragment, [
+    "shaft",
+    "shaftflex",
+    "flex",
+  ]);
+  const explicitConditionText = extractStructuredLogFieldValue(fragment, [
+    "condition",
+    "conditiongrade",
+    "grade",
+  ]);
+  const notesText = extractStructuredLogFieldValue(fragment, ["note", "notes"]);
 
-  const shaftNormalizationText =
-    explicitShaftText
-      ? `shaft ${explicitShaftText}`
-      : notesText
-        ? stripOtherStructuredFieldNegativeEvidence(
-            notesText,
-            [
-              "shaft",
-              "shaftflex",
-              "flex"
-            ]
-          )
-        : "";
-  const conditionNormalizationText =
-    explicitConditionText
-      ? `condition ${explicitConditionText}`
-      : notesText
-        ? stripOtherStructuredFieldNegativeEvidence(
-            notesText,
-            [
-              "condition",
-              "conditiongrade",
-              "grade"
-            ]
-          )
-        : "";
-  const detectedShaftFlex =
-    detectShaftFlexWithEvidence(
-      shaftNormalizationText
-    );
-  const detectedConditionGrade =
-    detectApprovedConditionGradeWithEvidence(
-      conditionNormalizationText
-    );
+  const shaftNormalizationText = explicitShaftText
+    ? `shaft ${explicitShaftText}`
+    : notesText
+      ? stripOtherStructuredFieldNegativeEvidence(notesText, [
+          "shaft",
+          "shaftflex",
+          "flex",
+        ])
+      : "";
+  const conditionNormalizationText = explicitConditionText
+    ? `condition ${explicitConditionText}`
+    : notesText
+      ? stripOtherStructuredFieldNegativeEvidence(notesText, [
+          "condition",
+          "conditiongrade",
+          "grade",
+        ])
+      : "";
+  const detectedShaftFlex = detectShaftFlexWithEvidence(shaftNormalizationText);
+  const detectedConditionGrade = detectApprovedConditionGradeWithEvidence(
+    conditionNormalizationText,
+  );
 
   if (
     !brandText &&
@@ -618,37 +497,19 @@ function parseStructuredLogValues(
   }
 
   return {
-    brand:
-      brandText
-        ? detectBrand(brandText)
-        : null,
+    brand: brandText ? detectBrand(brandText) : null,
     productText,
-    category:
-      categoryText
-        ? detectCategory(categoryText)
-        : null,
-    shaftFlex:
-      detectedShaftFlex.value,
-    shaftFlexSourceText:
-      detectedShaftFlex.evidence
-        ?.sourceText ??
-      null,
-    conditionGrade:
-      detectedConditionGrade.value,
+    category: categoryText ? detectCategory(categoryText) : null,
+    shaftFlex: detectedShaftFlex.value,
+    shaftFlexSourceText: detectedShaftFlex.evidence?.sourceText ?? null,
+    conditionGrade: detectedConditionGrade.value,
     conditionGradeSourceText:
-      detectedConditionGrade.evidence
-        ?.sourceText ??
-      null
+      detectedConditionGrade.evidence?.sourceText ?? null,
   };
 }
 
-function stripOperationalLogTimestamps(
-  value: string
-): string {
-  return value.replace(
-    /\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\b/g,
-    " "
-  );
+function stripOperationalLogTimestamps(value: string): string {
+  return value.replace(/\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\b/g, " ");
 }
 
 function detectDelimitedSeparator(headerLine: string): string | null {
@@ -670,7 +531,7 @@ function detectDelimitedSeparator(headerLine: string): string | null {
 
 function parsePoorlyFormedCsvRowValues(
   source: MultiSourceParserInput,
-  fragment: string
+  fragment: string,
 ): PoorlyFormedCsvRowValues | null {
   if (source.sourceType !== "POORLY_FORMED_CSV") {
     return null;
@@ -681,9 +542,7 @@ function parsePoorlyFormedCsvRowValues(
     .map((line) => line.trim())
     .filter(Boolean);
   const headerLine = lines[0];
-  const separator = headerLine
-    ? detectDelimitedSeparator(headerLine)
-    : null;
+  const separator = headerLine ? detectDelimitedSeparator(headerLine) : null;
 
   if (!headerLine || !separator) {
     return null;
@@ -692,53 +551,31 @@ function parsePoorlyFormedCsvRowValues(
   const headers = headerLine
     .split(separator)
     .map((header) => normalizeDelimitedHeader(header));
-  const cells = fragment
-    .split(separator)
-    .map(stripDelimitedCell);
+  const cells = fragment.split(separator).map(stripDelimitedCell);
 
   function findCell(headerAliases: string[]): string | null {
-    const index = headers.findIndex((header) =>
-      headerAliases.includes(header)
-    );
+    const index = headers.findIndex((header) => headerAliases.includes(header));
 
-    return index >= 0
-      ? cells[index] ?? null
-      : null;
+    return index >= 0 ? (cells[index] ?? null) : null;
   }
 
-  const productText =
-    normalizeDelimitedProductText(
-      findCell([
-        "product",
-        "productline",
-        "model",
-        "clubmodel"
-      ])
-    );
-  const shaftFlexSourceText =
-    findCell([
-      "shaft",
-      "shaftflex",
-      "flex"
-    ]) || null;
-  const shaftFlex =
-    shaftFlexSourceText
-      ? detectShaftFlexWithEvidence(
-          `shaft flex ${shaftFlexSourceText}`
-        ).value
-      : null;
+  const productText = normalizeDelimitedProductText(
+    findCell(["product", "productline", "model", "clubmodel"]),
+  );
+  const shaftFlexSourceText = findCell(["shaft", "shaftflex", "flex"]) || null;
+  const shaftFlex = shaftFlexSourceText
+    ? detectShaftFlexWithEvidence(`shaft flex ${shaftFlexSourceText}`).value
+    : null;
 
   const tradeInValueSourceText = findCell([
     "value",
     "tradevalue",
     "tradeinvalue",
-    "estimatedvalue"
+    "estimatedvalue",
   ]);
-  const normalizedValueText = tradeInValueSourceText
-    ?.replace(/[$,\s]/g, "");
+  const normalizedValueText = tradeInValueSourceText?.replace(/[$,\s]/g, "");
   const tradeInValue =
-    normalizedValueText &&
-    /^\d+(?:\.\d+)?$/.test(normalizedValueText)
+    normalizedValueText && /^\d+(?:\.\d+)?$/.test(normalizedValueText)
       ? Number(normalizedValueText)
       : null;
 
@@ -746,15 +583,13 @@ function parsePoorlyFormedCsvRowValues(
     "store",
     "storeid",
     "location",
-    "locationid"
+    "locationid",
   ]);
-  const storeMatch = storeSourceText?.match(
-    /^(STORE[-\s]*)?(\d{3})$/i
-  );
+  const storeMatch = storeSourceText?.match(/^(STORE[-\s]*)?(\d{3})$/i);
   const storeId = storeMatch
     ? storeMatch[1]
       ? `STORE-${storeMatch[2]}`
-      : storeMatch[2] ?? null
+      : (storeMatch[2] ?? null)
     : null;
 
   return {
@@ -763,7 +598,7 @@ function parsePoorlyFormedCsvRowValues(
     shaftFlexSourceText,
     tradeInValue,
     tradeInValueSourceText,
-    storeId
+    storeId,
   };
 }
 
@@ -805,21 +640,14 @@ export function detectTimestamps(text: string): string[] {
   return text.match(/\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\b/g) ?? [];
 }
 
-function countDelimitedSeparators(
-  line: string
-): number {
+function countDelimitedSeparators(line: string): number {
   return ["|", "\t", ";", ","].reduce(
-    (count, separator) =>
-      count +
-      line.split(separator).length -
-      1,
-    0
+    (count, separator) => count + line.split(separator).length - 1,
+    0,
   );
 }
 
-function looksLikeDelimitedHeader(
-  line: string
-): boolean {
+function looksLikeDelimitedHeader(line: string): boolean {
   if (countDelimitedSeparators(line) === 0) {
     return false;
   }
@@ -829,7 +657,7 @@ function looksLikeDelimitedHeader(
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, " ")
       .trim()
-      .split(/\s+/)
+      .split(/\s+/),
   );
   const expectedHeaderTokens = [
     "brand",
@@ -840,46 +668,37 @@ function looksLikeDelimitedHeader(
     "shaft",
     "condition",
     "value",
-    "store"
+    "store",
   ];
 
-  return expectedHeaderTokens.filter(
-    (token) =>
-      normalizedHeaderTokens.has(token)
-  ).length >= 2;
+  return (
+    expectedHeaderTokens.filter((token) => normalizedHeaderTokens.has(token))
+      .length >= 2
+  );
 }
 
 function resolveLineProductReference(
   line: string,
-  provider?: ProductReferenceProvider
+  provider?: ProductReferenceProvider,
 ) {
   const resolutionInput = {
     rawText: line,
     brand: detectBrand(line),
-    category: detectCategory(line)
+    category: detectCategory(line),
   };
 
   return provider
-    ? resolveProductReference(
-        resolutionInput,
-        provider
-      )
-    : resolveProductReference(
-        resolutionInput
-      );
+    ? resolveProductReference(resolutionInput, provider)
+    : resolveProductReference(resolutionInput);
 }
 
 function isLikelyEquipmentRecordLine(
   line: string,
-  provider?: ProductReferenceProvider
+  provider?: ProductReferenceProvider,
 ): boolean {
   const brand = detectBrand(line);
   const category = detectCategory(line);
-  const resolution =
-    resolveLineProductReference(
-      line,
-      provider
-    );
+  const resolution = resolveLineProductReference(line, provider);
 
   if (resolution.status !== "UNRESOLVED") {
     return true;
@@ -887,32 +706,23 @@ function isLikelyEquipmentRecordLine(
 
   const hasEquipmentLanguage =
     /\b(?:equipment|club|clubs|driver|fairway|wood|hybrid|rescue|iron|irons|wedge|putter)\b/i.test(
-      line
+      line,
     );
   const hasRecordContext =
     /\b(?:brought|bringing|trade(?:-?in)?|trade item|candidate equipment record|payload|row\s*=|pending review)\b/i.test(
-      line
+      line,
     );
   const hasShaftEvidence =
-    detectShaftFlexWithEvidence(
-      line
-    ).value !== null ||
+    detectShaftFlexWithEvidence(line).value !== null ||
     /\b(?:shaft|flex)\b[^.,;|]*(?:unknown|unclear|missing|not known)\b/i.test(
-      line
+      line,
     );
   const hasConditionEvidence =
-    detectApprovedConditionGradeWithEvidence(
-      line
-    ).value !== null;
+    detectApprovedConditionGradeWithEvidence(line).value !== null;
   const hasTradeValueEvidence =
-    detectTradeInValueWithEvidence(
-      line
-    ).value !== null;
+    detectTradeInValueWithEvidence(line).value !== null;
 
-  if (
-    category &&
-    hasEquipmentLanguage
-  ) {
+  if (category && hasEquipmentLanguage) {
     return true;
   }
 
@@ -921,32 +731,22 @@ function isLikelyEquipmentRecordLine(
     Boolean(category),
     hasShaftEvidence,
     hasConditionEvidence,
-    hasTradeValueEvidence
+    hasTradeValueEvidence,
   ].filter(Boolean).length;
 
-  return (
-    (
-      hasEquipmentLanguage ||
-      hasRecordContext
-    ) &&
-    fieldSignalCount >= 2
-  );
+  return (hasEquipmentLanguage || hasRecordContext) && fieldSignalCount >= 2;
 }
 
-function isEmailMetadataLine(
-  line: string
-): boolean {
-  return /^(?:from|to|cc|bcc|subject|attached|preferred store)\s*:/i.test(
-    line
-  ) ||
-    /^(?:hi|hello|thanks|thank you|regards|sincerely)\b/i.test(
-      line
-    );
+function isEmailMetadataLine(line: string): boolean {
+  return (
+    /^(?:from|to|cc|bcc|subject|attached|preferred store)\s*:/i.test(line) ||
+    /^(?:hi|hello|thanks|thank you|regards|sincerely)\b/i.test(line)
+  );
 }
 
 export function splitSourceIntoRecordFragments(
   source: MultiSourceParserInput,
-  provider?: ProductReferenceProvider
+  provider?: ProductReferenceProvider,
 ): string[] {
   const lines = source.rawContent
     .split(/\r?\n/)
@@ -955,18 +755,12 @@ export function splitSourceIntoRecordFragments(
 
   if (source.sourceType === "POORLY_FORMED_CSV") {
     const candidateRows =
-      lines[0] &&
-      looksLikeDelimitedHeader(lines[0])
-        ? lines.slice(1)
-        : lines;
+      lines[0] && looksLikeDelimitedHeader(lines[0]) ? lines.slice(1) : lines;
 
     return candidateRows.filter(
       (line) =>
         countDelimitedSeparators(line) >= 2 ||
-        isLikelyEquipmentRecordLine(
-          line,
-          provider
-        )
+        isLikelyEquipmentRecordLine(line, provider),
     );
   }
 
@@ -974,175 +768,104 @@ export function splitSourceIntoRecordFragments(
     return lines.filter(
       (line) =>
         !isEmailMetadataLine(line) &&
-        isLikelyEquipmentRecordLine(
-          line,
-          provider
-        )
+        isLikelyEquipmentRecordLine(line, provider),
     );
   }
 
   if (source.sourceType === "LOG") {
     return lines.filter(
       (line) =>
-        isLikelyEquipmentRecordLine(
-          line,
-          provider
-        ) ||
-        (
-          /\b(?:payload|brand|model|candidate|sku|normalized)\b/i.test(
-            line
-          ) &&
-          /\b(?:cat|category|shaft|condition|value|notes)\b/i.test(
-            line
-          )
-        )
+        isLikelyEquipmentRecordLine(line, provider) ||
+        (/\b(?:payload|brand|model|candidate|sku|normalized)\b/i.test(line) &&
+          /\b(?:cat|category|shaft|condition|value|notes)\b/i.test(line)),
     );
   }
 
-  return lines.filter((line) =>
-    isLikelyEquipmentRecordLine(
-      line,
-      provider
-    )
-  );
+  return lines.filter((line) => isLikelyEquipmentRecordLine(line, provider));
 }
 
 export function buildRecord(
   source: MultiSourceParserInput,
   fragment: string,
   index: number,
-  provider?: ProductReferenceProvider
+  provider?: ProductReferenceProvider,
 ): MultiSourceIntakeRecord {
-  const sourceContext =
-    `${source.rawContent}\n${fragment}`;
-  const csvRowValues =
-    parsePoorlyFormedCsvRowValues(
-      source,
-      fragment
-    );
-  const structuredLogValues =
-    parseStructuredLogValues(
-      source,
-      fragment
-    );
+  const sourceContext = `${source.rawContent}\n${fragment}`;
+  const csvRowValues = parsePoorlyFormedCsvRowValues(source, fragment);
+  const structuredLogValues = parseStructuredLogValues(source, fragment);
   const fallbackCategoryText =
     source.sourceType === "LOG"
-      ? stripOperationalLogTimestamps(
-          fragment
-        )
+      ? stripOperationalLogTimestamps(fragment)
       : fragment;
-  const detectedBrand =
-    structuredLogValues?.brand ??
-    detectBrand(fragment);
+  const detectedBrand = structuredLogValues?.brand ?? detectBrand(fragment);
   const detectedCategory =
-    structuredLogValues?.category ??
-    detectCategory(
-      fallbackCategoryText
-    );
+    structuredLogValues?.category ?? detectCategory(fallbackCategoryText);
   const sourceSupportedProductText =
     csvRowValues?.productText ??
     structuredLogValues?.productText ??
     detectSourceSupportedProductText({
-      sourceType:
-        source.sourceType,
+      sourceType: source.sourceType,
       text: fragment,
       detectedBrand,
-      detectedCategory
-    });
-  const productIdentity =
-    resolveParsedProductIdentity({
-      rawText: fragment,
-      detectedBrand,
       detectedCategory,
-      ...(sourceSupportedProductText
-        ? {
-            productText:
-              sourceSupportedProductText
-          }
-        : {}),
-      ...(provider
-        ? {
-            provider
-          }
-        : {})
     });
-  const brand = productIdentity.brand;
-  const productLine =
-    productIdentity.productLine;
-  const category =
-    productIdentity.category;
-  const fallbackShaftFlex =
-    detectShaftFlexWithEvidence(
-      fragment
-    );
-  const detectedShaftFlex =
-    structuredLogValues
-      ?.shaftFlex &&
-    structuredLogValues
-      .shaftFlexSourceText
+  const productIdentity = resolveParsedProductIdentity({
+    rawText: fragment,
+    detectedBrand,
+    detectedCategory,
+    ...(sourceSupportedProductText
       ? {
-          value:
-            structuredLogValues
-              .shaftFlex,
+          productText: sourceSupportedProductText,
+        }
+      : {}),
+    ...(provider
+      ? {
+          provider,
+        }
+      : {}),
+  });
+  const brand = productIdentity.brand;
+  const productLine = productIdentity.productLine;
+  const category = productIdentity.category;
+  const fallbackShaftFlex = detectShaftFlexWithEvidence(fragment);
+  const detectedShaftFlex =
+    structuredLogValues?.shaftFlex && structuredLogValues.shaftFlexSourceText
+      ? {
+          value: structuredLogValues.shaftFlex,
           evidence: {
-            value:
-              structuredLogValues
-                .shaftFlex,
-            sourceText:
-              structuredLogValues
-                .shaftFlexSourceText
-          }
+            value: structuredLogValues.shaftFlex,
+            sourceText: structuredLogValues.shaftFlexSourceText,
+          },
         }
       : fallbackShaftFlex;
-  const shaftFlex =
-    isShaftFlexApplicable(category)
-      ? detectedShaftFlex.value ??
-        csvRowValues?.shaftFlex ??
-        null
-      : null;
+  const shaftFlex = isShaftFlexApplicable(category)
+    ? (detectedShaftFlex.value ?? csvRowValues?.shaftFlex ?? null)
+    : null;
   const fallbackConditionGrade =
-    detectApprovedConditionGradeWithEvidence(
-      fragment
-    );
+    detectApprovedConditionGradeWithEvidence(fragment);
   const detectedConditionGrade =
-    structuredLogValues
-      ?.conditionGrade &&
-    structuredLogValues
-      .conditionGradeSourceText
+    structuredLogValues?.conditionGrade &&
+    structuredLogValues.conditionGradeSourceText
       ? {
-          value:
-            structuredLogValues
-              .conditionGrade,
+          value: structuredLogValues.conditionGrade,
           evidence: {
-            value:
-              structuredLogValues
-                .conditionGrade,
-            sourceText:
-              structuredLogValues
-                .conditionGradeSourceText
-          }
+            value: structuredLogValues.conditionGrade,
+            sourceText: structuredLogValues.conditionGradeSourceText,
+          },
         }
       : fallbackConditionGrade;
-  const conditionGrade =
-    detectedConditionGrade.value;
-  const detectedTradeInValue =
-    detectTradeInValueWithEvidence(
-      fragment
-    );
+  const conditionGrade = detectedConditionGrade.value;
+  const detectedTradeInValue = detectTradeInValueWithEvidence(fragment);
   const tradeInValue =
-    detectedTradeInValue.value ??
-    csvRowValues?.tradeInValue ??
-    null;
-  let parserEvidence =
-    buildParserEvidence(fragment, {
-      brand,
-      productLineEvidence:
-        productIdentity.productLineEvidence,
-      category,
-      shaftFlex,
-      conditionGrade,
-      tradeInValue
-    });
+    detectedTradeInValue.value ?? csvRowValues?.tradeInValue ?? null;
+  let parserEvidence = buildParserEvidence(fragment, {
+    brand,
+    productLineEvidence: productIdentity.productLineEvidence,
+    category,
+    shaftFlex,
+    conditionGrade,
+    tradeInValue,
+  });
 
   if (
     structuredLogValues &&
@@ -1151,19 +874,14 @@ export function buildRecord(
   ) {
     parserEvidence = {
       ...parserEvidence,
-      shaftFlex:
-        detectedShaftFlex.evidence
+      shaftFlex: detectedShaftFlex.evidence,
     };
   }
 
-  if (
-    structuredLogValues &&
-    detectedConditionGrade.evidence
-  ) {
+  if (structuredLogValues && detectedConditionGrade.evidence) {
     parserEvidence = {
       ...parserEvidence,
-      conditionGrade:
-        detectedConditionGrade.evidence
+      conditionGrade: detectedConditionGrade.evidence,
     };
   }
 
@@ -1176,76 +894,51 @@ export function buildRecord(
     parserEvidence = {
       ...parserEvidence,
       shaftFlex: {
-        value:
-          csvRowValues.shaftFlex,
-        sourceText:
-          csvRowValues
-            .shaftFlexSourceText
-      }
+        value: csvRowValues.shaftFlex,
+        sourceText: csvRowValues.shaftFlexSourceText,
+      },
     };
   }
 
   if (
     !parserEvidence.tradeInValue &&
     csvRowValues?.tradeInValue !== null &&
-    csvRowValues?.tradeInValue !==
-      undefined &&
+    csvRowValues?.tradeInValue !== undefined &&
     csvRowValues.tradeInValueSourceText
   ) {
     parserEvidence = {
       ...parserEvidence,
       tradeInValue: {
-        value:
-          csvRowValues.tradeInValue,
-        sourceText:
-          csvRowValues
-            .tradeInValueSourceText
-      }
+        value: csvRowValues.tradeInValue,
+        sourceText: csvRowValues.tradeInValueSourceText,
+      },
     };
   }
 
-  const customerName =
-    detectCustomerName(sourceContext);
-  const customerEmail =
-    detectCustomerEmail(sourceContext);
-  const storeId =
-    resolveRecordStoreId({
-      source,
-      fragment,
-      csvStoreId:
-        csvRowValues?.storeId ?? null
-    });
-  const eventTimestamp =
-    detectTimestamps(fragment)[0] ??
-    null;
-  const attachmentsMentioned =
-    detectAttachments(sourceContext);
+  const customerName = detectCustomerName(sourceContext);
+  const customerEmail = detectCustomerEmail(sourceContext);
+  const storeId = resolveRecordStoreId({
+    source,
+    fragment,
+    csvStoreId: csvRowValues?.storeId ?? null,
+  });
+  const eventTimestamp = detectTimestamps(fragment)[0] ?? null;
+  const attachmentsMentioned = detectAttachments(sourceContext);
   const hasProductResolutionIssue =
-    productIdentity.productResolution
-      .status !== "MATCHED";
+    productIdentity.productResolution.status !== "MATCHED";
   const hasExplicitUncertainty =
     /\bmaybe|unclear|malformed|missing|pending review|generation\s+(?:not\s+listed|unknown|unclear)|ERROR\b/i.test(
-      fragment
+      fragment,
     );
 
   const missingFields = [
     brand ? null : "brand",
     productLine ? null : "productLine",
     category ? null : "category",
-    !isShaftFlexApplicable(category) ||
-    shaftFlex
-      ? null
-      : "shaftFlex",
-    conditionGrade
-      ? null
-      : "conditionGrade",
-    tradeInValue === null
-      ? "tradeInValue"
-      : null
-  ].filter(
-    (field): field is string =>
-      Boolean(field)
-  );
+    !isShaftFlexApplicable(category) || shaftFlex ? null : "shaftFlex",
+    conditionGrade ? null : "conditionGrade",
+    tradeInValue === null ? "tradeInValue" : null,
+  ].filter((field): field is string => Boolean(field));
 
   const confidence = Math.max(
     0.35,
@@ -1253,19 +946,13 @@ export function buildRecord(
       (
         1 -
         missingFields.length * 0.095 -
-        (
-          hasProductResolutionIssue ||
-          hasExplicitUncertainty
-            ? 0.12
-            : 0
-        )
-      ).toFixed(2)
-    )
+        (hasProductResolutionIssue || hasExplicitUncertainty ? 0.12 : 0)
+      ).toFixed(2),
+    ),
   );
 
   return {
-    id:
-      `${source.id}_record_${index + 1}`,
+    id: `${source.id}_record_${index + 1}`,
     sourceId: source.id,
     sourceType: source.sourceType,
     brand,
@@ -1275,8 +962,7 @@ export function buildRecord(
     conditionGrade,
     tradeInValue,
     parserEvidence,
-    productResolution:
-      productIdentity.productResolution,
+    productResolution: productIdentity.productResolution,
     customerName,
     customerEmail,
     storeId,
@@ -1295,14 +981,10 @@ export function buildRecord(
       category,
       shaftFlex,
       conditionGrade,
-      tradeInValue === null
-        ? null
-        : `value ${tradeInValue}`,
-      storeId
-        ? `store ${storeId}`
-        : null
+      tradeInValue === null ? null : `value ${tradeInValue}`,
+      storeId ? `store ${storeId}` : null,
     ]
       .filter(Boolean)
-      .join(" | ")
+      .join(" | "),
   };
 }

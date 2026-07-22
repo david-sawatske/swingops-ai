@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getFieldRepairSuggestionMatrixValidationErrors,
-  getGolfTermNormalizationMatrix
+  getGolfTermNormalizationMatrix,
 } from "./golf-term-normalization.js";
 
 describe("golf term normalization matrix", () => {
@@ -15,19 +15,19 @@ describe("golf term normalization matrix", () => {
           id: "shaft-tour-x-stiff",
           field: "shaftFlex",
           canonicalValue: "TOUR_X_STIFF",
-          action: "NORMALIZE"
+          action: "NORMALIZE",
         }),
         expect.objectContaining({
           id: "category-utility-wood",
           field: "category",
           canonicalValue: null,
-          action: "ROUTE_TO_REVIEW"
+          action: "ROUTE_TO_REVIEW",
         }),
         expect.objectContaining({
           id: "negative-evidence",
-          action: "BLOCK_REPAIR"
-        })
-      ])
+          action: "BLOCK_REPAIR",
+        }),
+      ]),
     );
   });
 
@@ -35,7 +35,7 @@ describe("golf term normalization matrix", () => {
     const errors = getFieldRepairSuggestionMatrixValidationErrors({
       fieldName: "shaftFlex",
       sourcePhrase: "shaft unknown",
-      candidateValue: "REGULAR"
+      candidateValue: "REGULAR",
     });
 
     expect(errors.join(" ")).toContain("negative evidence");
@@ -45,7 +45,7 @@ describe("golf term normalization matrix", () => {
     const errors = getFieldRepairSuggestionMatrixValidationErrors({
       fieldName: "category",
       sourcePhrase: "UW 19 degree",
-      candidateValue: "WEDGE"
+      candidateValue: "WEDGE",
     });
 
     expect(errors.join(" ")).toContain("utility wood evidence");
@@ -56,16 +56,16 @@ describe("golf term normalization matrix", () => {
       getFieldRepairSuggestionMatrixValidationErrors({
         fieldName: "shaftFlex",
         sourcePhrase: "Ventus Blue R",
-        candidateValue: "REGULAR"
-      }).join(" ")
+        candidateValue: "REGULAR",
+      }).join(" "),
     ).toContain("single-letter R is ambiguous");
 
     expect(
       getFieldRepairSuggestionMatrixValidationErrors({
         fieldName: "shaftFlex",
         sourcePhrase: "shaft Ventus Blue R",
-        candidateValue: "REGULAR"
-      })
+        candidateValue: "REGULAR",
+      }),
     ).toEqual([]);
   });
 });

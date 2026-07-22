@@ -1,9 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { prisma } from "../lib/prisma.js";
-import {
-  findPriorReviewLearningEvidence,
-} from "../review-learning/review-learning-evidence.js";
+import { findPriorReviewLearningEvidence } from "../review-learning/review-learning-evidence.js";
 import {
   ensureGoldenDemonstrationHistory,
   GOLDEN_DEMONSTRATION_HISTORY_IDS,
@@ -18,8 +16,7 @@ async function removeGoldenDemonstrationHistory() {
 
   await prisma.reviewedTradeInRecord.deleteMany({
     where: {
-      reviewQueueItemId:
-        GOLDEN_DEMONSTRATION_HISTORY_IDS.reviewQueueItemId,
+      reviewQueueItemId: GOLDEN_DEMONSTRATION_HISTORY_IDS.reviewQueueItemId,
     },
   });
 
@@ -46,10 +43,8 @@ describe("ensureGoldenDemonstrationHistory", () => {
   });
 
   it("creates one reusable historical correction and reuses it idempotently", async () => {
-    const firstPreparation =
-      await ensureGoldenDemonstrationHistory();
-    const secondPreparation =
-      await ensureGoldenDemonstrationHistory();
+    const firstPreparation = await ensureGoldenDemonstrationHistory();
+    const secondPreparation = await ensureGoldenDemonstrationHistory();
 
     expect(firstPreparation).toMatchObject({
       created: true,
@@ -61,8 +56,7 @@ describe("ensureGoldenDemonstrationHistory", () => {
       created: false,
       workflowRunId: firstPreparation.workflowRunId,
       reviewQueueItemId: firstPreparation.reviewQueueItemId,
-      reviewedTradeInRecordId:
-        firstPreparation.reviewedTradeInRecordId,
+      reviewedTradeInRecordId: firstPreparation.reviewedTradeInRecordId,
       learningEventId: firstPreparation.learningEventId,
     });
 
@@ -71,17 +65,15 @@ describe("ensureGoldenDemonstrationHistory", () => {
         id: GOLDEN_DEMONSTRATION_HISTORY_IDS.workflowRunId,
       },
     });
-    const reviewQueueItem =
-      await prisma.reviewQueueItem.findUniqueOrThrow({
-        where: {
-          id: GOLDEN_DEMONSTRATION_HISTORY_IDS.reviewQueueItemId,
-        },
-      });
+    const reviewQueueItem = await prisma.reviewQueueItem.findUniqueOrThrow({
+      where: {
+        id: GOLDEN_DEMONSTRATION_HISTORY_IDS.reviewQueueItemId,
+      },
+    });
     const reviewedTradeInRecord =
       await prisma.reviewedTradeInRecord.findUniqueOrThrow({
         where: {
-          reviewQueueItemId:
-            GOLDEN_DEMONSTRATION_HISTORY_IDS.reviewQueueItemId,
+          reviewQueueItemId: GOLDEN_DEMONSTRATION_HISTORY_IDS.reviewQueueItemId,
         },
       });
     const learningEvent =
@@ -92,8 +84,7 @@ describe("ensureGoldenDemonstrationHistory", () => {
       });
 
     expect(workflowRun).toMatchObject({
-      workflowName:
-        "golden-demonstration-historical-review-evidence",
+      workflowName: "golden-demonstration-historical-review-evidence",
       status: "COMPLETED",
     });
     expect(reviewQueueItem).toMatchObject({
@@ -129,14 +120,13 @@ describe("ensureGoldenDemonstrationHistory", () => {
       sourceType: "FREE_TEXT",
     });
 
-    const reusableShaftFlexEvidence =
-      evidence.find(
-        (item) =>
-          item.fieldName === "shaftFlex" &&
-          item.rawTextMatch === "shaft firm" &&
-          item.correctedValue?.toUpperCase() === "STIFF" &&
-          item.strength === "STRONG",
-      );
+    const reusableShaftFlexEvidence = evidence.find(
+      (item) =>
+        item.fieldName === "shaftFlex" &&
+        item.rawTextMatch === "shaft firm" &&
+        item.correctedValue?.toUpperCase() === "STIFF" &&
+        item.strength === "STRONG",
+    );
 
     expect(reusableShaftFlexEvidence).toBeDefined();
 
@@ -157,8 +147,7 @@ describe("ensureGoldenDemonstrationHistory", () => {
     await expect(
       prisma.reviewedTradeInRecord.count({
         where: {
-          reviewQueueItemId:
-            GOLDEN_DEMONSTRATION_HISTORY_IDS.reviewQueueItemId,
+          reviewQueueItemId: GOLDEN_DEMONSTRATION_HISTORY_IDS.reviewQueueItemId,
         },
       }),
     ).resolves.toBe(1);

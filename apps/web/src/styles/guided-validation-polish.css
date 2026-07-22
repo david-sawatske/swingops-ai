@@ -5,7 +5,7 @@
   justify-content: space-between;
   gap: 1rem;
   margin: 0.2rem 0 -0.25rem;
-  color: rgba(20, 33, 22, 0.7);
+  color: rgb(20 33 22 / 70%);
 }
 
 .guided-record-review-group-label span,
@@ -19,9 +19,9 @@
 
 .guided-passed-gates-records {
   overflow: hidden;
-  border: 1px solid rgba(42, 62, 41, 0.12);
+  border: 1px solid rgb(42 62 41 / 12%);
   border-radius: 18px;
-  background: rgba(248, 250, 246, 0.72);
+  background: rgb(248 250 246 / 72%);
 }
 
 .guided-passed-gates-records > summary {
@@ -43,7 +43,7 @@
   grid-column: 1;
   grid-row: 1;
   width: 1rem;
-  color: rgba(20, 33, 22, 0.58);
+  color: rgb(20 33 22 / 58%);
   transition: transform 0.16s ease;
 }
 
@@ -68,8 +68,8 @@
   justify-self: end;
   padding: 0.35rem 0.65rem;
   border-radius: 999px;
-  background: rgba(227, 239, 222, 0.78);
-  color: rgba(33, 53, 34, 0.78);
+  background: rgb(227 239 222 / 78%);
+  color: rgb(33 53 34 / 78%);
   font-size: 0.72rem;
   font-weight: 900;
   letter-spacing: 0.07em;
@@ -81,10 +81,10 @@
 }
 
 .guided-record-review-list--passed-gates .guided-record-review-card {
-  background: rgba(255, 255, 255, 0.82);
+  background: rgb(255 255 255 / 82%);
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .guided-passed-gates-records > summary {
     grid-template-columns: 1fr;
   }
@@ -98,7 +98,7 @@
 /* Guided validation passed-gates dropdown final layout */
 .guided-passed-gates-records {
   border-radius: 18px !important;
-  background: rgba(255, 255, 255, 0.78) !important;
+  background: rgb(255 255 255 / 78%) !important;
 }
 
 .guided-passed-gates-records > summary {
@@ -118,7 +118,7 @@
   justify-self: center !important;
   width: auto !important;
   margin: 0 !important;
-  color: rgba(20, 33, 22, 0.58) !important;
+  color: rgb(20 33 22 / 58%) !important;
   line-height: 1 !important;
 }
 
@@ -136,7 +136,7 @@
 
 .guided-passed-gates-records > summary > div .model-route-card__eyebrow {
   margin: 0 !important;
-  color: rgba(20, 33, 22, 0.68) !important;
+  color: rgb(20 33 22 / 68%) !important;
   font-size: 0.76rem !important;
   line-height: 1.1 !important;
 }
@@ -160,7 +160,7 @@
   padding: 0 1rem 1rem !important;
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .guided-passed-gates-records > summary {
     grid-template-columns: 1rem minmax(0, 1fr) !important;
   }
@@ -196,9 +196,9 @@
   display: grid;
   gap: 0.25rem;
   padding: 0.75rem;
-  border: 1px solid rgba(42, 62, 41, 0.1);
+  border: 1px solid rgb(42 62 41 / 10%);
   border-radius: 14px;
-  background: rgba(248, 250, 246, 0.78);
+  background: rgb(248 250 246 / 78%);
 }
 
 .guided-run-audit-summary strong {
@@ -208,14 +208,14 @@
 }
 
 .guided-run-audit-summary span {
-  color: rgba(20, 33, 22, 0.68);
+  color: rgb(20 33 22 / 68%);
   font-size: 0.76rem;
   font-weight: 900;
   letter-spacing: 0.07em;
   text-transform: uppercase;
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .guided-run-audit-summary {
     grid-template-columns: 1fr;
   }
@@ -232,7 +232,7 @@
   align-items: start !important;
 }
 
-@media (max-width: 1100px) {
+@media (width <= 1100px) {
   .guided-workflow-stepper {
     position: static !important;
     top: auto !important;
@@ -250,9 +250,9 @@
   display: grid;
   gap: 0.25rem;
   padding: 0.75rem;
-  border: 1px solid rgba(22, 101, 52, 0.14);
+  border: 1px solid rgb(22 101 52 / 14%);
   border-radius: 14px;
-  background: rgba(240, 253, 244, 0.72);
+  background: rgb(240 253 244 / 72%);
 }
 
 .guided-passed-record-summary__status strong {
@@ -263,7 +263,7 @@
 
 .guided-passed-record-summary__status p {
   margin: 0;
-  color: rgba(20, 33, 22, 0.68);
+  color: rgb(20 33 22 / 68%);
   font-size: 0.88rem;
   line-height: 1.4;
 }
@@ -279,9 +279,9 @@
   gap: 0.35rem;
   min-width: 0;
   padding: 0.8rem;
-  border: 1px solid rgba(42, 62, 41, 0.1);
+  border: 1px solid rgb(42 62 41 / 10%);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.72);
+  background: rgb(255 255 255 / 72%);
 }
 
 .guided-passed-record-evidence-grid__source {
@@ -296,13 +296,13 @@
 
 .guided-passed-record-evidence-grid p {
   margin: 0;
-  color: rgba(20, 33, 22, 0.68);
+  color: rgb(20 33 22 / 68%);
   font-size: 0.86rem;
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .guided-passed-record-evidence-grid {
     grid-template-columns: 1fr;
   }
@@ -318,9 +318,9 @@
   display: grid;
   gap: 0.25rem;
   padding: 0.75rem;
-  border: 1px solid rgba(22, 101, 52, 0.14);
+  border: 1px solid rgb(22 101 52 / 14%);
   border-radius: 14px;
-  background: rgba(240, 253, 244, 0.72);
+  background: rgb(240 253 244 / 72%);
 }
 
 .guided-passed-record-summary__status strong {
@@ -331,13 +331,10 @@
 
 .guided-passed-record-summary__status p {
   margin: 0;
-  color: rgba(20, 33, 22, 0.68);
+  color: rgb(20 33 22 / 68%);
   font-size: 0.88rem;
   line-height: 1.4;
 }
-
-@media (max-width: 640px) {
-  }
 
 /* Guided validation passed-gates section header alignment */
 .guided-passed-gates-records {
@@ -373,7 +370,7 @@
 
 .guided-passed-gates-records > summary > div .model-route-card__eyebrow {
   margin: 0 !important;
-  color: rgba(20, 33, 22, 0.68) !important;
+  color: rgb(20 33 22 / 68%) !important;
   font-size: 0.78rem !important;
   font-weight: 900 !important;
   letter-spacing: 0.08em !important;
@@ -402,7 +399,7 @@
   margin-top: 0.75rem;
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .guided-passed-gates-records > summary {
     grid-template-columns: 1rem minmax(0, 1fr) !important;
   }
@@ -431,7 +428,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  color: rgba(20, 33, 22, 0.7);
+  color: rgb(20 33 22 / 70%);
 }
 
 .guided-passed-gates-section__header span {
@@ -456,9 +453,9 @@
   column-gap: 0.75rem !important;
   min-height: auto !important;
   padding: 0.85rem 1rem !important;
-  border: 1px solid rgba(42, 62, 41, 0.12) !important;
+  border: 1px solid rgb(42 62 41 / 12%) !important;
   border-radius: 18px !important;
-  background: rgba(255, 255, 255, 0.78) !important;
+  background: rgb(255 255 255 / 78%) !important;
 }
 
 .guided-passed-gates-section .guided-passed-gates-records > summary::before {
@@ -467,11 +464,13 @@
   align-self: center !important;
   justify-self: center !important;
   margin: 0 !important;
-  color: rgba(20, 33, 22, 0.58) !important;
+  color: rgb(20 33 22 / 58%) !important;
   line-height: 1 !important;
 }
 
-.guided-passed-gates-section .guided-passed-gates-records[open] > summary::before {
+.guided-passed-gates-section
+  .guided-passed-gates-records[open]
+  > summary::before {
   transform: rotate(90deg) !important;
 }
 
@@ -482,7 +481,11 @@
   padding-left: 0 !important;
 }
 
-.guided-passed-gates-section .guided-passed-gates-records > summary > div strong {
+.guided-passed-gates-section
+  .guided-passed-gates-records
+  > summary
+  > div
+  strong {
   color: #102015 !important;
   font-size: 1rem !important;
   font-weight: 900 !important;
@@ -501,7 +504,7 @@
   padding: 0.75rem 0 0 !important;
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .guided-passed-gates-section .guided-passed-gates-records > summary {
     grid-template-columns: 1rem minmax(0, 1fr) !important;
   }
@@ -534,7 +537,11 @@
   grid-column: 2 !important;
 }
 
-.guided-passed-gates-section .guided-passed-gates-records > summary > div strong {
+.guided-passed-gates-section
+  .guided-passed-gates-records
+  > summary
+  > div
+  strong {
   font-size: 1rem !important;
 }
 
@@ -546,7 +553,7 @@
   padding-top: 0.75rem !important;
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .guided-passed-gates-section .guided-passed-gates-records > summary {
     grid-template-columns: 1rem minmax(0, 1fr) !important;
     padding-left: 0.75rem !important;
@@ -564,7 +571,7 @@
   justify-self: start !important;
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .guided-passed-gates-section .guided-passed-gates-records > summary {
     padding-left: 0 !important;
   }
@@ -576,7 +583,7 @@
   gap: 0.35rem;
   margin-top: 0.9rem;
   padding-top: 0.9rem;
-  border-top: 1px solid rgba(42, 62, 41, 0.12);
+  border-top: 1px solid rgb(42 62 41 / 12%);
 }
 
 .guided-run-audit-section__header {
@@ -584,7 +591,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  color: rgba(20, 33, 22, 0.7);
+  color: rgb(20 33 22 / 70%);
 }
 
 .guided-run-audit-section__header span {
@@ -622,7 +629,7 @@
   align-self: start;
   justify-self: start;
   margin-top: 0.18rem;
-  color: rgba(20, 33, 22, 0.58);
+  color: rgb(20 33 22 / 58%);
   line-height: 1;
   transition: transform 0.16s ease;
 }
@@ -647,7 +654,7 @@
 .guided-run-audit-dropdown > summary p {
   max-width: 62rem;
   margin: 0;
-  color: rgba(20, 33, 22, 0.68);
+  color: rgb(20 33 22 / 68%);
   font-size: 0.86rem;
   line-height: 1.4;
 }
@@ -664,7 +671,7 @@
   min-width: 0;
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .guided-run-audit-dropdown .guided-run-audit-summary {
     grid-template-columns: 1fr;
   }
@@ -679,7 +686,7 @@
 
 .guided-run-audit-signal-list h5 {
   margin: 0;
-  color: rgba(20, 33, 22, 0.72);
+  color: rgb(20 33 22 / 72%);
   font-size: 0.78rem;
   font-weight: 900;
   letter-spacing: 0.08em;
@@ -692,11 +699,11 @@
 }
 
 .guided-run-audit-signal-list__items li {
-  background: rgba(255, 255, 255, 0.76);
+  background: rgb(255 255 255 / 76%);
 }
 
 .guided-run-audit-signal-list__items small {
-  color: rgba(20, 33, 22, 0.58);
+  color: rgb(20 33 22 / 58%);
 }
 
 /* Guided validation handoff primary/secondary actions */
@@ -727,32 +734,32 @@
 .guided-review-action-row .guided-step-primary-action {
   border: 1px solid #27452a !important;
   background: #27452a !important;
-  color: #ffffff !important;
+  color: #fff !important;
 }
 
 .guided-review-action-row .guided-step-primary-action:hover:not(:disabled) {
   border-color: #27452a !important;
   background: #27452a !important;
-  color: #ffffff !important;
+  color: #fff !important;
   transform: none !important;
   box-shadow: none !important;
 }
 
 .guided-review-action-row .guided-review-secondary-action {
-  border: 1px solid rgba(42, 62, 41, 0.22) !important;
-  background: rgba(255, 255, 255, 0.78) !important;
+  border: 1px solid rgb(42 62 41 / 22%) !important;
+  background: rgb(255 255 255 / 78%) !important;
   color: #213522 !important;
 }
 
 .guided-review-action-row .guided-review-secondary-action:hover:not(:disabled) {
-  border-color: rgba(42, 62, 41, 0.32) !important;
-  background: rgba(248, 250, 246, 0.9) !important;
+  border-color: rgb(42 62 41 / 32%) !important;
+  background: rgb(248 250 246 / 90%) !important;
   color: #213522 !important;
   transform: none !important;
   box-shadow: none !important;
 }
 
-@media (max-width: 720px) {
+@media (width <= 720px) {
   .guided-review-action-row {
     align-items: stretch !important;
     flex-direction: column !important;
@@ -763,4 +770,3 @@
     width: 100% !important;
   }
 }
-

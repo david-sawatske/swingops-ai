@@ -6,16 +6,10 @@ export type AgentToolCategory =
   | "VALUATION"
   | "CUSTOMER_COMMUNICATION";
 
-export type AgentToolRiskLevel =
-  | "LOW"
-  | "MEDIUM"
-  | "HIGH"
-  | "CRITICAL";
+export type AgentToolRiskLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 
 export type AgentToolImplementationStatus =
-  | "REGISTERED"
-  | "ROUTE_BACKED"
-  | "DISABLED_PREVIEW_ONLY";
+  "REGISTERED" | "ROUTE_BACKED" | "DISABLED_PREVIEW_ONLY";
 
 export type AgentToolInputField = {
   name: string;
@@ -30,7 +24,8 @@ export type AgentToolInputShape = {
   fields: AgentToolInputField[];
 };
 
-export type AgentToolContractAuditBehavior = "PERSIST_TOOL_CALL_LOG" | "PREVIEW_ONLY_NO_PERSISTENCE";
+export type AgentToolContractAuditBehavior =
+  "PERSIST_TOOL_CALL_LOG" | "PREVIEW_ONLY_NO_PERSISTENCE";
 
 export type AgentToolContract = {
   toolId: string;

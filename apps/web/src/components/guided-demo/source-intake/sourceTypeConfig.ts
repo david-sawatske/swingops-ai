@@ -10,7 +10,9 @@ export const SOURCE_TYPE_OPTIONS: {
   { value: "LOG", label: "Operations log" },
 ];
 
-export function getRawSourceContentPlaceholder(sourceType: string | null | undefined) {
+export function getRawSourceContentPlaceholder(
+  sourceType: string | null | undefined,
+) {
   switch (sourceType) {
     case "FREE_TEXT":
       return "Paste store notes, counter notes, or customer trade-in details here.";

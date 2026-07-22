@@ -1,8 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  listWorkflowRuns,
-  listReviewQueueItems,
-} from "./api/workflows";
+import { listWorkflowRuns, listReviewQueueItems } from "./api/workflows";
 import type {
   GlobalReviewQueueItem,
   GlobalWorkflowRunSummary,
@@ -47,15 +44,14 @@ function AppModeTabs({
 
 function App() {
   const [activeView, setActiveView] = useState<AppView>("GUIDED_DEMO");
-  const [guidedActiveStep, setGuidedActiveStep] = useState<GuidedStep>("MESSY_SOURCE_INTAKE");
+  const [guidedActiveStep, setGuidedActiveStep] = useState<GuidedStep>(
+    "MESSY_SOURCE_INTAKE",
+  );
   const [globalWorkflowRuns, setGlobalWorkflowRuns] = useState<
     GlobalWorkflowRunSummary[]
   >([]);
-  const [isLoadingGlobalWorkflowRuns, setIsLoadingGlobalWorkflowRuns] =
-    useState(true);
-  const [globalWorkflowRunsError, setGlobalWorkflowRunsError] = useState<
-    string | null
-  >(null);
+  const [, setIsLoadingGlobalWorkflowRuns] = useState(true);
+  const [, setGlobalWorkflowRunsError] = useState<string | null>(null);
   const [globalReviewQueueItems, setGlobalReviewQueueItems] = useState<
     GlobalReviewQueueItem[]
   >([]);
@@ -257,7 +253,6 @@ function App() {
           }
         />
       ) : null}
-
     </main>
   );
 }

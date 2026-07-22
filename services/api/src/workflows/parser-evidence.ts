@@ -75,7 +75,9 @@ export function findNumberParserEvidence(
 }
 
 export function omitEmptyParserEvidence(
-  evidence: Partial<Record<keyof ParserEvidence, ParserFieldEvidence | undefined>>,
+  evidence: Partial<
+    Record<keyof ParserEvidence, ParserFieldEvidence | undefined>
+  >,
 ): ParserEvidence {
   return Object.fromEntries(
     Object.entries(evidence).filter(([, value]) => Boolean(value?.sourceText)),

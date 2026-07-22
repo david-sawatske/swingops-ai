@@ -15,12 +15,12 @@ import { workflowEvalRoutes } from "./routes/workflow-evals.routes.js";
 export function buildApp() {
   const app = Fastify({
     logger: {
-      level: env.LOG_LEVEL
-    }
+      level: env.LOG_LEVEL,
+    },
   });
 
   app.register(cors, {
-    origin: env.WEB_ORIGIN
+    origin: env.WEB_ORIGIN,
   });
 
   app.register(healthRoutes);

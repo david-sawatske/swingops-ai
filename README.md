@@ -144,6 +144,14 @@ The knowledge system stores local deterministic embeddings and weighted scoring 
 
 ## Validation commands
 
+Run code, stylesheet, and formatting checks:
+
+    pnpm lint
+
+Apply the repository formatter:
+
+    pnpm format
+
 Run typechecks:
 
     pnpm --filter @swingops/web typecheck

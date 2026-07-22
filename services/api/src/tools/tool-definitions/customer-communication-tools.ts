@@ -1,7 +1,7 @@
 import type { AgentToolDefinition } from "../tool-registry.types.js";
 
 export const customerCommunicationAgentTools: AgentToolDefinition[] = [
-{
+  {
     name: "swingops.customerMessage.send",
     displayName: "Send customer message",
     description:
@@ -14,9 +14,9 @@ export const customerCommunicationAgentTools: AgentToolDefinition[] = [
           name: "messageId",
           type: "string",
           required: true,
-          description: "Message ID or draft ID that would be sent."
-        }
-      ]
+          description: "Message ID or draft ID that would be sent.",
+        },
+      ],
     },
     riskLevel: "HIGH",
     requiresHumanApproval: true,
@@ -29,6 +29,6 @@ export const customerCommunicationAgentTools: AgentToolDefinition[] = [
       "Mutation output is intentionally unavailable because customer messaging is blocked in read-only mode.",
     auditBehavior: "PERSIST_TOOL_CALL_LOG",
     redactionNotes:
-      "No message content or mutation output is exposed; blocked attempts persist policy metadata only."
-  }
+      "No message content or mutation output is exposed; blocked attempts persist policy metadata only.",
+  },
 ];

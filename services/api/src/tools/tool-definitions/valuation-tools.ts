@@ -1,7 +1,7 @@
 import type { AgentToolDefinition } from "../tool-registry.types.js";
 
 export const valuationReadOnlyAgentTools: AgentToolDefinition[] = [
-{
+  {
     name: "swingops.tradeInValuation.estimate",
     displayName: "Estimate demo trade-in range",
     description:
@@ -14,39 +14,41 @@ export const valuationReadOnlyAgentTools: AgentToolDefinition[] = [
           name: "brand",
           type: "string",
           required: false,
-          description: "Parsed club brand."
+          description: "Parsed club brand.",
         },
         {
           name: "productLine",
           type: "string",
           required: false,
-          description: "Parsed product line or model family."
+          description: "Parsed product line or model family.",
         },
         {
           name: "category",
           type: "string",
           required: false,
-          description: "Parsed equipment category."
+          description: "Parsed equipment category.",
         },
         {
           name: "rawText",
           type: "string",
           required: false,
-          description: "Original messy trade-in text."
+          description: "Original messy trade-in text.",
         },
         {
           name: "conditionNotes",
           type: "string",
           required: false,
-          description: "Pipe-separated condition notes, such as sky mark|face wear."
+          description:
+            "Pipe-separated condition notes, such as sky mark|face wear.",
         },
         {
           name: "accessoriesNotes",
           type: "string",
           required: false,
-          description: "Pipe-separated accessory notes, such as no hc|no wrench."
-        }
-      ]
+          description:
+            "Pipe-separated accessory notes, such as no hc|no wrench.",
+        },
+      ],
     },
     riskLevel: "LOW",
     requiresHumanApproval: false,
@@ -59,9 +61,9 @@ export const valuationReadOnlyAgentTools: AgentToolDefinition[] = [
       "Returns a demo valuation range, confidence, pricing evidence, adjustments, and review reasons.",
     auditBehavior: "PERSIST_TOOL_CALL_LOG",
     redactionNotes:
-      "Returns seeded demo valuation ranges only; no live offer, customer data, or real-time market pricing is exposed."
+      "Returns seeded demo valuation ranges only; no live offer, customer data, or real-time market pricing is exposed.",
   },
-{
+  {
     name: "swingops.tradeInValuation.explainAdjustments",
     displayName: "Explain valuation adjustments",
     description:
@@ -74,39 +76,39 @@ export const valuationReadOnlyAgentTools: AgentToolDefinition[] = [
           name: "brand",
           type: "string",
           required: false,
-          description: "Parsed club brand."
+          description: "Parsed club brand.",
         },
         {
           name: "productLine",
           type: "string",
           required: false,
-          description: "Parsed product line or model family."
+          description: "Parsed product line or model family.",
         },
         {
           name: "category",
           type: "string",
           required: false,
-          description: "Parsed equipment category."
+          description: "Parsed equipment category.",
         },
         {
           name: "rawText",
           type: "string",
           required: false,
-          description: "Original messy trade-in text."
+          description: "Original messy trade-in text.",
         },
         {
           name: "conditionNotes",
           type: "string",
           required: false,
-          description: "Pipe-separated condition notes."
+          description: "Pipe-separated condition notes.",
         },
         {
           name: "accessoriesNotes",
           type: "string",
           required: false,
-          description: "Pipe-separated accessory notes."
-        }
-      ]
+          description: "Pipe-separated accessory notes.",
+        },
+      ],
     },
     riskLevel: "LOW",
     requiresHumanApproval: false,
@@ -118,13 +120,12 @@ export const valuationReadOnlyAgentTools: AgentToolDefinition[] = [
     outputSummary:
       "Returns adjustment reasons, value factors, and review reasons for the demo valuation path.",
     auditBehavior: "PERSIST_TOOL_CALL_LOG",
-    redactionNotes:
-      "Returns seeded demo adjustment explanations only."
-  }
+    redactionNotes: "Returns seeded demo adjustment explanations only.",
+  },
 ];
 
 export const valuationMutationAgentTools: AgentToolDefinition[] = [
-{
+  {
     name: "swingops.tradeInOffer.create",
     displayName: "Create trade-in offer",
     description:
@@ -137,9 +138,9 @@ export const valuationMutationAgentTools: AgentToolDefinition[] = [
           name: "workflowRunId",
           type: "string",
           required: true,
-          description: "Workflow run ID that would receive the offer."
-        }
-      ]
+          description: "Workflow run ID that would receive the offer.",
+        },
+      ],
     },
     riskLevel: "HIGH",
     requiresHumanApproval: true,
@@ -152,6 +153,6 @@ export const valuationMutationAgentTools: AgentToolDefinition[] = [
       "Mutation output is intentionally unavailable because trade-in offer creation is blocked in read-only mode.",
     auditBehavior: "PERSIST_TOOL_CALL_LOG",
     redactionNotes:
-      "No mutation output is exposed; blocked attempts persist policy metadata only."
-  }
+      "No mutation output is exposed; blocked attempts persist policy metadata only.",
+  },
 ];

@@ -36,7 +36,8 @@ describe("buildPriorReviewLearningSuggestionsFromEvidence", () => {
       },
     ];
 
-    const suggestions = buildPriorReviewLearningSuggestionsFromEvidence(evidence);
+    const suggestions =
+      buildPriorReviewLearningSuggestionsFromEvidence(evidence);
 
     expect(parsedItem).toEqual(originalParsedItem);
     expect(suggestions).toHaveLength(1);
@@ -51,7 +52,9 @@ describe("buildPriorReviewLearningSuggestionsFromEvidence", () => {
       sourceLearningEventId: "learning-event-1",
       status: "SUGGESTED",
     });
-    expect(suggestions[0]?.confidenceImpact).toContain("require reviewer action");
+    expect(suggestions[0]?.confidenceImpact).toContain(
+      "require reviewer action",
+    );
     expect(suggestions[0]?.whySuggestionExists).toContain("RAW_TEXT_MATCH");
   });
 
@@ -89,7 +92,8 @@ describe("buildPriorReviewLearningSuggestionsFromEvidence", () => {
         rawTextMatch: "shaft firm",
         proposedValue: "Missing",
         correctedValue: "Stiff",
-        evidenceText: "PING G425 shaft firm condition unclear value pending review",
+        evidenceText:
+          "PING G425 shaft firm condition unclear value pending review",
         confidence: 0.91,
         strength: "STRONG",
         reasonCodes: ["RAW_TEXT_MATCH"],
@@ -103,7 +107,8 @@ describe("buildPriorReviewLearningSuggestionsFromEvidence", () => {
         rawTextMatch: "shaft firm",
         proposedValue: "Missing",
         correctedValue: "Stiff",
-        evidenceText: "PING G425 shaft firm condition unclear value pending review",
+        evidenceText:
+          "PING G425 shaft firm condition unclear value pending review",
         confidence: 0.94,
         strength: "STRONG",
         reasonCodes: ["RAW_TEXT_MATCH", "SHAFT_FLEX_CONTEXT_MATCH"],
@@ -122,5 +127,4 @@ describe("buildPriorReviewLearningSuggestionsFromEvidence", () => {
       status: "SUGGESTED",
     });
   });
-
 });

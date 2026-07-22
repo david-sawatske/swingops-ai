@@ -50,7 +50,10 @@ type GuidedDemoPathPageProps = {
   reviewQueueActionError: string | null;
   activeReviewQueueItemId: string | null;
   reviewQueueNotesById: Record<string, string>;
-  onReviewQueueNotesChange: (reviewQueueItemId: string, reviewerNotes: string) => void;
+  onReviewQueueNotesChange: (
+    reviewQueueItemId: string,
+    reviewerNotes: string,
+  ) => void;
   onReviewQueueItemAction: (input: {
     reviewQueueItemId: string;
     action: "resolve" | "dismiss";
@@ -109,10 +112,8 @@ export function GuidedDemoPathPage({
   void toolCallLogCount;
   void onReviewQueueItemAction;
 
-  const activeStepIndex = getGuidedStepIndex(activeStep);
-  const currentStep = GUIDED_STEPS[activeStepIndex] ?? GUIDED_STEPS[0];
-
-  const currentTradeInWorkflowRunId = tradeInResult?.persisted.workflowRunId ?? null;
+  const currentTradeInWorkflowRunId =
+    tradeInResult?.persisted.workflowRunId ?? null;
   const currentRunReviewQueueItems = currentTradeInWorkflowRunId
     ? reviewQueueItems.filter(
         (item) => item.workflowRunId === currentTradeInWorkflowRunId,
@@ -158,7 +159,7 @@ export function GuidedDemoPathPage({
 
     if (sourceIntakeResult) {
       setShouldAdvanceAfterSourceIntake(false);
-      setActiveStep("AI_READY_RECORDS");
+      onActiveStepChange("AI_READY_RECORDS");
       return;
     }
 
@@ -167,6 +168,7 @@ export function GuidedDemoPathPage({
     }
   }, [
     isRunningSourceIntake,
+    onActiveStepChange,
     shouldAdvanceAfterSourceIntake,
     sourceIntakeError,
     sourceIntakeResult,
@@ -223,7 +225,9 @@ export function GuidedDemoPathPage({
     return "Ready";
   }
 
-  function handleRunSourceIntake(request?: ExecuteMultiSourceIntakeDemoRequest) {
+  function handleRunSourceIntake(
+    request?: ExecuteMultiSourceIntakeDemoRequest,
+  ) {
     setShouldAdvanceAfterSourceIntake(true);
     onRunSourceIntake(request);
   }
@@ -242,7 +246,6 @@ export function GuidedDemoPathPage({
 
   return (
     <div className="guided-workflow-page">
-
       {isOverviewActive ? (
         <GuidedRunSetupStep onContinue={handleStartGuidedSteps} />
       ) : (
@@ -260,64 +263,64 @@ export function GuidedDemoPathPage({
             className="guided-workflow-panel"
             ref={activeStepPanelRef}
           >
-          {activeStep === "MESSY_SOURCE_INTAKE" ? (
-            <GuidedMessySourceIntakeStep
-              error={sourceIntakeError}
-              isRunning={isRunningSourceIntake}
-              onRunSources={handleRunSourceIntake}
-              result={sourceIntakeResult}
-              success={sourceIntakeSuccess}
-            />
-          ) : null}
+            {activeStep === "MESSY_SOURCE_INTAKE" ? (
+              <GuidedMessySourceIntakeStep
+                error={sourceIntakeError}
+                isRunning={isRunningSourceIntake}
+                onRunSources={handleRunSourceIntake}
+                result={sourceIntakeResult}
+                success={sourceIntakeSuccess}
+              />
+            ) : null}
 
-          {activeStep === "AI_READY_RECORDS" ? (
-            <GuidedAiReadyRecordsStep
-              onContinue={() => setActiveStep("GUARDED_AGENT_EXECUTION")}
-              persistedRecords={sourceIntakePersistedRecords}
-              result={sourceIntakeResult}
-            />
-          ) : null}
+            {activeStep === "AI_READY_RECORDS" ? (
+              <GuidedAiReadyRecordsStep
+                onContinue={() => setActiveStep("GUARDED_AGENT_EXECUTION")}
+                persistedRecords={sourceIntakePersistedRecords}
+                result={sourceIntakeResult}
+              />
+            ) : null}
 
-          {activeStep === "GUARDED_AGENT_EXECUTION" ? (
-            <GuidedGuardedAgentExecutionStep
-              error={tradeInError}
-              generatedWorkflowInput={generatedWorkflowInput}
-              isRunning={isRunningTradeInWorkflow}
-              onContinue={() => setActiveStep("VALIDATION_REVIEW")}
-              onRawInputChange={onTradeInRawInputChange}
-              onRunWorkflow={onRunTradeInWorkflow}
-              rawInput={tradeInRawInput}
-              result={tradeInResult}
-              success={tradeInSuccess}
-            />
-          ) : null}
+            {activeStep === "GUARDED_AGENT_EXECUTION" ? (
+              <GuidedGuardedAgentExecutionStep
+                error={tradeInError}
+                generatedWorkflowInput={generatedWorkflowInput}
+                isRunning={isRunningTradeInWorkflow}
+                onContinue={() => setActiveStep("VALIDATION_REVIEW")}
+                onRawInputChange={onTradeInRawInputChange}
+                onRunWorkflow={onRunTradeInWorkflow}
+                rawInput={tradeInRawInput}
+                result={tradeInResult}
+                success={tradeInSuccess}
+              />
+            ) : null}
 
-          {activeStep === "VALIDATION_REVIEW" ? (
-            <GuidedValidationReviewStep
-              actionError={reviewQueueActionError}
-              actionSuccess={reviewQueueActionSuccess}
-              activeReviewQueueItemId={activeReviewQueueItemId}
-              currentRunReviewQueueItems={currentRunReviewQueueItems}
-              onContinue={() => setActiveStep("FINAL_RUN_REPORT")}
-              onOpenReviewQueue={() => onViewChange("REVIEW_QUEUE")}
-              onReviewQueueNotesChange={onReviewQueueNotesChange}
-              onResolveReviewQueueItemWithCorrections={
-                onResolveReviewQueueItemWithCorrections
-              }
-              result={tradeInResult}
-              reviewQueueNotesById={reviewQueueNotesById}
-            />
-          ) : null}
+            {activeStep === "VALIDATION_REVIEW" ? (
+              <GuidedValidationReviewStep
+                actionError={reviewQueueActionError}
+                actionSuccess={reviewQueueActionSuccess}
+                activeReviewQueueItemId={activeReviewQueueItemId}
+                currentRunReviewQueueItems={currentRunReviewQueueItems}
+                onContinue={() => setActiveStep("FINAL_RUN_REPORT")}
+                onOpenReviewQueue={() => onViewChange("REVIEW_QUEUE")}
+                onReviewQueueNotesChange={onReviewQueueNotesChange}
+                onResolveReviewQueueItemWithCorrections={
+                  onResolveReviewQueueItemWithCorrections
+                }
+                result={tradeInResult}
+                reviewQueueNotesById={reviewQueueNotesById}
+              />
+            ) : null}
 
-          {activeStep === "FINAL_RUN_REPORT" ? (
-            <GuidedFinalRunReportStep
-              currentRunAiReadyRecords={currentRunAiReadyRecords}
-              currentRunReviewQueueItems={currentRunReviewQueueItems}
-              onReset={handleResetGuidedDemo}
-              result={tradeInResult}
-              sourceIntakePersistedRecords={sourceIntakePersistedRecords}
-            />
-          ) : null}
+            {activeStep === "FINAL_RUN_REPORT" ? (
+              <GuidedFinalRunReportStep
+                currentRunAiReadyRecords={currentRunAiReadyRecords}
+                currentRunReviewQueueItems={currentRunReviewQueueItems}
+                onReset={handleResetGuidedDemo}
+                result={tradeInResult}
+                sourceIntakePersistedRecords={sourceIntakePersistedRecords}
+              />
+            ) : null}
           </section>
         </div>
       )}

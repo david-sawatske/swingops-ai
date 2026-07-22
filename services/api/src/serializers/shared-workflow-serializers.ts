@@ -22,7 +22,7 @@ export function serializeWorkflowRun(run: {
     errorMessage: run.errorMessage,
     failureJson: run.failureJson ?? null,
     createdAt: run.createdAt.toISOString(),
-    updatedAt: run.updatedAt.toISOString()
+    updatedAt: run.updatedAt.toISOString(),
   };
 }
 
@@ -44,7 +44,7 @@ export function serializeIntakeBatch(batch: {
     status: batch.status,
     itemCount: batch.itemCount,
     createdAt: batch.createdAt.toISOString(),
-    updatedAt: batch.updatedAt.toISOString()
+    updatedAt: batch.updatedAt.toISOString(),
   };
 }
 
@@ -64,7 +64,7 @@ export function serializeIntakeItem(item: {
     sourceRowNumber: item.sourceRowNumber,
     status: item.status,
     createdAt: item.createdAt.toISOString(),
-    updatedAt: item.updatedAt.toISOString()
+    updatedAt: item.updatedAt.toISOString(),
   };
 }
 
@@ -98,7 +98,7 @@ export function serializeWorkflowStep(step: {
     startedAt: step.startedAt?.toISOString() ?? null,
     completedAt: step.completedAt?.toISOString() ?? null,
     createdAt: step.createdAt.toISOString(),
-    updatedAt: step.updatedAt.toISOString()
+    updatedAt: step.updatedAt.toISOString(),
   };
 }
 
@@ -126,7 +126,7 @@ export function serializeToolCallLog(log: {
     errorMessage: log.errorMessage,
     startedAt: log.startedAt.toISOString(),
     completedAt: log.completedAt?.toISOString() ?? null,
-    createdAt: log.createdAt.toISOString()
+    createdAt: log.createdAt.toISOString(),
   };
 }
 
@@ -159,6 +159,6 @@ export function serializeReviewQueueItem(item: {
     reviewerNotes: item.reviewerNotes,
     resolvedAt: item.resolvedAt?.toISOString() ?? null,
     createdAt: item.createdAt.toISOString(),
-    updatedAt: item.updatedAt.toISOString()
+    updatedAt: item.updatedAt.toISOString(),
   };
 }

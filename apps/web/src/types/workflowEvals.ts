@@ -10,8 +10,7 @@ export type WorkflowEvalFieldName =
   | "tradeInValue";
 
 export type WorkflowEvalExecutionMode =
-  | "MULTI_SOURCE_INTAKE"
-  | "GUARDED_AGENT_WORKFLOW";
+  "MULTI_SOURCE_INTAKE" | "GUARDED_AGENT_WORKFLOW";
 
 export type WorkflowEvalStatus = "PASSED" | "FAILED";
 

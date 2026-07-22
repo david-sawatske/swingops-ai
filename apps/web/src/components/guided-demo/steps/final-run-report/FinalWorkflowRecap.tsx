@@ -48,7 +48,9 @@ export function FinalWorkflowRecap({
     <section className="guided-final-section">
       <div className="guided-final-section__header">
         <h4>Workflow recap</h4>
-        <p>These cards match the same numbered workflow shown in the left rail.</p>
+        <p>
+          These cards match the same numbered workflow shown in the left rail.
+        </p>
       </div>
 
       <div className="guided-final-workflow-recap">

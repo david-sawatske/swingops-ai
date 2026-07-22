@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   getAdminOpsSummary,
@@ -40,7 +40,9 @@ import {
 } from "./adminOpsPresentation";
 
 export function AdminOpsAiReadyRecordsPanel() {
-  const [summary, setSummary] = useState<GetAdminOpsSummaryResponse | null>(null);
+  const [summary, setSummary] = useState<GetAdminOpsSummaryResponse | null>(
+    null,
+  );
   const [records, setRecords] = useState<AiReadyIntakeRecord[]>([]);
   const [recordTotalCount, setRecordTotalCount] = useState(0);
   const [recordHasMore, setRecordHasMore] = useState(false);
@@ -56,8 +58,7 @@ export function AdminOpsAiReadyRecordsPanel() {
   const [readinessFilter, setReadinessFilter] =
     useState<AiReadyReadinessFilter>("ALL");
   const [dateFilter, setDateFilter] = useState<AiReadyDateFilter>("ALL");
-  const [sortOption, setSortOption] =
-    useState<AiReadySortOption>("NEWEST");
+  const [sortOption, setSortOption] = useState<AiReadySortOption>("NEWEST");
   const [insightTab, setInsightTab] =
     useState<AiReadyInsightTab>("MISSING_FIELDS");
   const [recordOffset, setRecordOffset] = useState(0);
@@ -72,9 +73,7 @@ export function AdminOpsAiReadyRecordsPanel() {
   const displayedActiveRecords = records.filter(
     (record) => !isSupersededAiReadyRecord(record),
   );
-  const displayedSupersededRecords = records.filter(
-    isSupersededAiReadyRecord,
-  );
+  const displayedSupersededRecords = records.filter(isSupersededAiReadyRecord);
   const activeFilterCount = [
     searchQuery.trim() !== "",
     statusFilter !== "ACTIVE",
@@ -100,7 +99,7 @@ export function AdminOpsAiReadyRecordsPanel() {
     }
   }
 
-  async function loadRecords() {
+  const loadRecords = useCallback(async () => {
     try {
       setIsRecordsLoading(true);
       setRecordsError(null);
@@ -129,7 +128,15 @@ export function AdminOpsAiReadyRecordsPanel() {
     } finally {
       setIsRecordsLoading(false);
     }
-  }
+  }, [
+    dateFilter,
+    readinessFilter,
+    recordOffset,
+    searchQuery,
+    sortOption,
+    sourceFilter,
+    statusFilter,
+  ]);
 
   useEffect(() => {
     void loadSummary();
@@ -139,16 +146,7 @@ export function AdminOpsAiReadyRecordsPanel() {
     if (isRecordWorkbenchOpen) {
       void loadRecords();
     }
-  }, [
-    dateFilter,
-    isRecordWorkbenchOpen,
-    readinessFilter,
-    recordOffset,
-    sortOption,
-    searchQuery,
-    sourceFilter,
-    statusFilter,
-  ]);
+  }, [isRecordWorkbenchOpen, loadRecords]);
 
   function openRecordWorkbenchWithFilters({
     status = "ACTIVE",
@@ -219,7 +217,10 @@ export function AdminOpsAiReadyRecordsPanel() {
   }
 
   return (
-    <section className="admin-ops-panel" aria-labelledby="admin-ops-records-title">
+    <section
+      className="admin-ops-panel"
+      aria-labelledby="admin-ops-records-title"
+    >
       <div className="admin-ops-panel-heading">
         <span className="model-route-card__eyebrow">AI-ready records</span>
         <h3 id="admin-ops-records-title">Created record visibility</h3>
@@ -242,7 +243,8 @@ export function AdminOpsAiReadyRecordsPanel() {
         <AdminOpsMetricCard
           metric={{
             actionLabel: "Review records",
-            detail: "Active records that should not move forward without review.",
+            detail:
+              "Active records that should not move forward without review.",
             label: "Need review",
             onAction: () =>
               openRecordWorkbenchWithFilters({ readiness: "REVIEW_NEEDED" }),
@@ -318,7 +320,10 @@ export function AdminOpsAiReadyRecordsPanel() {
                     aiReadySummary.missingFieldHotspots
                       .slice(0, 5)
                       .map((entry) => (
-                        <div className="admin-ops-insight-row" key={entry.label}>
+                        <div
+                          className="admin-ops-insight-row"
+                          key={entry.label}
+                        >
                           <span>{entry.label}</span>
                           <strong>{entry.count}</strong>
                         </div>
@@ -350,18 +355,23 @@ export function AdminOpsAiReadyRecordsPanel() {
                 <div className="admin-ops-insight-list">
                   {aiReadySummary.sourceQuality.length > 0 ? (
                     aiReadySummary.sourceQuality.slice(0, 5).map((entry) => (
-                      <div className="admin-ops-insight-row" key={entry.sourceType}>
+                      <div
+                        className="admin-ops-insight-row"
+                        key={entry.sourceType}
+                      >
                         <span>{entry.sourceType}</span>
                         <strong>{entry.active} active</strong>
                         <small>
                           {formatAdminOpsPercent(
                             entry.groundingReady,
                             entry.active,
-                          )} ready ·{" "}
+                          )}{" "}
+                          ready ·{" "}
                           {formatAdminOpsPercent(
                             entry.reviewNeeded,
                             entry.active,
-                          )} need review
+                          )}{" "}
+                          need review
                         </small>
                         <small>
                           {entry.groundingReady} ready / {entry.reviewNeeded}{" "}
@@ -460,7 +470,9 @@ export function AdminOpsAiReadyRecordsPanel() {
                 <select
                   value={statusFilter}
                   onChange={(event) =>
-                    updateStatusFilter(event.target.value as AiReadyStatusFilter)
+                    updateStatusFilter(
+                      event.target.value as AiReadyStatusFilter,
+                    )
                   }
                 >
                   {AI_READY_STATUS_FILTERS.map((option) => (
@@ -570,10 +582,7 @@ export function AdminOpsAiReadyRecordsPanel() {
                 type="button"
                 onClick={() =>
                   setRecordOffset((currentOffset) =>
-                    Math.max(
-                      0,
-                      currentOffset - AI_READY_RECORD_PAGE_SIZE,
-                    ),
+                    Math.max(0, currentOffset - AI_READY_RECORD_PAGE_SIZE),
                   )
                 }
                 disabled={recordOffset === 0 || isRecordsLoading}

@@ -1,5 +1,5 @@
 import type { ReviewQueueItem } from "./reviewQueue";
-import type { ModelCallLog, ToolCallLog } from "./workflowRun";
+import type { ModelCallLog } from "./workflowRun";
 import type { ParserEvidence } from "./parserEvidence";
 
 export const AGENTIC_TRADE_IN_DEMO_MAX_INPUT_CHARACTERS = 20_000;
@@ -193,11 +193,7 @@ export type ExecutionPlanActionType =
   | "RECORD_TRACE";
 
 export type ExecutionPlanStepStatus =
-  | "PENDING"
-  | "COMPLETED"
-  | "NEEDS_REVIEW"
-  | "BLOCKED"
-  | "SKIPPED";
+  "PENDING" | "COMPLETED" | "NEEDS_REVIEW" | "BLOCKED" | "SKIPPED";
 
 export type ExecutionPlanStep = {
   id: string;
@@ -218,12 +214,7 @@ export type WorkflowOrchestrationState = {
   orderIndex: number;
   label: string;
   status:
-    | "PENDING"
-    | "RUNNING"
-    | "COMPLETED"
-    | "FAILED"
-    | "SKIPPED"
-    | "RETRYING";
+    "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "SKIPPED" | "RETRYING";
   enteredFromStateId: string | null;
   transitionGuard: string;
   transitionAuthority: "APPLICATION_CODE";
@@ -322,10 +313,7 @@ export type ReviewOutcome = {
 };
 
 export type WorkflowQualityStatus =
-  | "READY"
-  | "NEEDS_REVIEW"
-  | "FAILED_VALIDATION"
-  | "BLOCKED";
+  "READY" | "NEEDS_REVIEW" | "FAILED_VALIDATION" | "BLOCKED";
 
 export type WorkflowQualitySummary = {
   status: WorkflowQualityStatus;

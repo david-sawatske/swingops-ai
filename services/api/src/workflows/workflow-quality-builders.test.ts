@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { parseTradeInDemoText } from "./trade-in-demo-parser.js";
-import {
-  buildValidationChecks
-} from "./workflow-quality-builders.js";
+import { buildValidationChecks } from "./workflow-quality-builders.js";
 
 function parseCompletePutterRecord() {
   const item = parseTradeInDemoText(
-    "Odyssey White Hot OG putter condition 8.0 Average trade value $95"
+    "Odyssey White Hot OG putter condition 8.0 Average trade value $95",
   )[0];
 
   if (!item) {
@@ -26,20 +24,18 @@ describe("workflow-quality-builders", () => {
       knowledgeMatchesByItem: [],
       inventoryMatchesByItem: [],
       valuationEvidenceByItem: [],
-      blockedMutationCount: 1
+      blockedMutationCount: 1,
     });
 
     const shaftFlexCheck = checks.find(
-      (check) =>
-        check.recordId === item.id &&
-        check.field === "shaftFlex"
+      (check) => check.recordId === item.id && check.field === "shaftFlex",
     );
 
     expect(shaftFlexCheck).toMatchObject({
       status: "PASS",
       severity: "INFO",
       message: "Shaft flex is not applicable to putters.",
-      reviewRequired: false
+      reviewRequired: false,
     });
   });
 });

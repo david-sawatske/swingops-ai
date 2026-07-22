@@ -61,7 +61,9 @@ export function formatShortId(value: string | null | undefined): string {
     return "-";
   }
 
-  return value.length <= 14 ? value : `${value.slice(0, 8)}...${value.slice(-4)}`;
+  return value.length <= 14
+    ? value
+    : `${value.slice(0, 8)}...${value.slice(-4)}`;
 }
 
 export function formatJson(value: unknown): string {

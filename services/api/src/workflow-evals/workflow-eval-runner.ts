@@ -12,11 +12,11 @@ import type {
   WorkflowEvalPriorReviewLearningEventSeed,
   WorkflowEvalResult,
   WorkflowEvalRunResult,
-  WorkflowEvalScenario
+  WorkflowEvalScenario,
 } from "./workflow-eval-types.js";
 import {
   WORKFLOW_EVAL_SCENARIOS,
-  listWorkflowEvalScenarioSummaries
+  listWorkflowEvalScenarioSummaries,
 } from "./workflow-eval-scenarios.js";
 
 export { listWorkflowEvalScenarioSummaries };
@@ -36,14 +36,14 @@ function toInputJson(value: unknown): Prisma.InputJsonValue {
 
 function getRecordField(
   record: WorkflowEvalObserved["records"][number],
-  fieldName: WorkflowEvalFieldName
+  fieldName: WorkflowEvalFieldName,
 ) {
   return record[fieldName];
 }
 
 function getParserEvidenceField(
   parserEvidence: ParserEvidence | undefined,
-  fieldName: WorkflowEvalFieldName
+  fieldName: WorkflowEvalFieldName,
 ) {
   return parserEvidence?.[fieldName];
 }
@@ -51,11 +51,11 @@ function getParserEvidenceField(
 function addFailure(
   failures: WorkflowEvalFailure[],
   expectation: string,
-  message: string
+  message: string,
 ) {
   failures.push({
     expectation,
-    message
+    message,
   });
 }
 
@@ -63,28 +63,28 @@ async function cleanupEvalArtifacts(ids: PersistedEvalIds) {
   await prisma.intakeBatch
     .delete({
       where: {
-        id: ids.intakeBatchId
-      }
+        id: ids.intakeBatchId,
+      },
     })
     .catch(() => undefined);
 
   await prisma.workflowRun
     .delete({
       where: {
-        id: ids.workflowRunId
-      }
+        id: ids.workflowRunId,
+      },
     })
     .catch(() => undefined);
 }
 
 async function cleanupSeededPriorReviewLearningEvent(
-  ids: SeededPriorReviewLearningEventIds
+  ids: SeededPriorReviewLearningEventIds,
 ) {
   await prisma.reviewQueueItem
     .delete({
       where: {
-        id: ids.reviewQueueItemId
-      }
+        id: ids.reviewQueueItemId,
+      },
     })
     .catch(() => undefined);
 
@@ -92,7 +92,7 @@ async function cleanupSeededPriorReviewLearningEvent(
 }
 
 async function seedPriorReviewLearningEvent(
-  event: WorkflowEvalPriorReviewLearningEventSeed
+  event: WorkflowEvalPriorReviewLearningEventSeed,
 ): Promise<SeededPriorReviewLearningEventIds> {
   const intakeBatch = await prisma.intakeBatch.create({
     data: {
@@ -107,18 +107,18 @@ async function seedPriorReviewLearningEvent(
           {
             rawText: event.evidenceText,
             sourceRowNumber: 1,
-            status: "NEEDS_REVIEW"
-          }
-        ]
-      }
+            status: "NEEDS_REVIEW",
+          },
+        ],
+      },
     },
     include: {
       items: {
         orderBy: {
-          sourceRowNumber: "asc"
-        }
-      }
-    }
+          sourceRowNumber: "asc",
+        },
+      },
+    },
   });
 
   const workflowRun = await prisma.workflowRun.create({
@@ -126,8 +126,8 @@ async function seedPriorReviewLearningEvent(
       intakeBatchId: intakeBatch.id,
       workflowName: "workflow-eval-prior-review-seed",
       status: "NEEDS_REVIEW",
-      startedAt: new Date()
-    }
+      startedAt: new Date(),
+    },
   });
 
   const intakeItem = intakeBatch.items[0];
@@ -141,9 +141,9 @@ async function seedPriorReviewLearningEvent(
       originalText: event.evidenceText,
       proposedGolfClubJson: toInputJson({
         fieldName: event.fieldName,
-        proposedValue: event.proposedValue ?? null
-      })
-    }
+        proposedValue: event.proposedValue ?? null,
+      }),
+    },
   });
 
   const reviewedTradeInRecord = await prisma.reviewedTradeInRecord.create({
@@ -161,8 +161,8 @@ async function seedPriorReviewLearningEvent(
           ? Number(event.correctedValue)
           : null,
       reviewerNotes:
-        "Temporary reviewed correction created for workflow quality checks."
-    }
+        "Temporary reviewed correction created for workflow quality checks.",
+    },
   });
 
   await prisma.humanReviewLearningEvent.create({
@@ -178,22 +178,25 @@ async function seedPriorReviewLearningEvent(
       evidenceText: event.evidenceText,
       confidenceImpact: event.confidenceImpact ?? null,
       reviewerNotes:
-        "Temporary learning event created for workflow quality checks."
-    }
+        "Temporary learning event created for workflow quality checks.",
+    },
   });
 
   return {
     intakeBatchId: intakeBatch.id,
     workflowRunId: workflowRun.id,
-    reviewQueueItemId: reviewQueueItem.id
+    reviewQueueItemId: reviewQueueItem.id,
   };
 }
 
 async function seedScenarioSetup(scenario: WorkflowEvalScenario) {
-  const seededPriorReviewLearningEventIds: SeededPriorReviewLearningEventIds[] = [];
+  const seededPriorReviewLearningEventIds: SeededPriorReviewLearningEventIds[] =
+    [];
 
   for (const event of scenario.setup?.priorReviewLearningEvents ?? []) {
-    seededPriorReviewLearningEventIds.push(await seedPriorReviewLearningEvent(event));
+    seededPriorReviewLearningEventIds.push(
+      await seedPriorReviewLearningEvent(event),
+    );
   }
 
   return seededPriorReviewLearningEventIds;
@@ -219,7 +222,7 @@ function assertCount(input: {
     addFailure(
       input.failures,
       input.label,
-      `Expected ${input.expected}, observed ${input.observed}.`
+      `Expected ${input.expected}, observed ${input.observed}.`,
     );
   }
 }
@@ -236,7 +239,7 @@ function assertMissingFields(input: {
       addFailure(
         input.failures,
         `record ${expectation.recordIndex} missing-field expectations`,
-        "Expected record was not present."
+        "Expected record was not present.",
       );
       continue;
     }
@@ -246,7 +249,7 @@ function assertMissingFields(input: {
         addFailure(
           input.failures,
           `${fieldName} missing-field presence`,
-          `Expected ${fieldName} to be listed as missing.`
+          `Expected ${fieldName} to be listed as missing.`,
         );
       }
     }
@@ -256,7 +259,7 @@ function assertMissingFields(input: {
         addFailure(
           input.failures,
           `${fieldName} missing-field absence`,
-          `Expected ${fieldName} not to be listed as missing.`
+          `Expected ${fieldName} not to be listed as missing.`,
         );
       }
     }
@@ -268,26 +271,30 @@ function assertNoInventedValues(input: {
   observed: WorkflowEvalObserved;
   failures: WorkflowEvalFailure[];
 }) {
-  for (const expectation of input.scenario.expectations.noInventedValues ?? []) {
+  for (const expectation of input.scenario.expectations.noInventedValues ??
+    []) {
     const record = input.observed.records[expectation.recordIndex];
 
     if (!record) {
       addFailure(
         input.failures,
         `record ${expectation.recordIndex} no-invented-value expectation`,
-        "Expected record was not present."
+        "Expected record was not present.",
       );
       continue;
     }
 
     const observedValue = getRecordField(record, expectation.fieldName);
-    const evidence = getParserEvidenceField(record.parserEvidence, expectation.fieldName);
+    const evidence = getParserEvidenceField(
+      record.parserEvidence,
+      expectation.fieldName,
+    );
 
     if (observedValue !== null) {
       addFailure(
         input.failures,
         `${expectation.fieldName} remains blank`,
-        `Expected ${expectation.fieldName} to remain blank, observed ${String(observedValue)}.`
+        `Expected ${expectation.fieldName} to remain blank, observed ${String(observedValue)}.`,
       );
     }
 
@@ -295,7 +302,7 @@ function assertNoInventedValues(input: {
       addFailure(
         input.failures,
         `${expectation.fieldName} has no parser evidence`,
-        `Expected no parser evidence for ${expectation.fieldName}, observed ${evidence.sourceText}.`
+        `Expected no parser evidence for ${expectation.fieldName}, observed ${evidence.sourceText}.`,
       );
     }
   }
@@ -313,13 +320,16 @@ function assertFieldEvidence(input: {
       addFailure(
         input.failures,
         `record ${expectation.recordIndex} field evidence expectation`,
-        "Expected record was not present."
+        "Expected record was not present.",
       );
       continue;
     }
 
     const observedValue = getRecordField(record, expectation.fieldName);
-    const evidence = getParserEvidenceField(record.parserEvidence, expectation.fieldName);
+    const evidence = getParserEvidenceField(
+      record.parserEvidence,
+      expectation.fieldName,
+    );
 
     if (
       expectation.expectedValue !== undefined &&
@@ -328,7 +338,7 @@ function assertFieldEvidence(input: {
       addFailure(
         input.failures,
         `${expectation.fieldName} normalized value`,
-        `Expected ${String(expectation.expectedValue)}, observed ${String(observedValue)}.`
+        `Expected ${String(expectation.expectedValue)}, observed ${String(observedValue)}.`,
       );
     }
 
@@ -336,7 +346,7 @@ function assertFieldEvidence(input: {
       addFailure(
         input.failures,
         `${expectation.fieldName} parser evidence`,
-        `Expected parser evidence for ${expectation.fieldName}.`
+        `Expected parser evidence for ${expectation.fieldName}.`,
       );
       continue;
     }
@@ -348,14 +358,14 @@ function assertFieldEvidence(input: {
       addFailure(
         input.failures,
         `${expectation.fieldName} parser evidence source text`,
-        `Expected source text to include "${expectation.expectedSourceTextIncludes}", observed "${evidence.sourceText}".`
+        `Expected source text to include "${expectation.expectedSourceTextIncludes}", observed "${evidence.sourceText}".`,
       );
     }
   }
 }
 
 function serializePriorReviewSuggestions(
-  result: Awaited<ReturnType<typeof executeEndToEndAgenticTradeInDemo>>
+  result: Awaited<ReturnType<typeof executeEndToEndAgenticTradeInDemo>>,
 ) {
   return result.priorReviewLearningSuggestionsByItem.flatMap((item) =>
     item.suggestions.map((suggestion) => ({
@@ -371,8 +381,8 @@ function serializePriorReviewSuggestions(
       summary: suggestion.summary,
       whySuggestionExists: suggestion.whySuggestionExists,
       sourceLearningEventId: suggestion.sourceLearningEventId,
-      status: suggestion.status
-    }))
+      status: suggestion.status,
+    })),
   );
 }
 
@@ -386,50 +396,50 @@ function assertScenarioExpectations(input: {
     failures,
     label: "parsed record count",
     expected: input.scenario.expectations.parsedRecordCount,
-    observed: input.observed.parsedRecordCount
+    observed: input.observed.parsedRecordCount,
   });
   assertCount({
     failures,
     label: "AI-ready record count",
     expected: input.scenario.expectations.aiReadyRecordCount,
-    observed: input.observed.aiReadyRecordCount
+    observed: input.observed.aiReadyRecordCount,
   });
   assertCount({
     failures,
     label: "review item count",
     expected: input.scenario.expectations.reviewItemCount,
-    observed: input.observed.reviewItemCount
+    observed: input.observed.reviewItemCount,
   });
   assertCount({
     failures,
     label: "prior review suggestion count",
     expected: input.scenario.expectations.priorReviewSuggestionCount,
-    observed: input.observed.priorReviewSuggestionCount
+    observed: input.observed.priorReviewSuggestionCount,
   });
   assertMissingFields({
     scenario: input.scenario,
     observed: input.observed,
-    failures
+    failures,
   });
   assertNoInventedValues({
     scenario: input.scenario,
     observed: input.observed,
-    failures
+    failures,
   });
   assertFieldEvidence({
     scenario: input.scenario,
     observed: input.observed,
-    failures
+    failures,
   });
 
   return failures;
 }
 
 async function runMultiSourceIntakeEvalScenario(
-  scenario: WorkflowEvalScenario
+  scenario: WorkflowEvalScenario,
 ): Promise<WorkflowEvalObserved> {
   const result = await executeMultiSourceIntakeDemo({
-    sources: scenario.sources ?? []
+    sources: scenario.sources ?? [],
   });
 
   try {
@@ -451,13 +461,15 @@ async function runMultiSourceIntakeEvalScenario(
         missingFields: record.missingFields,
         reviewNeeded: record.reviewNeeded,
         confidence: record.confidence,
-        ...(record.parserEvidence ? { parserEvidence: record.parserEvidence } : {})
-      }))
+        ...(record.parserEvidence
+          ? { parserEvidence: record.parserEvidence }
+          : {}),
+      })),
     };
   } finally {
     await cleanupEvalArtifacts({
       intakeBatchId: result.persistedIds.intakeBatchId,
-      workflowRunId: result.persistedIds.workflowRunId
+      workflowRunId: result.persistedIds.workflowRunId,
     });
   }
 }
@@ -470,15 +482,17 @@ function buildMissingFieldsFromParsedItem(input: {
   return [
     input.shaftFlex ? null : "shaftFlex",
     input.conditionGrade ? null : "conditionGrade",
-    input.tradeInValue === null ? "tradeInValue" : null
-  ].filter((fieldName): fieldName is WorkflowEvalFieldName => Boolean(fieldName));
+    input.tradeInValue === null ? "tradeInValue" : null,
+  ].filter((fieldName): fieldName is WorkflowEvalFieldName =>
+    Boolean(fieldName),
+  );
 }
 
 async function runGuardedAgentWorkflowEvalScenario(
-  scenario: WorkflowEvalScenario
+  scenario: WorkflowEvalScenario,
 ): Promise<WorkflowEvalObserved> {
   const result = await executeEndToEndAgenticTradeInDemo({
-    rawInput: scenario.rawInput ?? ""
+    rawInput: scenario.rawInput ?? "",
   });
 
   try {
@@ -486,7 +500,8 @@ async function runGuardedAgentWorkflowEvalScenario(
       parsedRecordCount: result.finalSummary.parsedItemCount,
       aiReadyRecordCount: 0,
       reviewItemCount: result.finalSummary.reviewQueueItemCount,
-      priorReviewSuggestionCount: result.finalSummary.priorReviewSuggestionCount,
+      priorReviewSuggestionCount:
+        result.finalSummary.priorReviewSuggestionCount,
       priorReviewSuggestions: serializePriorReviewSuggestions(result),
       records: result.parsedItems.map((item) => ({
         id: item.id,
@@ -502,19 +517,19 @@ async function runGuardedAgentWorkflowEvalScenario(
           buildMissingFieldsFromParsedItem(item).length > 0 ||
           item.confidence < 0.72,
         confidence: item.confidence,
-        ...(item.parserEvidence ? { parserEvidence: item.parserEvidence } : {})
-      }))
+        ...(item.parserEvidence ? { parserEvidence: item.parserEvidence } : {}),
+      })),
     };
   } finally {
     await cleanupEvalArtifacts({
       intakeBatchId: result.persisted.intakeBatchId,
-      workflowRunId: result.persisted.workflowRunId
+      workflowRunId: result.persisted.workflowRunId,
     });
   }
 }
 
 async function runWorkflowEvalScenario(
-  scenario: WorkflowEvalScenario
+  scenario: WorkflowEvalScenario,
 ): Promise<WorkflowEvalResult> {
   const setupIds = await seedScenarioSetup(scenario);
 
@@ -526,7 +541,7 @@ async function runWorkflowEvalScenario(
 
     const failures = assertScenarioExpectations({
       scenario,
-      observed
+      observed,
     });
 
     return {
@@ -536,7 +551,7 @@ async function runWorkflowEvalScenario(
       executionMode: scenario.executionMode,
       status: failures.length > 0 ? "FAILED" : "PASSED",
       observed,
-      failures
+      failures,
     };
   } finally {
     await cleanupScenarioSetup(setupIds);
@@ -544,7 +559,7 @@ async function runWorkflowEvalScenario(
 }
 
 export async function runWorkflowEvals(
-  scenarios: WorkflowEvalScenario[] = WORKFLOW_EVAL_SCENARIOS
+  scenarios: WorkflowEvalScenario[] = WORKFLOW_EVAL_SCENARIOS,
 ): Promise<WorkflowEvalRunResult> {
   const results: WorkflowEvalResult[] = [];
 
@@ -559,8 +574,8 @@ export async function runWorkflowEvals(
     summary: {
       total: results.length,
       passed,
-      failed
+      failed,
     },
-    results
+    results,
   };
 }

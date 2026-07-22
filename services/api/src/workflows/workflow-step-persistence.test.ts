@@ -4,7 +4,7 @@ import { prisma } from "../lib/prisma.js";
 import {
   executePersistedWorkflowStep,
   markPersistedWorkflowStepRetrying,
-  requireWorkflowStep
+  requireWorkflowStep,
 } from "./workflow-step-persistence.js";
 
 async function createTestWorkflowRun(stepName: string) {
@@ -17,13 +17,13 @@ async function createTestWorkflowRun(stepName: string) {
         create: {
           stepName,
           stepType: "PARSE_INPUT",
-          orderIndex: 1
-        }
-      }
+          orderIndex: 1,
+        },
+      },
     },
     include: {
-      steps: true
-    }
+      steps: true,
+    },
   });
 }
 
@@ -38,23 +38,23 @@ async function createOrderedTestWorkflowRun() {
           {
             stepName: "first-step",
             stepType: "PARSE_INPUT",
-            orderIndex: 1
+            orderIndex: 1,
           },
           {
             stepName: "second-step",
             stepType: "RETRIEVE_EVIDENCE",
-            orderIndex: 2
-          }
-        ]
-      }
+            orderIndex: 2,
+          },
+        ],
+      },
     },
     include: {
       steps: {
         orderBy: {
-          orderIndex: "asc"
-        }
-      }
-    }
+          orderIndex: "asc",
+        },
+      },
+    },
   });
 }
 
@@ -67,44 +67,43 @@ describe("persisted workflow step execution", () => {
       const result = await executePersistedWorkflowStep({
         step,
         inputJson: {
-          recordCount: 2
+          recordCount: 2,
         },
         execute() {
           return {
-            acceptedRecordCount: 2
+            acceptedRecordCount: 2,
           };
         },
         buildOutputJson(value) {
           return value;
-        }
+        },
       });
 
       expect(result.acceptedRecordCount).toBe(2);
 
       const persistedStep = await prisma.workflowStep.findUniqueOrThrow({
         where: {
-          id: step.id
-        }
+          id: step.id,
+        },
       });
 
       expect(persistedStep).toMatchObject({
         status: "COMPLETED",
         inputJson: {
-          recordCount: 2
+          recordCount: 2,
         },
         outputJson: {
-          acceptedRecordCount: 2
+          acceptedRecordCount: 2,
         },
-        errorMessage: null
+        errorMessage: null,
       });
       expect(persistedStep.startedAt).toBeInstanceOf(Date);
       expect(persistedStep.completedAt).toBeInstanceOf(Date);
-
     } finally {
       await prisma.workflowRun.delete({
         where: {
-          id: workflowRun.id
-        }
+          id: workflowRun.id,
+        },
       });
     }
   });
@@ -123,46 +122,46 @@ describe("persisted workflow step execution", () => {
           },
           buildOutputJson() {
             return {};
-          }
-        })
+          },
+        }),
       ).rejects.toThrow("Deliberate step failure");
 
       const persistedStep = await prisma.workflowStep.findUniqueOrThrow({
         where: {
-          id: step.id
-        }
+          id: step.id,
+        },
       });
 
       expect(persistedStep).toMatchObject({
         status: "FAILED",
-        errorMessage: "Deliberate step failure"
+        errorMessage: "Deliberate step failure",
       });
       expect(persistedStep.startedAt).toBeInstanceOf(Date);
       expect(persistedStep.completedAt).toBeInstanceOf(Date);
 
       const persistedRun = await prisma.workflowRun.findUniqueOrThrow({
         where: {
-          id: workflowRun.id
-        }
+          id: workflowRun.id,
+        },
       });
 
       expect(persistedRun).toMatchObject({
         status: "FAILED",
-        errorMessage: "Deliberate step failure"
+        errorMessage: "Deliberate step failure",
       });
       expect(persistedRun.completedAt).toBeInstanceOf(Date);
       expect(persistedRun.failureJson).toMatchObject({
         code: "WORKFLOW_STEP_EXECUTION_FAILED",
         failedStep: {
           id: step.id,
-          name: "failed-step"
-        }
+          name: "failed-step",
+        },
       });
     } finally {
       await prisma.workflowRun.delete({
         where: {
-          id: workflowRun.id
-        }
+          id: workflowRun.id,
+        },
       });
     }
   });
@@ -178,7 +177,7 @@ describe("persisted workflow step execution", () => {
           step,
           execute() {
             return {
-              workflowStatus: "COMPLETED"
+              workflowStatus: "COMPLETED",
             } as const;
           },
           buildOutputJson(result) {
@@ -186,38 +185,38 @@ describe("persisted workflow step execution", () => {
           },
           async onCompleted() {
             throw new Error("Finalization transaction failed");
-          }
-        })
+          },
+        }),
       ).rejects.toThrow("Finalization transaction failed");
 
       const [persistedRun, persistedStep] = await Promise.all([
         prisma.workflowRun.findUniqueOrThrow({
           where: {
-            id: workflowRun.id
-          }
+            id: workflowRun.id,
+          },
         }),
         prisma.workflowStep.findUniqueOrThrow({
           where: {
-            id: step.id
-          }
-        })
+            id: step.id,
+          },
+        }),
       ]);
 
       expect(persistedRun).toMatchObject({
         status: "FAILED",
-        errorMessage: "Finalization transaction failed"
+        errorMessage: "Finalization transaction failed",
       });
       expect(persistedStep).toMatchObject({
         status: "FAILED",
-        errorMessage: "Finalization transaction failed"
+        errorMessage: "Finalization transaction failed",
       });
       expect(persistedRun.completedAt).toBeInstanceOf(Date);
       expect(persistedStep.completedAt).toBeInstanceOf(Date);
     } finally {
       await prisma.workflowRun.delete({
         where: {
-          id: workflowRun.id
-        }
+          id: workflowRun.id,
+        },
       });
     }
   });
@@ -238,10 +237,10 @@ describe("persisted workflow step execution", () => {
           },
           buildOutputJson(result) {
             return result;
-          }
-        })
+          },
+        }),
       ).rejects.toThrow(
-        'cannot start before predecessor "first-step" reaches a terminal success state; current status is PENDING'
+        'cannot start before predecessor "first-step" reaches a terminal success state; current status is PENDING',
       );
 
       expect(executionAttempted).toBe(false);
@@ -249,19 +248,19 @@ describe("persisted workflow step execution", () => {
       const [persistedRun, firstStep, persistedSecondStep] = await Promise.all([
         prisma.workflowRun.findUniqueOrThrow({
           where: {
-            id: workflowRun.id
-          }
+            id: workflowRun.id,
+          },
         }),
         prisma.workflowStep.findUniqueOrThrow({
           where: {
-            id: workflowRun.steps[0]!.id
-          }
+            id: workflowRun.steps[0]!.id,
+          },
         }),
         prisma.workflowStep.findUniqueOrThrow({
           where: {
-            id: secondStep.id
-          }
-        })
+            id: secondStep.id,
+          },
+        }),
       ]);
 
       expect(persistedRun.status).toBe("FAILED");
@@ -270,8 +269,8 @@ describe("persisted workflow step execution", () => {
     } finally {
       await prisma.workflowRun.delete({
         where: {
-          id: workflowRun.id
-        }
+          id: workflowRun.id,
+        },
       });
     }
   });
@@ -289,7 +288,7 @@ describe("persisted workflow step execution", () => {
         },
         buildOutputJson(result) {
           return result;
-        }
+        },
       });
 
       await expect(
@@ -300,16 +299,14 @@ describe("persisted workflow step execution", () => {
           },
           buildOutputJson(result) {
             return result;
-          }
-        })
-      ).rejects.toThrow(
-        'cannot transition from COMPLETED to RUNNING'
-      );
+          },
+        }),
+      ).rejects.toThrow("cannot transition from COMPLETED to RUNNING");
     } finally {
       await prisma.workflowRun.delete({
         where: {
-          id: workflowRun.id
-        }
+          id: workflowRun.id,
+        },
       });
     }
   });
@@ -321,24 +318,24 @@ describe("persisted workflow step execution", () => {
       const step = requireWorkflowStep(workflowRun.steps, "retry-state-step");
 
       await expect(markPersistedWorkflowStepRetrying(step)).rejects.toThrow(
-        'cannot transition to RETRYING because it is not RUNNING'
+        "cannot transition to RETRYING because it is not RUNNING",
       );
 
       const persistedStep = await prisma.workflowStep.findUniqueOrThrow({
         where: {
-          id: step.id
-        }
+          id: step.id,
+        },
       });
 
       expect(persistedStep).toMatchObject({
         status: "PENDING",
-        retryCount: 0
+        retryCount: 0,
       });
     } finally {
       await prisma.workflowRun.delete({
         where: {
-          id: workflowRun.id
-        }
+          id: workflowRun.id,
+        },
       });
     }
   });

@@ -2,9 +2,9 @@
   display: grid;
   gap: 1rem;
   padding: 1rem;
-  border: 1px solid rgba(148, 163, 184, 0.24);
+  border: 1px solid rgb(148 163 184 / 24%);
   border-radius: 1rem;
-  background: rgba(15, 23, 42, 0.24);
+  background: rgb(15 23 42 / 24%);
 }
 
 .guided-review-checkpoint h4 {
@@ -16,7 +16,7 @@
 }
 
 .guided-review-checkpoint small {
-  color: rgba(226, 232, 240, 0.68);
+  color: rgb(226 232 240 / 68%);
 }
 
 .guided-review-checkpoint__facts {
@@ -28,14 +28,14 @@
 
 .guided-review-checkpoint__facts div {
   padding: 0.75rem;
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid rgb(148 163 184 / 18%);
   border-radius: 0.85rem;
-  background: rgba(15, 23, 42, 0.28);
+  background: rgb(15 23 42 / 28%);
 }
 
 .guided-review-checkpoint__facts dt {
   margin: 0 0 0.25rem;
-  color: rgba(226, 232, 240, 0.68);
+  color: rgb(226 232 240 / 68%);
   font-size: 0.76rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -56,9 +56,9 @@
   display: grid;
   gap: 1rem;
   padding: 1rem;
-  border: 1px solid rgba(148, 163, 184, 0.24);
+  border: 1px solid rgb(148 163 184 / 24%);
   border-radius: 1rem;
-  background: rgba(15, 23, 42, 0.2);
+  background: rgb(15 23 42 / 20%);
 }
 
 .guided-record-review-card__header {
@@ -75,7 +75,7 @@
 .guided-record-review-card__status {
   flex: 0 0 auto;
   padding: 0.35rem 0.6rem;
-  border: 1px solid rgba(148, 163, 184, 0.24);
+  border: 1px solid rgb(148 163 184 / 24%);
   border-radius: 999px;
   font-size: 0.76rem;
   font-weight: 800;
@@ -85,14 +85,14 @@
 
 .guided-record-review-card__status--ready {
   color: #bbf7d0;
-  background: rgba(22, 101, 52, 0.28);
-  border-color: rgba(74, 222, 128, 0.28);
+  background: rgb(22 101 52 / 28%);
+  border-color: rgb(74 222 128 / 28%);
 }
 
 .guided-record-review-card__status--needs-review {
   color: #fde68a;
-  background: rgba(120, 53, 15, 0.28);
-  border-color: rgba(251, 191, 36, 0.28);
+  background: rgb(120 53 15 / 28%);
+  border-color: rgb(251 191 36 / 28%);
 }
 
 .guided-record-field-grid {
@@ -104,14 +104,14 @@
 
 .guided-record-field-grid div {
   padding: 0.7rem;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid rgb(148 163 184 / 16%);
   border-radius: 0.8rem;
-  background: rgba(2, 6, 23, 0.22);
+  background: rgb(2 6 23 / 22%);
 }
 
 .guided-record-field-grid dt {
   margin: 0 0 0.25rem;
-  color: rgba(226, 232, 240, 0.6);
+  color: rgb(226 232 240 / 60%);
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -149,11 +149,11 @@
   display: grid;
   gap: 0.15rem;
   padding-left: 0.75rem;
-  border-left: 3px solid rgba(251, 191, 36, 0.5);
+  border-left: 3px solid rgb(251 191 36 / 50%);
 }
 
 .guided-record-attention-list span {
-  color: rgba(226, 232, 240, 0.72);
+  color: rgb(226 232 240 / 72%);
 }
 
 .guided-record-evidence-grid {
@@ -164,9 +164,9 @@
 
 .guided-record-evidence-grid article {
   padding: 0.8rem;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid rgb(148 163 184 / 16%);
   border-radius: 0.85rem;
-  background: rgba(2, 6, 23, 0.2);
+  background: rgb(2 6 23 / 20%);
 }
 
 .guided-record-evidence-grid strong {
@@ -176,11 +176,11 @@
 
 .guided-record-evidence-grid p {
   margin: 0;
-  color: rgba(226, 232, 240, 0.72);
+  color: rgb(226 232 240 / 72%);
 }
 
 .guided-record-review-details {
-  border-top: 1px solid rgba(148, 163, 184, 0.18);
+  border-top: 1px solid rgb(148 163 184 / 18%);
   padding-top: 0.85rem;
 }
 
@@ -193,7 +193,7 @@
   margin-top: 0.75rem;
 }
 
-@media (max-width: 780px) {
+@media (width <= 780px) {
   .guided-record-review-card__header,
   .guided-record-review-card__body-grid {
     grid-template-columns: 1fr;
@@ -218,41 +218,45 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.guided-workflow-card--validation-review .guided-validation-summary-grid article,
+.guided-workflow-card--validation-review
+  .guided-validation-summary-grid
+  article,
 .guided-review-checkpoint,
 .guided-record-review-card,
 .guided-record-field-grid div,
 .guided-record-evidence-grid article {
-  background: rgba(255, 255, 255, 0.9);
-  border-color: rgba(15, 23, 42, 0.12);
+  background: rgb(255 255 255 / 90%);
+  border-color: rgb(15 23 42 / 12%);
   color: #142116;
 }
 
-.guided-workflow-card--validation-review .guided-validation-summary-grid article {
+.guided-workflow-card--validation-review
+  .guided-validation-summary-grid
+  article {
   box-shadow: none;
 }
 
 .guided-review-checkpoint,
 .guided-record-review-card {
-  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 14px 36px rgb(15 23 42 / 8%);
 }
 
 .guided-review-checkpoint p,
 .guided-record-review-card p,
 .guided-record-attention-list span,
 .guided-record-evidence-grid p {
-  color: rgba(20, 33, 22, 0.72);
+  color: rgb(20 33 22 / 72%);
 }
 
 .guided-review-checkpoint small,
 .guided-review-checkpoint__facts dt,
 .guided-record-field-grid dt {
-  color: rgba(20, 33, 22, 0.58);
+  color: rgb(20 33 22 / 58%);
 }
 
 .guided-review-checkpoint__facts div {
-  background: rgba(244, 247, 241, 0.8);
-  border-color: rgba(15, 23, 42, 0.1);
+  background: rgb(244 247 241 / 80%);
+  border-color: rgb(15 23 42 / 10%);
 }
 
 .guided-record-review-card {
@@ -261,19 +265,19 @@
 
 .guided-record-review-card__header {
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.1);
+  border-bottom: 1px solid rgb(15 23 42 / 10%);
 }
 
 .guided-record-review-card__status--ready {
   color: #14532d;
-  background: rgba(220, 252, 231, 0.9);
-  border-color: rgba(22, 101, 52, 0.18);
+  background: rgb(220 252 231 / 90%);
+  border-color: rgb(22 101 52 / 18%);
 }
 
 .guided-record-review-card__status--needs-review {
   color: #78350f;
-  background: rgba(254, 243, 199, 0.95);
-  border-color: rgba(180, 83, 9, 0.18);
+  background: rgb(254 243 199 / 95%);
+  border-color: rgb(180 83 9 / 18%);
 }
 
 .guided-record-field-grid {
@@ -283,7 +287,7 @@
 .guided-record-field-grid div {
   min-width: 0;
   padding: 0.75rem;
-  background: rgba(244, 247, 241, 0.82);
+  background: rgb(244 247 241 / 82%);
 }
 
 .guided-record-field-grid dd {
@@ -297,13 +301,13 @@
 
 .guided-record-review-card__body-grid section {
   padding: 0.85rem;
-  border: 1px solid rgba(15, 23, 42, 0.1);
+  border: 1px solid rgb(15 23 42 / 10%);
   border-radius: 0.85rem;
-  background: rgba(250, 251, 247, 0.82);
+  background: rgb(250 251 247 / 82%);
 }
 
 .guided-record-attention-list li {
-  border-left-color: rgba(180, 83, 9, 0.45);
+  border-left-color: rgb(180 83 9 / 45%);
 }
 
 .guided-record-evidence-grid {
@@ -311,11 +315,11 @@
 }
 
 .guided-record-evidence-grid article {
-  background: rgba(244, 247, 241, 0.82);
+  background: rgb(244 247 241 / 82%);
 }
 
 .guided-record-review-details {
-  border-top-color: rgba(15, 23, 42, 0.1);
+  border-top-color: rgb(15 23 42 / 10%);
 }
 
 .guided-run-validation-detail {
@@ -365,7 +369,7 @@
   padding: 0 1rem 1rem;
 }
 
-@media (max-width: 900px) {
+@media (width <= 900px) {
   .guided-workflow-card--validation-review {
     width: 100%;
   }
@@ -376,7 +380,7 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .guided-workflow-card--validation-review .guided-validation-summary-grid,
   .guided-record-field-grid,
   .guided-record-evidence-grid {
@@ -394,9 +398,9 @@
   display: grid;
   gap: 0.85rem;
   padding: 0.9rem;
-  border: 1px solid rgba(22, 101, 52, 0.16);
+  border: 1px solid rgb(22 101 52 / 16%);
   border-radius: 0.9rem;
-  background: rgba(240, 253, 244, 0.74);
+  background: rgb(240 253 244 / 74%);
 }
 
 .guided-record-correction-panel {
@@ -407,17 +411,17 @@
 .guided-record-correction-panel p,
 .guided-record-correction-form p {
   margin: 0.2rem 0 0;
-  color: rgba(20, 33, 22, 0.68);
+  color: rgb(20 33 22 / 68%);
 }
 
 .guided-record-correction-panel--muted {
-  border-color: rgba(100, 116, 139, 0.16);
-  background: rgba(248, 250, 252, 0.72);
+  border-color: rgb(100 116 139 / 16%);
+  background: rgb(248 250 252 / 72%);
 }
 
 .guided-record-correction-panel--resolved {
-  border-color: rgba(59, 130, 246, 0.16);
-  background: rgba(239, 246, 255, 0.74);
+  border-color: rgb(59 130 246 / 16%);
+  background: rgb(239 246 255 / 74%);
 }
 
 .guided-record-correction-form__header,
@@ -437,7 +441,7 @@
 .guided-record-correction-form label {
   display: grid;
   gap: 0.35rem;
-  color: rgba(20, 33, 22, 0.78);
+  color: rgb(20 33 22 / 78%);
   font-size: 0.82rem;
   font-weight: 750;
 }
@@ -446,10 +450,10 @@
 .guided-record-correction-form select,
 .guided-record-correction-form textarea {
   width: 100%;
-  border: 1px solid rgba(15, 23, 42, 0.16);
+  border: 1px solid rgb(15 23 42 / 16%);
   border-radius: 0.65rem;
   padding: 0.62rem 0.7rem;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgb(255 255 255 / 92%);
   color: #142116;
   font: inherit;
 }
@@ -458,7 +462,7 @@
   resize: vertical;
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .guided-record-correction-panel,
   .guided-record-correction-grid,
   .guided-record-correction-form__header,
@@ -488,7 +492,7 @@
   content: "▸";
   flex: 0 0 auto;
   margin-top: 1.25rem;
-  color: rgba(20, 33, 22, 0.58);
+  color: rgb(20 33 22 / 58%);
   transition: transform 0.16s ease;
 }
 
@@ -502,7 +506,7 @@
 
 .guided-record-review-card__summary-line {
   margin: 0.25rem 0 0;
-  color: rgba(20, 33, 22, 0.66);
+  color: rgb(20 33 22 / 66%);
   font-size: 0.83rem;
 }
 
@@ -524,16 +528,15 @@
 .guided-record-evidence-grid p {
   min-width: 0;
   overflow-wrap: anywhere;
-  word-break: break-word;
 }
 
 .guided-correction-focus {
   display: grid;
   gap: 0.45rem;
   padding: 0.75rem;
-  border: 1px solid rgba(180, 83, 9, 0.18);
+  border: 1px solid rgb(180 83 9 / 18%);
   border-radius: 0.75rem;
-  background: rgba(255, 251, 235, 0.75);
+  background: rgb(255 251 235 / 75%);
 }
 
 .guided-correction-focus p {
@@ -551,15 +554,15 @@
 
 .guided-correction-focus li {
   padding: 0.25rem 0.5rem;
-  border: 1px solid rgba(180, 83, 9, 0.18);
+  border: 1px solid rgb(180 83 9 / 18%);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.78);
+  background: rgb(255 255 255 / 78%);
   color: #78350f;
   font-size: 0.78rem;
   font-weight: 800;
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .guided-record-review-card__header {
     grid-template-columns: auto 1fr;
   }
@@ -575,8 +578,8 @@
 
 .guided-record-review-card__status--resolved {
   color: #1e3a8a;
-  background: rgba(219, 234, 254, 0.95);
-  border-color: rgba(59, 130, 246, 0.18);
+  background: rgb(219 234 254 / 95%);
+  border-color: rgb(59 130 246 / 18%);
 }
 
 /* guided-step5-card-header-spacing-fix */
@@ -609,7 +612,7 @@
   display: none;
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .guided-record-review-card__header {
     grid-template-columns: 1rem minmax(0, 1fr);
   }
@@ -625,13 +628,13 @@
   display: grid;
   gap: 0.75rem;
   padding-top: 1rem;
-  border-top: 1px solid rgba(15, 23, 42, 0.1);
+  border-top: 1px solid rgb(15 23 42 / 10%);
 }
 
 .guided-record-review-card__status--resolved {
   color: #1e3a8a;
-  background: rgba(219, 234, 254, 0.95);
-  border-color: rgba(59, 130, 246, 0.18);
+  background: rgb(219 234 254 / 95%);
+  border-color: rgb(59 130 246 / 18%);
 }
 
 /* guided-step5-compact-review-checkpoint */
@@ -640,11 +643,17 @@
   padding: 1rem;
 }
 
-.guided-workflow-card--validation-review .guided-review-checkpoint > div:first-child h4 {
+.guided-workflow-card--validation-review
+  .guided-review-checkpoint
+  > div:first-child
+  h4 {
   margin-bottom: 0.25rem;
 }
 
-.guided-workflow-card--validation-review .guided-review-checkpoint > div:first-child p {
+.guided-workflow-card--validation-review
+  .guided-review-checkpoint
+  > div:first-child
+  p {
   max-width: 60rem;
 }
 
@@ -663,8 +672,8 @@
   width: auto;
   padding: 0.45rem 0.65rem;
   border-radius: 999px;
-  background: rgba(244, 247, 241, 0.92);
-  border-color: rgba(15, 23, 42, 0.08);
+  background: rgb(244 247 241 / 92%);
+  border-color: rgb(15 23 42 / 8%);
 }
 
 .guided-workflow-card--validation-review .guided-review-checkpoint__facts dt {
@@ -685,26 +694,32 @@
   padding: 0.85rem 0 0;
 }
 
-.guided-workflow-card--validation-review .guided-original-validation-trace > .model-route-card__eyebrow {
+.guided-workflow-card--validation-review
+  .guided-original-validation-trace
+  > .model-route-card__eyebrow {
   margin-bottom: -0.15rem;
 }
 
-.guided-workflow-card--validation-review .guided-original-validation-trace small {
+.guided-workflow-card--validation-review
+  .guided-original-validation-trace
+  small {
   display: inline-flex;
   width: fit-content;
   padding: 0.35rem 0.55rem;
   border-radius: 999px;
-  background: rgba(244, 247, 241, 0.92);
-  color: rgba(20, 33, 22, 0.72);
+  background: rgb(244 247 241 / 92%);
+  color: rgb(20 33 22 / 72%);
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .guided-workflow-card--validation-review .guided-review-checkpoint__facts {
     display: grid;
     grid-template-columns: 1fr;
   }
 
-  .guided-workflow-card--validation-review .guided-review-checkpoint__facts div {
+  .guided-workflow-card--validation-review
+    .guided-review-checkpoint__facts
+    div {
     justify-content: space-between;
     border-radius: 0.75rem;
   }
@@ -726,8 +741,8 @@
 }
 
 .guided-record-correction-form {
-  border-color: rgba(22, 101, 52, 0.22);
-  background: rgba(240, 253, 244, 0.9);
+  border-color: rgb(22 101 52 / 22%);
+  background: rgb(240 253 244 / 90%);
 }
 
 .guided-record-correction-grid--focused {
@@ -736,9 +751,9 @@
 
 .guided-record-secondary-fields {
   padding: 0.65rem;
-  border: 1px solid rgba(15, 23, 42, 0.1);
+  border: 1px solid rgb(15 23 42 / 10%);
   border-radius: 0.75rem;
-  background: rgba(255, 255, 255, 0.62);
+  background: rgb(255 255 255 / 62%);
 }
 
 .guided-record-secondary-fields summary,
@@ -759,7 +774,7 @@
 }
 
 .guided-record-secondary-fields dt {
-  color: rgba(20, 33, 22, 0.58);
+  color: rgb(20 33 22 / 58%);
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.07em;
@@ -773,9 +788,9 @@
 
 .guided-record-supporting-details {
   padding: 0.75rem;
-  border: 1px solid rgba(15, 23, 42, 0.1);
+  border: 1px solid rgb(15 23 42 / 10%);
   border-radius: 0.85rem;
-  background: rgba(250, 251, 247, 0.82);
+  background: rgb(250 251 247 / 82%);
 }
 
 .guided-record-supporting-details[open] {
@@ -794,11 +809,13 @@
   background: transparent;
 }
 
-.guided-record-supporting-details .guided-record-review-card__body-grid section {
-  background: rgba(255, 255, 255, 0.68);
+.guided-record-supporting-details
+  .guided-record-review-card__body-grid
+  section {
+  background: rgb(255 255 255 / 68%);
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .guided-record-correction-panel {
     grid-template-columns: 1fr;
   }
@@ -808,12 +825,10 @@
   }
 }
 
-
-
 .guided-review-source-match-editor {
-  border: 1px solid rgba(34, 81, 49, 0.18);
+  border: 1px solid rgb(34 81 49 / 18%);
   border-radius: 14px;
-  background: rgba(246, 255, 248, 0.8);
+  background: rgb(246 255 248 / 80%);
   display: grid;
   gap: 0.75rem;
   padding: 0.9rem;
@@ -831,9 +846,9 @@
 }
 
 .guided-review-source-match-original {
-  border: 1px solid rgba(18, 41, 24, 0.12);
+  border: 1px solid rgb(18 41 24 / 12%);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.74);
+  background: rgb(255 255 255 / 74%);
   padding: 0.75rem;
 }
 
@@ -865,7 +880,7 @@
 }
 
 .guided-review-source-match-grid input {
-  border: 1px solid rgba(18, 41, 24, 0.18);
+  border: 1px solid rgb(18 41 24 / 18%);
   border-radius: 10px;
   font: inherit;
   padding: 0.65rem 0.7rem;
@@ -877,11 +892,10 @@
   font-weight: 500;
 }
 
-
 .guided-prior-review-suggestions {
-  border: 1px solid rgba(99, 102, 241, 0.24);
+  border: 1px solid rgb(99 102 241 / 24%);
   border-radius: 16px;
-  background: rgba(99, 102, 241, 0.06);
+  background: rgb(99 102 241 / 6%);
   padding: 1rem;
 }
 
@@ -911,9 +925,9 @@
 }
 
 .guided-prior-review-suggestion {
-  border: 1px solid rgba(15, 23, 42, 0.1);
+  border: 1px solid rgb(15 23 42 / 10%);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.72);
+  background: rgb(255 255 255 / 72%);
   padding: 0.85rem;
 }
 
@@ -956,20 +970,21 @@
   gap: 0.9rem;
 }
 
-.guided-record-correction-panel:has(.guided-prior-review-suggestions) > .guided-step-primary-action {
+.guided-record-correction-panel:has(.guided-prior-review-suggestions)
+  > .guided-step-primary-action {
   justify-self: flex-start;
 }
 
 .guided-prior-review-suggestions {
   width: 100%;
   max-width: 34rem;
-  border-color: rgba(37, 99, 235, 0.22);
+  border-color: rgb(37 99 235 / 22%);
   background: linear-gradient(
     180deg,
-    rgba(239, 246, 255, 0.76),
-    rgba(240, 253, 244, 0.62)
+    rgb(239 246 255 / 76%),
+    rgb(240 253 244 / 62%)
   );
-  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 10px 26px rgb(15 23 42 / 5%);
 }
 
 .guided-prior-review-suggestions__header {
@@ -990,16 +1005,16 @@
 }
 
 .guided-prior-review-suggestions__header span {
-  border: 1px solid rgba(15, 23, 42, 0.1);
+  border: 1px solid rgb(15 23 42 / 10%);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
+  background: rgb(255 255 255 / 72%);
   padding: 0.25rem 0.55rem;
   color: var(--foreground);
 }
 
 .guided-prior-review-suggestion {
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.03);
+  background: rgb(255 255 255 / 86%);
+  box-shadow: inset 0 0 0 1px rgb(15 23 42 / 3%);
 }
 
 .guided-prior-review-suggestion dl {
@@ -1032,7 +1047,7 @@
   font-size: 0.82rem;
 }
 
-@media (max-width: 720px) {
+@media (width <= 720px) {
   .guided-prior-review-suggestions {
     max-width: none;
   }
@@ -1048,7 +1063,6 @@
   }
 }
 
-
 /* Inventory candidates for ambiguous product-line review */
 .guided-product-line-correction-field,
 .guided-record-correction-grid--focused
@@ -1060,9 +1074,9 @@
   display: grid;
   gap: 0.55rem;
   padding: 0.7rem;
-  border: 1px solid rgba(43, 78, 52, 0.18);
+  border: 1px solid rgb(43 78 52 / 18%);
   border-radius: 0.75rem;
-  background: rgba(255, 255, 255, 0.68);
+  background: rgb(255 255 255 / 68%);
 }
 
 .guided-inventory-candidate-suggestions__header {
@@ -1089,9 +1103,9 @@
   width: 100%;
   min-width: 0;
   padding: 0.55rem 0.65rem;
-  border: 1px solid rgba(43, 78, 52, 0.22);
+  border: 1px solid rgb(43 78 52 / 22%);
   border-radius: 0.65rem;
-  background: rgba(255, 255, 255, 0.94);
+  background: rgb(255 255 255 / 94%);
   color: #142116;
   text-align: left;
   box-shadow: none;
@@ -1099,15 +1113,14 @@
 
 .guided-record-correction-form .guided-inventory-candidate:hover,
 .guided-record-correction-form .guided-inventory-candidate:focus-visible {
-  border-color: rgba(43, 78, 52, 0.58);
-  background: rgba(240, 253, 244, 0.9);
+  border-color: rgb(43 78 52 / 58%);
+  background: rgb(240 253 244 / 90%);
 }
 
-.guided-record-correction-form
-  .guided-inventory-candidate--selected {
-  border-color: rgba(22, 101, 52, 0.72);
-  background: rgba(220, 252, 231, 0.8);
-  box-shadow: inset 0 0 0 1px rgba(22, 101, 52, 0.32);
+.guided-record-correction-form .guided-inventory-candidate--selected {
+  border-color: rgb(22 101 52 / 72%);
+  background: rgb(220 252 231 / 80%);
+  box-shadow: inset 0 0 0 1px rgb(22 101 52 / 32%);
 }
 
 .guided-inventory-candidate span {
@@ -1121,7 +1134,7 @@
   opacity: 0.72;
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .guided-inventory-candidate-suggestions__list {
     grid-template-columns: 1fr;
   }
@@ -1143,15 +1156,14 @@
   text-align: center;
 }
 
-
 /* Applied prior-review correction confirmation */
 .guided-applied-correction-summary {
   display: grid;
   gap: 0.55rem;
   padding: 0.75rem;
-  border: 1px solid rgba(22, 101, 52, 0.22);
+  border: 1px solid rgb(22 101 52 / 22%);
   border-radius: 0.75rem;
-  background: rgba(220, 252, 231, 0.72);
+  background: rgb(220 252 231 / 72%);
 }
 
 .guided-applied-correction-summary dl {
@@ -1166,13 +1178,13 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 0.55rem 0.65rem;
-  border: 1px solid rgba(22, 101, 52, 0.14);
+  border: 1px solid rgb(22 101 52 / 14%);
   border-radius: 0.6rem;
-  background: rgba(255, 255, 255, 0.78);
+  background: rgb(255 255 255 / 78%);
 }
 
 .guided-applied-correction-summary dt {
-  color: rgba(20, 33, 22, 0.66);
+  color: rgb(20 33 22 / 66%);
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -1186,10 +1198,10 @@
 }
 
 .guided-applied-correction-summary small {
-  color: rgba(20, 33, 22, 0.68);
+  color: rgb(20 33 22 / 68%);
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .guided-applied-correction-summary dl > div {
     display: grid;
     gap: 0.2rem;
@@ -1200,12 +1212,11 @@
   }
 }
 
-
 /* Simplified completed-correction review */
 .guided-record-correction-form {
   gap: 0.7rem;
   padding: 0.85rem;
-  background: rgba(248, 250, 247, 0.96);
+  background: rgb(248 250 247 / 96%);
 }
 
 .guided-record-correction-form__header p {
@@ -1218,14 +1229,14 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 0.7rem 0.8rem;
-  border: 1px solid rgba(22, 101, 52, 0.18);
+  border: 1px solid rgb(22 101 52 / 18%);
   border-radius: 0.7rem;
-  background: rgba(240, 253, 244, 0.82);
+  background: rgb(240 253 244 / 82%);
 }
 
 .guided-applied-correction-summary__label {
   flex: 0 0 auto;
-  color: rgba(20, 33, 22, 0.66);
+  color: rgb(20 33 22 / 66%);
   font-size: 0.7rem;
   font-weight: 850;
   letter-spacing: 0.07em;
@@ -1251,7 +1262,7 @@
 }
 
 .guided-applied-correction-summary dt {
-  color: rgba(20, 33, 22, 0.62);
+  color: rgb(20 33 22 / 62%);
   font-size: 0.72rem;
   font-weight: 750;
   letter-spacing: 0;
@@ -1273,7 +1284,7 @@
   padding-top: 0.1rem;
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .guided-applied-correction-summary {
     display: grid;
     gap: 0.4rem;
@@ -1289,30 +1300,30 @@
   display: grid;
   gap: 0.75rem;
   padding: 0.9rem;
-  border: 1px solid rgba(37, 99, 235, 0.2);
+  border: 1px solid rgb(37 99 235 / 20%);
   border-radius: 0.9rem;
   background: linear-gradient(
     180deg,
-    rgba(239, 246, 255, 0.78),
-    rgba(248, 250, 252, 0.92)
+    rgb(239 246 255 / 78%),
+    rgb(248 250 252 / 92%)
   );
 }
 
 .guided-record-model-assistance--candidate-comparison {
-  border-color: rgba(124, 58, 237, 0.2);
+  border-color: rgb(124 58 237 / 20%);
   background: linear-gradient(
     180deg,
-    rgba(245, 243, 255, 0.84),
-    rgba(248, 250, 252, 0.92)
+    rgb(245 243 255 / 84%),
+    rgb(248 250 252 / 92%)
   );
 }
 
 .guided-record-model-assistance--no-safe-repair {
-  border-color: rgba(180, 83, 9, 0.18);
+  border-color: rgb(180 83 9 / 18%);
   background: linear-gradient(
     180deg,
-    rgba(255, 251, 235, 0.88),
-    rgba(248, 250, 252, 0.92)
+    rgb(255 251 235 / 88%),
+    rgb(248 250 252 / 92%)
   );
 }
 
@@ -1332,9 +1343,9 @@
 .guided-record-model-assistance__outcome {
   flex: 0 0 auto;
   padding: 0.3rem 0.55rem;
-  border: 1px solid rgba(15, 23, 42, 0.1);
+  border: 1px solid rgb(15 23 42 / 10%);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.82);
+  background: rgb(255 255 255 / 82%);
   font-size: 0.74rem;
   font-weight: 800;
 }
@@ -1343,7 +1354,7 @@
 .guided-record-model-assistance__question p,
 .guided-record-model-assistance__items p {
   margin: 0;
-  color: rgba(20, 33, 22, 0.74);
+  color: rgb(20 33 22 / 74%);
 }
 
 .guided-record-model-assistance__items {
@@ -1353,9 +1364,9 @@
 
 .guided-record-model-assistance__items article {
   padding: 0.75rem;
-  border: 1px solid rgba(15, 23, 42, 0.1);
+  border: 1px solid rgb(15 23 42 / 10%);
   border-radius: 0.75rem;
-  background: rgba(255, 255, 255, 0.78);
+  background: rgb(255 255 255 / 78%);
 }
 
 .guided-record-model-assistance__items dl {
@@ -1366,7 +1377,7 @@
 }
 
 .guided-record-model-assistance__items dt {
-  color: rgba(20, 33, 22, 0.58);
+  color: rgb(20 33 22 / 58%);
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.05em;
@@ -1384,9 +1395,9 @@
   display: grid;
   gap: 0.4rem;
   padding: 0.7rem;
-  border: 1px solid rgba(15, 23, 42, 0.09);
+  border: 1px solid rgb(15 23 42 / 9%);
   border-radius: 0.75rem;
-  background: rgba(255, 255, 255, 0.66);
+  background: rgb(255 255 255 / 66%);
 }
 
 .guided-record-model-assistance__candidate-list > div,
@@ -1399,7 +1410,7 @@
 .guided-record-model-assistance code {
   padding: 0.25rem 0.4rem;
   border-radius: 0.4rem;
-  background: rgba(15, 23, 42, 0.07);
+  background: rgb(15 23 42 / 7%);
   font-size: 0.72rem;
   overflow-wrap: anywhere;
 }
@@ -1416,7 +1427,7 @@
 .guided-record-model-assistance__reason-list li {
   padding: 0.25rem 0.45rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.76);
+  background: rgb(255 255 255 / 76%);
   font-size: 0.74rem;
   font-weight: 750;
 }
@@ -1432,11 +1443,11 @@
 }
 
 .guided-record-model-assistance__advisory {
-  color: rgba(20, 33, 22, 0.62);
+  color: rgb(20 33 22 / 62%);
   line-height: 1.4;
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .guided-record-model-assistance__header {
     display: grid;
   }

@@ -1,4 +1,7 @@
-import type { GlobalReviewQueueItem, ReviewQueueItem } from "../../types/workflow";
+import type {
+  GlobalReviewQueueItem,
+  ReviewQueueItem,
+} from "../../types/workflow";
 import { DashboardSection } from "../DashboardSection";
 import { EmptyState } from "../EmptyState";
 import { formatJson } from "../../utils/formatting";
@@ -47,7 +50,8 @@ export function ReviewQueuePage({
       return (
         <div className="review-queue-card__review-actions">
           <p className="review-queue-card__meta">
-            Human review action recorded. This item is no longer open for queue work.
+            Human review action recorded. This item is no longer open for queue
+            work.
           </p>
         </div>
       );
@@ -56,8 +60,8 @@ export function ReviewQueuePage({
     return (
       <div className="review-queue-card__review-actions">
         <p className="review-queue-card__meta">
-          Controlled human action. Reviewer notes are recorded before the workflow
-          lifecycle is updated.
+          Controlled human action. Reviewer notes are recorded before the
+          workflow lifecycle is updated.
         </p>
 
         <label>
@@ -117,21 +121,17 @@ export function ReviewQueuePage({
       {!isLoading && !error ? (
         <p className="section-summary">
           {openReviewQueueItemCount} open review{" "}
-          {openReviewQueueItemCount === 1 ? "item" : "items"} /{" "}
-          {items.length} total
+          {openReviewQueueItemCount === 1 ? "item" : "items"} / {items.length}{" "}
+          total
         </p>
       ) : null}
 
       {actionSuccess ? (
-        <p className="form-message form-message--success">
-          {actionSuccess}
-        </p>
+        <p className="form-message form-message--success">{actionSuccess}</p>
       ) : null}
 
       {actionError ? (
-        <p className="form-message form-message--error">
-          {actionError}
-        </p>
+        <p className="form-message form-message--error">{actionError}</p>
       ) : null}
 
       {isLoading ? <p>Loading review queue…</p> : null}
@@ -159,7 +159,9 @@ export function ReviewQueuePage({
                 <div className="review-queue-card__header">
                   <div>
                     <span className="model-route-card__eyebrow">
-                      {isClosed ? "Human review recorded" : "Human review needed"}
+                      {isClosed
+                        ? "Human review recorded"
+                        : "Human review needed"}
                     </span>
                     <h3>{item.reason}</h3>
                     <p>
@@ -204,7 +206,10 @@ export function ReviewQueuePage({
 
                   <div>
                     <dt>Inventory match</dt>
-                    <dd>{evidence.inventoryMatchSummary ?? "No inventory match captured."}</dd>
+                    <dd>
+                      {evidence.inventoryMatchSummary ??
+                        "No inventory match captured."}
+                    </dd>
                   </div>
 
                   <div>

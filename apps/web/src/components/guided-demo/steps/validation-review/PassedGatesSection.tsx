@@ -31,10 +31,10 @@ export function PassedGatesSection({
           <div>
             <strong>
               {passedGateRecordCards.length} record
-              {passedGateRecordCards.length === 1 ? "" : "s"} passed review gates
+              {passedGateRecordCards.length === 1 ? "" : "s"} passed review
+              gates
             </strong>
           </div>
-
         </summary>
 
         <div className="guided-record-review-list guided-record-review-list--passed-gates">

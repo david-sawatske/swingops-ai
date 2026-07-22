@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   demoInventoryProducts,
-  type InventoryProductCategory
+  type InventoryProductCategory,
 } from "./inventory-demo-data.js";
 import { demoValuationRanges } from "./trade-in-valuation-demo-data.js";
 
@@ -12,16 +12,14 @@ const expectedCategoryCounts: Record<InventoryProductCategory, number> = {
   HYBRID: 5,
   IRON_SET: 6,
   WEDGE: 5,
-  PUTTER: 5
+  PUTTER: 5,
 };
 
 function duplicateValues(values: string[]): string[] {
   return [
     ...new Set(
-      values.filter(
-        (value, index) => values.indexOf(value) !== index
-      )
-    )
+      values.filter((value, index) => values.indexOf(value) !== index),
+    ),
   ];
 }
 
@@ -30,29 +28,28 @@ describe("reference data integrity", () => {
     expect(demoInventoryProducts).toHaveLength(35);
 
     for (const [category, expectedCount] of Object.entries(
-      expectedCategoryCounts
+      expectedCategoryCounts,
     )) {
       expect(
         demoInventoryProducts.filter(
-          (product) => product.category === category
-        )
+          (product) => product.category === category,
+        ),
       ).toHaveLength(expectedCount);
     }
   });
 
   it("uses unique product IDs, SKUs and match identities", () => {
     const productIds = demoInventoryProducts.map(
-      (product) => product.productId
+      (product) => product.productId,
     );
     const skus = demoInventoryProducts.map((product) => product.sku);
-    const identities = demoInventoryProducts.map(
-      (product) =>
-        [
-          product.brand.toLowerCase(),
-          product.productLine.toLowerCase(),
-          product.category,
-          product.year
-        ].join("|")
+    const identities = demoInventoryProducts.map((product) =>
+      [
+        product.brand.toLowerCase(),
+        product.productLine.toLowerCase(),
+        product.category,
+        product.year,
+      ].join("|"),
     );
 
     expect(duplicateValues(productIds)).toEqual([]);
@@ -62,7 +59,7 @@ describe("reference data integrity", () => {
 
   it("keeps putter shaft-flex applicability out of inventory fixtures", () => {
     const putters = demoInventoryProducts.filter(
-      (product) => product.category === "PUTTER"
+      (product) => product.category === "PUTTER",
     );
 
     expect(putters).toHaveLength(5);
@@ -74,15 +71,11 @@ describe("reference data integrity", () => {
 
   it("provides exactly one valid valuation range for every product", () => {
     const inventoryIds = new Set(
-      demoInventoryProducts.map((product) => product.productId)
+      demoInventoryProducts.map((product) => product.productId),
     );
-    const valuationIds = demoValuationRanges.map(
-      (range) => range.productId
-    );
+    const valuationIds = demoValuationRanges.map((range) => range.productId);
 
-    expect(demoValuationRanges).toHaveLength(
-      demoInventoryProducts.length
-    );
+    expect(demoValuationRanges).toHaveLength(demoInventoryProducts.length);
     expect(duplicateValues(valuationIds)).toEqual([]);
 
     for (const range of demoValuationRanges) {
@@ -102,18 +95,18 @@ describe("reference data integrity", () => {
     const categoryByProductId = new Map(
       demoInventoryProducts.map((product) => [
         product.productId,
-        product.category
-      ])
+        product.category,
+      ]),
     );
 
     const valuedCategories = new Set(
       demoValuationRanges.map((range) =>
-        categoryByProductId.get(range.productId)
-      )
+        categoryByProductId.get(range.productId),
+      ),
     );
 
     expect(valuedCategories).toEqual(
-      new Set(Object.keys(expectedCategoryCounts))
+      new Set(Object.keys(expectedCategoryCounts)),
     );
   });
 });

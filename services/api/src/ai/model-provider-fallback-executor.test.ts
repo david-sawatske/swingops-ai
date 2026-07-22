@@ -3,23 +3,23 @@ import { describe, expect, it } from "vitest";
 import { executeModelWithProviderFallback } from "./model-provider-fallback-executor.js";
 import type {
   ModelProviderFetch,
-  ModelProviderRuntimeConfig
+  ModelProviderRuntimeConfig,
 } from "./model-provider-runtime-config.js";
 
 const inputJson = {
-  originalText: "TaylorMade Stealth 2 driver 10.5 stiff right handed"
+  originalText: "TaylorMade Stealth 2 driver 10.5 stiff right handed",
 };
 
 function disabledConfig(): ModelProviderRuntimeConfig {
   return {
-    enableRealModelCalls: false
+    enableRealModelCalls: false,
   };
 }
 
 function enabledOpenAiConfig(): ModelProviderRuntimeConfig {
   return {
     enableRealModelCalls: true,
-    openAiApiKey: "test-openai-key"
+    openAiApiKey: "test-openai-key",
   };
 }
 
@@ -36,9 +36,9 @@ function rateLimitedFetch(): ModelProviderFetch {
     statusText: "Too Many Requests",
     async json() {
       return {
-        error: "rate limited"
+        error: "rate limited",
       };
-    }
+    },
   });
 }
 
@@ -56,25 +56,27 @@ function openAiJsonFetch(content: string): ModelProviderFetch {
             content: [
               {
                 type: "output_text",
-                text: content
-              }
+                text: content,
+              },
             ],
-            role: "assistant"
-          }
+            role: "assistant",
+          },
         ],
         usage: {
           input_tokens: 12,
           output_tokens: 8,
-          total_tokens: 20
-        }
+          total_tokens: 20,
+        },
       };
-    }
+    },
   });
 }
 
 function validateFieldRepairOutput(outputJson: Record<string, unknown> | null) {
   const parsedJson =
-    outputJson && typeof outputJson.parsedJson === "object" && outputJson.parsedJson
+    outputJson &&
+    typeof outputJson.parsedJson === "object" &&
+    outputJson.parsedJson
       ? (outputJson.parsedJson as Record<string, unknown>)
       : outputJson;
 
@@ -85,7 +87,7 @@ function validateFieldRepairOutput(outputJson: Record<string, unknown> | null) {
     validationPassed: Array.isArray(suggestions),
     validationErrors: Array.isArray(suggestions)
       ? []
-      : ["suggestions must be an array"]
+      : ["suggestions must be an array"],
   };
 }
 
@@ -98,7 +100,7 @@ describe("model provider fallback executor", () => {
       allowDisabledProvidersForSimulation: true,
       inputJson,
       runtimeConfig: disabledConfig(),
-      fetchFn: fetchShouldNotBeCalled()
+      fetchFn: fetchShouldNotBeCalled(),
     });
 
     expect(result.status).toBe("SUCCEEDED");
@@ -108,13 +110,13 @@ describe("model provider fallback executor", () => {
       mock: true,
       provider: "MOCK",
       model: "mock-golf-workflow-model",
-      taskType: "INTAKE_PARSING"
+      taskType: "INTAKE_PARSING",
     });
 
     expect(result.attempts.map((attempt) => attempt.provider)).toEqual([
       "OPENAI",
       "AZURE_OPENAI",
-      "MOCK"
+      "MOCK",
     ]);
     expect(result.attempts[0]).toMatchObject({
       provider: "OPENAI",
@@ -122,23 +124,23 @@ describe("model provider fallback executor", () => {
       attemptOrder: 1,
       status: "SKIPPED",
       failureClass: "CONFIGURATION",
-      retryable: false
+      retryable: false,
     });
     expect(result.attempts[0]?.errorMessage).toContain(
-      "OPENAI real model calls are disabled"
+      "OPENAI real model calls are disabled",
     );
     expect(result.attempts[1]).toMatchObject({
       provider: "AZURE_OPENAI",
       model: "azure-gpt-4.1-mini",
       attemptOrder: 2,
-      status: "SKIPPED"
+      status: "SKIPPED",
     });
     expect(result.attempts[2]).toMatchObject({
       provider: "MOCK",
       model: "mock-golf-workflow-model",
       attemptOrder: 3,
       status: "SUCCESS",
-      errorMessage: null
+      errorMessage: null,
     });
   });
 
@@ -150,7 +152,7 @@ describe("model provider fallback executor", () => {
       allowDisabledProvidersForSimulation: true,
       inputJson,
       runtimeConfig: enabledOpenAiConfig(),
-      fetchFn: rateLimitedFetch()
+      fetchFn: rateLimitedFetch(),
     });
 
     expect(result.status).toBe("SUCCEEDED");
@@ -161,12 +163,12 @@ describe("model provider fallback executor", () => {
       attemptOrder: 1,
       status: "RATE_LIMITED",
       failureClass: "RATE_LIMIT",
-      retryable: true
+      retryable: true,
     });
     expect(result.attempts[0]?.errorMessage).toContain("429 Too Many Requests");
     expect(result.attempts.at(-1)).toMatchObject({
       provider: "MOCK",
-      status: "SUCCESS"
+      status: "SUCCESS",
     });
   });
 
@@ -177,15 +179,15 @@ describe("model provider fallback executor", () => {
       requireJson: true,
       inputJson: {
         policyKey: "MAIN_RUN_FIELD_REPAIR",
-        records: []
+        records: [],
       },
       runtimeConfig: enabledOpenAiConfig(),
       fetchFn: openAiJsonFetch(
         JSON.stringify({
-          suggestions: []
-        })
+          suggestions: [],
+        }),
       ),
-      validateOutput: validateFieldRepairOutput
+      validateOutput: validateFieldRepairOutput,
     });
 
     expect(result.status).toBe("SUCCEEDED");
@@ -194,20 +196,20 @@ describe("model provider fallback executor", () => {
     expect(result.usage).toMatchObject({
       promptTokens: 12,
       completionTokens: 8,
-      totalTokens: 20
+      totalTokens: 20,
     });
     expect(result.attempts).toHaveLength(1);
     expect(result.attempts[0]).toMatchObject({
       provider: "OPENAI",
       status: "SUCCESS",
       failureClass: "NONE",
-      retryable: false
+      retryable: false,
     });
     expect(result.outputJson).toMatchObject({
       provider: "OPENAI",
       parsedJson: {
-        suggestions: []
-      }
+        suggestions: [],
+      },
     });
   });
 
@@ -222,17 +224,17 @@ describe("model provider fallback executor", () => {
           {
             recordId: "record-1",
             sourceText: "Titleist TSR 3w Tensei s flex",
-            missingFields: ["shaftFlex"]
-          }
-        ]
+            missingFields: ["shaftFlex"],
+          },
+        ],
       },
       runtimeConfig: enabledOpenAiConfig(),
       fetchFn: openAiJsonFetch(
         JSON.stringify({
-          notSuggestions: []
-        })
+          notSuggestions: [],
+        }),
       ),
-      validateOutput: validateFieldRepairOutput
+      validateOutput: validateFieldRepairOutput,
     });
 
     expect(result.status).toBe("SUCCEEDED");
@@ -240,32 +242,32 @@ describe("model provider fallback executor", () => {
     expect(result.model).toBe("mock-golf-workflow-model");
     expect(result.attempts.map((attempt) => attempt.provider)).toEqual([
       "OPENAI",
-      "MOCK"
+      "MOCK",
     ]);
     expect(result.attempts[0]).toMatchObject({
       provider: "OPENAI",
       status: "FAILED",
       failureClass: "OUTPUT_VALIDATION",
-      retryable: false
+      retryable: false,
     });
     expect(result.attempts[0]?.errorMessage).toContain(
-      "Model output validation failed"
+      "Model output validation failed",
     );
     expect(result.attempts[0]?.errorMessage).toContain(
-      "suggestions must be an array"
+      "suggestions must be an array",
     );
     expect(result.attempts[1]).toMatchObject({
       provider: "MOCK",
-      status: "SUCCESS"
+      status: "SUCCESS",
     });
     expect(result.outputJson).toMatchObject({
       suggestions: [
         expect.objectContaining({
           fieldName: "shaftFlex",
           sourcePhrase: "s flex",
-          candidateValue: "STIFF"
-        })
-      ]
+          candidateValue: "STIFF",
+        }),
+      ],
     });
   });
 
@@ -277,7 +279,7 @@ describe("model provider fallback executor", () => {
       requireJson: true,
       inputJson: {
         policyKey: "MAIN_RUN_FIELD_REPAIR",
-        records: []
+        records: [],
       },
       runtimeConfig: enabledOpenAiConfig(),
       attemptTimeoutMs: 10,
@@ -289,11 +291,11 @@ describe("model provider fallback executor", () => {
           init.signal?.addEventListener(
             "abort",
             () => reject(init.signal?.reason),
-            { once: true }
+            { once: true },
           );
         });
       },
-      validateOutput: validateFieldRepairOutput
+      validateOutput: validateFieldRepairOutput,
     });
 
     expect(providerSignal?.aborted).toBe(true);
@@ -304,17 +306,17 @@ describe("model provider fallback executor", () => {
       status: "TIMEOUT",
       failureClass: "TIMEOUT",
       retryable: true,
-      timeoutMs: 10
+      timeoutMs: 10,
     });
     expect(result.attempts.at(-1)).toMatchObject({
       provider: "MOCK",
-      status: "SUCCESS"
+      status: "SUCCESS",
     });
     expect(result.deadline).toMatchObject({
       attemptTimeoutMs: 10,
       workflowTimeoutMs: 100,
       workflowDeadlineReached: false,
-      cancelled: false
+      cancelled: false,
     });
   });
 
@@ -325,7 +327,7 @@ describe("model provider fallback executor", () => {
       requireJson: true,
       inputJson: {
         policyKey: "MAIN_RUN_FIELD_REPAIR",
-        records: []
+        records: [],
       },
       runtimeConfig: enabledOpenAiConfig(),
       attemptTimeoutMs: 100,
@@ -335,10 +337,10 @@ describe("model provider fallback executor", () => {
           init.signal?.addEventListener(
             "abort",
             () => reject(init.signal?.reason),
-            { once: true }
+            { once: true },
           );
         }),
-      validateOutput: validateFieldRepairOutput
+      validateOutput: validateFieldRepairOutput,
     });
 
     expect(result.status).toBe("FAILED");
@@ -347,16 +349,16 @@ describe("model provider fallback executor", () => {
       provider: "OPENAI",
       status: "TIMEOUT",
       failureClass: "TIMEOUT",
-      retryable: true
+      retryable: true,
     });
     expect(result.deadline).toMatchObject({
       attemptTimeoutMs: 100,
       workflowTimeoutMs: 10,
       workflowDeadlineReached: true,
-      cancelled: false
+      cancelled: false,
     });
     expect(result.errorMessage).toContain(
-      "Provider fallback workflow timed out"
+      "Provider fallback workflow timed out",
     );
   });
 
@@ -368,7 +370,7 @@ describe("model provider fallback executor", () => {
       requireJson: true,
       inputJson: {
         policyKey: "MAIN_RUN_FIELD_REPAIR",
-        records: []
+        records: [],
       },
       runtimeConfig: enabledOpenAiConfig(),
       signal: controller.signal,
@@ -381,11 +383,11 @@ describe("model provider fallback executor", () => {
           init.signal?.addEventListener(
             "abort",
             () => reject(init.signal?.reason),
-            { once: true }
+            { once: true },
           );
         });
       },
-      validateOutput: validateFieldRepairOutput
+      validateOutput: validateFieldRepairOutput,
     });
 
     expect(result.status).toBe("FAILED");
@@ -393,11 +395,11 @@ describe("model provider fallback executor", () => {
     expect(result.attempts[0]).toMatchObject({
       provider: "OPENAI",
       failureClass: "CANCELLED",
-      retryable: false
+      retryable: false,
     });
     expect(result.deadline.cancelled).toBe(true);
     expect(result.errorMessage).toBe(
-      "Provider execution was cancelled by the caller."
+      "Provider execution was cancelled by the caller.",
     );
   });
 });

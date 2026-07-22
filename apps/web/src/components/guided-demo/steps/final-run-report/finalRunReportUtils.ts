@@ -38,7 +38,9 @@ export function formatCostEstimate(value: number | null) {
 }
 
 export function formatFieldRepairValue(value: string | number) {
-  return typeof value === "number" ? formatCurrency(value) : formatEnumLabel(value);
+  return typeof value === "number"
+    ? formatCurrency(value)
+    : formatEnumLabel(value);
 }
 
 export function getModelExecutionValidationLabel(input: {
@@ -74,11 +76,17 @@ function asNumber(value: unknown): number | null {
 
 function asStringArray(value: unknown): string[] {
   return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    ? value.filter(
+        (item): item is string =>
+          typeof item === "string" && item.trim().length > 0,
+      )
     : [];
 }
 
-function getFirstString(record: Record<string, unknown> | null, keys: string[]) {
+function getFirstString(
+  record: Record<string, unknown> | null,
+  keys: string[],
+) {
   if (!record) {
     return null;
   }
@@ -101,7 +109,10 @@ function getFirstString(record: Record<string, unknown> | null, keys: string[]) 
   return null;
 }
 
-function getFirstNumber(record: Record<string, unknown> | null, keys: string[]) {
+function getFirstNumber(
+  record: Record<string, unknown> | null,
+  keys: string[],
+) {
   if (!record) {
     return null;
   }
@@ -165,12 +176,13 @@ export function getSourceCandidateRecords(
     currentRunRecords.map((record) => record.id),
   );
 
-  return sourceRecords.filter(
-    (record) => !currentRunRecordIds.has(record.id),
-  );
+  return sourceRecords.filter((record) => !currentRunRecordIds.has(record.id));
 }
 
-export function getRecordSummary(record: AiReadyIntakeRecord, index: number): RecordSummary {
+export function getRecordSummary(
+  record: AiReadyIntakeRecord,
+  index: number,
+): RecordSummary {
   const normalizedRecord = getNormalizedRecord(record);
   const brand = getFirstString(normalizedRecord, ["brand", "correctedBrand"]);
   const productLine = getFirstString(normalizedRecord, [
@@ -179,7 +191,10 @@ export function getRecordSummary(record: AiReadyIntakeRecord, index: number): Re
     "title",
     "correctedProductLine",
   ]);
-  const category = getFirstString(normalizedRecord, ["category", "correctedCategory"]);
+  const category = getFirstString(normalizedRecord, [
+    "category",
+    "correctedCategory",
+  ]);
   const shaftFlex = getFirstString(normalizedRecord, [
     "shaftFlex",
     "correctedShaftFlex",
@@ -209,7 +224,8 @@ export function getRecordSummary(record: AiReadyIntakeRecord, index: number): Re
       record.supersededByAiReadyIntakeRecordId ?? null,
     supersededAt: record.supersededAt ?? null,
     supersededReason: record.supersededReason ?? null,
-    label: labelParts.length > 0 ? labelParts.join(" · ") : `Record ${index + 1}`,
+    label:
+      labelParts.length > 0 ? labelParts.join(" · ") : `Record ${index + 1}`,
     brand,
     productLine,
     category,
@@ -300,7 +316,9 @@ export function getCorrectionSummaries(
   });
 }
 
-export function getGroupedCorrectionSummaries(corrections: CorrectionSummary[]) {
+export function getGroupedCorrectionSummaries(
+  corrections: CorrectionSummary[],
+) {
   const groups = new Map<string, CorrectionSummary[]>();
 
   corrections.forEach((correction) => {
@@ -308,20 +326,29 @@ export function getGroupedCorrectionSummaries(corrections: CorrectionSummary[]) 
     groups.set(correction.recordLabel, [...existing, correction]);
   });
 
-  return Array.from(groups.entries()).map(([recordLabel, recordCorrections]) => ({
-    recordLabel,
-    corrections: recordCorrections,
-  }));
+  return Array.from(groups.entries()).map(
+    ([recordLabel, recordCorrections]) => ({
+      recordLabel,
+      corrections: recordCorrections,
+    }),
+  );
 }
 
-function recordMatchesReviewItem(record: RecordSummary, item: GlobalReviewQueueItem) {
+function recordMatchesReviewItem(
+  record: RecordSummary,
+  item: GlobalReviewQueueItem,
+) {
   const proposed = getProposedRecord(item);
   const reviewed = item.reviewedTradeInRecord;
-  const reviewIntakeItemIds = [item.intakeItemId, reviewed?.intakeItemId].filter(
-    (value): value is string => Boolean(value),
-  );
+  const reviewIntakeItemIds = [
+    item.intakeItemId,
+    reviewed?.intakeItemId,
+  ].filter((value): value is string => Boolean(value));
 
-  if (record.intakeItemId && reviewIntakeItemIds.includes(record.intakeItemId)) {
+  if (
+    record.intakeItemId &&
+    reviewIntakeItemIds.includes(record.intakeItemId)
+  ) {
     return true;
   }
 
@@ -346,16 +373,24 @@ function recordMatchesReviewItem(record: RecordSummary, item: GlobalReviewQueueI
   if (
     candidateSourceTexts.length > 0 &&
     reviewSourceTexts.length > 0 &&
-    candidateSourceTexts.some((candidateText) => reviewSourceTexts.includes(candidateText))
+    candidateSourceTexts.some((candidateText) =>
+      reviewSourceTexts.includes(candidateText),
+    )
   ) {
     return true;
   }
 
   const reviewBrand =
-    reviewed?.correctedBrand ?? getFirstString(proposed, ["brand", "correctedBrand"]);
+    reviewed?.correctedBrand ??
+    getFirstString(proposed, ["brand", "correctedBrand"]);
   const reviewProduct =
     reviewed?.correctedProductLine ??
-    getFirstString(proposed, ["productLine", "model", "title", "correctedProductLine"]);
+    getFirstString(proposed, [
+      "productLine",
+      "model",
+      "title",
+      "correctedProductLine",
+    ]);
   const reviewCategory =
     reviewed?.correctedCategory ??
     getFirstString(proposed, ["category", "correctedCategory"]);
@@ -365,11 +400,13 @@ function recordMatchesReviewItem(record: RecordSummary, item: GlobalReviewQueueI
     normalizeComparable(record.brand) === normalizeComparable(reviewBrand);
   const productMatches =
     normalizeComparable(record.productLine) &&
-    normalizeComparable(record.productLine) === normalizeComparable(reviewProduct);
+    normalizeComparable(record.productLine) ===
+      normalizeComparable(reviewProduct);
   const categoryMatches =
     !record.category ||
     !reviewCategory ||
-    normalizeComparable(record.category) === normalizeComparable(reviewCategory);
+    normalizeComparable(record.category) ===
+      normalizeComparable(reviewCategory);
 
   return Boolean(brandMatches && productMatches && categoryMatches);
 }
@@ -378,7 +415,9 @@ function getMatchingReviewItem(
   record: RecordSummary,
   reviewItems: GlobalReviewQueueItem[],
 ) {
-  return reviewItems.find((item) => recordMatchesReviewItem(record, item)) ?? null;
+  return (
+    reviewItems.find((item) => recordMatchesReviewItem(record, item)) ?? null
+  );
 }
 
 function getEvidenceEntries(value: unknown): unknown[] {
@@ -428,10 +467,7 @@ function recordMatchesRecord(
   ]
     .map(normalizeSourceComparable)
     .filter(Boolean);
-  const possibleSourceTexts = [
-    possibleMatch.rawText,
-    possibleMatch.cleanedText,
-  ]
+  const possibleSourceTexts = [possibleMatch.rawText, possibleMatch.cleanedText]
     .map(normalizeSourceComparable)
     .filter(Boolean);
 
@@ -445,18 +481,17 @@ function recordMatchesRecord(
 
   return Boolean(
     normalizeComparable(candidateRecord.brand) &&
-      normalizeComparable(candidateRecord.brand) ===
-        normalizeComparable(possibleMatch.brand) &&
-      normalizeComparable(candidateRecord.productLine) &&
-      normalizeComparable(candidateRecord.productLine) ===
-        normalizeComparable(possibleMatch.productLine),
+    normalizeComparable(candidateRecord.brand) ===
+      normalizeComparable(possibleMatch.brand) &&
+    normalizeComparable(candidateRecord.productLine) &&
+    normalizeComparable(candidateRecord.productLine) ===
+      normalizeComparable(possibleMatch.productLine),
   );
 }
 
 function getParsedItemForRecord(
   result: ExecuteEndToEndAgenticTradeInDemoResponse,
   record: RecordSummary,
-  index: number,
 ) {
   const directIdMatch = record.sourceRecordId
     ? result.parsedItems.find(
@@ -496,7 +531,6 @@ function getParsedItemForRecord(
 function getRecordEvidence(input: {
   candidateRecord: RecordSummary;
   finalRecords: RecordSummary[];
-  index: number;
   result: ExecuteEndToEndAgenticTradeInDemoResponse;
   reviewItem: GlobalReviewQueueItem | null;
   valuationRange: string | null;
@@ -504,18 +538,17 @@ function getRecordEvidence(input: {
   const parsedItem = getParsedItemForRecord(
     input.result,
     input.candidateRecord,
-    input.index,
   );
   const parsedItemId = parsedItem?.id ?? null;
   const knowledgeEvidence = parsedItemId
-    ? input.result.knowledgeMatchesByItem.find(
+    ? (input.result.knowledgeMatchesByItem.find(
         (item) => item.parsedItemId === parsedItemId,
-      ) ?? null
+      ) ?? null)
     : null;
   const inventoryEvidence = parsedItemId
-    ? input.result.inventoryMatchesByItem.find(
+    ? (input.result.inventoryMatchesByItem.find(
         (item) => item.parsedItemId === parsedItemId,
-      ) ?? null
+      ) ?? null)
     : null;
   const matchingModelSuggestions = parsedItemId
     ? input.result.fieldRepairExecution.suggestions.filter(
@@ -534,8 +567,7 @@ function getRecordEvidence(input: {
     {
       key: "SOURCE_NORMALIZATION",
       label: "Source normalization",
-      detail:
-        `${input.candidateRecord.sourceName} (${formatEnumLabel(input.candidateRecord.sourceType)}) was deterministically normalized and persisted as candidate ${getShortRecordId(input.candidateRecord.id)}.`,
+      detail: `${input.candidateRecord.sourceName} (${formatEnumLabel(input.candidateRecord.sourceType)}) was deterministically normalized and persisted as candidate ${getShortRecordId(input.candidateRecord.id)}.`,
     },
   ];
 
@@ -543,8 +575,7 @@ function getRecordEvidence(input: {
     entries.push({
       key: "KNOWLEDGE_EVIDENCE",
       label: "Knowledge evidence",
-      detail:
-        `The seeded knowledge service returned ${knowledgeEvidence?.search.results.length ?? 0} supporting reference match(es).`,
+      detail: `The seeded knowledge service returned ${knowledgeEvidence?.search.results.length ?? 0} supporting reference match(es).`,
     });
   }
 
@@ -559,8 +590,7 @@ function getRecordEvidence(input: {
     entries.push({
       key: "INVENTORY_MATCH",
       label: "Inventory match",
-      detail:
-        `The seeded product catalog matched ${matchedProduct || inventoryEvidence.lookup.productId} as the product candidate.`,
+      detail: `The seeded product catalog matched ${matchedProduct || inventoryEvidence.lookup.productId} as the product candidate.`,
     });
   }
 
@@ -568,8 +598,7 @@ function getRecordEvidence(input: {
     entries.push({
       key: "VALUATION_EVIDENCE",
       label: "Valuation evidence",
-      detail:
-        `The seeded valuation engine returned ${input.valuationRange} after product identification.`,
+      detail: `The seeded valuation engine returned ${input.valuationRange} after product identification.`,
     });
   }
 
@@ -577,8 +606,7 @@ function getRecordEvidence(input: {
     entries.push({
       key: "MODEL_SUGGESTION",
       label: "Model-assisted suggestion",
-      detail:
-        `${matchingModelSuggestions.length} field-repair suggestion(s) were generated for review. They did not approve or overwrite the record automatically.`,
+      detail: `${matchingModelSuggestions.length} field-repair suggestion(s) were generated for review. They did not approve or overwrite the record automatically.`,
     });
   }
 
@@ -596,8 +624,7 @@ function getRecordEvidence(input: {
   let persistedRecordId = input.candidateRecord.id;
   let persistenceLabel = "Finalized without review";
   let replacedRecordId: string | null = null;
-  let persistenceDetail =
-    `Persisted candidate ${getShortRecordId(input.candidateRecord.id)} remains the active record shown in this report.`;
+  let persistenceDetail = `Persisted candidate ${getShortRecordId(input.candidateRecord.id)} remains the active record shown in this report.`;
 
   if (
     activePersistedRecord &&
@@ -606,18 +633,15 @@ function getRecordEvidence(input: {
     persistedRecordId = activePersistedRecord.id;
     persistenceLabel = "Finalized after human review";
     replacedRecordId = input.candidateRecord.id;
-    persistenceDetail =
-      `Active record ${getShortRecordId(activePersistedRecord.id)} replaced candidate ${getShortRecordId(input.candidateRecord.id)} in the persisted lifecycle.`;
+    persistenceDetail = `Active record ${getShortRecordId(activePersistedRecord.id)} replaced candidate ${getShortRecordId(input.candidateRecord.id)} in the persisted lifecycle.`;
   } else if (
     input.candidateRecord.status === "SUPERSEDED" &&
     input.candidateRecord.supersededByAiReadyIntakeRecordId
   ) {
-    persistedRecordId =
-      input.candidateRecord.supersededByAiReadyIntakeRecordId;
+    persistedRecordId = input.candidateRecord.supersededByAiReadyIntakeRecordId;
     persistenceLabel = "Finalized after human review";
     replacedRecordId = input.candidateRecord.id;
-    persistenceDetail =
-      `Candidate ${getShortRecordId(input.candidateRecord.id)} was superseded by persisted record ${getShortRecordId(input.candidateRecord.supersededByAiReadyIntakeRecordId)}.`;
+    persistenceDetail = `Candidate ${getShortRecordId(input.candidateRecord.id)} was superseded by persisted record ${getShortRecordId(input.candidateRecord.supersededByAiReadyIntakeRecordId)}.`;
   }
 
   entries.push({
@@ -640,8 +664,7 @@ function getValuationEvidenceForRecord(
   index: number,
 ) {
   const entries = getEvidenceEntries(result.valuationEvidenceByItem);
-  const parsedItemId =
-    getParsedItemForRecord(result, record, index)?.id ?? null;
+  const parsedItemId = getParsedItemForRecord(result, record)?.id ?? null;
 
   return (
     entries.find((entry) => {
@@ -674,10 +697,7 @@ function getValuationEvidenceForRecord(
         getFirstNumber(evidence, ["sourceRecordIndex"]),
       ].filter((value): value is number => value !== null);
 
-      if (
-        indexedValues.includes(index) ||
-        indexedValues.includes(index + 1)
-      ) {
+      if (indexedValues.includes(index) || indexedValues.includes(index + 1)) {
         return true;
       }
 
@@ -687,9 +707,9 @@ function getValuationEvidenceForRecord(
 
       return Boolean(
         brand &&
-          product &&
-          evidenceText.includes(brand) &&
-          evidenceText.includes(product),
+        product &&
+        evidenceText.includes(brand) &&
+        evidenceText.includes(product),
       );
     }) ?? null
   );
@@ -715,7 +735,11 @@ function getValuationRangeLabel(evidence: unknown) {
     "valueHigh",
     "tradeInValueHigh",
   ]);
-  const value = getFirstNumber(estimate, ["tradeInValue", "demoValue", "value"]);
+  const value = getFirstNumber(estimate, [
+    "tradeInValue",
+    "demoValue",
+    "value",
+  ]);
 
   if (lowValue !== null && highValue !== null) {
     return `$${lowValue.toLocaleString()}–$${highValue.toLocaleString()}`;
@@ -735,30 +759,39 @@ export function buildMergedRecord(input: {
   result: ExecuteEndToEndAgenticTradeInDemoResponse;
   reviewItems: GlobalReviewQueueItem[];
 }) {
-  const reviewItem = getMatchingReviewItem(input.candidateRecord, input.reviewItems);
+  const reviewItem = getMatchingReviewItem(
+    input.candidateRecord,
+    input.reviewItems,
+  );
   const reviewedRecord = reviewItem?.reviewedTradeInRecord ?? null;
   const valuationRange = getValuationRangeLabel(
-    getValuationEvidenceForRecord(input.result, input.candidateRecord, input.index),
+    getValuationEvidenceForRecord(
+      input.result,
+      input.candidateRecord,
+      input.index,
+    ),
   );
   const correctedValue =
     reviewedRecord?.correctedDemoValue ?? input.candidateRecord.tradeInValue;
   const correctedValueLabel = formatCurrency(correctedValue);
-  const finalValueLabel = correctedValueLabel !== "—" ? correctedValueLabel : valuationRange ?? "—";
+  const finalValueLabel =
+    correctedValueLabel !== "—" ? correctedValueLabel : (valuationRange ?? "—");
   const hasOpenReviewItem =
     reviewItem?.status === "OPEN" || reviewItem?.status === "IN_REVIEW";
-  const unresolvedNonValueMissingFields = input.candidateRecord.missingFields.filter(
-    (field) => {
+  const unresolvedNonValueMissingFields =
+    input.candidateRecord.missingFields.filter((field) => {
       const normalizedField = normalizeComparable(field);
 
       return !["demovalue", "tradeinvalue", "value"].includes(normalizedField);
-    },
-  );
+    });
   const valuationEvidenceClearsReview =
     Boolean(valuationRange) &&
     !hasOpenReviewItem &&
     unresolvedNonValueMissingFields.length === 0;
   const finalStatus =
-    reviewedRecord || valuationEvidenceClearsReview || input.candidateRecord.ragReady
+    reviewedRecord ||
+    valuationEvidenceClearsReview ||
+    input.candidateRecord.ragReady
       ? "READY_FOR_RAG"
       : hasOpenReviewItem
         ? "NEEDS_REVIEW"
@@ -784,7 +817,6 @@ export function buildMergedRecord(input: {
   const recordEvidence = getRecordEvidence({
     candidateRecord: input.candidateRecord,
     finalRecords: input.finalRecords ?? [],
-    index: input.index,
     result: input.result,
     reviewItem,
     valuationRange,
@@ -831,11 +863,13 @@ export function buildMergedRecord(input: {
     brand: reviewedRecord?.correctedBrand ?? input.candidateRecord.brand,
     productLine:
       reviewedRecord?.correctedProductLine ?? input.candidateRecord.productLine,
-    category: reviewedRecord?.correctedCategory ?? input.candidateRecord.category,
+    category:
+      reviewedRecord?.correctedCategory ?? input.candidateRecord.category,
     shaftFlex:
       reviewedRecord?.correctedShaftFlex ?? input.candidateRecord.shaftFlex,
     conditionGrade:
-      reviewedRecord?.correctedConditionGrade ?? input.candidateRecord.conditionGrade,
+      reviewedRecord?.correctedConditionGrade ??
+      input.candidateRecord.conditionGrade,
     tradeInValue: correctedValue,
     valueLabel: finalValueLabel,
     reviewNeeded: finalReviewNeeded,
@@ -843,7 +877,9 @@ export function buildMergedRecord(input: {
     status: finalStatus,
     finalReviewLabel,
     finalReviewDetail,
-    sourceStageLabel: input.candidateRecord.reviewNeeded ? "Needed in Step 2" : "Clear in Step 2",
+    sourceStageLabel: input.candidateRecord.reviewNeeded
+      ? "Needed in Step 2"
+      : "Clear in Step 2",
     transformationNotes:
       transformationNotes.length > 0
         ? transformationNotes

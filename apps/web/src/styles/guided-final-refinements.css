@@ -12,10 +12,10 @@
 }
 
 .guided-final-workflow-step-card {
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(34, 48, 32, 0.12);
+  background: rgb(255 255 255 / 78%);
+  border: 1px solid rgb(34 48 32 / 12%);
   border-radius: 16px;
-  box-shadow: 0 12px 30px rgba(31, 41, 28, 0.05);
+  box-shadow: 0 12px 30px rgb(31 41 28 / 5%);
   padding: 0.8rem;
 }
 
@@ -66,8 +66,8 @@
 }
 
 .guided-final-review-write-summary article {
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(34, 48, 32, 0.1);
+  background: rgb(255 255 255 / 78%);
+  border: 1px solid rgb(34 48 32 / 10%);
   border-radius: 16px;
   padding: 0.8rem;
 }
@@ -93,8 +93,8 @@
 
 .guided-final-correction-details.guided-workflow-details,
 .guided-final-correction-details.guided-workflow-details--compact {
-  background: rgba(255, 255, 255, 0.48);
-  border: 1px solid rgba(34, 48, 32, 0.1);
+  background: rgb(255 255 255 / 48%);
+  border: 1px solid rgb(34 48 32 / 10%);
   border-radius: 14px;
   box-shadow: none;
   margin-top: 0.75rem;
@@ -105,7 +105,7 @@
 .guided-final-correction-details.guided-workflow-details summary,
 .guided-final-correction-details.guided-workflow-details--compact summary {
   border: 0;
-  border-bottom: 1px solid rgba(34, 48, 32, 0.1);
+  border-bottom: 1px solid rgb(34 48 32 / 10%);
   color: var(--ink);
   font-size: 0.78rem;
   font-weight: 900;
@@ -122,7 +122,7 @@
 
 .guided-final-correction-record {
   border: 0;
-  border-top: 1px solid rgba(34, 48, 32, 0.1);
+  border-top: 1px solid rgb(34 48 32 / 10%);
   padding: 0.65rem 0;
 }
 
@@ -189,7 +189,7 @@
   line-height: 1.25;
 }
 
-@media (max-width: 720px) {
+@media (width <= 720px) {
   .guided-final-workflow-recap,
   .guided-final-review-write-summary {
     grid-template-columns: 1fr;
@@ -204,4 +204,3 @@
     white-space: normal;
   }
 }
-

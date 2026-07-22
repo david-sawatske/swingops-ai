@@ -8,7 +8,7 @@ import {
   getModelProviderRuntimeConfig,
   normalizeTextModelOutput,
   buildUsage,
-  readObject
+  readObject,
 } from "../model-provider-runtime-config.js";
 
 export const azureOpenAiProvider: ModelProviderAdapter = {
@@ -26,14 +26,14 @@ export const azureOpenAiProvider: ModelProviderAdapter = {
         "INTAKE_PARSING",
         "FIELD_NORMALIZATION",
         "VALIDATION",
-        "REVIEW_SUMMARY"
+        "REVIEW_SUMMARY",
       ],
       supportsJson: true,
       costTier: "MEDIUM",
       latencyTier: "MEDIUM",
       qualityTier: "MEDIUM",
-      enabled: true
-    }
+      enabled: true,
+    },
   ],
   async execute(input) {
     const config = input.runtimeConfig ?? getModelProviderRuntimeConfig();
@@ -42,23 +42,23 @@ export const azureOpenAiProvider: ModelProviderAdapter = {
       provider: "AZURE_OPENAI",
       config,
       missingConfigHint:
-        "Required env: AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_DEPLOYMENT."
+        "Required env: AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_DEPLOYMENT.",
     });
 
     const apiKey = assertConfiguredString({
       provider: "AZURE_OPENAI",
       value: config.azureOpenAiApiKey,
-      envName: "AZURE_OPENAI_API_KEY"
+      envName: "AZURE_OPENAI_API_KEY",
     });
     const endpoint = assertConfiguredString({
       provider: "AZURE_OPENAI",
       value: config.azureOpenAiEndpoint,
-      envName: "AZURE_OPENAI_ENDPOINT"
+      envName: "AZURE_OPENAI_ENDPOINT",
     }).replace(/\/$/, "");
     const deployment = assertConfiguredString({
       provider: "AZURE_OPENAI",
       value: config.azureOpenAiDeployment,
-      envName: "AZURE_OPENAI_DEPLOYMENT"
+      envName: "AZURE_OPENAI_DEPLOYMENT",
     });
     const apiVersion = config.azureOpenAiApiVersion ?? "2024-02-15-preview";
     const model = config.azureOpenAiDeployment ?? input.model;
@@ -69,34 +69,34 @@ export const azureOpenAiProvider: ModelProviderAdapter = {
         method: "POST",
         headers: {
           "api-key": apiKey,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           response_format: {
-            type: "json_object"
+            type: "json_object",
           },
           messages: [
             {
               role: "system",
               content:
-                "You are a SwingOps AI provider adapter. Return valid JSON only."
+                "You are a SwingOps AI provider adapter. Return valid JSON only.",
             },
             {
               role: "user",
               content: buildProviderPrompt({
                 ...input,
-                model
-              })
-            }
-          ]
+                model,
+              }),
+            },
+          ],
         }),
-        ...(input.signal ? { signal: input.signal } : {})
-      }
+        ...(input.signal ? { signal: input.signal } : {}),
+      },
     );
 
     await assertSuccessfulResponse({
       provider: "AZURE_OPENAI",
-      response
+      response,
     });
 
     const body = readObject(await response.json(), "AZURE_OPENAI");
@@ -104,13 +104,14 @@ export const azureOpenAiProvider: ModelProviderAdapter = {
     const firstChoice = readObject(choices[0], "AZURE_OPENAI");
     const message = readObject(firstChoice.message, "AZURE_OPENAI");
     const text = typeof message.content === "string" ? message.content : "";
-    const usage = body.usage && typeof body.usage === "object"
-      ? (body.usage as {
-          prompt_tokens?: number;
-          completion_tokens?: number;
-          total_tokens?: number;
-        })
-      : undefined;
+    const usage =
+      body.usage && typeof body.usage === "object"
+        ? (body.usage as {
+            prompt_tokens?: number;
+            completion_tokens?: number;
+            total_tokens?: number;
+          })
+        : undefined;
 
     return normalizeTextModelOutput({
       provider: "AZURE_OPENAI",
@@ -122,10 +123,10 @@ export const azureOpenAiProvider: ModelProviderAdapter = {
             usage: buildUsage({
               promptTokens: usage.prompt_tokens,
               completionTokens: usage.completion_tokens,
-              totalTokens: usage.total_tokens
-            })
+              totalTokens: usage.total_tokens,
+            }),
           }
-        : {})
+        : {}),
     });
-  }
+  },
 };

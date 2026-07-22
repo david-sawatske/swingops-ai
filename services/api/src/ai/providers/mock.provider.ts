@@ -17,14 +17,14 @@ export const mockProvider: ModelProviderAdapter = {
         "INTAKE_PARSING",
         "FIELD_NORMALIZATION",
         "VALIDATION",
-        "REVIEW_SUMMARY"
+        "REVIEW_SUMMARY",
       ],
       supportsJson: true,
       costTier: "FREE",
       latencyTier: "LOW",
       qualityTier: "LOW",
-      enabled: true
-    }
+      enabled: true,
+    },
   ],
   async execute(input) {
     if (
@@ -32,7 +32,7 @@ export const mockProvider: ModelProviderAdapter = {
       input.inputJson.policyKey === MAIN_RUN_FIELD_REPAIR_POLICY_KEY
     ) {
       return {
-        outputJson: buildDeterministicFieldRepairOutput(input.inputJson)
+        outputJson: buildDeterministicFieldRepairOutput(input.inputJson),
       };
     }
 
@@ -41,14 +41,14 @@ export const mockProvider: ModelProviderAdapter = {
         mock: true,
         provider: "MOCK",
         model: input.model,
-        taskType: input.taskType
-      }
+        taskType: input.taskType,
+      },
     };
-  }
+  },
 };
 
 function buildDeterministicFieldRepairOutput(
-  inputJson: Record<string, unknown>
+  inputJson: Record<string, unknown>,
 ): Record<string, unknown> {
   const records = Array.isArray(inputJson.records)
     ? inputJson.records.filter(isRecord)
@@ -58,7 +58,7 @@ function buildDeterministicFieldRepairOutput(
 
     return {
       suggestions,
-      outcome: buildRecordOutcome(record, suggestions)
+      outcome: buildRecordOutcome(record, suggestions),
     };
   });
 
@@ -67,8 +67,8 @@ function buildDeterministicFieldRepairOutput(
     suggestions: recordResults.flatMap((result) =>
       result.outcome.outcomeType === "REPAIR_SUGGESTED"
         ? result.suggestions
-        : []
-    )
+        : [],
+    ),
   };
 }
 
@@ -80,8 +80,7 @@ function buildRecordSuggestions(record: Record<string, unknown>) {
     getString(record.originalText) ??
     "";
   const missingFields = getStringArray(record.missingFields);
-  const advisorySuggestions =
-    getRecordAdvisorySuggestions(record);
+  const advisorySuggestions = getRecordAdvisorySuggestions(record);
 
   if (advisorySuggestions.length > 0) {
     return advisorySuggestions;
@@ -96,19 +95,20 @@ function buildRecordSuggestions(record: Record<string, unknown>) {
       suggestions.push({
         ...(recordId ? { recordId } : {}),
         fieldName: "shaftFlex",
-        ...shaftFlexSuggestion
+        ...shaftFlexSuggestion,
       });
     }
   }
 
   if (missingFields.includes("conditionGrade")) {
-    const conditionGradeSuggestion = findMockConditionGradeSuggestion(sourceText);
+    const conditionGradeSuggestion =
+      findMockConditionGradeSuggestion(sourceText);
 
     if (conditionGradeSuggestion) {
       suggestions.push({
         ...(recordId ? { recordId } : {}),
         fieldName: "conditionGrade",
-        ...conditionGradeSuggestion
+        ...conditionGradeSuggestion,
       });
     }
   }
@@ -120,7 +120,7 @@ function buildRecordSuggestions(record: Record<string, unknown>) {
       suggestions.push({
         ...(recordId ? { recordId } : {}),
         fieldName: "tradeInValue",
-        ...tradeInValueSuggestion
+        ...tradeInValueSuggestion,
       });
     }
   }
@@ -129,71 +129,62 @@ function buildRecordSuggestions(record: Record<string, unknown>) {
 }
 
 function getRecordAdvisorySuggestions(
-  record: Record<string, unknown>
+  record: Record<string, unknown>,
 ): Record<string, unknown>[] {
   if (!Array.isArray(record.advisoryCandidates)) {
     return [];
   }
 
-  return record.advisoryCandidates
-    .filter(isRecord)
-    .flatMap((candidate) => {
-      const suggestion = isRecord(candidate.suggestion)
-        ? candidate.suggestion
-        : null;
+  return record.advisoryCandidates.filter(isRecord).flatMap((candidate) => {
+    const suggestion = isRecord(candidate.suggestion)
+      ? candidate.suggestion
+      : null;
 
-      if (!suggestion) {
-        return [];
-      }
+    if (!suggestion) {
+      return [];
+    }
 
-      const recordId = getString(suggestion.recordId);
-      const fieldName = getString(suggestion.fieldName);
-      const sourcePhrase =
-        getString(suggestion.sourcePhrase);
-      const reason = getString(suggestion.reason);
-      const candidateValue =
-        suggestion.candidateValue;
-      const confidence = suggestion.confidence;
-      const reviewRequired =
-        suggestion.reviewRequired;
+    const recordId = getString(suggestion.recordId);
+    const fieldName = getString(suggestion.fieldName);
+    const sourcePhrase = getString(suggestion.sourcePhrase);
+    const reason = getString(suggestion.reason);
+    const candidateValue = suggestion.candidateValue;
+    const confidence = suggestion.confidence;
+    const reviewRequired = suggestion.reviewRequired;
 
-      if (
-        !recordId ||
-        !fieldName ||
-        !sourcePhrase ||
-        !reason ||
-        (
-          typeof candidateValue !== "string" &&
-          typeof candidateValue !== "number"
-        ) ||
-        (
-          typeof candidateValue === "number" &&
-          !Number.isFinite(candidateValue)
-        ) ||
-        typeof confidence !== "number" ||
-        !Number.isFinite(confidence) ||
-        typeof reviewRequired !== "boolean"
-      ) {
-        return [];
-      }
+    if (
+      !recordId ||
+      !fieldName ||
+      !sourcePhrase ||
+      !reason ||
+      (typeof candidateValue !== "string" &&
+        typeof candidateValue !== "number") ||
+      (typeof candidateValue === "number" &&
+        !Number.isFinite(candidateValue)) ||
+      typeof confidence !== "number" ||
+      !Number.isFinite(confidence) ||
+      typeof reviewRequired !== "boolean"
+    ) {
+      return [];
+    }
 
-      return [
-        {
-          recordId,
-          fieldName,
-          sourcePhrase,
-          candidateValue,
-          confidence,
-          reason,
-          reviewRequired
-        }
-      ];
-    });
+    return [
+      {
+        recordId,
+        fieldName,
+        sourcePhrase,
+        candidateValue,
+        confidence,
+        reason,
+        reviewRequired,
+      },
+    ];
+  });
 }
 
 function buildRecordOutcome(
   record: Record<string, unknown>,
-  suggestions: Record<string, unknown>[]
+  suggestions: Record<string, unknown>[],
 ): Record<string, unknown> {
   const recordId = getString(record.recordId) ?? "unknown-record";
   const evidenceIds = getRecordEvidenceIds(record);
@@ -202,7 +193,7 @@ function buildRecordOutcome(
     : null;
   const productResolutionStatus = getString(productResolution?.status);
   const candidateProductIds = getStringArray(
-    productResolution?.candidateProductIds
+    productResolution?.candidateProductIds,
   );
 
   if (
@@ -217,7 +208,7 @@ function buildRecordOutcome(
       evidenceIds,
       reviewerQuestion:
         "Which supplied product candidate matches the club generation shown in the source?",
-      candidateProductIds
+      candidateProductIds,
     };
   }
 
@@ -225,12 +216,11 @@ function buildRecordOutcome(
     return {
       outcomeType: "REPAIR_SUGGESTED",
       recordId,
-      summary:
-        `${suggestions.length} source-supported field repair suggestion(s) are available for review.`,
+      summary: `${suggestions.length} source-supported field repair suggestion(s) are available for review.`,
       evidenceIds,
       reviewerQuestion:
         "Which source-supported field repair should be applied to this record?",
-      suggestions
+      suggestions,
     };
   }
 
@@ -242,7 +232,7 @@ function buildRecordOutcome(
     evidenceIds,
     reviewerQuestion:
       "Which missing or uncertain value can be confirmed from the original source?",
-    reasonCodes: getRecordReviewReasonCodes(record)
+    reasonCodes: getRecordReviewReasonCodes(record),
   };
 }
 
@@ -257,17 +247,13 @@ function getRecordEvidenceIds(record: Record<string, unknown>): string[] {
     .filter((evidenceId): evidenceId is string => evidenceId !== null);
 }
 
-function getRecordReviewReasonCodes(
-  record: Record<string, unknown>
-): string[] {
+function getRecordReviewReasonCodes(record: Record<string, unknown>): string[] {
   const selectionReason = isRecord(record.selectionReason)
     ? record.selectionReason
     : null;
   const reasonCodes = getStringArray(selectionReason?.reviewReasonCodes);
 
-  return reasonCodes.length > 0
-    ? reasonCodes
-    : ["INSUFFICIENT_EVIDENCE"];
+  return reasonCodes.length > 0 ? reasonCodes : ["INSUFFICIENT_EVIDENCE"];
 }
 
 function findMockShaftFlexSuggestion(sourceText: string) {
@@ -281,44 +267,45 @@ function findMockShaftFlexSuggestion(sourceText: string) {
       pattern: /\btour\s*x[-\s]?stiff\b/i,
       candidateValue: "TOUR_X_STIFF",
       confidence: 0.9,
-      reason: "Source phrase matches the approved Tour X-Stiff shaft-flex value."
+      reason:
+        "Source phrase matches the approved Tour X-Stiff shaft-flex value.",
     },
     {
       pattern: /\bx[-\s]?stiff\b/i,
       candidateValue: "X_STIFF",
       confidence: 0.9,
-      reason: "Source phrase matches the approved X-Stiff shaft-flex value."
+      reason: "Source phrase matches the approved X-Stiff shaft-flex value.",
     },
     {
       pattern: /\bs\s*flex\b/i,
       candidateValue: "STIFF",
       confidence: 0.89,
-      reason: "Source phrase uses a known shaft-flex abbreviation."
+      reason: "Source phrase uses a known shaft-flex abbreviation.",
     },
     {
       pattern: /\bstiff\b/i,
       candidateValue: "STIFF",
       confidence: 0.88,
-      reason: "Source phrase matches the approved Stiff shaft-flex value."
+      reason: "Source phrase matches the approved Stiff shaft-flex value.",
     },
     {
       pattern: /\breg(?:ular)?\b/i,
       candidateValue: "REGULAR",
       confidence: 0.88,
-      reason: "Source phrase matches the approved Regular shaft-flex value."
+      reason: "Source phrase matches the approved Regular shaft-flex value.",
     },
     {
       pattern: /\bsenior\b/i,
       candidateValue: "SENIOR",
       confidence: 0.88,
-      reason: "Source phrase matches the approved Senior shaft-flex value."
+      reason: "Source phrase matches the approved Senior shaft-flex value.",
     },
     {
       pattern: /\blad(?:y|ies)?\b/i,
       candidateValue: "LADIES",
       confidence: 0.88,
-      reason: "Source phrase matches the approved Ladies shaft-flex value."
-    }
+      reason: "Source phrase matches the approved Ladies shaft-flex value.",
+    },
   ];
 
   for (const config of patterns) {
@@ -330,7 +317,7 @@ function findMockShaftFlexSuggestion(sourceText: string) {
         candidateValue: config.candidateValue,
         confidence: config.confidence,
         reason: config.reason,
-        reviewRequired: false
+        reviewRequired: false,
       };
     }
   }
@@ -340,7 +327,7 @@ function findMockShaftFlexSuggestion(sourceText: string) {
 
 function findMockConditionGradeSuggestion(sourceText: string) {
   const match = sourceText.match(
-    /\b(?:condition|cond)\s*[:=]?\s*(9\.5|9\.0|8\.0|7\.0|6\.0|mint|above\s*avg|above\s*average|average|avg|below\s*avg|below\s*average|poor)\b/i
+    /\b(?:condition|cond)\s*[:=]?\s*(9\.5|9\.0|8\.0|7\.0|6\.0|mint|above\s*avg|above\s*average|average|avg|below\s*avg|below\s*average|poor)\b/i,
   );
 
   if (!match?.[0] || !match[1]) {
@@ -358,13 +345,13 @@ function findMockConditionGradeSuggestion(sourceText: string) {
     candidateValue: normalized,
     confidence: 0.9,
     reason: "Source phrase matches an approved condition grade.",
-    reviewRequired: false
+    reviewRequired: false,
   };
 }
 
 function findMockTradeInValueSuggestion(sourceText: string) {
   const match = sourceText.match(
-    /\b(?:trade(?:-in)?\s*value|trade\s*value|value)\s*[:=]?\s*\$?(\d{2,4})\b/i
+    /\b(?:trade(?:-in)?\s*value|trade\s*value|value)\s*[:=]?\s*\$?(\d{2,4})\b/i,
   );
 
   if (!match?.[0] || !match[1]) {
@@ -376,7 +363,7 @@ function findMockTradeInValueSuggestion(sourceText: string) {
     candidateValue: Number(match[1]),
     confidence: 0.9,
     reason: "Source phrase includes an explicit trade-in value.",
-    reviewRequired: false
+    reviewRequired: false,
   };
 }
 
@@ -395,7 +382,11 @@ function normalizeConditionGrade(rawValue: string): string | null {
     return "9.0 Above Average";
   }
 
-  if (normalized === "8.0" || normalized === "avg" || normalized === "average") {
+  if (
+    normalized === "8.0" ||
+    normalized === "avg" ||
+    normalized === "average"
+  ) {
     return "8.0 Average";
   }
 

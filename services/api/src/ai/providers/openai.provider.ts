@@ -1,6 +1,6 @@
 import type {
   ModelProviderAdapter,
-  ModelProviderExecuteInput
+  ModelProviderExecuteInput,
 } from "../model-provider.types.js";
 import {
   assertConfiguredString,
@@ -11,7 +11,7 @@ import {
   getFetch,
   getModelProviderRuntimeConfig,
   normalizeTextModelOutput,
-  readObject
+  readObject,
 } from "../model-provider-runtime-config.js";
 
 export const openAiProvider: ModelProviderAdapter = {
@@ -29,14 +29,14 @@ export const openAiProvider: ModelProviderAdapter = {
         "INTAKE_PARSING",
         "FIELD_NORMALIZATION",
         "VALIDATION",
-        "REVIEW_SUMMARY"
+        "REVIEW_SUMMARY",
       ],
       supportsJson: true,
       costTier: "LOW",
       latencyTier: "MEDIUM",
       qualityTier: "MEDIUM",
-      enabled: true
-    }
+      enabled: true,
+    },
   ],
   async execute(input) {
     const config = input.runtimeConfig ?? getModelProviderRuntimeConfig();
@@ -44,13 +44,13 @@ export const openAiProvider: ModelProviderAdapter = {
     assertRealModelCallsEnabled({
       provider: "OPENAI",
       config,
-      missingConfigHint: "Required env: OPENAI_API_KEY."
+      missingConfigHint: "Required env: OPENAI_API_KEY.",
     });
 
     const apiKey = assertConfiguredString({
       provider: "OPENAI",
       value: config.openAiApiKey,
-      envName: "OPENAI_API_KEY"
+      envName: "OPENAI_API_KEY",
     });
 
     const model = config.openAiModel ?? input.model;
@@ -60,7 +60,7 @@ export const openAiProvider: ModelProviderAdapter = {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           model,
@@ -69,19 +69,19 @@ export const openAiProvider: ModelProviderAdapter = {
             "You are a SwingOps AI provider adapter. Return JSON matching the requested output format.",
           input: buildProviderPrompt({
             ...input,
-            model
+            model,
           }),
           text: {
-            format: buildOpenAiTextFormat(input)
-          }
+            format: buildOpenAiTextFormat(input),
+          },
         }),
-        ...(input.signal ? { signal: input.signal } : {})
-      }
+        ...(input.signal ? { signal: input.signal } : {}),
+      },
     );
 
     await assertSuccessfulResponse({
       provider: "OPENAI",
-      response
+      response,
     });
 
     const body = readObject(await response.json(), "OPENAI");
@@ -105,20 +105,20 @@ export const openAiProvider: ModelProviderAdapter = {
             usage: buildUsage({
               promptTokens: usage.input_tokens,
               completionTokens: usage.output_tokens,
-              totalTokens: usage.total_tokens
-            })
+              totalTokens: usage.total_tokens,
+            }),
           }
-        : {})
+        : {}),
     });
-  }
+  },
 };
 
 function buildOpenAiTextFormat(
-  input: ModelProviderExecuteInput
+  input: ModelProviderExecuteInput,
 ): Record<string, unknown> {
   if (!input.outputSchema) {
     return {
-      type: "json_object"
+      type: "json_object",
     };
   }
 
@@ -126,13 +126,11 @@ function buildOpenAiTextFormat(
     type: "json_schema",
     name: input.outputSchema.name,
     schema: input.outputSchema.schema,
-    strict: input.outputSchema.strict
+    strict: input.outputSchema.strict,
   };
 }
 
-function readOpenAiResponseText(
-  body: Record<string, unknown>
-): string {
+function readOpenAiResponseText(body: Record<string, unknown>): string {
   if (typeof body.output_text === "string") {
     return body.output_text;
   }

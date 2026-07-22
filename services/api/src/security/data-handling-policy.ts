@@ -1,9 +1,7 @@
 export const DATA_HANDLING_POLICY_VERSION = "2026-07-21" as const;
 
 export type DataHandlingContext =
-  | "MODEL_AUDIT_LOG"
-  | "TOOL_AUDIT_LOG"
-  | "EXTERNAL_TOOL_OUTPUT";
+  "MODEL_AUDIT_LOG" | "TOOL_AUDIT_LOG" | "EXTERNAL_TOOL_OUTPUT";
 
 export type DataRedactionType =
   | "AUTHENTICATION_SECRET"
@@ -53,14 +51,14 @@ const redactionTypeOrder: DataRedactionType[] = [
   "GOVERNMENT_IDENTIFIER",
   "PAYMENT_DATA",
   "PERSON_NAME",
-  "POSTAL_ADDRESS"
+  "POSTAL_ADDRESS",
 ];
 
 const promptInjectionIndicatorOrder: PromptInjectionIndicator[] = [
   "INSTRUCTION_OVERRIDE",
   "PROMPT_EXTRACTION",
   "SECRET_EXTRACTION",
-  "ROLE_MANIPULATION"
+  "ROLE_MANIPULATION",
 ];
 
 const promptInjectionPatterns: Array<{
@@ -70,22 +68,22 @@ const promptInjectionPatterns: Array<{
   {
     indicator: "INSTRUCTION_OVERRIDE",
     pattern:
-      /\b(?:ignore|disregard|forget|override)\b.{0,50}\b(?:previous|prior|system|developer|original)\b.{0,30}\b(?:instruction|instructions|message|prompt|rules?)\b/i
+      /\b(?:ignore|disregard|forget|override)\b.{0,50}\b(?:previous|prior|system|developer|original)\b.{0,30}\b(?:instruction|instructions|message|prompt|rules?)\b/i,
   },
   {
     indicator: "PROMPT_EXTRACTION",
     pattern:
-      /\b(?:reveal|show|expose|print|repeat|return)\b.{0,50}\b(?:system|developer|hidden|original)\b.{0,20}\b(?:prompt|message|instructions?|rules?)\b/i
+      /\b(?:reveal|show|expose|print|repeat|return)\b.{0,50}\b(?:system|developer|hidden|original)\b.{0,20}\b(?:prompt|message|instructions?|rules?)\b/i,
   },
   {
     indicator: "SECRET_EXTRACTION",
     pattern:
-      /\b(?:reveal|show|expose|print|return|list)\b.{0,50}\b(?:secret|secrets|password|passwords|api[ _-]?keys?|access[ _-]?tokens?|credentials?)\b/i
+      /\b(?:reveal|show|expose|print|return|list)\b.{0,50}\b(?:secret|secrets|password|passwords|api[ _-]?keys?|access[ _-]?tokens?|credentials?)\b/i,
   },
   {
     indicator: "ROLE_MANIPULATION",
-    pattern: /\b(?:you are now|act as|pretend (?:that )?you are)\b/i
-  }
+    pattern: /\b(?:you are now|act as|pretend (?:that )?you are)\b/i,
+  },
 ];
 
 const emailPattern = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
@@ -93,7 +91,7 @@ const governmentIdentifierPattern = /\b\d{3}-\d{2}-\d{4}\b/g;
 const phonePatterns = [
   /\+1[ .-]?\(?\d{3}\)?[ .-]?\d{3}[ .-]\d{4}\b/g,
   /\(\d{3}\)[ .-]?\d{3}[ .-]\d{4}\b/g,
-  /\b\d{3}[ .-]\d{3}[ .-]\d{4}\b/g
+  /\b\d{3}[ .-]\d{3}[ .-]\d{4}\b/g,
 ];
 const bearerCredentialPattern = /\bBearer\s+[A-Za-z0-9._~+/=-]{12,}/gi;
 const providerCredentialPattern = /\bsk-[A-Za-z0-9_-]{16,}\b/g;
@@ -210,7 +208,7 @@ function redactionMarker(type: DataRedactionType): string {
 function recordRedaction(
   diagnostics: MutableDiagnostics,
   type: DataRedactionType,
-  count = 1
+  count = 1,
 ): void {
   diagnostics.redactionTypes.add(type);
   diagnostics.redactionCount += count;
@@ -218,7 +216,7 @@ function recordRedaction(
 
 function inspectPromptInjection(
   value: string,
-  diagnostics: MutableDiagnostics
+  diagnostics: MutableDiagnostics,
 ): void {
   for (const { indicator, pattern } of promptInjectionPatterns) {
     if (pattern.test(value)) {
@@ -232,7 +230,7 @@ function replaceMatches(
   pattern: RegExp,
   type: DataRedactionType,
   diagnostics: MutableDiagnostics,
-  replacement: string | ((...match: string[]) => string)
+  replacement: string | ((...match: string[]) => string),
 ): string {
   return value.replace(pattern, (...args: unknown[]) => {
     recordRedaction(diagnostics, type);
@@ -246,10 +244,7 @@ function replaceMatches(
   });
 }
 
-function redactString(
-  value: string,
-  diagnostics: MutableDiagnostics
-): string {
+function redactString(value: string, diagnostics: MutableDiagnostics): string {
   inspectPromptInjection(value, diagnostics);
 
   let sanitized = replaceMatches(
@@ -257,14 +252,14 @@ function redactString(
     bearerCredentialPattern,
     "AUTHENTICATION_SECRET",
     diagnostics,
-    redactionMarker("AUTHENTICATION_SECRET")
+    redactionMarker("AUTHENTICATION_SECRET"),
   );
   sanitized = replaceMatches(
     sanitized,
     providerCredentialPattern,
     "AUTHENTICATION_SECRET",
     diagnostics,
-    redactionMarker("AUTHENTICATION_SECRET")
+    redactionMarker("AUTHENTICATION_SECRET"),
   );
   sanitized = replaceMatches(
     sanitized,
@@ -272,21 +267,21 @@ function redactString(
     "AUTHENTICATION_SECRET",
     diagnostics,
     (_match, label, separator) =>
-      `${label}${separator}${redactionMarker("AUTHENTICATION_SECRET")}`
+      `${label}${separator}${redactionMarker("AUTHENTICATION_SECRET")}`,
   );
   sanitized = replaceMatches(
     sanitized,
     emailPattern,
     "EMAIL_ADDRESS",
     diagnostics,
-    redactionMarker("EMAIL_ADDRESS")
+    redactionMarker("EMAIL_ADDRESS"),
   );
   sanitized = replaceMatches(
     sanitized,
     governmentIdentifierPattern,
     "GOVERNMENT_IDENTIFIER",
     diagnostics,
-    redactionMarker("GOVERNMENT_IDENTIFIER")
+    redactionMarker("GOVERNMENT_IDENTIFIER"),
   );
 
   for (const phonePattern of phonePatterns) {
@@ -295,7 +290,7 @@ function redactString(
       phonePattern,
       "PHONE_NUMBER",
       diagnostics,
-      redactionMarker("PHONE_NUMBER")
+      redactionMarker("PHONE_NUMBER"),
     );
   }
 
@@ -306,7 +301,7 @@ function sanitizeValue(
   value: unknown,
   mode: DataHandlingMode,
   diagnostics: MutableDiagnostics,
-  seen: WeakSet<object>
+  seen: WeakSet<object>,
 ): unknown {
   if (typeof value === "string") {
     return redactString(value, diagnostics);
@@ -335,7 +330,7 @@ function sanitizeValue(
 
     seen.add(value);
     const sanitizedEntries = value.map((entry) =>
-      sanitizeValue(entry, mode, diagnostics, seen)
+      sanitizeValue(entry, mode, diagnostics, seen),
     );
     seen.delete(value);
     return sanitizedEntries;
@@ -367,7 +362,7 @@ function sanitizeValue(
 
     sanitizedEntries.push([
       key,
-      sanitizeValue(nestedValue, mode, diagnostics, seen)
+      sanitizeValue(nestedValue, mode, diagnostics, seen),
     ]);
   }
 
@@ -384,20 +379,19 @@ export function applyDataHandlingPolicy(input: {
   const mutableDiagnostics: MutableDiagnostics = {
     redactionCount: 0,
     redactionTypes: new Set<DataRedactionType>(),
-    promptInjectionIndicators: new Set<PromptInjectionIndicator>()
+    promptInjectionIndicators: new Set<PromptInjectionIndicator>(),
   };
   const value = sanitizeValue(
     input.value,
     mode,
     mutableDiagnostics,
-    new WeakSet<object>()
+    new WeakSet<object>(),
   );
   const redactionTypes = redactionTypeOrder.filter((type) =>
-    mutableDiagnostics.redactionTypes.has(type)
+    mutableDiagnostics.redactionTypes.has(type),
   );
   const promptInjectionIndicators = promptInjectionIndicatorOrder.filter(
-    (indicator) =>
-      mutableDiagnostics.promptInjectionIndicators.has(indicator)
+    (indicator) => mutableDiagnostics.promptInjectionIndicators.has(indicator),
   );
 
   return {
@@ -415,37 +409,37 @@ export function applyDataHandlingPolicy(input: {
       redactionCount: mutableDiagnostics.redactionCount,
       redactionTypes,
       promptInjectionIndicators,
-      promptInjectionAction: "ADVISORY_ONLY"
-    }
+      promptInjectionAction: "ADVISORY_ONLY",
+    },
   };
 }
 
 export function attachDataHandlingDiagnostics(
-  result: DataHandlingResult
+  result: DataHandlingResult,
 ): Record<string, unknown> {
   if (isRecord(result.value)) {
     return {
       ...result.value,
-      dataHandlingPolicy: result.diagnostics
+      dataHandlingPolicy: result.diagnostics,
     };
   }
 
   return {
     auditValue: result.value,
-    dataHandlingPolicy: result.diagnostics
+    dataHandlingPolicy: result.diagnostics,
   };
 }
 
 export function sanitizeAuditText(
   value: string,
-  context: Extract<DataHandlingContext, "MODEL_AUDIT_LOG" | "TOOL_AUDIT_LOG">
+  context: Extract<DataHandlingContext, "MODEL_AUDIT_LOG" | "TOOL_AUDIT_LOG">,
 ): string {
   const result = applyDataHandlingPolicy({
     value,
-    context
+    context,
   });
 
   return typeof result.value === "string"
     ? result.value
-    : "Sensitive error details were redacted."
+    : "Sensitive error details were redacted.";
 }

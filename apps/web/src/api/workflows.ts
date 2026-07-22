@@ -71,7 +71,10 @@ export async function resolveReviewQueueItemWithCorrections(
   return apiPost<
     ResolveReviewQueueItemWithCorrectionsResponse,
     ResolveReviewQueueItemWithCorrectionsRequest
-  >(`/review-queue-items/${reviewQueueItemId}/resolve-with-corrections`, request);
+  >(
+    `/review-queue-items/${reviewQueueItemId}/resolve-with-corrections`,
+    request,
+  );
 }
 
 export async function executeEndToEndAgenticTradeInDemo(

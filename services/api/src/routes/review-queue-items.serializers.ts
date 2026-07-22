@@ -2,14 +2,14 @@ import {
   serializeWorkflowRun,
   serializeIntakeBatch,
   serializeIntakeItem,
-  serializeReviewQueueItem
+  serializeReviewQueueItem,
 } from "../serializers/shared-workflow-serializers.js";
 
 export {
   serializeWorkflowRun,
   serializeIntakeBatch,
   serializeIntakeItem,
-  serializeReviewQueueItem
+  serializeReviewQueueItem,
 };
 
 export function serializeReviewedTradeInRecord(record: {
@@ -48,7 +48,7 @@ export function serializeReviewedTradeInRecord(record: {
     reviewerNotes: record.reviewerNotes,
     approvedAt: record.approvedAt.toISOString(),
     createdAt: record.createdAt.toISOString(),
-    updatedAt: record.updatedAt.toISOString()
+    updatedAt: record.updatedAt.toISOString(),
   };
 }
 
@@ -80,7 +80,7 @@ export function serializeHumanReviewLearningEvent(event: {
     evidenceText: event.evidenceText ?? null,
     confidenceImpact: event.confidenceImpact ?? null,
     reviewerNotes: event.reviewerNotes,
-    createdAt: event.createdAt.toISOString()
+    createdAt: event.createdAt.toISOString(),
   };
 }
 
@@ -168,7 +168,9 @@ export function serializeReviewQueueItemWithContext(item: {
 }) {
   return {
     ...serializeReviewQueueItem(item),
-    workflowRun: item.workflowRun ? serializeWorkflowRun(item.workflowRun) : null,
+    workflowRun: item.workflowRun
+      ? serializeWorkflowRun(item.workflowRun)
+      : null,
     intakeItem: item.intakeItem ? serializeIntakeItem(item.intakeItem) : null,
     intakeBatch: item.intakeItem
       ? serializeIntakeBatch(item.intakeItem.intakeBatch)
@@ -177,7 +179,7 @@ export function serializeReviewQueueItemWithContext(item: {
       ? serializeReviewedTradeInRecord(item.reviewedTradeInRecord)
       : null,
     humanReviewLearningEvents: item.humanReviewLearningEvents.map(
-      serializeHumanReviewLearningEvent
-    )
+      serializeHumanReviewLearningEvent,
+    ),
   };
 }

@@ -32,8 +32,9 @@ export function FinalRecordProvenance({
               <span className="guided-final-provenance-record__identity">
                 <strong>{record.label || "Unnamed record"}</strong>
                 <span>
-                  {record.sourceName} · {record.provenanceEntries.length} contributing
-                  source{record.provenanceEntries.length === 1 ? "" : "s"}
+                  {record.sourceName} · {record.provenanceEntries.length}{" "}
+                  contributing source
+                  {record.provenanceEntries.length === 1 ? "" : "s"}
                 </span>
               </span>
 

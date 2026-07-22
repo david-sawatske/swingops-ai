@@ -7,32 +7,32 @@ import { ollamaProvider } from "./providers/ollama.provider.js";
 import { openAiProvider } from "./providers/openai.provider.js";
 import type {
   ModelProviderExecuteInput,
-  ModelProviderName
+  ModelProviderName,
 } from "./model-provider.types.js";
 import type {
   ModelProviderFetch,
-  ModelProviderRuntimeConfig
+  ModelProviderRuntimeConfig,
 } from "./model-provider-runtime-config.js";
 
 const baseInput = {
   taskType: "INTAKE_PARSING",
   inputJson: {
-    originalText: "TaylorMade Stealth 2 driver 10.5 stiff right handed"
-  }
+    originalText: "TaylorMade Stealth 2 driver 10.5 stiff right handed",
+  },
 } satisfies Omit<ModelProviderExecuteInput, "model">;
 
 function disabledConfig(): ModelProviderRuntimeConfig {
   return {
-    enableRealModelCalls: false
+    enableRealModelCalls: false,
   };
 }
 
 function enabledConfig(
-  overrides: Partial<ModelProviderRuntimeConfig>
+  overrides: Partial<ModelProviderRuntimeConfig>,
 ): ModelProviderRuntimeConfig {
   return {
     enableRealModelCalls: true,
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -43,7 +43,7 @@ function jsonFetch(body: unknown): ModelProviderFetch {
     statusText: "OK",
     async json() {
       return body;
-    }
+    },
   });
 }
 
@@ -57,14 +57,14 @@ describe("model provider adapters", () => {
   it("keeps the mock provider deterministic", async () => {
     const result = await mockProvider.execute({
       ...baseInput,
-      model: "mock-golf-workflow-model"
+      model: "mock-golf-workflow-model",
     });
 
     expect(result.outputJson).toEqual({
       mock: true,
       provider: "MOCK",
       model: "mock-golf-workflow-model",
-      taskType: "INTAKE_PARSING"
+      taskType: "INTAKE_PARSING",
     });
   });
 
@@ -74,11 +74,11 @@ describe("model provider adapters", () => {
         ...baseInput,
         model: "gpt-4.1-mini",
         runtimeConfig: disabledConfig(),
-        fetchFn: failingFetch("OPENAI")
-      })
+        fetchFn: failingFetch("OPENAI"),
+      }),
     ).rejects.toMatchObject({
       code: "MODEL_PROVIDER_NOT_CONFIGURED",
-      provider: "OPENAI"
+      provider: "OPENAI",
     });
   });
 
@@ -88,11 +88,11 @@ describe("model provider adapters", () => {
         ...baseInput,
         model: "claude-3-5-sonnet",
         runtimeConfig: disabledConfig(),
-        fetchFn: failingFetch("ANTHROPIC")
-      })
+        fetchFn: failingFetch("ANTHROPIC"),
+      }),
     ).rejects.toMatchObject({
       code: "MODEL_PROVIDER_NOT_CONFIGURED",
-      provider: "ANTHROPIC"
+      provider: "ANTHROPIC",
     });
   });
 
@@ -102,11 +102,11 @@ describe("model provider adapters", () => {
         ...baseInput,
         model: "azure-gpt-4.1-mini",
         runtimeConfig: disabledConfig(),
-        fetchFn: failingFetch("AZURE_OPENAI")
-      })
+        fetchFn: failingFetch("AZURE_OPENAI"),
+      }),
     ).rejects.toMatchObject({
       code: "MODEL_PROVIDER_NOT_CONFIGURED",
-      provider: "AZURE_OPENAI"
+      provider: "AZURE_OPENAI",
     });
   });
 
@@ -116,11 +116,11 @@ describe("model provider adapters", () => {
         ...baseInput,
         model: "llama3.1",
         runtimeConfig: disabledConfig(),
-        fetchFn: failingFetch("OLLAMA")
-      })
+        fetchFn: failingFetch("OLLAMA"),
+      }),
     ).rejects.toMatchObject({
       code: "MODEL_PROVIDER_NOT_CONFIGURED",
-      provider: "OLLAMA"
+      provider: "OLLAMA",
     });
   });
 
@@ -142,21 +142,21 @@ describe("model provider adapters", () => {
           type: "object",
           properties: {
             brand: { type: "string" },
-            model: { type: "string" }
+            model: { type: "string" },
           },
           required: ["brand", "model"],
-          additionalProperties: false
-        }
+          additionalProperties: false,
+        },
       },
       runtimeConfig: enabledConfig({
-        openAiApiKey: "test-openai-key"
+        openAiApiKey: "test-openai-key",
       }),
       signal: controller.signal,
       fetchFn: async (url, init) => {
         requests.push({
           url,
           body: JSON.parse(init.body) as Record<string, unknown>,
-          ...(init.signal ? { signal: init.signal } : {})
+          ...(init.signal ? { signal: init.signal } : {}),
         });
 
         return {
@@ -172,22 +172,21 @@ describe("model provider adapters", () => {
                   content: [
                     {
                       type: "output_text",
-                      text:
-                        "{\"brand\":\"TaylorMade\",\"model\":\"Stealth 2\"}"
-                    }
+                      text: '{"brand":"TaylorMade","model":"Stealth 2"}',
+                    },
                   ],
-                  role: "assistant"
-                }
+                  role: "assistant",
+                },
               ],
               usage: {
                 input_tokens: 20,
                 output_tokens: 8,
-                total_tokens: 28
-              }
+                total_tokens: 28,
+              },
             };
-          }
+          },
         };
-      }
+      },
     });
 
     expect(requests).toHaveLength(1);
@@ -204,14 +203,14 @@ describe("model provider adapters", () => {
             schema: {
               type: "object",
               required: ["brand", "model"],
-              additionalProperties: false
-            }
-          }
-        }
-      }
+              additionalProperties: false,
+            },
+          },
+        },
+      },
     });
     expect(requests[0]?.body.input).toEqual(
-      expect.stringContaining("Task type: INTAKE_PARSING")
+      expect.stringContaining("Task type: INTAKE_PARSING"),
     );
     expect(requests[0]?.signal).toBe(controller.signal);
     expect(result.outputJson).toMatchObject({
@@ -220,13 +219,13 @@ describe("model provider adapters", () => {
       taskType: "INTAKE_PARSING",
       parsedJson: {
         brand: "TaylorMade",
-        model: "Stealth 2"
-      }
+        model: "Stealth 2",
+      },
     });
     expect(result.usage).toEqual({
       promptTokens: 20,
       completionTokens: 8,
-      totalTokens: 28
+      totalTokens: 28,
     });
   });
 
@@ -235,33 +234,33 @@ describe("model provider adapters", () => {
       ...baseInput,
       model: "claude-3-5-sonnet",
       runtimeConfig: enabledConfig({
-        anthropicApiKey: "test-anthropic-key"
+        anthropicApiKey: "test-anthropic-key",
       }),
       fetchFn: jsonFetch({
         content: [
           {
             type: "text",
-            text: "{\"category\":\"DRIVER\"}"
-          }
+            text: '{"category":"DRIVER"}',
+          },
         ],
         usage: {
           input_tokens: 15,
-          output_tokens: 5
-        }
-      })
+          output_tokens: 5,
+        },
+      }),
     });
 
     expect(result.outputJson).toMatchObject({
       provider: "ANTHROPIC",
       model: "claude-3-5-sonnet",
       parsedJson: {
-        category: "DRIVER"
-      }
+        category: "DRIVER",
+      },
     });
     expect(result.usage).toEqual({
       promptTokens: 15,
       completionTokens: 5,
-      totalTokens: 20
+      totalTokens: 20,
     });
   });
 
@@ -272,35 +271,35 @@ describe("model provider adapters", () => {
       runtimeConfig: enabledConfig({
         azureOpenAiApiKey: "test-azure-key",
         azureOpenAiEndpoint: "https://example-resource.openai.azure.com",
-        azureOpenAiDeployment: "test-deployment"
+        azureOpenAiDeployment: "test-deployment",
       }),
       fetchFn: jsonFetch({
         choices: [
           {
             message: {
-              content: "{\"dexterity\":\"RIGHT_HANDED\"}"
-            }
-          }
+              content: '{"dexterity":"RIGHT_HANDED"}',
+            },
+          },
         ],
         usage: {
           prompt_tokens: 30,
           completion_tokens: 6,
-          total_tokens: 36
-        }
-      })
+          total_tokens: 36,
+        },
+      }),
     });
 
     expect(result.outputJson).toMatchObject({
       provider: "AZURE_OPENAI",
       model: "test-deployment",
       parsedJson: {
-        dexterity: "RIGHT_HANDED"
-      }
+        dexterity: "RIGHT_HANDED",
+      },
     });
     expect(result.usage).toEqual({
       promptTokens: 30,
       completionTokens: 6,
-      totalTokens: 36
+      totalTokens: 36,
     });
   });
 
@@ -309,19 +308,19 @@ describe("model provider adapters", () => {
       ...baseInput,
       model: "llama3.1",
       runtimeConfig: enabledConfig({
-        ollamaBaseUrl: "http://localhost:11434"
+        ollamaBaseUrl: "http://localhost:11434",
       }),
       fetchFn: jsonFetch({
-        response: "{\"shaftFlex\":\"STIFF\"}"
-      })
+        response: '{"shaftFlex":"STIFF"}',
+      }),
     });
 
     expect(result.outputJson).toMatchObject({
       provider: "OLLAMA",
       model: "llama3.1",
       parsedJson: {
-        shaftFlex: "STIFF"
-      }
+        shaftFlex: "STIFF",
+      },
     });
   });
 });

@@ -4,7 +4,7 @@ import {
   serializeIntakeItem,
   serializeWorkflowStep,
   serializeToolCallLog,
-  serializeReviewQueueItem
+  serializeReviewQueueItem,
 } from "../serializers/shared-workflow-serializers.js";
 
 export {
@@ -13,7 +13,7 @@ export {
   serializeIntakeItem,
   serializeWorkflowStep,
   serializeToolCallLog,
-  serializeReviewQueueItem
+  serializeReviewQueueItem,
 };
 
 export function serializeModelCallAttemptLog(attempt: {
@@ -44,7 +44,7 @@ export function serializeModelCallAttemptLog(attempt: {
     estimatedCostUsd: attempt.estimatedCostUsd,
     startedAt: attempt.startedAt.toISOString(),
     completedAt: attempt.completedAt?.toISOString() ?? null,
-    createdAt: attempt.createdAt.toISOString()
+    createdAt: attempt.createdAt.toISOString(),
   };
 }
 
@@ -100,7 +100,7 @@ export function serializeModelCallLog(log: {
     startedAt: log.startedAt.toISOString(),
     completedAt: log.completedAt?.toISOString() ?? null,
     createdAt: log.createdAt.toISOString(),
-    attemptLogs: log.attemptLogs?.map(serializeModelCallAttemptLog) ?? []
+    attemptLogs: log.attemptLogs?.map(serializeModelCallAttemptLog) ?? [],
   };
 }
 
@@ -177,7 +177,7 @@ export function serializeWorkflowRunListItem(run: {
   auditOnlyToolCallLogCount?: number;
 }) {
   const openReviewQueueItemCount = run.reviewQueueItems.filter(
-    (item) => item.status === "OPEN" || item.status === "IN_REVIEW"
+    (item) => item.status === "OPEN" || item.status === "IN_REVIEW",
   ).length;
   const auditOnlyToolCallLogCount =
     run.auditOnlyToolCallLogCount ??
@@ -187,7 +187,7 @@ export function serializeWorkflowRunListItem(run: {
         log.outputJson !== null &&
         !Array.isArray(log.outputJson) &&
         "previewOnly" in log.outputJson &&
-        log.outputJson.previewOnly === true
+        log.outputJson.previewOnly === true,
     ).length;
 
   return {
@@ -204,6 +204,6 @@ export function serializeWorkflowRunListItem(run: {
     auditOnlyToolCallLogCount,
     totalReviewQueueItemCount:
       run._count?.reviewQueueItems ?? run.reviewQueueItems.length,
-    openReviewQueueItemCount
+    openReviewQueueItemCount,
   };
 }

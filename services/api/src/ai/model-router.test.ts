@@ -8,7 +8,7 @@ describe("model router", () => {
     const decision = routeModel({
       preferredGoal: "HIGH_QUALITY",
       taskType: "INTAKE_PARSING",
-      allowDisabledProvidersForSimulation: true
+      allowDisabledProvidersForSimulation: true,
     });
 
     expect(decision.provider).toBe("OPENAI");
@@ -20,8 +20,8 @@ describe("model router", () => {
     expect(decision.routingFactors).toEqual(
       expect.arrayContaining([
         "OPENAI health is HEALTHY.",
-        "Preferred routing goal is HIGH_QUALITY."
-      ])
+        "Preferred routing goal is HIGH_QUALITY.",
+      ]),
     );
     expect(decision.selectedModelMetadata).toMatchObject({
       provider: "OPENAI",
@@ -30,24 +30,20 @@ describe("model router", () => {
       modelEnabled: true,
       enabledForExecution: false,
       selected: true,
-      healthStatus: "HEALTHY"
+      healthStatus: "HEALTHY",
     });
     expect(decision.fallbackProvider).toBe("AZURE_OPENAI");
     expect(decision.fallbackModel).toBe("azure-gpt-4.1-mini");
     expect(decision.fallbackReason).toBeNull();
-    expect(decision.providerCandidates.map((candidate) => candidate.provider)).toEqual([
-      "MOCK",
-      "OPENAI",
-      "ANTHROPIC",
-      "AZURE_OPENAI",
-      "OLLAMA"
-    ]);
+    expect(
+      decision.providerCandidates.map((candidate) => candidate.provider),
+    ).toEqual(["MOCK", "OPENAI", "ANTHROPIC", "AZURE_OPENAI", "OLLAMA"]);
   });
 
   it("routes low-cost execution requests to the currently enabled mock provider", () => {
     const decision = routeModel({
       preferredGoal: "LOW_COST",
-      taskType: "INTAKE_PARSING"
+      taskType: "INTAKE_PARSING",
     });
 
     expect(decision.provider).toBe("MOCK");
@@ -59,10 +55,10 @@ describe("model router", () => {
         expect.objectContaining({
           provider: "OPENAI",
           rejectedReasons: expect.arrayContaining([
-            "Provider/model is disabled for execution. Enable simulation preview to consider it."
-          ])
-        })
-      ])
+            "Provider/model is disabled for execution. Enable simulation preview to consider it.",
+          ]),
+        }),
+      ]),
     );
   });
 
@@ -71,7 +67,7 @@ describe("model router", () => {
       {
         preferredGoal: "HIGH_QUALITY",
         taskType: "INTAKE_PARSING",
-        allowDisabledProvidersForSimulation: true
+        allowDisabledProvidersForSimulation: true,
       },
       {
         providerHealthByName: {
@@ -79,16 +75,16 @@ describe("model router", () => {
             provider: "OPENAI",
             status: "UNAVAILABLE",
             estimatedLatencyMs: 9999,
-            reason: "OpenAI is unavailable in this routing test."
+            reason: "OpenAI is unavailable in this routing test.",
           },
           ANTHROPIC: {
             provider: "ANTHROPIC",
             status: "HEALTHY",
             estimatedLatencyMs: 900,
-            reason: "Anthropic is healthy in this routing test."
-          }
-        }
-      }
+            reason: "Anthropic is healthy in this routing test.",
+          },
+        },
+      },
     );
 
     expect(decision.provider).toBe("ANTHROPIC");
@@ -97,10 +93,10 @@ describe("model router", () => {
         expect.objectContaining({
           provider: "OPENAI",
           rejectedReasons: expect.arrayContaining([
-            "Provider health is UNAVAILABLE."
-          ])
-        })
-      ])
+            "Provider health is UNAVAILABLE.",
+          ]),
+        }),
+      ]),
     );
   });
 
@@ -108,7 +104,7 @@ describe("model router", () => {
     const decision = routeModel({
       preferredGoal: "HIGH_QUALITY",
       taskType: "VALIDATION",
-      allowDisabledProvidersForSimulation: true
+      allowDisabledProvidersForSimulation: true,
     });
 
     expect(decision.provider).toBe("OPENAI");
@@ -117,9 +113,9 @@ describe("model router", () => {
         expect.objectContaining({
           provider: "ANTHROPIC",
           healthStatus: "DEGRADED",
-          reasonCodes: expect.arrayContaining(["PROVIDER_DEGRADED"])
-        })
-      ])
+          reasonCodes: expect.arrayContaining(["PROVIDER_DEGRADED"]),
+        }),
+      ]),
     );
   });
 
@@ -127,7 +123,7 @@ describe("model router", () => {
     const decision = routeModel({
       preferredGoal: "LOCAL_ONLY",
       taskType: "FIELD_NORMALIZATION",
-      allowDisabledProvidersForSimulation: true
+      allowDisabledProvidersForSimulation: true,
     });
 
     expect(decision.provider).toBe("OLLAMA");
@@ -136,17 +132,17 @@ describe("model router", () => {
       provider: "OLLAMA",
       providerEnabled: false,
       enabledForExecution: false,
-      healthStatus: "HEALTHY"
+      healthStatus: "HEALTHY",
     });
     expect(decision.rejectedCandidates).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           provider: "MOCK",
           rejectedReasons: expect.arrayContaining([
-            "Rejected because LOCAL_ONLY requires a local provider."
-          ])
-        })
-      ])
+            "Rejected because LOCAL_ONLY requires a local provider.",
+          ]),
+        }),
+      ]),
     );
   });
 
@@ -154,13 +150,13 @@ describe("model router", () => {
     const decision = routeModel({
       preferredGoal: "LOCAL_ONLY",
       taskType: "VALIDATION",
-      allowDisabledProvidersForSimulation: true
+      allowDisabledProvidersForSimulation: true,
     });
 
     expect(decision.provider).toBe("MOCK");
     expect(decision.model).toBe("mock-golf-workflow-model");
     expect(decision.fallbackReason).toBe(
-      "Fallback mock model because no eligible local model supports VALIDATION."
+      "Fallback mock model because no eligible local model supports VALIDATION.",
     );
     expect(decision.reason).toBe(decision.fallbackReason);
     expect(decision.rejectedCandidates).toEqual(
@@ -168,29 +164,31 @@ describe("model router", () => {
         expect.objectContaining({
           provider: "OLLAMA",
           rejectedReasons: expect.arrayContaining([
-            "Does not support task type VALIDATION."
-          ])
-        })
-      ])
+            "Does not support task type VALIDATION.",
+          ]),
+        }),
+      ]),
     );
   });
 
   it("keeps disabled providers visible to simulation but unavailable for execution by default", () => {
     const executionDecision = routeModel({
       preferredGoal: "HIGH_QUALITY",
-      taskType: "INTAKE_PARSING"
+      taskType: "INTAKE_PARSING",
     });
 
     const simulationDecision = routeModel({
       preferredGoal: "HIGH_QUALITY",
       taskType: "INTAKE_PARSING",
-      allowDisabledProvidersForSimulation: true
+      allowDisabledProvidersForSimulation: true,
     });
 
     expect(executionDecision.provider).toBe("MOCK");
-    expect(executionDecision.rejectedCandidates.map((candidate) => candidate.provider)).toContain(
-      "OPENAI"
-    );
+    expect(
+      executionDecision.rejectedCandidates.map(
+        (candidate) => candidate.provider,
+      ),
+    ).toContain("OPENAI");
     expect(simulationDecision.provider).toBe("OPENAI");
   });
 
@@ -204,7 +202,7 @@ describe("model router", () => {
       costTier: "FREE",
       latencyTier: "LOW",
       qualityTier: "HIGH",
-      enabled: true
+      enabled: true,
     };
 
     const jsonModel: ModelProviderModelConfig = {
@@ -216,21 +214,21 @@ describe("model router", () => {
       costTier: "LOW",
       latencyTier: "LOW",
       qualityTier: "MEDIUM",
-      enabled: true
+      enabled: true,
     };
 
     const decision = routeModel(
       {
         preferredGoal: "HIGH_QUALITY",
         taskType: "REVIEW_SUMMARY",
-        requireJson: true
+        requireJson: true,
       },
       {
         modelConfigs: [nonJsonModel, jsonModel],
         providerEnabledByName: {
-          MOCK: true
-        }
-      }
+          MOCK: true,
+        },
+      },
     );
 
     expect(decision.provider).toBe("MOCK");
@@ -238,15 +236,15 @@ describe("model router", () => {
     expect(decision.rejectedCandidates).toEqual([
       expect.objectContaining({
         model: "mock-text-only-model",
-        rejectedReasons: ["Does not support required JSON output."]
-      })
+        rejectedReasons: ["Does not support required JSON output."],
+      }),
     ]);
   });
 
   it("keeps the existing goal field compatible with existing routeModel callers", () => {
     const decision = routeModel({
       goal: "LOW_LATENCY",
-      taskType: "REVIEW_SUMMARY"
+      taskType: "REVIEW_SUMMARY",
     });
 
     expect(decision.provider).toBe("MOCK");

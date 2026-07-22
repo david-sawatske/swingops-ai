@@ -19,7 +19,10 @@ export type KnowledgeEmbeddingResult = {
 };
 
 function normalize(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 export function tokensForKnowledgeEmbedding(value: string): string[] {
@@ -50,7 +53,7 @@ function tokenWeight(token: string): number {
 }
 
 export function buildDeterministicKnowledgeEmbedding(
-  text: string
+  text: string,
 ): KnowledgeEmbeddingResult {
   const tokens = tokensForKnowledgeEmbedding(text);
   const vector = Array.from({ length: KNOWLEDGE_EMBEDDING_DIMENSION }, () => 0);
@@ -64,7 +67,7 @@ export function buildDeterministicKnowledgeEmbedding(
   }
 
   const magnitude = Math.sqrt(
-    vector.reduce((sum, value) => sum + value * value, 0)
+    vector.reduce((sum, value) => sum + value * value, 0),
   );
   const normalizedVector =
     magnitude === 0
@@ -80,8 +83,8 @@ export function buildDeterministicKnowledgeEmbedding(
       embeddingModel: KNOWLEDGE_EMBEDDING_MODEL,
       embeddingDimension: KNOWLEDGE_EMBEDDING_DIMENSION,
       tokenCount: tokens.length,
-      uniqueTokenCount: new Set(tokens).size
-    }
+      uniqueTokenCount: new Set(tokens).size,
+    },
   };
 }
 

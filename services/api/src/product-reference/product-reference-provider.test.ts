@@ -1,15 +1,7 @@
-import {
-  describe,
-  expect,
-  it
-} from "vitest";
+import { describe, expect, it } from "vitest";
 
-import {
-  createInMemoryProductReferenceProvider
-} from "./product-reference-provider.js";
-import type {
-  ProductReferenceRecord
-} from "./product-reference-types.js";
+import { createInMemoryProductReferenceProvider } from "./product-reference-provider.js";
+import type { ProductReferenceRecord } from "./product-reference-types.js";
 
 const product: ProductReferenceRecord = {
   productId: "prod_test_driver",
@@ -19,59 +11,35 @@ const product: ProductReferenceRecord = {
   category: "DRIVER",
   year: 2026,
   aliases: ["test drv"],
-  shaftFamilies: []
+  shaftFamilies: [],
 };
 
 describe("product-reference-provider", () => {
   it("looks up stable product IDs and SKUs", () => {
-    const provider =
-      createInMemoryProductReferenceProvider([
-        product
-      ]);
+    const provider = createInMemoryProductReferenceProvider([product]);
 
-    expect(
-      provider.findByProductId(
-        "prod_test_driver"
-      )
-    ).toMatchObject({
+    expect(provider.findByProductId("prod_test_driver")).toMatchObject({
       productId: "prod_test_driver",
-      sku: "TEST-DRIVER-2026"
+      sku: "TEST-DRIVER-2026",
     });
 
-    expect(
-      provider.findBySku(
-        "TEST-DRIVER-2026"
-      )
-    ).toMatchObject({
+    expect(provider.findBySku("TEST-DRIVER-2026")).toMatchObject({
       productId: "prod_test_driver",
-      sku: "TEST-DRIVER-2026"
+      sku: "TEST-DRIVER-2026",
     });
   });
 
   it("returns defensive record copies", () => {
-    const provider =
-      createInMemoryProductReferenceProvider([
-        product
-      ]);
+    const provider = createInMemoryProductReferenceProvider([product]);
 
     const firstList = provider.listProducts();
     const secondList = provider.listProducts();
-    const firstById =
-      provider.findByProductId(
-        "prod_test_driver"
-      );
-    const secondById =
-      provider.findByProductId(
-        "prod_test_driver"
-      );
+    const firstById = provider.findByProductId("prod_test_driver");
+    const secondById = provider.findByProductId("prod_test_driver");
 
     expect(firstList).not.toBe(secondList);
-    expect(firstList[0]).not.toBe(
-      secondList[0]
-    );
-    expect(firstList[0]?.aliases).not.toBe(
-      secondList[0]?.aliases
-    );
+    expect(firstList[0]).not.toBe(secondList[0]);
+    expect(firstList[0]?.aliases).not.toBe(secondList[0]?.aliases);
     expect(firstById).not.toBe(secondById);
   });
 
@@ -81,12 +49,10 @@ describe("product-reference-provider", () => {
         product,
         {
           ...product,
-          sku: "TEST-DRIVER-SECOND-2026"
-        }
-      ])
-    ).toThrow(
-      "Duplicate product reference ID: prod_test_driver"
-    );
+          sku: "TEST-DRIVER-SECOND-2026",
+        },
+      ]),
+    ).toThrow("Duplicate product reference ID: prod_test_driver");
   });
 
   it("rejects duplicate stable SKUs", () => {
@@ -95,12 +61,9 @@ describe("product-reference-provider", () => {
         product,
         {
           ...product,
-          productId:
-            "prod_test_driver_second"
-        }
-      ])
-    ).toThrow(
-      "Duplicate product reference SKU: TEST-DRIVER-2026"
-    );
+          productId: "prod_test_driver_second",
+        },
+      ]),
+    ).toThrow("Duplicate product reference SKU: TEST-DRIVER-2026");
   });
 });

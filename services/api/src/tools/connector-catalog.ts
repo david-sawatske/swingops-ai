@@ -93,11 +93,15 @@ function serializeDate(value: Date | null): string | null {
   return value ? value.toISOString() : null;
 }
 
-function getOutputRecord(outputJson: Prisma.JsonValue): Record<string, unknown> {
+function getOutputRecord(
+  outputJson: Prisma.JsonValue,
+): Record<string, unknown> {
   return isRecord(outputJson) ? outputJson : {};
 }
 
-function getPolicyDecision(outputJson: Prisma.JsonValue): ConnectorPolicyDecision {
+function getPolicyDecision(
+  outputJson: Prisma.JsonValue,
+): ConnectorPolicyDecision {
   const output = getOutputRecord(outputJson);
   return output.policyDecision === "ALLOW" ? "ALLOW" : "BLOCK";
 }
@@ -105,13 +109,15 @@ function getPolicyDecision(outputJson: Prisma.JsonValue): ConnectorPolicyDecisio
 function getPolicyReasonCodes(outputJson: Prisma.JsonValue): string[] {
   const output = getOutputRecord(outputJson);
   return Array.isArray(output.policyReasonCodes)
-    ? output.policyReasonCodes.filter((code): code is string => typeof code === "string")
+    ? output.policyReasonCodes.filter(
+        (code): code is string => typeof code === "string",
+      )
     : [];
 }
 
 function getStringField(
   outputJson: Prisma.JsonValue,
-  fieldName: string
+  fieldName: string,
 ): string | null {
   const output = getOutputRecord(outputJson);
   return typeof output[fieldName] === "string" ? output[fieldName] : null;
@@ -185,7 +191,8 @@ function policyForTool(tool: AgentToolDefinition): {
       allowedExecutionMode: "DISABLED",
       policyDecision: "BLOCK",
       policyReasonCodes: ["TOOL_DISABLED"],
-      policyReason: "Tool is registered for visibility but disabled for execution."
+      policyReason:
+        "Tool is registered for visibility but disabled for execution.",
     };
   }
 
@@ -195,7 +202,7 @@ function policyForTool(tool: AgentToolDefinition): {
       policyDecision: "BLOCK",
       policyReasonCodes: ["MUTATION_BLOCKED_IN_READ_ONLY_MODE"],
       policyReason:
-        "Mutation tools are blocked on the read-only connector execution surface."
+        "Mutation tools are blocked on the read-only connector execution surface.",
     };
   }
 
@@ -205,7 +212,7 @@ function policyForTool(tool: AgentToolDefinition): {
       policyDecision: "BLOCK",
       policyReasonCodes: ["HUMAN_APPROVAL_REQUIRED"],
       policyReason:
-        "Approval-required tools are not executable through the autonomous read-only demo."
+        "Approval-required tools are not executable through the autonomous read-only demo.",
     };
   }
 
@@ -214,36 +221,36 @@ function policyForTool(tool: AgentToolDefinition): {
     policyDecision: "ALLOW",
     policyReasonCodes: ["TOOL_ALLOWED"],
     policyReason:
-      "Tool is enabled, low-risk/read-only, and allowed for autonomous read-only execution."
+      "Tool is enabled, low-risk/read-only, and allowed for autonomous read-only execution.",
   };
 }
 
-async function getInvocationSummaries(): Promise<Map<string, ConnectorInvocationSummary>> {
+async function getInvocationSummaries(): Promise<
+  Map<string, ConnectorInvocationSummary>
+> {
   const logs = await prisma.toolCallLog.findMany({
     orderBy: {
-      createdAt: "desc"
+      createdAt: "desc",
     },
     select: {
       toolName: true,
       status: true,
       outputJson: false,
-      createdAt: true
-    }
+      createdAt: true,
+    },
   });
 
   const summaries = new Map<string, ConnectorInvocationSummary>();
 
   for (const log of logs) {
-    const existing =
-      summaries.get(log.toolName) ??
-      {
-        toolName: log.toolName,
-        lastInvokedAt: null,
-        totalCount: 0,
-        succeededCount: 0,
-        failedCount: 0,
-        blockedCount: 0
-      };
+    const existing = summaries.get(log.toolName) ?? {
+      toolName: log.toolName,
+      lastInvokedAt: null,
+      totalCount: 0,
+      succeededCount: 0,
+      failedCount: 0,
+      blockedCount: 0,
+    };
 
     existing.totalCount += 1;
 
@@ -282,8 +289,8 @@ export async function listConnectorCatalog(): Promise<ConnectorCatalogResponse> 
         total: summary?.totalCount ?? 0,
         succeeded: summary?.succeededCount ?? 0,
         failed: summary?.failedCount ?? 0,
-        blocked: summary?.blockedCount ?? 0
-      }
+        blocked: summary?.blockedCount ?? 0,
+      },
     };
   });
 
@@ -296,14 +303,14 @@ export async function listConnectorCatalog(): Promise<ConnectorCatalogResponse> 
       mutationExecutionEnabled: false,
       auditLogPersistence: "TOOL_CALL_LOG",
       summary:
-        "Internal MCP-style connector catalog with read-only execution, policy previews, ToolCallLog-backed audit history, and a local stdio external MCP transport."
+        "Internal MCP-style connector catalog with read-only execution, policy previews, ToolCallLog-backed audit history, and a local stdio external MCP transport.",
     },
-    externalMcpReadiness: getExternalMcpServerReadiness()
+    externalMcpReadiness: getExternalMcpServerReadiness(),
   };
 }
 
 export async function listConnectorInvocationHistory(
-  limit = 25
+  limit = 25,
 ): Promise<ConnectorInvocationHistoryResponse> {
   const safeLimit = Math.min(Math.max(limit, 1), 100);
   const toolByName = new Map(listAgentTools().map((tool) => [tool.name, tool]));
@@ -311,8 +318,8 @@ export async function listConnectorInvocationHistory(
   const logs = await prisma.toolCallLog.findMany({
     take: safeLimit,
     orderBy: {
-      createdAt: "desc"
-    }
+      createdAt: "desc",
+    },
   });
 
   return {
@@ -339,14 +346,14 @@ export async function listConnectorInvocationHistory(
         completedAt: serializeDate(log.completedAt),
         createdAt: log.createdAt.toISOString(),
         resultPreview: getResultPreview(log),
-        failureReason: getFailureReason(log.outputJson) ?? log.errorMessage
+        failureReason: getFailureReason(log.outputJson) ?? log.errorMessage,
       };
     }),
     historyMetadata: {
       source: "TOOL_CALL_LOG",
       limit: safeLimit,
       auditStory:
-        "agent/tool request → policy decision → execution or block → persisted ToolCallLog audit record"
-    }
+        "agent/tool request → policy decision → execution or block → persisted ToolCallLog audit record",
+    },
   };
 }

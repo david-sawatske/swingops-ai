@@ -42,7 +42,9 @@ export function getStringListField(
     return "—";
   }
 
-  const strings = value.filter((item): item is string => typeof item === "string");
+  const strings = value.filter(
+    (item): item is string => typeof item === "string",
+  );
 
   return strings.length > 0 ? strings.join(", ") : "—";
 }

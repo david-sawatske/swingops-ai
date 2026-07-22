@@ -1,49 +1,46 @@
 import { LEGACY_FREEFORM_NOTES_INTAKE_SOURCE_TYPE } from "../intake/legacy-intake-source-types.js";
-import type { ModelCallLog, Prisma, ReviewQueueItem, ToolCallLog } from "@prisma/client";
+import type {
+  ModelCallLog,
+  Prisma,
+  ReviewQueueItem,
+  ToolCallLog,
+} from "@prisma/client";
 
 import type { ModelRouteDecision } from "../ai/model-router.js";
 import type {
   ModelProviderFetch,
-  ModelProviderRuntimeConfig
+  ModelProviderRuntimeConfig,
 } from "../ai/model-provider-runtime-config.js";
-import type {
-  InventoryProductLookupResult
-} from "../internal-systems/inventory-service.js";
-import type {
-  ProductReferenceProvider
-} from "../product-reference/product-reference-provider.js";
+import type { InventoryProductLookupResult } from "../internal-systems/inventory-service.js";
+import type { ProductReferenceProvider } from "../product-reference/product-reference-provider.js";
 import {
   estimateTradeInValuation,
-  type TradeInValuationResult
+  type TradeInValuationResult,
 } from "../internal-systems/trade-in-valuation-service.js";
 import { ensureDemoKnowledgeBaseReady } from "../knowledge/knowledge-ingestion.js";
 import {
   searchKnowledgeBase,
-  type KnowledgeSearchResult
+  type KnowledgeSearchResult,
 } from "../knowledge/knowledge-search.js";
 import { prisma } from "../lib/prisma.js";
 import {
   buildPriorReviewLearningSuggestionsFromEvidence,
   findPriorReviewLearningEvidence,
   type PriorReviewLearningEvidence,
-  type PriorReviewLearningSuggestion
+  type PriorReviewLearningSuggestion,
 } from "../review-learning/review-learning-evidence.js";
 import {
   executeReadOnlyToolInvocation,
-  type ReadOnlyToolInvocationResult
+  type ReadOnlyToolInvocationResult,
 } from "../tools/read-only-tool-invocation.js";
 import {
   buildDeterministicPolicyFieldRepairAdvisoryCandidates,
   buildPriorReviewFieldRepairAdvisoryCandidates,
   filterPriorReviewLearningSuggestionsForSourceSafety,
-  mergeFieldRepairAdvisoryCandidates
+  mergeFieldRepairAdvisoryCandidates,
 } from "./field-repair-advisory-candidates.js";
-import {
-  isShaftFlexApplicable
-} from "./golf-field-applicability.js";
-import {
-  createModelExecutionLogForWorkflowRun
-} from "./workflow-model-logging.js";
+import { isShaftFlexApplicable } from "./golf-field-applicability.js";
+import { createModelExecutionLogForWorkflowRun } from "./workflow-model-logging.js";
 import {
   MAIN_RUN_FIELD_REPAIR_AGENT_NAME,
   MAIN_RUN_FIELD_REPAIR_MAX_RECORDS,
@@ -56,36 +53,34 @@ import {
   validateMainRunFieldRepairModelOutput,
   type FieldRepairRecordOutcome,
   type FieldRepairSuggestion,
-  type MainRunFieldRepairRecordInput
+  type MainRunFieldRepairRecordInput,
 } from "./main-run-field-repair.js";
 import {
   buildWorkflowQualityBundle,
-  type WorkflowQualityBundle
+  type WorkflowQualityBundle,
 } from "./workflow-quality.js";
 import {
   executePersistedWorkflowStep,
   markPersistedWorkflowStepRetrying,
-  requireWorkflowStep
+  requireWorkflowStep,
 } from "./workflow-step-persistence.js";
 import {
   TRADE_IN_WORKFLOW_STEP_NAMES,
   buildTradeInWorkflowOrchestrationTrace,
-  type WorkflowOrchestrationTrace
+  type WorkflowOrchestrationTrace,
 } from "./workflow-orchestration-trace.js";
 import { failIntakeBatchAfterWorkflowSetupError } from "./workflow-run-failure.js";
-import {
-  buildInventoryLookupFromProductResolution
-} from "./product-resolution-inventory-adapter.js";
+import { buildInventoryLookupFromProductResolution } from "./product-resolution-inventory-adapter.js";
 import {
   parseTradeInDemoText,
-  type ParsedTradeInDemoItem
+  type ParsedTradeInDemoItem,
 } from "./trade-in-demo-parser.js";
 import {
   TARGETED_FIELD_RETRY_MAX_ATTEMPTS,
   TARGETED_FIELD_RETRY_POLICY,
   buildSkippedTargetedFieldRetry,
   completeTargetedFieldRetry,
-  findTargetedFieldRetryCandidate
+  findTargetedFieldRetryCandidate,
 } from "./targeted-field-retry.js";
 
 export type EndToEndAgenticTradeInDemoAuditEvent = {
@@ -208,7 +203,7 @@ export const DEFAULT_AGENTIC_TRADE_IN_DEMO_INPUT = [
   "TM stealth2 drv 10.5 Ventus stiff, no hc, sky mark on crown",
   "Titleist TSR maybe TS2 3w 15 deg Tensei s flex, face wear, hc included",
   "Cally Rogue ST Max driver 9 Project X HZRDUS x-stiff, paint wear, no wrench",
-  "PING G425 irons 5-PW reg, worn grips, condition unclear"
+  "PING G425 irons 5-PW reg, worn grips, condition unclear",
 ].join("\n");
 
 export const AGENTIC_TRADE_IN_DEMO_MAX_INPUT_CHARACTERS = 20_000;
@@ -217,7 +212,7 @@ const NON_RECORD_DEMO_HEADER_PATTERNS = [
   /^store associate pasted trade-in notes:?$/i,
   /^store associate trade-in notes:?$/i,
   /^pasted trade-in notes:?$/i,
-  /^trade-in notes:?$/i
+  /^trade-in notes:?$/i,
 ];
 
 function stripNonRecordDemoHeaderLines(rawInput: string): string {
@@ -227,13 +222,14 @@ function stripNonRecordDemoHeaderLines(rawInput: string): string {
     .filter(Boolean)
     .filter(
       (line) =>
-        !NON_RECORD_DEMO_HEADER_PATTERNS.some((pattern) => pattern.test(line))
+        !NON_RECORD_DEMO_HEADER_PATTERNS.some((pattern) => pattern.test(line)),
     );
 
   return recordLines.join("\n") || rawInput.trim();
 }
 
-type DemoToolResult = EndToEndAgenticTradeInDemoResult["toolCallResults"][number];
+type DemoToolResult =
+  EndToEndAgenticTradeInDemoResult["toolCallResults"][number];
 
 function buildProviderFallbackDemonstrationOptions(enabled: boolean): {
   runtimeConfig?: ModelProviderRuntimeConfig;
@@ -246,7 +242,7 @@ function buildProviderFallbackDemonstrationOptions(enabled: boolean): {
   return {
     runtimeConfig: {
       enableRealModelCalls: true,
-      openAiApiKey: "provider-fallback-demonstration"
+      openAiApiKey: "provider-fallback-demonstration",
     },
     fetchFn: async () => ({
       ok: false,
@@ -254,10 +250,10 @@ function buildProviderFallbackDemonstrationOptions(enabled: boolean): {
       statusText: "Service Unavailable",
       async json() {
         return {
-          error: "Deterministic provider availability demonstration."
+          error: "Deterministic provider availability demonstration.",
         };
-      }
-    })
+      },
+    }),
   };
 }
 
@@ -277,7 +273,7 @@ function buildKnowledgeQuery(item: ParsedTradeInDemoItem): string {
     item.shaftFlex,
     ...item.conditionNotes,
     ...item.accessoriesNotes,
-    item.rawLine
+    item.rawLine,
   ]
     .filter(Boolean)
     .join(" ");
@@ -287,32 +283,21 @@ function needsReview(item: ParsedTradeInDemoItem): boolean {
   return item.confidence < 0.72 || item.missingFields.length > 0;
 }
 
-function getFieldRepairMissingFields(
-  item: ParsedTradeInDemoItem
-): string[] {
+function getFieldRepairMissingFields(item: ParsedTradeInDemoItem): string[] {
   return [
     item.brand ? null : "brand",
     item.productLine ? null : "productLine",
     item.category ? null : "category",
-    isShaftFlexApplicable(item.category) &&
-    !item.shaftFlex
+    isShaftFlexApplicable(item.category) && !item.shaftFlex
       ? "shaftFlex"
       : null,
-    item.conditionGrade
-      ? null
-      : "conditionGrade",
-    item.tradeInValue === null
-      ? "tradeInValue"
-      : null
-  ].filter(
-    (field): field is string =>
-      Boolean(field)
-  );
+    item.conditionGrade ? null : "conditionGrade",
+    item.tradeInValue === null ? "tradeInValue" : null,
+  ].filter((field): field is string => Boolean(field));
 }
 
 function shouldRunFieldRepair(item: ParsedTradeInDemoItem): boolean {
-  const fieldRepairMissingFields =
-    getFieldRepairMissingFields(item);
+  const fieldRepairMissingFields = getFieldRepairMissingFields(item);
 
   return (
     item.confidence < 0.72 ||
@@ -322,7 +307,7 @@ function shouldRunFieldRepair(item: ParsedTradeInDemoItem): boolean {
 }
 
 function getModelRoutingDecisionFromLog(
-  modelCallLog: ModelCallLog
+  modelCallLog: ModelCallLog,
 ): ModelRouteDecision {
   const responseJson = modelCallLog.responseJson as
     | {
@@ -339,7 +324,7 @@ function getModelRoutingDecisionFromLog(
 }
 
 function getProviderExecutionOutputJson(
-  modelCallLog: ModelCallLog
+  modelCallLog: ModelCallLog,
 ): Record<string, unknown> | null {
   const responseJson = modelCallLog.responseJson as
     | {
@@ -353,14 +338,16 @@ function getProviderExecutionOutputJson(
   return responseJson?.providerExecution?.outputJson ?? null;
 }
 
-function buildInventoryLookupInput(item: ParsedTradeInDemoItem): Record<string, string> {
+function buildInventoryLookupInput(
+  item: ParsedTradeInDemoItem,
+): Record<string, string> {
   return {
     ...(item.brand ? { brand: item.brand } : {}),
     ...(item.productLine ? { productLine: item.productLine } : {}),
     ...(item.category ? { category: item.category } : {}),
     ...(item.shaftBrand ? { shaftBrand: item.shaftBrand } : {}),
     ...(item.shaftModel ? { shaftModel: item.shaftModel } : {}),
-    rawText: item.rawLine
+    rawText: item.rawLine,
   };
 }
 
@@ -372,7 +359,7 @@ function buildValuationInput(input: {
     ...buildInventoryLookupInput(input.item),
     inventoryMatch: input.inventoryMatch,
     conditionNotes: input.item.conditionNotes,
-    accessoriesNotes: input.item.accessoriesNotes
+    accessoriesNotes: input.item.accessoriesNotes,
   };
 }
 
@@ -380,7 +367,9 @@ function valuationNeedsReview(estimate: TradeInValuationResult): boolean {
   return estimate.reviewRequired || estimate.confidence === "LOW";
 }
 
-function getReviewReason(item: ParsedTradeInDemoItem): "LOW_CONFIDENCE" | "MISSING_REQUIRED_FIELDS" | "AMBIGUOUS_INPUT" {
+function getReviewReason(
+  item: ParsedTradeInDemoItem,
+): "LOW_CONFIDENCE" | "MISSING_REQUIRED_FIELDS" | "AMBIGUOUS_INPUT" {
   if (getFieldRepairMissingFields(item).length > 0) {
     return "MISSING_REQUIRED_FIELDS";
   }
@@ -399,15 +388,13 @@ function summarizeReviewReason(input: {
   const missingFields = getFieldRepairMissingFields(input.item);
   const reasons = [
     input.item.confidence < 0.72 ? `confidence ${input.item.confidence}` : null,
-    missingFields.length > 0
-      ? `missing ${missingFields.join(", ")}`
-      : null,
+    missingFields.length > 0 ? `missing ${missingFields.join(", ")}` : null,
     input.item.uncertaintyNotes.length > 0
       ? `uncertainty: ${input.item.uncertaintyNotes.join(", ")}`
       : null,
     input.valuationEstimate?.reviewRequired
       ? `valuation review: ${input.valuationEstimate.reviewReasons.join(", ")}`
-      : null
+      : null,
   ].filter(Boolean);
 
   return reasons.join("; ");
@@ -435,19 +422,19 @@ async function resolveSupersededIntakeReviewMarkers(input: {
   const upstreamReviewItems = await prisma.reviewQueueItem.findMany({
     where: {
       id: {
-        not: input.authoritativeReviewQueueItemId
+        not: input.authoritativeReviewQueueItemId,
       },
       workflowRunId: {
-        not: input.currentWorkflowRunId
+        not: input.currentWorkflowRunId,
       },
       status: {
-        in: ["OPEN", "IN_REVIEW"]
-      }
+        in: ["OPEN", "IN_REVIEW"],
+      },
     },
     include: {
       workflowRun: true,
-      intakeItem: true
-    }
+      intakeItem: true,
+    },
   });
 
   const matchingReviewItemIds = upstreamReviewItems
@@ -455,7 +442,8 @@ async function resolveSupersededIntakeReviewMarkers(input: {
       return (
         reviewItem.workflowRun?.workflowName === "multi-source-intake-demo" &&
         reviewItem.intakeItem?.sourceRowNumber === input.sourceRowNumber &&
-        normalizeReviewSourceText(reviewItem.originalText) === normalizedSourceText
+        normalizeReviewSourceText(reviewItem.originalText) ===
+          normalizedSourceText
       );
     })
     .map((reviewItem) => reviewItem.id);
@@ -469,22 +457,24 @@ async function resolveSupersededIntakeReviewMarkers(input: {
       upstreamReviewItems
         .filter((reviewItem) => matchingReviewItemIds.includes(reviewItem.id))
         .map((reviewItem) => reviewItem.workflowRunId)
-        .filter((workflowRunId): workflowRunId is string => Boolean(workflowRunId))
-    )
+        .filter((workflowRunId): workflowRunId is string =>
+          Boolean(workflowRunId),
+        ),
+    ),
   ];
 
   const result = await prisma.reviewQueueItem.updateMany({
     where: {
       id: {
-        in: matchingReviewItemIds
-      }
+        in: matchingReviewItemIds,
+      },
     },
     data: {
       status: "SUPERSEDED",
       supersededByReviewQueueItemId: input.authoritativeReviewQueueItemId,
       supersededAt: new Date(),
-      supersededReason: `Superseded by guarded workflow review item ${input.authoritativeReviewQueueItemId}.`
-    }
+      supersededReason: `Superseded by guarded workflow review item ${input.authoritativeReviewQueueItemId}.`,
+    },
   });
 
   for (const workflowRunId of affectedWorkflowRunIds) {
@@ -492,20 +482,20 @@ async function resolveSupersededIntakeReviewMarkers(input: {
       where: {
         workflowRunId,
         status: {
-          in: ["OPEN", "IN_REVIEW"]
-        }
-      }
+          in: ["OPEN", "IN_REVIEW"],
+        },
+      },
     });
 
     if (remainingOpenReviewCount === 0) {
       await prisma.workflowRun.update({
         where: {
-          id: workflowRunId
+          id: workflowRunId,
         },
         data: {
           status: "COMPLETED",
-          completedAt: new Date()
-        }
+          completedAt: new Date(),
+        },
       });
     }
   }
@@ -522,7 +512,7 @@ function toToolResult(result: ReadOnlyToolInvocationResult): DemoToolResult {
     executionAttempted: result.invocation.executionAttempted,
     toolCallLogId: result.invocation.toolCallLogId,
     outputPreview: result.connectorResult?.data ?? null,
-    errorMessage: result.toolCallLog.errorMessage
+    errorMessage: result.toolCallLog.errorMessage,
   };
 }
 
@@ -546,10 +536,11 @@ function buildAuditTrail(input: {
       orderIndex: 1,
       label: "Raw messy intake received",
       status: "INFO",
-      summary: "Captured freeform golf trade-in text for deterministic parsing.",
+      summary:
+        "Captured freeform golf trade-in text for deterministic parsing.",
       details: {
-        rawInput: input.rawInput
-      }
+        rawInput: input.rawInput,
+      },
     },
     {
       orderIndex: 2,
@@ -557,8 +548,8 @@ function buildAuditTrail(input: {
       status: "SUCCEEDED",
       summary: `Parsed ${input.parsedItems.length} equipment records with confidence and missing-field signals.`,
       details: {
-        parsedItems: input.parsedItems
-      }
+        parsedItems: input.parsedItems,
+      },
     },
     {
       orderIndex: 3,
@@ -566,8 +557,8 @@ function buildAuditTrail(input: {
       status: "SUCCEEDED",
       summary: `Retrieved ${input.finalSummary.knowledgeMatchCount} weighted knowledge matches across parsed items.`,
       details: {
-        knowledgeMatchesByItem: input.knowledgeMatchesByItem
-      }
+        knowledgeMatchesByItem: input.knowledgeMatchesByItem,
+      },
     },
     {
       orderIndex: 4,
@@ -575,8 +566,8 @@ function buildAuditTrail(input: {
       status: "SUCCEEDED",
       summary: `${input.finalSummary.inventoryMatchCount}/${input.parsedItems.length} parsed records matched seeded internal products or SKU candidates.`,
       details: {
-        inventoryMatchesByItem: input.inventoryMatchesByItem
-      }
+        inventoryMatchesByItem: input.inventoryMatchesByItem,
+      },
     },
     {
       orderIndex: 5,
@@ -587,32 +578,33 @@ function buildAuditTrail(input: {
           : "SUCCEEDED",
       summary: `${input.finalSummary.valuationRangeCount} demo valuation range(s) estimated with condition and accessory adjustments.`,
       details: {
-        valuationEvidenceByItem: input.valuationEvidenceByItem
-      }
+        valuationEvidenceByItem: input.valuationEvidenceByItem,
+      },
     },
     {
       orderIndex: 6,
       label: "Model route selected",
-      status: input.fieldRepairExecution.validationPassed ? "SUCCEEDED" : "NEEDS_REVIEW",
+      status: input.fieldRepairExecution.validationPassed
+        ? "SUCCEEDED"
+        : "NEEDS_REVIEW",
       summary: `${input.modelRoutingDecision.selectedProvider} / ${input.modelRoutingDecision.selectedModel} executed field repair with ${input.fieldRepairExecution.suggestions.length} validated suggestion(s).`,
       details: {
         routingDecision: input.modelRoutingDecision,
-        fieldRepairExecution: input.fieldRepairExecution
-      }
+        fieldRepairExecution: input.fieldRepairExecution,
+      },
     },
     {
       orderIndex: 7,
       label: "Targeted field retry evaluated",
-      status:
-        input.retryEvents.some((event) => event.status === "UNRESOLVED")
-          ? "NEEDS_REVIEW"
-          : "SUCCEEDED",
+      status: input.retryEvents.some((event) => event.status === "UNRESOLVED")
+        ? "NEEDS_REVIEW"
+        : "SUCCEEDED",
       summary:
         input.retryEvents[0]?.message ??
         "No targeted retry evidence was recorded.",
       details: {
-        retryEvents: input.retryEvents
-      }
+        retryEvents: input.retryEvents,
+      },
     },
     {
       orderIndex: 8,
@@ -621,9 +613,9 @@ function buildAuditTrail(input: {
       summary: `${input.finalSummary.successfulReadOnlyToolCallCount} safe read-only tool calls executed and logged.`,
       details: {
         toolCallResults: input.toolCallResults.filter(
-          (result) => result.status === "SUCCEEDED"
-        )
-      }
+          (result) => result.status === "SUCCEEDED",
+        ),
+      },
     },
     {
       orderIndex: 9,
@@ -632,21 +624,22 @@ function buildAuditTrail(input: {
       summary: `${input.finalSummary.blockedMutationToolCallCount} mutation tool call was policy-blocked before execution.`,
       details: {
         toolCallResults: input.toolCallResults.filter(
-          (result) => result.status === "BLOCKED"
-        )
-      }
+          (result) => result.status === "BLOCKED",
+        ),
+      },
     },
     {
       orderIndex: 10,
       label: "Human review surfaced",
-      status: input.reviewQueueItemsCreated.length > 0 ? "NEEDS_REVIEW" : "SUCCEEDED",
+      status:
+        input.reviewQueueItemsCreated.length > 0 ? "NEEDS_REVIEW" : "SUCCEEDED",
       summary:
         input.reviewQueueItemsCreated.length > 0
           ? `${input.reviewQueueItemsCreated.length} review queue item(s) created for low-confidence or incomplete parses.`
           : "No parsed records required human review.",
       details: {
-        reviewQueueItemsCreated: input.reviewQueueItemsCreated
-      }
+        reviewQueueItemsCreated: input.reviewQueueItemsCreated,
+      },
     },
     {
       orderIndex: 11,
@@ -660,17 +653,19 @@ function buildAuditTrail(input: {
           ? `${input.finalSummary.priorReviewSuggestionCount} prior review suggestion(s) surfaced from resolved corrections.`
           : "No prior review suggestions matched this run.",
       details: {
-        priorReviewLearningEvidenceByItem: input.priorReviewLearningEvidenceByItem,
-        priorReviewLearningSuggestionsByItem: input.priorReviewLearningSuggestionsByItem
-      }
+        priorReviewLearningEvidenceByItem:
+          input.priorReviewLearningEvidenceByItem,
+        priorReviewLearningSuggestionsByItem:
+          input.priorReviewLearningSuggestionsByItem,
+      },
     },
     {
       orderIndex: 12,
       label: "Final demo summary",
       status: "INFO",
       summary: input.finalSummary.productStory,
-      details: input.finalSummary
-    }
+      details: input.finalSummary,
+    },
   ];
 }
 
@@ -689,7 +684,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
   const parseStartedAt = new Date();
   const parsedItems = parseTradeInDemoText(
     parseReadyInput,
-    input.productReferenceProvider
+    input.productReferenceProvider,
   );
 
   const intakeBatch = await prisma.intakeBatch.create({
@@ -704,111 +699,116 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         create: parsedItems.map((item, index) => ({
           rawText: item.rawLine,
           sourceRowNumber: index + 1,
-          status: needsReview(item) ? "NEEDS_REVIEW" : "STRUCTURED"
-        }))
-      }
+          status: needsReview(item) ? "NEEDS_REVIEW" : "STRUCTURED",
+        })),
+      },
     },
     include: {
       items: {
         orderBy: {
-          sourceRowNumber: "asc"
-        }
-      }
-    }
+          sourceRowNumber: "asc",
+        },
+      },
+    },
   });
   const parseCompletedAt = new Date();
 
-  const workflowRun = await prisma.workflowRun.create({
-    data: {
-      intakeBatchId: intakeBatch.id,
-      workflowName: "end-to-end-agentic-trade-in-demo",
-      status: "RUNNING",
-      startedAt: parseStartedAt,
-      steps: {
-        create: [
-          {
-            stepName: TRADE_IN_WORKFLOW_STEP_NAMES.parseInput,
-            stepType: "PARSE_INPUT",
-            status: "COMPLETED",
-            orderIndex: 1,
-            inputJson: {
-              sourceType: "FREE_TEXT",
-              characterCount: parseReadyInput.length,
-              nonEmptyLineCount: parseReadyInput.split(/\r?\n/).filter(Boolean).length
+  const workflowRun = await prisma.workflowRun
+    .create({
+      data: {
+        intakeBatchId: intakeBatch.id,
+        workflowName: "end-to-end-agentic-trade-in-demo",
+        status: "RUNNING",
+        startedAt: parseStartedAt,
+        steps: {
+          create: [
+            {
+              stepName: TRADE_IN_WORKFLOW_STEP_NAMES.parseInput,
+              stepType: "PARSE_INPUT",
+              status: "COMPLETED",
+              orderIndex: 1,
+              inputJson: {
+                sourceType: "FREE_TEXT",
+                characterCount: parseReadyInput.length,
+                nonEmptyLineCount: parseReadyInput
+                  .split(/\r?\n/)
+                  .filter(Boolean).length,
+              },
+              outputJson: {
+                parsedItemCount: parsedItems.length,
+                intakeBatchId: intakeBatch.id,
+                intakeItemIds: intakeBatch.items.map((item) => item.id),
+              },
+              startedAt: parseStartedAt,
+              completedAt: parseCompletedAt,
             },
-            outputJson: {
-              parsedItemCount: parsedItems.length,
-              intakeBatchId: intakeBatch.id,
-              intakeItemIds: intakeBatch.items.map((item) => item.id)
+            {
+              stepName: TRADE_IN_WORKFLOW_STEP_NAMES.retrieveEvidence,
+              stepType: "RETRIEVE_EVIDENCE",
+              orderIndex: 2,
             },
-            startedAt: parseStartedAt,
-            completedAt: parseCompletedAt
+            {
+              stepName: TRADE_IN_WORKFLOW_STEP_NAMES.modelAssistance,
+              stepType: "EXTRACT_GOLF_CLUB_FIELDS",
+              orderIndex: 3,
+            },
+            {
+              stepName: TRADE_IN_WORKFLOW_STEP_NAMES.validateOutput,
+              stepType: "VALIDATE_STRUCTURED_OUTPUT",
+              orderIndex: 4,
+            },
+            {
+              stepName: TRADE_IN_WORKFLOW_STEP_NAMES.targetedRetry,
+              stepType: "EXTRACT_GOLF_CLUB_FIELDS",
+              orderIndex: 5,
+            },
+            {
+              stepName: TRADE_IN_WORKFLOW_STEP_NAMES.createReviewItems,
+              stepType: "CREATE_REVIEW_ITEM",
+              orderIndex: 6,
+            },
+            {
+              stepName: TRADE_IN_WORKFLOW_STEP_NAMES.executeTools,
+              stepType: "EXECUTE_TOOL_CALLS",
+              orderIndex: 7,
+            },
+            {
+              stepName: TRADE_IN_WORKFLOW_STEP_NAMES.finalize,
+              stepType: "FINALIZE_WORKFLOW",
+              orderIndex: 8,
+            },
+          ],
+        },
+      },
+      include: {
+        steps: {
+          orderBy: {
+            orderIndex: "asc",
           },
-          {
-            stepName: TRADE_IN_WORKFLOW_STEP_NAMES.retrieveEvidence,
-            stepType: "RETRIEVE_EVIDENCE",
-            orderIndex: 2
-          },
-          {
-            stepName: TRADE_IN_WORKFLOW_STEP_NAMES.modelAssistance,
-            stepType: "EXTRACT_GOLF_CLUB_FIELDS",
-            orderIndex: 3
-          },
-          {
-            stepName: TRADE_IN_WORKFLOW_STEP_NAMES.validateOutput,
-            stepType: "VALIDATE_STRUCTURED_OUTPUT",
-            orderIndex: 4
-          },
-          {
-            stepName: TRADE_IN_WORKFLOW_STEP_NAMES.targetedRetry,
-            stepType: "EXTRACT_GOLF_CLUB_FIELDS",
-            orderIndex: 5
-          },
-          {
-            stepName: TRADE_IN_WORKFLOW_STEP_NAMES.createReviewItems,
-            stepType: "CREATE_REVIEW_ITEM",
-            orderIndex: 6
-          },
-          {
-            stepName: TRADE_IN_WORKFLOW_STEP_NAMES.executeTools,
-            stepType: "EXECUTE_TOOL_CALLS",
-            orderIndex: 7
-          },
-          {
-            stepName: TRADE_IN_WORKFLOW_STEP_NAMES.finalize,
-            stepType: "FINALIZE_WORKFLOW",
-            orderIndex: 8
-          }
-        ]
-      }
-    },
-    include: {
-      steps: {
-        orderBy: {
-          orderIndex: "asc"
-        }
-      }
-    }
-  }).catch(async (error) => {
-    await failIntakeBatchAfterWorkflowSetupError(intakeBatch.id)
-      .catch(() => undefined);
-    throw error;
-  });
+        },
+      },
+    })
+    .catch(async (error) => {
+      await failIntakeBatchAfterWorkflowSetupError(intakeBatch.id).catch(
+        () => undefined,
+      );
+      throw error;
+    });
 
   const evidenceResult = await executePersistedWorkflowStep({
     step: requireWorkflowStep(
       workflowRun.steps,
-      TRADE_IN_WORKFLOW_STEP_NAMES.retrieveEvidence
+      TRADE_IN_WORKFLOW_STEP_NAMES.retrieveEvidence,
     ),
     inputJson: {
       parsedItemIds: parsedItems.map((item) => item.id),
-      maxKnowledgeResultsPerItem: 3
+      maxKnowledgeResultsPerItem: 3,
     },
     async execute() {
       await ensureDemoKnowledgeBaseReady();
 
-      const priorReviewLearningEvidenceByItem:
-        EndToEndAgenticTradeInDemoResult["priorReviewLearningEvidenceByItem"] = [];
+      const priorReviewLearningEvidenceByItem: EndToEndAgenticTradeInDemoResult["priorReviewLearningEvidenceByItem"] =
+        [];
 
       for (const item of parsedItems) {
         const evidence = await findPriorReviewLearningEvidence({
@@ -819,44 +819,32 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
             brand: item.brand,
             productLine: item.productLine,
             category: item.category,
-            shaftFlex: item.shaftFlex
-          }
+            shaftFlex: item.shaftFlex,
+          },
         });
 
         priorReviewLearningEvidenceByItem.push({
           parsedItemId: item.id,
-          evidence
+          evidence,
         });
       }
 
       const parsedItemById = new Map(
-        parsedItems.map(
-          (item) => [
-            item.id,
-            item
-          ]
-        )
+        parsedItems.map((item) => [item.id, item]),
       );
       const priorReviewLearningSuggestionsByItem =
-        priorReviewLearningEvidenceByItem.map(
-          (item) => ({
-            parsedItemId: item.parsedItemId,
-            suggestions:
-              filterPriorReviewLearningSuggestionsForSourceSafety({
-                sourceText:
-                  parsedItemById.get(
-                    item.parsedItemId
-                  )?.rawLine ?? "",
-                suggestions:
-                  buildPriorReviewLearningSuggestionsFromEvidence(
-                    item.evidence
-                  )
-              })
-          })
-        );
+        priorReviewLearningEvidenceByItem.map((item) => ({
+          parsedItemId: item.parsedItemId,
+          suggestions: filterPriorReviewLearningSuggestionsForSourceSafety({
+            sourceText: parsedItemById.get(item.parsedItemId)?.rawLine ?? "",
+            suggestions: buildPriorReviewLearningSuggestionsFromEvidence(
+              item.evidence,
+            ),
+          }),
+        }));
 
-      const knowledgeMatchesByItem:
-        EndToEndAgenticTradeInDemoResult["knowledgeMatchesByItem"] = [];
+      const knowledgeMatchesByItem: EndToEndAgenticTradeInDemoResult["knowledgeMatchesByItem"] =
+        [];
 
       for (const item of parsedItems) {
         const query = buildKnowledgeQuery(item);
@@ -864,34 +852,31 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
           query,
           ...(item.brand ? { brand: item.brand } : {}),
           ...(item.category ? { category: item.category } : {}),
-          maxResults: 3
+          maxResults: 3,
         });
 
         knowledgeMatchesByItem.push({
           parsedItemId: item.id,
           query,
-          search
+          search,
         });
       }
 
       const inventoryMatchesByItem = parsedItems.map((item) => ({
         parsedItemId: item.id,
-        lookup:
-          buildInventoryLookupFromProductResolution({
-            resolution: item.productResolution,
-            fallback: {
-              brand: item.brand,
-              productLine: item.productLine,
-              category:
-                item.productResolution
-                  .normalizedInput.category
-            }
-          })
+        lookup: buildInventoryLookupFromProductResolution({
+          resolution: item.productResolution,
+          fallback: {
+            brand: item.brand,
+            productLine: item.productLine,
+            category: item.productResolution.normalizedInput.category,
+          },
+        }),
       }));
 
       const valuationEvidenceByItem = parsedItems.map((item) => {
         const inventoryMatch = inventoryMatchesByItem.find(
-          (match) => match.parsedItemId === item.id
+          (match) => match.parsedItemId === item.id,
         );
 
         return {
@@ -899,9 +884,9 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
           estimate: estimateTradeInValuation(
             buildValuationInput({
               item,
-              inventoryMatch: inventoryMatch!.lookup
-            })
-          )
+              inventoryMatch: inventoryMatch!.lookup,
+            }),
+          ),
         };
       });
 
@@ -910,7 +895,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         priorReviewLearningSuggestionsByItem,
         knowledgeMatchesByItem,
         inventoryMatchesByItem,
-        valuationEvidenceByItem
+        valuationEvidenceByItem,
       };
     },
     buildOutputJson(result) {
@@ -918,116 +903,108 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         parsedItemCount: parsedItems.length,
         knowledgeResultCount: result.knowledgeMatchesByItem.reduce(
           (count, item) => count + item.search.results.length,
-          0
+          0,
         ),
         inventoryMatchCount: result.inventoryMatchesByItem.filter(
-          (item) => item.lookup.productId !== null
+          (item) => item.lookup.productId !== null,
         ).length,
         valuationRangeCount: result.valuationEvidenceByItem.filter(
-          (item) => item.estimate.highValue > 0
+          (item) => item.estimate.highValue > 0,
         ).length,
-        priorReviewEvidenceCount: result.priorReviewLearningEvidenceByItem.reduce(
-          (count, item) => count + item.evidence.length,
-          0
-        )
+        priorReviewEvidenceCount:
+          result.priorReviewLearningEvidenceByItem.reduce(
+            (count, item) => count + item.evidence.length,
+            0,
+          ),
       };
-    }
+    },
   });
   const {
     priorReviewLearningEvidenceByItem,
     priorReviewLearningSuggestionsByItem,
     knowledgeMatchesByItem,
     inventoryMatchesByItem,
-    valuationEvidenceByItem
+    valuationEvidenceByItem,
   } = evidenceResult;
 
   const eligibleFieldRepairItems = parsedItems.filter(shouldRunFieldRepair);
   const selectedFieldRepairItems = eligibleFieldRepairItems.slice(
     0,
-    MAIN_RUN_FIELD_REPAIR_MAX_RECORDS
+    MAIN_RUN_FIELD_REPAIR_MAX_RECORDS,
   );
   const modelAssistanceScope = {
     eligibleRecordCount: eligibleFieldRepairItems.length,
     selectedRecordCount: selectedFieldRepairItems.length,
     deferredRecordCount:
       eligibleFieldRepairItems.length - selectedFieldRepairItems.length,
-    maxSelectedRecordCount: MAIN_RUN_FIELD_REPAIR_MAX_RECORDS
+    maxSelectedRecordCount: MAIN_RUN_FIELD_REPAIR_MAX_RECORDS,
   };
 
   const modelAssistanceResult = await executePersistedWorkflowStep({
     step: requireWorkflowStep(
       workflowRun.steps,
-      TRADE_IN_WORKFLOW_STEP_NAMES.modelAssistance
+      TRADE_IN_WORKFLOW_STEP_NAMES.modelAssistance,
     ),
     inputJson: {
       candidateRecordIds: selectedFieldRepairItems.map((item) => item.id),
       modelAssistanceScope,
       taskType: MAIN_RUN_FIELD_REPAIR_TASK_TYPE,
       policyKey: MAIN_RUN_FIELD_REPAIR_POLICY_KEY,
-      demonstrateProviderFallback:
-        input.demonstrateProviderFallback === true
+      demonstrateProviderFallback: input.demonstrateProviderFallback === true,
     },
     async execute(step) {
       const fieldRepairRecords: MainRunFieldRepairRecordInput[] =
         selectedFieldRepairItems.map((item) => {
           const knowledgeEvidence = knowledgeMatchesByItem.find(
-            (evidence) => evidence.parsedItemId === item.id
+            (evidence) => evidence.parsedItemId === item.id,
           );
           const inventoryEvidence = inventoryMatchesByItem.find(
-            (evidence) => evidence.parsedItemId === item.id
+            (evidence) => evidence.parsedItemId === item.id,
           );
           const valuationEvidence = valuationEvidenceByItem.find(
-            (evidence) => evidence.parsedItemId === item.id
+            (evidence) => evidence.parsedItemId === item.id,
           );
           const priorReviewEvidence = priorReviewLearningEvidenceByItem.find(
-            (evidence) => evidence.parsedItemId === item.id
+            (evidence) => evidence.parsedItemId === item.id,
           );
           const priorReviewSuggestions =
             priorReviewLearningSuggestionsByItem.find(
-              (suggestions) =>
-                suggestions.parsedItemId === item.id
+              (suggestions) => suggestions.parsedItemId === item.id,
             );
-          const fieldRepairMissingFields =
-            getFieldRepairMissingFields(item);
+          const fieldRepairMissingFields = getFieldRepairMissingFields(item);
           const fieldApplicability = {
             shaftFlex: isShaftFlexApplicable(item.category)
-              ? "REQUIRED" as const
-              : "NOT_APPLICABLE" as const
+              ? ("REQUIRED" as const)
+              : ("NOT_APPLICABLE" as const),
           };
           const deterministicPolicyAdvisoryCandidates =
             buildDeterministicPolicyFieldRepairAdvisoryCandidates({
               recordId: item.id,
               sourceText: item.rawLine,
-              missingFields:
-                fieldRepairMissingFields,
+              missingFields: fieldRepairMissingFields,
               fieldApplicability,
-              productResolutionStatus:
-                item.productResolution.status,
-              sourceEvidenceId:
-                `${item.id}:deterministic-policy`
+              productResolutionStatus: item.productResolution.status,
+              sourceEvidenceId: `${item.id}:deterministic-policy`,
             });
           const priorReviewAdvisoryCandidates =
             buildPriorReviewFieldRepairAdvisoryCandidates({
               recordId: item.id,
               sourceText: item.rawLine,
-              missingFields:
-                fieldRepairMissingFields,
+              missingFields: fieldRepairMissingFields,
               fieldApplicability,
-              productResolutionStatus:
-                item.productResolution.status,
-              sourceEvidenceId:
-                `${item.id}:prior-review`,
-              priorReviewSuggestions:
-                priorReviewSuggestions?.suggestions ?? []
+              productResolutionStatus: item.productResolution.status,
+              sourceEvidenceId: `${item.id}:prior-review`,
+              priorReviewSuggestions: priorReviewSuggestions?.suggestions ?? [],
             });
-          const advisoryCandidates =
-            mergeFieldRepairAdvisoryCandidates(
-              deterministicPolicyAdvisoryCandidates,
-              priorReviewAdvisoryCandidates
-            );
+          const advisoryCandidates = mergeFieldRepairAdvisoryCandidates(
+            deterministicPolicyAdvisoryCandidates,
+            priorReviewAdvisoryCandidates,
+          );
           const reviewReasonCodes = [
             item.confidence < 0.72 ? "LOW_CONFIDENCE" : null,
-            fieldRepairMissingFields.length > 0 ? "MISSING_REQUIRED_FIELDS" : null,
+            fieldRepairMissingFields.length > 0
+              ? "MISSING_REQUIRED_FIELDS"
+              : null,
             item.uncertaintyNotes.length > 0 ? "UNCERTAINTY_NOTES" : null,
             item.productResolution.status === "AMBIGUOUS"
               ? "PRODUCT_AMBIGUOUS"
@@ -1037,29 +1014,26 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
               : null,
             valuationEvidence?.estimate.reviewRequired
               ? "VALUATION_REVIEW_REQUIRED"
-              : null
+              : null,
           ].filter((reasonCode): reasonCode is string => Boolean(reasonCode));
           const evidence: MainRunFieldRepairRecordInput["evidence"] = [
             {
               evidenceId: `${item.id}:parser`,
               evidenceType: "PARSER",
-              summary:
-                `Parser evidence captured for ${Object.keys(item.parserEvidence ?? {}).length} field(s).`,
-              payload: item.parserEvidence ?? null
+              summary: `Parser evidence captured for ${Object.keys(item.parserEvidence ?? {}).length} field(s).`,
+              payload: item.parserEvidence ?? null,
             },
             {
               evidenceId: `${item.id}:product-resolution`,
               evidenceType: "PRODUCT_RESOLUTION",
-              summary:
-                `${item.productResolution.status}: ${item.productResolution.reason}`,
-              payload: item.productResolution
+              summary: `${item.productResolution.status}: ${item.productResolution.reason}`,
+              payload: item.productResolution,
             },
             {
               evidenceId: `${item.id}:knowledge`,
               evidenceType: "KNOWLEDGE",
-              summary:
-                `${knowledgeEvidence?.search.results.length ?? 0} weighted knowledge result(s) were available.`,
-              payload: knowledgeEvidence?.search ?? null
+              summary: `${knowledgeEvidence?.search.results.length ?? 0} weighted knowledge result(s) were available.`,
+              payload: knowledgeEvidence?.search ?? null,
             },
             {
               evidenceId: `${item.id}:inventory`,
@@ -1067,7 +1041,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
               summary: inventoryEvidence?.lookup.productId
                 ? `Inventory matched product ${inventoryEvidence.lookup.productId}.`
                 : "Inventory did not return an authoritative product identity.",
-              payload: inventoryEvidence?.lookup ?? null
+              payload: inventoryEvidence?.lookup ?? null,
             },
             {
               evidenceId: `${item.id}:valuation`,
@@ -1076,25 +1050,20 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
                 valuationEvidence && valuationEvidence.estimate.highValue > 0
                   ? `Valuation range ${valuationEvidence.estimate.lowValue}-${valuationEvidence.estimate.highValue} was available.`
                   : "No authoritative valuation range was available.",
-              payload: valuationEvidence?.estimate ?? null
+              payload: valuationEvidence?.estimate ?? null,
             },
             {
-              evidenceId:
-                `${item.id}:deterministic-policy`,
-              evidenceType:
-                "DETERMINISTIC_POLICY",
-              summary:
-                `${deterministicPolicyAdvisoryCandidates.length} deterministic policy candidate(s) were available.`,
-              payload:
-                deterministicPolicyAdvisoryCandidates
+              evidenceId: `${item.id}:deterministic-policy`,
+              evidenceType: "DETERMINISTIC_POLICY",
+              summary: `${deterministicPolicyAdvisoryCandidates.length} deterministic policy candidate(s) were available.`,
+              payload: deterministicPolicyAdvisoryCandidates,
             },
             {
               evidenceId: `${item.id}:prior-review`,
               evidenceType: "PRIOR_REVIEW",
-              summary:
-                `${priorReviewEvidence?.evidence.length ?? 0} prior-review evidence item(s) were available.`,
-              payload: priorReviewEvidence?.evidence ?? []
-            }
+              summary: `${priorReviewEvidence?.evidence.length ?? 0} prior-review evidence item(s) were available.`,
+              payload: priorReviewEvidence?.evidence ?? [],
+            },
           ];
 
           return {
@@ -1107,7 +1076,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
               confidence: item.confidence,
               missingFields: fieldRepairMissingFields,
               uncertaintyNotes: item.uncertaintyNotes,
-              reviewReasonCodes
+              reviewReasonCodes,
             },
             currentFields: {
               brand: item.brand,
@@ -1115,7 +1084,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
               category: item.category,
               shaftFlex: item.shaftFlex,
               conditionGrade: item.conditionGrade,
-              tradeInValue: item.tradeInValue
+              tradeInValue: item.tradeInValue,
             },
             fieldApplicability,
             parserEvidence: item.parserEvidence ?? null,
@@ -1130,23 +1099,22 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
                 item.productResolution.status === "MATCHED"
                   ? item.productResolution.match.sku
                   : null,
-              candidateProductIds:
-                item.productResolution.candidates.map(
-                  (candidate) => candidate.productId
-                )
+              candidateProductIds: item.productResolution.candidates.map(
+                (candidate) => candidate.productId,
+              ),
             },
             advisoryCandidates,
-            evidence
+            evidence,
           };
         });
 
       const fieldRepairInputJson = buildMainRunFieldRepairExecutionInput({
         workflowRunId: workflowRun.id,
-        records: fieldRepairRecords
+        records: fieldRepairRecords,
       });
       const providerFallbackDemonstrationOptions =
         buildProviderFallbackDemonstrationOptions(
-          input.demonstrateProviderFallback === true
+          input.demonstrateProviderFallback === true,
         );
 
       const modelCallLog = await createModelExecutionLogForWorkflowRun({
@@ -1160,35 +1128,30 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         workflowStep: "field-repair",
         requireJson: true,
         allowDisabledProvidersForSimulation: false,
-        attemptTimeoutMs:
-          MAIN_RUN_FIELD_REPAIR_PROVIDER_ATTEMPT_TIMEOUT_MS,
-        workflowTimeoutMs:
-          MAIN_RUN_FIELD_REPAIR_PROVIDER_WORKFLOW_TIMEOUT_MS,
+        attemptTimeoutMs: MAIN_RUN_FIELD_REPAIR_PROVIDER_ATTEMPT_TIMEOUT_MS,
+        workflowTimeoutMs: MAIN_RUN_FIELD_REPAIR_PROVIDER_WORKFLOW_TIMEOUT_MS,
         inputJson: fieldRepairInputJson,
         outputSchema: MAIN_RUN_FIELD_REPAIR_OUTPUT_SCHEMA,
         ...providerFallbackDemonstrationOptions,
         ...(input.signal ? { signal: input.signal } : {}),
         validateOutput(outputJson) {
-          const validation = validateMainRunFieldRepairModelOutput(
-            outputJson,
-            {
-              records: fieldRepairRecords
-            }
-          );
+          const validation = validateMainRunFieldRepairModelOutput(outputJson, {
+            records: fieldRepairRecords,
+          });
 
           return {
             jsonValid: validation.jsonValid,
             validationPassed: validation.validationPassed,
-            validationErrors: validation.validationErrors
+            validationErrors: validation.validationErrors,
           };
-        }
+        },
       });
       const modelRoutingDecision = getModelRoutingDecisionFromLog(modelCallLog);
 
       return {
         fieldRepairRecords,
         modelCallLog,
-        modelRoutingDecision
+        modelRoutingDecision,
       };
     },
     buildOutputJson(result) {
@@ -1197,31 +1160,28 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         selectedRecordCount: result.fieldRepairRecords.length,
         provider: result.modelCallLog.provider,
         model: result.modelCallLog.model,
-        status: result.modelCallLog.status
+        status: result.modelCallLog.status,
       };
-    }
+    },
   });
-  const {
-    fieldRepairRecords,
-    modelCallLog,
-    modelRoutingDecision
-  } = modelAssistanceResult;
+  const { fieldRepairRecords, modelCallLog, modelRoutingDecision } =
+    modelAssistanceResult;
 
   const fieldRepairExecution = await executePersistedWorkflowStep({
     step: requireWorkflowStep(
       workflowRun.steps,
-      TRADE_IN_WORKFLOW_STEP_NAMES.validateOutput
+      TRADE_IN_WORKFLOW_STEP_NAMES.validateOutput,
     ),
     inputJson: {
       modelCallLogId: modelCallLog.id,
-      selectedRecordCount: fieldRepairRecords.length
+      selectedRecordCount: fieldRepairRecords.length,
     },
     execute() {
       const fieldRepairValidation = validateMainRunFieldRepairModelOutput(
         getProviderExecutionOutputJson(modelCallLog),
         {
-          records: fieldRepairRecords
-        }
+          records: fieldRepairRecords,
+        },
       );
 
       return {
@@ -1230,7 +1190,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         suggestions: fieldRepairValidation.output?.suggestions ?? [],
         jsonValid: fieldRepairValidation.jsonValid,
         validationPassed: fieldRepairValidation.validationPassed,
-        validationErrors: fieldRepairValidation.validationErrors
+        validationErrors: fieldRepairValidation.validationErrors,
       };
     },
     buildOutputJson(result) {
@@ -1240,24 +1200,24 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         validationPassed: result.validationPassed,
         validationErrors: result.validationErrors,
         recordOutcomeCount: result.recordOutcomes.length,
-        suggestionCount: result.suggestions.length
+        suggestionCount: result.suggestions.length,
       };
-    }
+    },
   });
 
   const retryCandidate = findTargetedFieldRetryCandidate(
-    selectedFieldRepairItems
+    selectedFieldRepairItems,
   );
   const targetedFieldRetry = await executePersistedWorkflowStep({
     step: requireWorkflowStep(
       workflowRun.steps,
-      TRADE_IN_WORKFLOW_STEP_NAMES.targetedRetry
+      TRADE_IN_WORKFLOW_STEP_NAMES.targetedRetry,
     ),
     inputJson: {
       policy: TARGETED_FIELD_RETRY_POLICY,
       targetField: "shaftFlex",
       candidateRecordId: retryCandidate?.id ?? null,
-      maxAttempts: TARGETED_FIELD_RETRY_MAX_ATTEMPTS
+      maxAttempts: TARGETED_FIELD_RETRY_MAX_ATTEMPTS,
     },
     async execute(step) {
       if (!retryCandidate) {
@@ -1265,12 +1225,12 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
       }
 
       const retryRecord = fieldRepairRecords.find(
-        (record) => record.recordId === retryCandidate.id
+        (record) => record.recordId === retryCandidate.id,
       );
 
       if (!retryRecord) {
         throw new Error(
-          `Field-repair context is missing for retry candidate: ${retryCandidate.id}.`
+          `Field-repair context is missing for retry candidate: ${retryCandidate.id}.`,
         );
       }
 
@@ -1280,16 +1240,14 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         selectionReason: {
           ...retryRecord.selectionReason,
           missingFields: ["shaftFlex"],
-          uncertaintyNotes:
-            retryRecord.selectionReason.uncertaintyNotes.filter(
-              (note) => /\bshaft\b/i.test(note)
-            )
+          uncertaintyNotes: retryRecord.selectionReason.uncertaintyNotes.filter(
+            (note) => /\bshaft\b/i.test(note),
+          ),
         },
         advisoryCandidates:
           retryRecord.advisoryCandidates?.filter(
-            (candidate) =>
-              candidate.suggestion.fieldName === "shaftFlex"
-          ) ?? []
+            (candidate) => candidate.suggestion.fieldName === "shaftFlex",
+          ) ?? [],
       };
 
       await markPersistedWorkflowStepRetrying(step);
@@ -1297,15 +1255,15 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
       const retryInputJson = {
         ...buildMainRunFieldRepairExecutionInput({
           workflowRunId: workflowRun.id,
-          records: [targetedRetryRecord]
+          records: [targetedRetryRecord],
         }),
         retry: {
           attempt: 1,
           maxAttempts: TARGETED_FIELD_RETRY_MAX_ATTEMPTS,
           targetField: "shaftFlex",
           recordId: retryCandidate.id,
-          policy: TARGETED_FIELD_RETRY_POLICY
-        }
+          policy: TARGETED_FIELD_RETRY_POLICY,
+        },
       };
       const retryModelCallLog = await createModelExecutionLogForWorkflowRun({
         workflowRunId: workflowRun.id,
@@ -1322,25 +1280,22 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         outputSchema: MAIN_RUN_FIELD_REPAIR_OUTPUT_SCHEMA,
         ...(input.signal ? { signal: input.signal } : {}),
         validateOutput(outputJson) {
-          const validation = validateMainRunFieldRepairModelOutput(
-            outputJson,
-            {
-              records: [targetedRetryRecord]
-            }
-          );
+          const validation = validateMainRunFieldRepairModelOutput(outputJson, {
+            records: [targetedRetryRecord],
+          });
 
           return {
             jsonValid: validation.jsonValid,
             validationPassed: validation.validationPassed,
-            validationErrors: validation.validationErrors
+            validationErrors: validation.validationErrors,
           };
-        }
+        },
       });
       const retryValidation = validateMainRunFieldRepairModelOutput(
         getProviderExecutionOutputJson(retryModelCallLog),
         {
-          records: [targetedRetryRecord]
-        }
+          records: [targetedRetryRecord],
+        },
       );
 
       return completeTargetedFieldRetry({
@@ -1349,7 +1304,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         modelCallLogId: retryModelCallLog.id,
         validationPassed: retryValidation.validationPassed,
         validationErrors: retryValidation.validationErrors,
-        suggestions: retryValidation.output?.suggestions ?? []
+        suggestions: retryValidation.output?.suggestions ?? [],
       });
     },
     buildOutputJson(result) {
@@ -1360,7 +1315,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         targetField: result.retryEvent.targetField,
         attemptCount: result.retryEvent.attemptCount,
         maxAttempts: result.retryEvent.maxAttempts,
-        modelCallLogId: result.retryEvent.modelCallLogId
+        modelCallLogId: result.retryEvent.modelCallLogId,
       };
     },
     getTerminalStatus(result) {
@@ -1376,14 +1331,14 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
 
         await transaction.intakeItem.update({
           where: {
-            id: intakeItem.id
+            id: intakeItem.id,
           },
           data: {
-            status: needsReview(item) ? "NEEDS_REVIEW" : "STRUCTURED"
-          }
+            status: needsReview(item) ? "NEEDS_REVIEW" : "STRUCTURED",
+          },
         });
       }
-    }
+    },
   });
   const finalParsedItems = targetedFieldRetry.parsedItems;
   const retryEvents = [targetedFieldRetry.retryEvent];
@@ -1391,21 +1346,21 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
   const reviewQueueItemsCreated = await executePersistedWorkflowStep({
     step: requireWorkflowStep(
       workflowRun.steps,
-      TRADE_IN_WORKFLOW_STEP_NAMES.createReviewItems
+      TRADE_IN_WORKFLOW_STEP_NAMES.createReviewItems,
     ),
     inputJson: {
       parsedItemCount: finalParsedItems.length,
-      modelSuggestionCount: fieldRepairExecution.suggestions.length
+      modelSuggestionCount: fieldRepairExecution.suggestions.length,
     },
     async execute() {
       const createdItems: ReviewQueueItem[] = [];
 
       for (const [index, item] of finalParsedItems.entries()) {
         const valuationEvidence = valuationEvidenceByItem.find(
-          (evidence) => evidence.parsedItemId === item.id
+          (evidence) => evidence.parsedItemId === item.id,
         );
         const inventoryEvidence = inventoryMatchesByItem.find(
-          (evidence) => evidence.parsedItemId === item.id
+          (evidence) => evidence.parsedItemId === item.id,
         );
         const fieldRepairMissingFields = getFieldRepairMissingFields(item);
         const requiresFieldRepairReview = shouldRunFieldRepair(item);
@@ -1432,22 +1387,23 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
               missingFields: fieldRepairMissingFields,
               reviewReasonSummary: summarizeReviewReason({
                 item,
-                valuationEstimate: valuationEvidence!.estimate
+                valuationEstimate: valuationEvidence!.estimate,
               }),
               knowledgeMatches:
-                knowledgeMatchesByItem.find((match) => match.parsedItemId === item.id)
+                knowledgeMatchesByItem
+                  .find((match) => match.parsedItemId === item.id)
                   ?.search.results.slice(0, 2) ?? [],
               inventoryMatch: inventoryEvidence?.lookup ?? null,
-              demoValuationRange: valuationEvidence?.estimate ?? null
-            })
-          }
+              demoValuationRange: valuationEvidence?.estimate ?? null,
+            }),
+          },
         });
 
         await resolveSupersededIntakeReviewMarkers({
           authoritativeReviewQueueItemId: reviewQueueItem.id,
           currentWorkflowRunId: workflowRun.id,
           item,
-          sourceRowNumber: index + 1
+          sourceRowNumber: index + 1,
         });
 
         createdItems.push(reviewQueueItem);
@@ -1460,21 +1416,21 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         reviewQueueItemCount: createdItems.length,
         reviewQueueItemIds: createdItems.map((item) => item.id),
         openReviewQueueItemCount: createdItems.filter(
-          (item) => item.status === "OPEN" || item.status === "IN_REVIEW"
-        ).length
+          (item) => item.status === "OPEN" || item.status === "IN_REVIEW",
+        ).length,
       };
-    }
+    },
   });
 
   const toolExecutionResult = await executePersistedWorkflowStep({
     step: requireWorkflowStep(
       workflowRun.steps,
-      TRADE_IN_WORKFLOW_STEP_NAMES.executeTools
+      TRADE_IN_WORKFLOW_STEP_NAMES.executeTools,
     ),
     inputJson: {
       executionMode: "AGENT_AUTONOMOUS",
       mutationToolsEnabled: false,
-      humanApprovalGranted: false
+      humanApprovalGranted: false,
     },
     async execute(step) {
       const firstParsedItem = finalParsedItems[0]!;
@@ -1482,109 +1438,89 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         input.productReferenceProvider === undefined &&
         firstParsedItem.productResolution.status === "MATCHED";
 
-      const plannedCalls:
-        EndToEndAgenticTradeInDemoResult["toolCallingPlan"]["plannedCalls"] = [
-        {
-          orderIndex: 1,
-          toolName: "swingops.workflowRuns.get",
-          reason:
-            "Inspect the persisted workflow run context before the agent explains the audit trail.",
-          inputJson: {
-            id: workflowRun.id
+      const plannedCalls: EndToEndAgenticTradeInDemoResult["toolCallingPlan"]["plannedCalls"] =
+        [
+          {
+            orderIndex: 1,
+            toolName: "swingops.workflowRuns.get",
+            reason:
+              "Inspect the persisted workflow run context before the agent explains the audit trail.",
+            inputJson: {
+              id: workflowRun.id,
+            },
+            expectedRiskLevel: "LOW",
+            expectedMutatesData: false,
+            expectedRequiresHumanApproval: false,
           },
-          expectedRiskLevel: "LOW",
-          expectedMutatesData: false,
-          expectedRequiresHumanApproval: false
-        },
-        {
-          orderIndex: 2,
-          toolName: "swingops.knowledgeBase.search",
-          reason:
-            "Run a read-only grounded search using the first parsed trade-in record.",
-          inputJson: {
-            query:
-              knowledgeMatchesByItem[0]?.query ??
-              rawInput,
-            maxResults: 5
+          {
+            orderIndex: 2,
+            toolName: "swingops.knowledgeBase.search",
+            reason:
+              "Run a read-only grounded search using the first parsed trade-in record.",
+            inputJson: {
+              query: knowledgeMatchesByItem[0]?.query ?? rawInput,
+              maxResults: 5,
+            },
+            expectedRiskLevel: "LOW",
+            expectedMutatesData: false,
+            expectedRequiresHumanApproval: false,
           },
-          expectedRiskLevel: "LOW",
-          expectedMutatesData: false,
-          expectedRequiresHumanApproval: false
-        },
-        ...(canExecuteDemoInventoryTools
-          ? [
-              {
-                orderIndex: 3,
-                toolName:
-                  "swingops.inventory.lookupProduct",
-                reason:
-                  "Use a read-only internal inventory lookup to corroborate the default reference-provider match for the first parsed record.",
-                inputJson:
-                  buildInventoryLookupInput(
-                    firstParsedItem
-                  ),
-                expectedRiskLevel:
-                  "LOW" as const,
-                expectedMutatesData: false,
-                expectedRequiresHumanApproval:
-                  false
-              },
-              {
-                orderIndex: 4,
-                toolName:
-                  "swingops.tradeInValuation.estimate",
-                reason:
-                  "Use a read-only valuation lookup after the default reference provider authoritatively identified the first parsed record.",
-                inputJson: {
-                  ...buildInventoryLookupInput(
-                    firstParsedItem
-                  ),
-                  conditionNotes:
-                    firstParsedItem.conditionNotes.join(
-                      "|"
-                    ),
-                  accessoriesNotes:
-                    firstParsedItem.accessoriesNotes.join(
-                      "|"
-                    )
+          ...(canExecuteDemoInventoryTools
+            ? [
+                {
+                  orderIndex: 3,
+                  toolName: "swingops.inventory.lookupProduct",
+                  reason:
+                    "Use a read-only internal inventory lookup to corroborate the default reference-provider match for the first parsed record.",
+                  inputJson: buildInventoryLookupInput(firstParsedItem),
+                  expectedRiskLevel: "LOW" as const,
+                  expectedMutatesData: false,
+                  expectedRequiresHumanApproval: false,
                 },
-                expectedRiskLevel:
-                  "LOW" as const,
-                expectedMutatesData: false,
-                expectedRequiresHumanApproval:
-                  false
-              }
-            ]
-          : []),
-        {
-          orderIndex: 5,
-          toolName:
-            "swingops.reviewQueueItems.list",
-          reason:
-            "Inspect open human-review work created by low-confidence parsing or valuation uncertainty.",
-          inputJson: {
-            status: "OPEN"
+                {
+                  orderIndex: 4,
+                  toolName: "swingops.tradeInValuation.estimate",
+                  reason:
+                    "Use a read-only valuation lookup after the default reference provider authoritatively identified the first parsed record.",
+                  inputJson: {
+                    ...buildInventoryLookupInput(firstParsedItem),
+                    conditionNotes: firstParsedItem.conditionNotes.join("|"),
+                    accessoriesNotes:
+                      firstParsedItem.accessoriesNotes.join("|"),
+                  },
+                  expectedRiskLevel: "LOW" as const,
+                  expectedMutatesData: false,
+                  expectedRequiresHumanApproval: false,
+                },
+              ]
+            : []),
+          {
+            orderIndex: 5,
+            toolName: "swingops.reviewQueueItems.list",
+            reason:
+              "Inspect open human-review work created by low-confidence parsing or valuation uncertainty.",
+            inputJson: {
+              status: "OPEN",
+            },
+            expectedRiskLevel: "LOW",
+            expectedMutatesData: false,
+            expectedRequiresHumanApproval: false,
           },
-          expectedRiskLevel: "LOW",
-          expectedMutatesData: false,
-          expectedRequiresHumanApproval: false
-        },
-        {
-          orderIndex: 6,
-          toolName: "swingops.inventory.createSku",
-          reason:
-            "Demonstrate that the agent can see a mutation-style inventory tool but cannot create SKUs without approval.",
-          inputJson: {
-            productId:
-              inventoryMatchesByItem[0]
-                ?.lookup.productId ??
-              "blocked-demo-product"
+          {
+            orderIndex: 6,
+            toolName: "swingops.inventory.createSku",
+            reason:
+              "Demonstrate that the agent can see a mutation-style inventory tool but cannot create SKUs without approval.",
+            inputJson: {
+              productId:
+                inventoryMatchesByItem[0]?.lookup.productId ??
+                "blocked-demo-product",
+            },
+            expectedRiskLevel: "HIGH",
+            expectedMutatesData: true,
+            expectedRequiresHumanApproval: true,
           },
-          expectedRiskLevel: "HIGH",
-          expectedMutatesData: true,
-          expectedRequiresHumanApproval: true
-        }
-      ];
+        ];
 
       const toolCallResults: DemoToolResult[] = [];
       const toolCallLogs: ToolCallLog[] = [];
@@ -1597,7 +1533,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
           workflowRunId: workflowRun.id,
           workflowStepId: step.id,
           executionMode: "AGENT_AUTONOMOUS",
-          humanApprovalGranted: false
+          humanApprovalGranted: false,
         });
 
         toolCallResults.push(toToolResult(invocationResult));
@@ -1607,7 +1543,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
       return {
         plannedCalls,
         toolCallResults,
-        toolCallLogs
+        toolCallLogs,
       };
     },
     buildOutputJson(result) {
@@ -1615,22 +1551,18 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
         plannedCallCount: result.plannedCalls.length,
         toolCallLogIds: result.toolCallLogs.map((log) => log.id),
         succeededCount: result.toolCallResults.filter(
-          (item) => item.status === "SUCCEEDED"
+          (item) => item.status === "SUCCEEDED",
         ).length,
         blockedCount: result.toolCallResults.filter(
-          (item) => item.status === "BLOCKED"
+          (item) => item.status === "BLOCKED",
         ).length,
         failedCount: result.toolCallResults.filter(
-          (item) => item.status === "FAILED"
-        ).length
+          (item) => item.status === "FAILED",
+        ).length,
       };
-    }
+    },
   });
-  const {
-    plannedCalls,
-    toolCallResults,
-    toolCallLogs
-  } = toolExecutionResult;
+  const { plannedCalls, toolCallResults, toolCallLogs } = toolExecutionResult;
 
   const workflowStatus =
     reviewQueueItemsCreated.length > 0 ? "NEEDS_REVIEW" : "COMPLETED";
@@ -1638,17 +1570,17 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
   await executePersistedWorkflowStep({
     step: requireWorkflowStep(
       workflowRun.steps,
-      TRADE_IN_WORKFLOW_STEP_NAMES.finalize
+      TRADE_IN_WORKFLOW_STEP_NAMES.finalize,
     ),
     inputJson: {
       reviewQueueItemCount: reviewQueueItemsCreated.length,
-      proposedWorkflowStatus: workflowStatus
+      proposedWorkflowStatus: workflowStatus,
     },
     execute() {
       return {
         workflowStatus,
         intakeBatchStatus:
-          workflowStatus === "COMPLETED" ? "COMPLETED" : "NEEDS_REVIEW"
+          workflowStatus === "COMPLETED" ? "COMPLETED" : "NEEDS_REVIEW",
       } as const;
     },
     buildOutputJson(result) {
@@ -1657,54 +1589,55 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     async onCompleted({ transaction, result, completedAt }) {
       await transaction.workflowRun.update({
         where: {
-          id: workflowRun.id
+          id: workflowRun.id,
         },
         data: {
           status: result.workflowStatus,
           completedAt:
             result.workflowStatus === "COMPLETED" ? completedAt : null,
-          errorMessage: null
-        }
+          errorMessage: null,
+        },
       });
 
       await transaction.intakeBatch.update({
         where: {
-          id: intakeBatch.id
+          id: intakeBatch.id,
         },
         data: {
-          status: result.intakeBatchStatus
-        }
+          status: result.intakeBatchStatus,
+        },
       });
-    }
+    },
   });
 
   const successfulReadOnlyToolCallCount = toolCallResults.filter(
-    (result) => result.status === "SUCCEEDED"
+    (result) => result.status === "SUCCEEDED",
   ).length;
   const blockedMutationToolCallCount = toolCallResults.filter(
-    (result) => result.status === "BLOCKED"
+    (result) => result.status === "BLOCKED",
   ).length;
   const knowledgeMatchCount = knowledgeMatchesByItem.reduce(
     (count, item) => count + item.search.results.length,
-    0
+    0,
   );
   const inventoryMatchCount = inventoryMatchesByItem.filter(
-    (match) => match.lookup.productId !== null
+    (match) => match.lookup.productId !== null,
   ).length;
   const valuationRangeCount = valuationEvidenceByItem.filter(
-    (evidence) => evidence.estimate.highValue > 0
+    (evidence) => evidence.estimate.highValue > 0,
   ).length;
   const valuationReviewRequiredCount = valuationEvidenceByItem.filter(
-    (evidence) => evidence.estimate.reviewRequired
+    (evidence) => evidence.estimate.reviewRequired,
   ).length;
   const priorReviewEvidenceCount = priorReviewLearningEvidenceByItem.reduce(
     (count, item) => count + item.evidence.length,
-    0
+    0,
   );
-  const priorReviewSuggestionCount = priorReviewLearningSuggestionsByItem.reduce(
-    (count, item) => count + item.suggestions.length,
-    0
-  );
+  const priorReviewSuggestionCount =
+    priorReviewLearningSuggestionsByItem.reduce(
+      (count, item) => count + item.suggestions.length,
+      0,
+    );
   const finalSummary = {
     parsedItemCount: finalParsedItems.length,
     knowledgeMatchCount,
@@ -1720,26 +1653,26 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     selectedProvider: modelRoutingDecision.selectedProvider,
     selectedModel: modelRoutingDecision.selectedModel,
     productStory:
-      "Messy golf trade-in intake became structured, grounded with weighted RAG matches, matched to seeded internal inventory products, assigned demo valuation ranges, routed through provider/cost/quality logic, tool-executed through safe read-only MCP-compatible connectors, policy-guarded against mutation, logged, and reviewable."
+      "Messy golf trade-in intake became structured, grounded with weighted RAG matches, matched to seeded internal inventory products, assigned demo valuation ranges, routed through provider/cost/quality logic, tool-executed through safe read-only MCP-compatible connectors, policy-guarded against mutation, logged, and reviewable.",
   };
 
   const toolCallingPlan = {
     planId: `trade_in_workflow_${workflowRun.id}`,
-    plannedCalls
+    plannedCalls,
   };
   const blockedToolCallResult =
     toolCallResults.find((result) => result.status === "BLOCKED") ?? null;
 
   const persistedWorkflowSteps = await prisma.workflowStep.findMany({
     where: {
-      workflowRunId: workflowRun.id
+      workflowRunId: workflowRun.id,
     },
     orderBy: {
-      orderIndex: "asc"
-    }
+      orderIndex: "asc",
+    },
   });
   const orchestrationTrace = buildTradeInWorkflowOrchestrationTrace(
-    persistedWorkflowSteps
+    persistedWorkflowSteps,
   );
 
   const workflowQualityBundle = buildWorkflowQualityBundle({
@@ -1753,7 +1686,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     retryEvents,
     toolCallingPlan,
     toolCallResults,
-    reviewQueueItemsCreated
+    reviewQueueItemsCreated,
   });
 
   const resultWithoutAuditTrail = {
@@ -1779,14 +1712,14 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
       workflowRunId: workflowRun.id,
       modelCallLogId: modelCallLog.id,
       toolCallLogIds: toolCallLogs.map((log) => log.id),
-      reviewQueueItemIds: reviewQueueItemsCreated.map((item) => item.id)
+      reviewQueueItemIds: reviewQueueItemsCreated.map((item) => item.id),
     },
     finalSummary,
-    ...workflowQualityBundle
+    ...workflowQualityBundle,
   };
 
   return {
     ...resultWithoutAuditTrail,
-    auditTrail: buildAuditTrail(resultWithoutAuditTrail)
+    auditTrail: buildAuditTrail(resultWithoutAuditTrail),
   };
 }

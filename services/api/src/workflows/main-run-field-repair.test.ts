@@ -9,12 +9,11 @@ import {
   MAIN_RUN_FIELD_REPAIR_PROVIDER_WORKFLOW_TIMEOUT_MS,
   buildMainRunFieldRepairExecutionInput,
   validateMainRunFieldRepairModelOutput,
-  type MainRunFieldRepairRecordInput
+  type MainRunFieldRepairRecordInput,
 } from "./main-run-field-repair.js";
 
-
 function buildValidationRecord(
-  overrides: Partial<MainRunFieldRepairRecordInput> = {}
+  overrides: Partial<MainRunFieldRepairRecordInput> = {},
 ): MainRunFieldRepairRecordInput {
   return {
     recordId: "record-1",
@@ -29,17 +28,17 @@ function buildValidationRecord(
       reviewReasonCodes: [
         "LOW_CONFIDENCE",
         "MISSING_REQUIRED_FIELDS",
-        "PRODUCT_AMBIGUOUS"
-      ]
+        "PRODUCT_AMBIGUOUS",
+      ],
     },
     currentFields: {
       brand: "Titleist",
       productLine: "TSR",
       category: "FAIRWAY_WOOD",
-      shaftFlex: null
+      shaftFlex: null,
     },
     fieldApplicability: {
-      shaftFlex: "REQUIRED"
+      shaftFlex: "REQUIRED",
     },
     parserEvidence: null,
     productResolution: {
@@ -49,23 +48,22 @@ function buildValidationRecord(
       matchedSku: null,
       candidateProductIds: [
         "prod_titleist_tsr2_fairway",
-        "prod_titleist_tsr3_fairway"
-      ]
+        "prod_titleist_tsr3_fairway",
+      ],
     },
     evidence: [
       {
         evidenceId: "record-1:product-resolution",
         evidenceType: "PRODUCT_RESOLUTION",
         summary: "Two deterministic candidates remained.",
-        payload: null
-      }
+        payload: null,
+      },
     ],
-    ...overrides
+    ...overrides,
   };
 }
 
-function buildAdvisoryCandidateRecord():
-  MainRunFieldRepairRecordInput {
+function buildAdvisoryCandidateRecord(): MainRunFieldRepairRecordInput {
   return buildValidationRecord({
     sourceText: "PING G425 shaft firm",
     missingFields: ["shaftFlex"],
@@ -75,34 +73,26 @@ function buildAdvisoryCandidateRecord():
       confidence: 0.7,
       missingFields: ["shaftFlex"],
       uncertaintyNotes: [],
-      reviewReasonCodes: [
-        "LOW_CONFIDENCE",
-        "MISSING_REQUIRED_FIELDS"
-      ]
+      reviewReasonCodes: ["LOW_CONFIDENCE", "MISSING_REQUIRED_FIELDS"],
     },
     currentFields: {
       brand: "PING",
       productLine: "G425",
       category: "IRON_SET",
-      shaftFlex: null
+      shaftFlex: null,
     },
     productResolution: {
       status: "MATCHED",
       reason: "One deterministic product matched.",
-      matchedProductId:
-        "prod_ping_g425_iron_set_2021",
+      matchedProductId: "prod_ping_g425_iron_set_2021",
       matchedSku: "PING-G425-IRON-2021",
-      candidateProductIds: [
-        "prod_ping_g425_iron_set_2021"
-      ]
+      candidateProductIds: ["prod_ping_g425_iron_set_2021"],
     },
     advisoryCandidates: [
       {
-        candidateId:
-          "prior-review:learning-event-1:shaftFlex",
+        candidateId: "prior-review:learning-event-1:shaftFlex",
         sourceType: "PRIOR_REVIEW",
-        sourceEvidenceId:
-          "record-1:prior-review",
+        sourceEvidenceId: "record-1:prior-review",
         sourceReferenceId: "learning-event-1",
         suggestion: {
           recordId: "record-1",
@@ -110,29 +100,25 @@ function buildAdvisoryCandidateRecord():
           sourcePhrase: "shaft firm",
           candidateValue: "STIFF",
           confidence: 0.94,
-          reason:
-            "Matched an approved prior correction.",
-          reviewRequired: true
-        }
-      }
+          reason: "Matched an approved prior correction.",
+          reviewRequired: true,
+        },
+      },
     ],
     evidence: [
       {
-        evidenceId:
-          "record-1:product-resolution",
+        evidenceId: "record-1:product-resolution",
         evidenceType: "PRODUCT_RESOLUTION",
-        summary:
-          "One deterministic product matched.",
-        payload: null
+        summary: "One deterministic product matched.",
+        payload: null,
       },
       {
         evidenceId: "record-1:prior-review",
         evidenceType: "PRIOR_REVIEW",
-        summary:
-          "One strong prior-review suggestion matched.",
-        payload: null
-      }
-    ]
+        summary: "One strong prior-review suggestion matched.",
+        payload: null,
+      },
+    ],
   });
 }
 
@@ -160,22 +146,22 @@ describe("main run field repair contract", () => {
             reviewReasonCodes: [
               "LOW_CONFIDENCE",
               "MISSING_REQUIRED_FIELDS",
-              "PRODUCT_AMBIGUOUS"
-            ]
+              "PRODUCT_AMBIGUOUS",
+            ],
           },
           currentFields: {
             brand: "Titleist",
             productLine: "TSR",
             category: "FAIRWAY_WOOD",
-            shaftFlex: null
+            shaftFlex: null,
           },
           fieldApplicability: {
-            shaftFlex: "REQUIRED"
+            shaftFlex: "REQUIRED",
           },
           parserEvidence: {
             brand: {
-              sourcePhrase: "Titleist"
-            }
+              sourcePhrase: "Titleist",
+            },
           },
           productResolution: {
             status: "AMBIGUOUS",
@@ -184,8 +170,8 @@ describe("main run field repair contract", () => {
             matchedSku: null,
             candidateProductIds: [
               "prod_titleist_tsr2_fairway",
-              "prod_titleist_tsr3_fairway"
-            ]
+              "prod_titleist_tsr3_fairway",
+            ],
           },
           evidence: [
             {
@@ -193,12 +179,12 @@ describe("main run field repair contract", () => {
               evidenceType: "PRODUCT_RESOLUTION",
               summary: "Two deterministic candidates remained.",
               payload: {
-                candidateCount: 2
-              }
-            }
-          ]
-        }
-      ]
+                candidateCount: 2,
+              },
+            },
+          ],
+        },
+      ],
     });
 
     expect(inputJson).toMatchObject({
@@ -215,26 +201,26 @@ describe("main run field repair contract", () => {
             reviewReasonCodes: [
               "LOW_CONFIDENCE",
               "MISSING_REQUIRED_FIELDS",
-              "PRODUCT_AMBIGUOUS"
-            ]
+              "PRODUCT_AMBIGUOUS",
+            ],
           },
           fieldApplicability: {
-            shaftFlex: "REQUIRED"
+            shaftFlex: "REQUIRED",
           },
           productResolution: {
             status: "AMBIGUOUS",
             candidateProductIds: [
               "prod_titleist_tsr2_fairway",
-              "prod_titleist_tsr3_fairway"
-            ]
+              "prod_titleist_tsr3_fairway",
+            ],
           },
           evidence: [
             {
               evidenceId: "record-1:product-resolution",
-              evidenceType: "PRODUCT_RESOLUTION"
-            }
-          ]
-        }
+              evidenceType: "PRODUCT_RESOLUTION",
+            },
+          ],
+        },
       ],
       authorityOrder: [
         "HUMAN_CORRECTION",
@@ -243,19 +229,16 @@ describe("main run field repair contract", () => {
         "INVENTORY_AND_VALUATION",
         "KNOWLEDGE",
         "PRIOR_REVIEW",
-        "MODEL"
-      ]
+        "MODEL",
+      ],
     });
   });
 
   it("serializes evidence-backed advisory candidates and provider handling rules", () => {
-    const inputJson =
-      buildMainRunFieldRepairExecutionInput({
-        workflowRunId: "workflow-run-1",
-        records: [
-          buildAdvisoryCandidateRecord()
-        ]
-      });
+    const inputJson = buildMainRunFieldRepairExecutionInput({
+      workflowRunId: "workflow-run-1",
+      records: [buildAdvisoryCandidateRecord()],
+    });
 
     expect(inputJson).toMatchObject({
       records: [
@@ -263,82 +246,67 @@ describe("main run field repair contract", () => {
           recordId: "record-1",
           advisoryCandidates: [
             {
-              candidateId:
-                "prior-review:learning-event-1:shaftFlex",
+              candidateId: "prior-review:learning-event-1:shaftFlex",
               sourceType: "PRIOR_REVIEW",
-              sourceEvidenceId:
-                "record-1:prior-review",
+              sourceEvidenceId: "record-1:prior-review",
               suggestion: {
                 recordId: "record-1",
                 fieldName: "shaftFlex",
                 sourcePhrase: "shaft firm",
                 candidateValue: "STIFF",
                 confidence: 0.94,
-                reviewRequired: true
-              }
-            }
-          ]
-        }
+                reviewRequired: true,
+              },
+            },
+          ],
+        },
       ],
       advisoryCandidatePolicy: {
         requiredOutcome:
-          "When a non-ambiguous record has advisoryCandidates, return REPAIR_SUGGESTED."
-      }
+          "When a non-ambiguous record has advisoryCandidates, return REPAIR_SUGGESTED.",
+      },
     });
   });
 
   it("serializes an explicit one-outcome-per-record batch contract", () => {
-    const inputJson =
-      buildMainRunFieldRepairExecutionInput({
-        workflowRunId:
-          "workflow-run-mixed-batch",
-        records: [
-          buildAdvisoryCandidateRecord(),
-          buildValidationRecord({
-            recordId: "record-2",
-            sourceText:
-              "Titleist fairway wood with multiple supplied candidates"
-          }),
-          buildValidationRecord({
-            recordId: "record-3",
-            sourceText:
-              "Unresolved equipment record with missing required fields"
-          }),
-          buildValidationRecord({
-            recordId: "record-4",
-            sourceText:
-              "Odyssey putter with an unresolved product generation",
-            fieldApplicability: {
-              shaftFlex: "NOT_APPLICABLE"
-            }
-          })
-        ]
-      });
+    const inputJson = buildMainRunFieldRepairExecutionInput({
+      workflowRunId: "workflow-run-mixed-batch",
+      records: [
+        buildAdvisoryCandidateRecord(),
+        buildValidationRecord({
+          recordId: "record-2",
+          sourceText: "Titleist fairway wood with multiple supplied candidates",
+        }),
+        buildValidationRecord({
+          recordId: "record-3",
+          sourceText:
+            "Unresolved equipment record with missing required fields",
+        }),
+        buildValidationRecord({
+          recordId: "record-4",
+          sourceText: "Odyssey putter with an unresolved product generation",
+          fieldApplicability: {
+            shaftFlex: "NOT_APPLICABLE",
+          },
+        }),
+      ],
+    });
 
     expect(inputJson).toMatchObject({
       outcomeCompleteness: {
         expectedRecordCount: 4,
-        requiredRecordIds: [
-          "record-1",
-          "record-2",
-          "record-3",
-          "record-4"
-        ],
+        requiredRecordIds: ["record-1", "record-2", "record-3", "record-4"],
         requirement:
-          "Return exactly one recordOutcomes entry for every requiredRecordId, preserving this order."
-      }
+          "Return exactly one recordOutcomes entry for every requiredRecordId, preserving this order.",
+      },
     });
 
-    expect(
-      inputJson.validationRules
-    ).toEqual(
+    expect(inputJson.validationRules).toEqual(
       expect.arrayContaining([
-        "Return exactly one recordOutcomes entry for every record in records, preserving input order. Do not stop after processing records with advisoryCandidates."
-      ])
+        "Return exactly one recordOutcomes entry for every record in records, preserving input order. Do not stop after processing records with advisoryCandidates.",
+      ]),
     );
   });
-
-
 
   it("publishes a strict provider-neutral field-repair output schema", () => {
     expect(MAIN_RUN_FIELD_REPAIR_OUTPUT_SCHEMA).toMatchObject({
@@ -348,8 +316,8 @@ describe("main run field repair contract", () => {
       schema: {
         type: "object",
         required: ["recordOutcomes", "suggestions"],
-        additionalProperties: false
-      }
+        additionalProperties: false,
+      },
     });
   });
 
@@ -390,9 +358,7 @@ describe("main run field repair contract", () => {
           typeof discriminator === "object" &&
           !Array.isArray(discriminator)
         ) {
-          discriminatorSchemas.push(
-            discriminator as Record<string, unknown>
-          );
+          discriminatorSchemas.push(discriminator as Record<string, unknown>);
         }
       }
 
@@ -408,9 +374,7 @@ describe("main run field repair contract", () => {
 
     for (const discriminator of discriminatorSchemas) {
       expect(discriminator.type).toBe("string");
-      expect(discriminator.enum).toEqual([
-        expect.any(String)
-      ]);
+      expect(discriminator.enum).toEqual([expect.any(String)]);
     }
 
     expect(
@@ -418,11 +382,11 @@ describe("main run field repair contract", () => {
         discriminatorSchemas.flatMap((discriminator) =>
           Array.isArray(discriminator.enum)
             ? discriminator.enum.filter(
-                (value): value is string => typeof value === "string"
+                (value): value is string => typeof value === "string",
               )
-            : []
-        )
-      )
+            : [],
+        ),
+      ),
     ).toEqual(
       new Set([
         "brand",
@@ -433,8 +397,8 @@ describe("main run field repair contract", () => {
         "tradeInValue",
         "REPAIR_SUGGESTED",
         "CANDIDATE_COMPARISON",
-        "NO_SAFE_REPAIR"
-      ])
+        "NO_SAFE_REPAIR",
+      ]),
     );
   });
 
@@ -448,9 +412,9 @@ describe("main run field repair contract", () => {
           candidateValue: "STIFF",
           confidence: 0.91,
           reason: "Source phrase uses a known shaft-flex abbreviation.",
-          reviewRequired: false
-        }
-      ]
+          reviewRequired: false,
+        },
+      ],
     });
 
     expect(result).toMatchObject({
@@ -464,11 +428,11 @@ describe("main run field repair contract", () => {
             sourcePhrase: "s flex",
             candidateValue: "STIFF",
             confidence: 0.91,
-            reviewRequired: false
-          }
-        ]
+            reviewRequired: false,
+          },
+        ],
       },
-      validationErrors: []
+      validationErrors: [],
     });
   });
 
@@ -476,18 +440,18 @@ describe("main run field repair contract", () => {
     const result = validateMainRunFieldRepairModelOutput({
       provider: "OPENAI",
       model: "gpt-4.1-mini",
-      text: "{\"suggestions\":[]}",
+      text: '{"suggestions":[]}',
       parsedJson: {
-        suggestions: []
-      }
+        suggestions: [],
+      },
     });
 
     expect(result).toMatchObject({
       jsonValid: true,
       validationPassed: true,
       output: {
-        suggestions: []
-      }
+        suggestions: [],
+      },
     });
   });
 
@@ -500,9 +464,9 @@ describe("main run field repair contract", () => {
           candidateValue: "STIFF",
           confidence: 0.95,
           reason: "Missing source phrase should fail validation.",
-          reviewRequired: false
-        }
-      ]
+          reviewRequired: false,
+        },
+      ],
     });
 
     expect(result.jsonValid).toBe(false);
@@ -520,9 +484,9 @@ describe("main run field repair contract", () => {
           candidateValue: "S",
           confidence: 0.91,
           reason: "The source phrase contains an abbreviation.",
-          reviewRequired: false
-        }
-      ]
+          reviewRequired: false,
+        },
+      ],
     });
 
     expect(result.jsonValid).toBe(false);
@@ -540,9 +504,9 @@ describe("main run field repair contract", () => {
           candidateValue: "Average",
           confidence: 0.91,
           reason: "The source phrase contains average condition.",
-          reviewRequired: false
-        }
-      ]
+          reviewRequired: false,
+        },
+      ],
     });
 
     expect(result.jsonValid).toBe(false);
@@ -560,15 +524,15 @@ describe("main run field repair contract", () => {
           candidateValue: "STIFF",
           confidence: 0.62,
           reason: "The source phrase is uncertain.",
-          reviewRequired: false
-        }
-      ]
+          reviewRequired: false,
+        },
+      ],
     });
 
     expect(result.jsonValid).toBe(true);
     expect(result.output?.suggestions[0]).toMatchObject({
       confidence: 0.62,
-      reviewRequired: true
+      reviewRequired: true,
     });
   });
   it("rejects schema-valid shaft repair when source phrase contains negative evidence", () => {
@@ -581,9 +545,9 @@ describe("main run field repair contract", () => {
           candidateValue: "REGULAR",
           confidence: 0.91,
           reason: "The model incorrectly treated unknown shaft as regular.",
-          reviewRequired: false
-        }
-      ]
+          reviewRequired: false,
+        },
+      ],
     });
 
     expect(result.jsonValid).toBe(true);
@@ -602,15 +566,17 @@ describe("main run field repair contract", () => {
           candidateValue: "WEDGE",
           confidence: 0.91,
           reason: "The model incorrectly mapped utility wood text to wedge.",
-          reviewRequired: false
-        }
-      ]
+          reviewRequired: false,
+        },
+      ],
     });
 
     expect(result.jsonValid).toBe(true);
     expect(result.validationPassed).toBe(false);
     expect(result.output).toBeNull();
-    expect(result.validationErrors.join(" ")).toContain("utility wood evidence");
+    expect(result.validationErrors.join(" ")).toContain(
+      "utility wood evidence",
+    );
   });
 
   it("rejects ambiguous single-letter regular shaft repair without shaft-flex context", () => {
@@ -622,18 +588,20 @@ describe("main run field repair contract", () => {
           sourcePhrase: "Ventus Blue R",
           candidateValue: "REGULAR",
           confidence: 0.91,
-          reason: "The model treated an ambiguous single-letter R as shaft flex.",
-          reviewRequired: false
-        }
-      ]
+          reason:
+            "The model treated an ambiguous single-letter R as shaft flex.",
+          reviewRequired: false,
+        },
+      ],
     });
 
     expect(result.jsonValid).toBe(true);
     expect(result.validationPassed).toBe(false);
     expect(result.output).toBeNull();
-    expect(result.validationErrors.join(" ")).toContain("single-letter R is ambiguous");
+    expect(result.validationErrors.join(" ")).toContain(
+      "single-letter R is ambiguous",
+    );
   });
-
 
   it("derives compatibility suggestions from validated repair outcomes", () => {
     const record = buildValidationRecord();
@@ -654,10 +622,10 @@ describe("main run field repair contract", () => {
                 candidateValue: "STIFF",
                 confidence: 0.91,
                 reason: "The source explicitly identifies shaft flex.",
-                reviewRequired: false
-              }
-            ]
-          }
+                reviewRequired: false,
+              },
+            ],
+          },
         ],
         suggestions: [
           {
@@ -668,13 +636,13 @@ describe("main run field repair contract", () => {
             confidence: 0.99,
             reason:
               "This provider-only compatibility entry is not nested under the repair outcome.",
-            reviewRequired: false
-          }
-        ]
+            reviewRequired: false,
+          },
+        ],
       },
       {
-        records: [record]
-      }
+        records: [record],
+      },
     );
 
     expect(result).toMatchObject({
@@ -688,21 +656,21 @@ describe("main run field repair contract", () => {
             suggestions: [
               {
                 fieldName: "shaftFlex",
-                candidateValue: "STIFF"
-              }
-            ]
-          }
+                candidateValue: "STIFF",
+              },
+            ],
+          },
         ],
         suggestions: [
           {
             recordId: "record-1",
             fieldName: "shaftFlex",
             sourcePhrase: "s flex",
-            candidateValue: "STIFF"
-          }
-        ]
+            candidateValue: "STIFF",
+          },
+        ],
       },
-      validationErrors: []
+      validationErrors: [],
     });
   });
 
@@ -715,15 +683,14 @@ describe("main run field repair contract", () => {
           summary:
             "Two deterministic product candidates require generation confirmation.",
           evidenceIds: ["record-1:product-resolution"],
-          reviewerQuestion:
-            "Is this the TSR2 or TSR3 fairway model?",
+          reviewerQuestion: "Is this the TSR2 or TSR3 fairway model?",
           candidateProductIds: [
             "prod_titleist_tsr2_fairway",
-            "prod_titleist_tsr3_fairway"
-          ]
-        }
+            "prod_titleist_tsr3_fairway",
+          ],
+        },
       ],
-      suggestions: []
+      suggestions: [],
     });
 
     expect(result).toMatchObject({
@@ -736,12 +703,12 @@ describe("main run field repair contract", () => {
             recordId: "record-1",
             candidateProductIds: [
               "prod_titleist_tsr2_fairway",
-              "prod_titleist_tsr3_fairway"
-            ]
-          }
+              "prod_titleist_tsr3_fairway",
+            ],
+          },
         ],
-        suggestions: []
-      }
+        suggestions: [],
+      },
     });
   });
 
@@ -758,11 +725,11 @@ describe("main run field repair contract", () => {
             "What shaft flex is printed on the physical club label?",
           reasonCodes: [
             "NEGATIVE_SOURCE_EVIDENCE",
-            "HUMAN_CONFIRMATION_REQUIRED"
-          ]
-        }
+            "HUMAN_CONFIRMATION_REQUIRED",
+          ],
+        },
       ],
-      suggestions: []
+      suggestions: [],
     });
 
     expect(result).toMatchObject({
@@ -775,32 +742,31 @@ describe("main run field repair contract", () => {
             recordId: "record-1",
             reasonCodes: [
               "NEGATIVE_SOURCE_EVIDENCE",
-              "HUMAN_CONFIRMATION_REQUIRED"
-            ]
-          }
+              "HUMAN_CONFIRMATION_REQUIRED",
+            ],
+          },
         ],
-        suggestions: []
-      }
+        suggestions: [],
+      },
     });
   });
-
 
   it("requires one advisory outcome for every selected record", () => {
     const record = buildValidationRecord();
     const result = validateMainRunFieldRepairModelOutput(
       {
         recordOutcomes: [],
-        suggestions: []
+        suggestions: [],
       },
       {
-        records: [record]
-      }
+        records: [record],
+      },
     );
 
     expect(result.jsonValid).toBe(true);
     expect(result.validationPassed).toBe(false);
     expect(result.validationErrors.join(" ")).toContain(
-      "missing advisory outcome"
+      "missing advisory outcome",
     );
   });
 
@@ -817,24 +783,22 @@ describe("main run field repair contract", () => {
             reviewerQuestion: "Which generation is shown?",
             candidateProductIds: [
               "prod_titleist_tsr2_fairway",
-              "invented-product-id"
-            ]
-          }
+              "invented-product-id",
+            ],
+          },
         ],
-        suggestions: []
+        suggestions: [],
       },
       {
-        records: [record]
-      }
+        records: [record],
+      },
     );
 
     expect(result.jsonValid).toBe(true);
     expect(result.validationPassed).toBe(false);
+    expect(result.validationErrors.join(" ")).toContain("unknown evidenceId");
     expect(result.validationErrors.join(" ")).toContain(
-      "unknown evidenceId"
-    );
-    expect(result.validationErrors.join(" ")).toContain(
-      "unsupported candidateProductId"
+      "unsupported candidateProductId",
     );
   });
 
@@ -847,8 +811,8 @@ describe("main run field repair contract", () => {
         reason: "One deterministic product matched.",
         matchedProductId: "prod_titleist_tsr2_fairway",
         matchedSku: "TSR2-FW",
-        candidateProductIds: ["prod_titleist_tsr2_fairway"]
-      }
+        candidateProductIds: ["prod_titleist_tsr2_fairway"],
+      },
     });
     const result = validateMainRunFieldRepairModelOutput(
       {
@@ -867,62 +831,56 @@ describe("main run field repair contract", () => {
                 candidateValue: "TSR3",
                 confidence: 0.9,
                 reason: "The model preferred another product.",
-                reviewRequired: true
-              }
-            ]
-          }
+                reviewRequired: true,
+              },
+            ],
+          },
         ],
-        suggestions: []
+        suggestions: [],
       },
       {
-        records: [record]
-      }
+        records: [record],
+      },
     );
 
     expect(result.jsonValid).toBe(true);
     expect(result.validationPassed).toBe(false);
     expect(result.validationErrors.join(" ")).toContain(
-      "cannot replace deterministic MATCHED product identity"
+      "cannot replace deterministic MATCHED product identity",
     );
   });
 
   it("accepts exact evidence-backed advisory candidates", () => {
-    const record =
-      buildAdvisoryCandidateRecord();
-    const result =
-      validateMainRunFieldRepairModelOutput(
-        {
-          recordOutcomes: [
-            {
-              outcomeType: "REPAIR_SUGGESTED",
-              recordId: "record-1",
-              summary:
-                "A prior approved correction supports a reviewer decision.",
-              evidenceIds: [
-                "record-1:prior-review"
-              ],
-              reviewerQuestion:
-                "Should Stiff be applied?",
-              suggestions: [
-                {
-                  recordId: "record-1",
-                  fieldName: "shaftFlex",
-                  sourcePhrase: "shaft firm",
-                  candidateValue: "STIFF",
-                  confidence: 0.94,
-                  reason:
-                    "Prior approved review evidence supports this value.",
-                  reviewRequired: true
-                }
-              ]
-            }
-          ],
-          suggestions: []
-        },
-        {
-          records: [record]
-        }
-      );
+    const record = buildAdvisoryCandidateRecord();
+    const result = validateMainRunFieldRepairModelOutput(
+      {
+        recordOutcomes: [
+          {
+            outcomeType: "REPAIR_SUGGESTED",
+            recordId: "record-1",
+            summary:
+              "A prior approved correction supports a reviewer decision.",
+            evidenceIds: ["record-1:prior-review"],
+            reviewerQuestion: "Should Stiff be applied?",
+            suggestions: [
+              {
+                recordId: "record-1",
+                fieldName: "shaftFlex",
+                sourcePhrase: "shaft firm",
+                candidateValue: "STIFF",
+                confidence: 0.94,
+                reason: "Prior approved review evidence supports this value.",
+                reviewRequired: true,
+              },
+            ],
+          },
+        ],
+        suggestions: [],
+      },
+      {
+        records: [record],
+      },
+    );
 
     expect(result).toMatchObject({
       jsonValid: true,
@@ -938,112 +896,90 @@ describe("main run field repair contract", () => {
                 candidateValue: "STIFF",
                 sourcePhrase: "shaft firm",
                 confidence: 0.94,
-                reviewRequired: true
-              }
-            ]
-          }
+                reviewRequired: true,
+              },
+            ],
+          },
         ],
         suggestions: [
           {
             fieldName: "shaftFlex",
-            candidateValue: "STIFF"
-          }
-        ]
+            candidateValue: "STIFF",
+          },
+        ],
       },
-      validationErrors: []
+      validationErrors: [],
     });
   });
 
   it("rejects no-safe-repair when an evidence-backed candidate is available", () => {
-    const result =
-      validateMainRunFieldRepairModelOutput(
-        {
-          recordOutcomes: [
-            {
-              outcomeType: "NO_SAFE_REPAIR",
-              recordId: "record-1",
-              summary:
-                "The model declined to surface the supplied candidate.",
-              evidenceIds: [
-                "record-1:prior-review"
-              ],
-              reviewerQuestion:
-                "What shaft flex should be used?",
-              reasonCodes: [
-                "NO_EVIDENCE_TO_REPAIR"
-              ]
-            }
-          ],
-          suggestions: []
-        },
-        {
-          records: [
-            buildAdvisoryCandidateRecord()
-          ]
-        }
-      );
+    const result = validateMainRunFieldRepairModelOutput(
+      {
+        recordOutcomes: [
+          {
+            outcomeType: "NO_SAFE_REPAIR",
+            recordId: "record-1",
+            summary: "The model declined to surface the supplied candidate.",
+            evidenceIds: ["record-1:prior-review"],
+            reviewerQuestion: "What shaft flex should be used?",
+            reasonCodes: ["NO_EVIDENCE_TO_REPAIR"],
+          },
+        ],
+        suggestions: [],
+      },
+      {
+        records: [buildAdvisoryCandidateRecord()],
+      },
+    );
 
     expect(result.jsonValid).toBe(true);
     expect(result.validationPassed).toBe(false);
-    expect(
-      result.validationErrors.join(" ")
-    ).toContain(
-      "requires REPAIR_SUGGESTED because evidence-backed advisory candidates were supplied"
+    expect(result.validationErrors.join(" ")).toContain(
+      "requires REPAIR_SUGGESTED because evidence-backed advisory candidates were supplied",
     );
   });
 
   it("rejects altered candidates and missing source-evidence citation", () => {
-    const result =
-      validateMainRunFieldRepairModelOutput(
-        {
-          recordOutcomes: [
-            {
-              outcomeType: "REPAIR_SUGGESTED",
-              recordId: "record-1",
-              summary:
-                "The provider altered the supplied candidate.",
-              evidenceIds: [
-                "record-1:product-resolution"
-              ],
-              reviewerQuestion:
-                "Should Regular be applied?",
-              suggestions: [
-                {
-                  recordId: "record-1",
-                  fieldName: "shaftFlex",
-                  sourcePhrase: "shaft firm",
-                  candidateValue: "REGULAR",
-                  confidence: 0.94,
-                  reason:
-                    "The provider changed the prior-review value.",
-                  reviewRequired: true
-                }
-              ]
-            }
-          ],
-          suggestions: []
-        },
-        {
-          records: [
-            buildAdvisoryCandidateRecord()
-          ]
-        }
-      );
+    const result = validateMainRunFieldRepairModelOutput(
+      {
+        recordOutcomes: [
+          {
+            outcomeType: "REPAIR_SUGGESTED",
+            recordId: "record-1",
+            summary: "The provider altered the supplied candidate.",
+            evidenceIds: ["record-1:product-resolution"],
+            reviewerQuestion: "Should Regular be applied?",
+            suggestions: [
+              {
+                recordId: "record-1",
+                fieldName: "shaftFlex",
+                sourcePhrase: "shaft firm",
+                candidateValue: "REGULAR",
+                confidence: 0.94,
+                reason: "The provider changed the prior-review value.",
+                reviewRequired: true,
+              },
+            ],
+          },
+        ],
+        suggestions: [],
+      },
+      {
+        records: [buildAdvisoryCandidateRecord()],
+      },
+    );
 
     expect(result.jsonValid).toBe(true);
     expect(result.validationPassed).toBe(false);
 
-    const errors =
-      result.validationErrors.join(" ");
+    const errors = result.validationErrors.join(" ");
 
     expect(errors).toContain(
-      "missing required sourceEvidenceId=record-1:prior-review"
+      "missing required sourceEvidenceId=record-1:prior-review",
     );
+    expect(errors).toContain("missing or altered advisory candidate");
     expect(errors).toContain(
-      "missing or altered advisory candidate"
-    );
-    expect(errors).toContain(
-      "suggestion was not supplied as an evidence-backed advisory candidate"
+      "suggestion was not supplied as an evidence-backed advisory candidate",
     );
   });
 
@@ -1055,18 +991,18 @@ describe("main run field repair contract", () => {
         brand: "Odyssey",
         productLine: "White Hot",
         category: "PUTTER",
-        shaftFlex: null
+        shaftFlex: null,
       },
       fieldApplicability: {
-        shaftFlex: "NOT_APPLICABLE"
+        shaftFlex: "NOT_APPLICABLE",
       },
       productResolution: {
         status: "UNRESOLVED",
         reason: "Putter generation was unresolved.",
         matchedProductId: null,
         matchedSku: null,
-        candidateProductIds: []
-      }
+        candidateProductIds: [],
+      },
     });
     const result = validateMainRunFieldRepairModelOutput(
       {
@@ -1085,26 +1021,25 @@ describe("main run field repair contract", () => {
                 candidateValue: "REGULAR",
                 confidence: 0.8,
                 reason: "The model guessed a shaft flex.",
-                reviewRequired: true
-              }
-            ]
-          }
+                reviewRequired: true,
+              },
+            ],
+          },
         ],
-        suggestions: []
+        suggestions: [],
       },
       {
-        records: [record]
-      }
+        records: [record],
+      },
     );
 
     expect(result.jsonValid).toBe(true);
     expect(result.validationPassed).toBe(false);
     expect(result.validationErrors.join(" ")).toContain(
-      "not applicable for a putter"
+      "not applicable for a putter",
     );
     expect(result.validationErrors.join(" ")).toContain(
-      "must not request shaft-flex information"
+      "must not request shaft-flex information",
     );
   });
-
 });

@@ -1,13 +1,8 @@
 export type GolfTermNormalizationField =
-  | "shaftFlex"
-  | "category"
-  | "conditionGrade"
-  | "tradeInValue";
+  "shaftFlex" | "category" | "conditionGrade" | "tradeInValue";
 
 export type GolfTermNormalizationAction =
-  | "NORMALIZE"
-  | "BLOCK_REPAIR"
-  | "ROUTE_TO_REVIEW";
+  "NORMALIZE" | "BLOCK_REPAIR" | "ROUTE_TO_REVIEW";
 
 export type GolfTermNormalizationEntry = {
   id: string;
@@ -34,7 +29,7 @@ export const GOLF_TERM_NORMALIZATION_MATRIX: GolfTermNormalizationEntry[] = [
     action: "NORMALIZE",
     requiresContext: true,
     notes:
-      "Single-letter R is accepted only when source context clearly identifies shaft flex evidence."
+      "Single-letter R is accepted only when source context clearly identifies shaft flex evidence.",
   },
   {
     id: "shaft-stiff",
@@ -43,7 +38,7 @@ export const GOLF_TERM_NORMALIZATION_MATRIX: GolfTermNormalizationEntry[] = [
     canonicalValue: "STIFF",
     action: "NORMALIZE",
     requiresContext: true,
-    notes: "Stiff aliases must be shaft-flex evidence, not unrelated text."
+    notes: "Stiff aliases must be shaft-flex evidence, not unrelated text.",
   },
   {
     id: "shaft-x-stiff",
@@ -52,7 +47,7 @@ export const GOLF_TERM_NORMALIZATION_MATRIX: GolfTermNormalizationEntry[] = [
     canonicalValue: "X_STIFF",
     action: "NORMALIZE",
     requiresContext: true,
-    notes: "X aliases must be shaft-flex evidence."
+    notes: "X aliases must be shaft-flex evidence.",
   },
   {
     id: "shaft-tour-x-stiff",
@@ -61,7 +56,8 @@ export const GOLF_TERM_NORMALIZATION_MATRIX: GolfTermNormalizationEntry[] = [
     canonicalValue: "TOUR_X_STIFF",
     action: "NORMALIZE",
     requiresContext: true,
-    notes: "Tour X-Stiff is an approved project value for review-facing normalized records."
+    notes:
+      "Tour X-Stiff is an approved project value for review-facing normalized records.",
   },
   {
     id: "shaft-senior",
@@ -70,7 +66,7 @@ export const GOLF_TERM_NORMALIZATION_MATRIX: GolfTermNormalizationEntry[] = [
     canonicalValue: "SENIOR",
     action: "NORMALIZE",
     requiresContext: true,
-    notes: "Senior aliases are accepted when used as shaft-flex evidence."
+    notes: "Senior aliases are accepted when used as shaft-flex evidence.",
   },
   {
     id: "shaft-ladies",
@@ -79,7 +75,7 @@ export const GOLF_TERM_NORMALIZATION_MATRIX: GolfTermNormalizationEntry[] = [
     canonicalValue: "LADIES",
     action: "NORMALIZE",
     requiresContext: true,
-    notes: "Ladies aliases are accepted when used as shaft-flex evidence."
+    notes: "Ladies aliases are accepted when used as shaft-flex evidence.",
   },
   {
     id: "negative-evidence",
@@ -89,7 +85,7 @@ export const GOLF_TERM_NORMALIZATION_MATRIX: GolfTermNormalizationEntry[] = [
     action: "BLOCK_REPAIR",
     requiresContext: false,
     notes:
-      "Negative evidence blocks model repair suggestions instead of forcing missing values into an enum."
+      "Negative evidence blocks model repair suggestions instead of forcing missing values into an enum.",
   },
   {
     id: "category-driver",
@@ -98,7 +94,7 @@ export const GOLF_TERM_NORMALIZATION_MATRIX: GolfTermNormalizationEntry[] = [
     canonicalValue: "DRIVER",
     action: "NORMALIZE",
     requiresContext: false,
-    notes: "Driver aliases can map directly to DRIVER."
+    notes: "Driver aliases can map directly to DRIVER.",
   },
   {
     id: "category-fairway",
@@ -107,7 +103,7 @@ export const GOLF_TERM_NORMALIZATION_MATRIX: GolfTermNormalizationEntry[] = [
     canonicalValue: "FAIRWAY_WOOD",
     action: "NORMALIZE",
     requiresContext: false,
-    notes: "Fairway wood aliases map to FAIRWAY_WOOD."
+    notes: "Fairway wood aliases map to FAIRWAY_WOOD.",
   },
   {
     id: "category-hybrid",
@@ -116,7 +112,7 @@ export const GOLF_TERM_NORMALIZATION_MATRIX: GolfTermNormalizationEntry[] = [
     canonicalValue: "HYBRID",
     action: "NORMALIZE",
     requiresContext: false,
-    notes: "Hybrid and rescue terminology maps to HYBRID."
+    notes: "Hybrid and rescue terminology maps to HYBRID.",
   },
   {
     id: "category-utility-wood",
@@ -126,17 +122,29 @@ export const GOLF_TERM_NORMALIZATION_MATRIX: GolfTermNormalizationEntry[] = [
     action: "ROUTE_TO_REVIEW",
     requiresContext: false,
     notes:
-      "Utility wood evidence is not wedge evidence. Route to review until a supported canonical category decision is explicit."
+      "Utility wood evidence is not wedge evidence. Route to review until a supported canonical category decision is explicit.",
   },
   {
     id: "category-wedge",
     field: "category",
-    aliases: ["wedge", "PW", "GW", "SW", "LW", "50", "52", "54", "56", "58", "60"],
+    aliases: [
+      "wedge",
+      "PW",
+      "GW",
+      "SW",
+      "LW",
+      "50",
+      "52",
+      "54",
+      "56",
+      "58",
+      "60",
+    ],
     canonicalValue: "WEDGE",
     action: "NORMALIZE",
     requiresContext: true,
     notes:
-      "Wedge loft aliases are limited to common wedge loft ranges and must not capture utility wood lofts such as 19 degree."
+      "Wedge loft aliases are limited to common wedge loft ranges and must not capture utility wood lofts such as 19 degree.",
   },
   {
     id: "category-putter",
@@ -145,7 +153,7 @@ export const GOLF_TERM_NORMALIZATION_MATRIX: GolfTermNormalizationEntry[] = [
     canonicalValue: "PUTTER",
     action: "NORMALIZE",
     requiresContext: false,
-    notes: "Putter aliases map directly to PUTTER."
+    notes: "Putter aliases map directly to PUTTER.",
   },
   {
     id: "condition-approved-grades",
@@ -159,13 +167,13 @@ export const GOLF_TERM_NORMALIZATION_MATRIX: GolfTermNormalizationEntry[] = [
       "cond avg",
       "condition avg",
       "condition mint",
-      "condition poor"
+      "condition poor",
     ],
     canonicalValue: null,
     action: "NORMALIZE",
     requiresContext: true,
     notes:
-      "Only approved condition grade values are normalized. Free-text wear notes remain evidence, not condition values."
+      "Only approved condition grade values are normalized. Free-text wear notes remain evidence, not condition values.",
   },
   {
     id: "trade-value-negative-evidence",
@@ -175,8 +183,8 @@ export const GOLF_TERM_NORMALIZATION_MATRIX: GolfTermNormalizationEntry[] = [
     action: "BLOCK_REPAIR",
     requiresContext: false,
     notes:
-      "A pending or missing value phrase blocks numeric model repair unless source text includes an explicit amount."
-  }
+      "A pending or missing value phrase blocks numeric model repair unless source text includes an explicit amount.",
+  },
 ] as const;
 
 const NEGATIVE_EVIDENCE_PATTERN =
@@ -206,32 +214,32 @@ const CONDITION_GRADE_ADVISORY_POLICIES = [
     policyId: "condition-context-mint",
     candidateValue: "9.5 Mint" as const,
     pattern:
-      /\b(?:overall(?:\s+condition)?|cosmetics?|condition|cond)(?:\s+grade)?\s*(?:is|=|:)?\s*mint\b/gi
+      /\b(?:overall(?:\s+condition)?|cosmetics?|condition|cond)(?:\s+grade)?\s*(?:is|=|:)?\s*mint\b/gi,
   },
   {
     policyId: "condition-context-above-average",
     candidateValue: "9.0 Above Average" as const,
     pattern:
-      /\b(?:overall(?:\s+condition)?|cosmetics?|condition|cond)(?:\s+grade)?\s*(?:is|=|:)?\s*(?:above\s+(?:avg|average)|aa)\b/gi
+      /\b(?:overall(?:\s+condition)?|cosmetics?|condition|cond)(?:\s+grade)?\s*(?:is|=|:)?\s*(?:above\s+(?:avg|average)|aa)\b/gi,
   },
   {
     policyId: "condition-context-average",
     candidateValue: "8.0 Average" as const,
     pattern:
-      /\b(?:overall(?:\s+condition)?|cosmetics?|condition|cond)(?:\s+grade)?\s*(?:is|=|:)?\s*(?:avg|average)\b/gi
+      /\b(?:overall(?:\s+condition)?|cosmetics?|condition|cond)(?:\s+grade)?\s*(?:is|=|:)?\s*(?:avg|average)\b/gi,
   },
   {
     policyId: "condition-context-below-average",
     candidateValue: "7.0 Below Average" as const,
     pattern:
-      /\b(?:overall(?:\s+condition)?|cosmetics?|condition|cond)(?:\s+grade)?\s*(?:is|=|:)?\s*(?:below\s+(?:avg|average)|ba)\b/gi
+      /\b(?:overall(?:\s+condition)?|cosmetics?|condition|cond)(?:\s+grade)?\s*(?:is|=|:)?\s*(?:below\s+(?:avg|average)|ba)\b/gi,
   },
   {
     policyId: "condition-context-poor",
     candidateValue: "6.0 Poor" as const,
     pattern:
-      /\b(?:overall(?:\s+condition)?|cosmetics?|condition|cond)(?:\s+grade)?\s*(?:is|=|:)?\s*poor\b/gi
-  }
+      /\b(?:overall(?:\s+condition)?|cosmetics?|condition|cond)(?:\s+grade)?\s*(?:is|=|:)?\s*poor\b/gi,
+  },
 ] as const;
 
 const CONDITION_GRADE_NEGATIVE_EVIDENCE_PATTERN =
@@ -240,13 +248,8 @@ const CONDITION_GRADE_NEGATIVE_EVIDENCE_PATTERN =
 const NON_CONDITION_FIELD_NEGATIVE_EVIDENCE_PATTERN =
   /(?:\b(?:trade\s*-?\s*in\s+value|trade\s+value|estimated\s+value|value|shaft(?:\s+flex)?|flex|model|product(?:\s+line)?|category|cat)\b\s*(?:=|:|is)?\s*\b(?:unknown|unclear|pending|not\s+listed|tbd|not\s+sure)\b)|(?:\b(?:unknown|unclear|pending|not\s+listed|tbd|not\s+sure)\b\s+\b(?:trade\s*-?\s*in\s+value|trade\s+value|estimated\s+value|value|shaft(?:\s+flex)?|flex|model|product(?:\s+line)?|category|cat)\b)/gi;
 
-function getConditionGradeSafetyText(
-  sourceText: string
-): string {
-  return sourceText.replace(
-    NON_CONDITION_FIELD_NEGATIVE_EVIDENCE_PATTERN,
-    " "
-  );
+function getConditionGradeSafetyText(sourceText: string): string {
+  return sourceText.replace(NON_CONDITION_FIELD_NEGATIVE_EVIDENCE_PATTERN, " ");
 }
 
 type IndexedDeterministicGolfTermAdvisoryMatch =
@@ -255,125 +258,89 @@ type IndexedDeterministicGolfTermAdvisoryMatch =
   };
 
 function collectDeterministicGolfTermAdvisoryMatches(
-  sourceText: string
+  sourceText: string,
 ): IndexedDeterministicGolfTermAdvisoryMatch[] {
-  return CONDITION_GRADE_ADVISORY_POLICIES.flatMap(
-    (policy) =>
-      Array.from(
-        sourceText.matchAll(
-          new RegExp(
-            policy.pattern.source,
-            policy.pattern.flags
-          )
-        )
-      ).flatMap((match) => {
-        if (
-          !match[0] ||
-          match.index === undefined
-        ) {
-          return [];
-        }
+  return CONDITION_GRADE_ADVISORY_POLICIES.flatMap((policy) =>
+    Array.from(
+      sourceText.matchAll(
+        new RegExp(policy.pattern.source, policy.pattern.flags),
+      ),
+    ).flatMap((match) => {
+      if (!match[0] || match.index === undefined) {
+        return [];
+      }
 
-        return [
-          {
-            policyId: policy.policyId,
-            fieldName:
-              "conditionGrade" as const,
-            sourcePhrase: match[0],
-            candidateValue:
-              policy.candidateValue,
-            confidence: 0.9,
-            reason:
-              "Deterministic normalization policy matched an explicit contextual condition phrase.",
-            index: match.index
-          }
-        ];
-      })
+      return [
+        {
+          policyId: policy.policyId,
+          fieldName: "conditionGrade" as const,
+          sourcePhrase: match[0],
+          candidateValue: policy.candidateValue,
+          confidence: 0.9,
+          reason:
+            "Deterministic normalization policy matched an explicit contextual condition phrase.",
+          index: match.index,
+        },
+      ];
+    }),
   );
 }
 
 export function hasDeterministicGolfTermAdvisoryNegativeEvidence(
   sourceText: string,
-  fieldName:
-    DeterministicGolfTermAdvisoryMatch["fieldName"]
+  fieldName: DeterministicGolfTermAdvisoryMatch["fieldName"],
 ): boolean {
   return (
     fieldName === "conditionGrade" &&
     CONDITION_GRADE_NEGATIVE_EVIDENCE_PATTERN.test(
-      getConditionGradeSafetyText(
-        sourceText
-      )
+      getConditionGradeSafetyText(sourceText),
     )
   );
 }
 
 export function hasDeterministicGolfTermAdvisoryConflict(
   sourceText: string,
-  fieldName:
-    DeterministicGolfTermAdvisoryMatch["fieldName"]
+  fieldName: DeterministicGolfTermAdvisoryMatch["fieldName"],
 ): boolean {
   const candidateValues = new Set(
-    collectDeterministicGolfTermAdvisoryMatches(
-      sourceText
-    )
-      .filter(
-        (match) =>
-          match.fieldName === fieldName
-      )
-      .map(
-        (match) =>
-          match.candidateValue
-      )
+    collectDeterministicGolfTermAdvisoryMatches(sourceText)
+      .filter((match) => match.fieldName === fieldName)
+      .map((match) => match.candidateValue),
   );
 
   return candidateValues.size > 1;
 }
 
 export function findDeterministicGolfTermAdvisoryMatches(
-  sourceText: string
+  sourceText: string,
 ): DeterministicGolfTermAdvisoryMatch[] {
   if (
     hasDeterministicGolfTermAdvisoryNegativeEvidence(
       sourceText,
-      "conditionGrade"
+      "conditionGrade",
     )
   ) {
     return [];
   }
 
-  const matches =
-    collectDeterministicGolfTermAdvisoryMatches(
-      sourceText
-    );
-  const uniqueValues = new Set(
-    matches.map(
-      (match) =>
-        match.candidateValue
-    )
-  );
+  const matches = collectDeterministicGolfTermAdvisoryMatches(sourceText);
+  const uniqueValues = new Set(matches.map((match) => match.candidateValue));
 
-  if (
-    matches.length === 0 ||
-    uniqueValues.size !== 1
-  ) {
+  if (matches.length === 0 || uniqueValues.size !== 1) {
     return [];
   }
 
   const selectedMatch = [...matches].sort(
     (left, right) =>
-      right.sourcePhrase.length -
-        left.sourcePhrase.length ||
-      left.index - right.index
+      right.sourcePhrase.length - left.sourcePhrase.length ||
+      left.index - right.index,
   )[0];
 
   if (!selectedMatch) {
     return [];
   }
 
-  const {
-    index: _index,
-    ...advisoryMatch
-  } = selectedMatch;
+  const { index: _index, ...advisoryMatch } = selectedMatch;
 
   return [advisoryMatch];
 }
@@ -383,14 +350,14 @@ export function getGolfTermNormalizationMatrix(): GolfTermNormalizationEntry[] {
 }
 
 export function getFieldRepairSuggestionMatrixValidationErrors(
-  suggestion: FieldRepairSuggestionForNormalization
+  suggestion: FieldRepairSuggestionForNormalization,
 ): string[] {
   const errors: string[] = [];
   const sourcePhrase = suggestion.sourcePhrase.trim();
 
   if (NEGATIVE_EVIDENCE_PATTERN.test(sourcePhrase)) {
     errors.push(
-      `${suggestion.fieldName} repair blocked because source phrase contains negative evidence: "${sourcePhrase}".`
+      `${suggestion.fieldName} repair blocked because source phrase contains negative evidence: "${sourcePhrase}".`,
     );
   }
 
@@ -400,7 +367,7 @@ export function getFieldRepairSuggestionMatrixValidationErrors(
     UTILITY_WOOD_PATTERN.test(sourcePhrase)
   ) {
     errors.push(
-      `category repair blocked because utility wood evidence is not wedge evidence: "${sourcePhrase}".`
+      `category repair blocked because utility wood evidence is not wedge evidence: "${sourcePhrase}".`,
     );
   }
 
@@ -411,7 +378,7 @@ export function getFieldRepairSuggestionMatrixValidationErrors(
     !EXPLICIT_REGULAR_PATTERN.test(sourcePhrase)
   ) {
     errors.push(
-      `shaftFlex repair blocked because single-letter R is ambiguous without shaft-flex context: "${sourcePhrase}".`
+      `shaftFlex repair blocked because single-letter R is ambiguous without shaft-flex context: "${sourcePhrase}".`,
     );
   }
 

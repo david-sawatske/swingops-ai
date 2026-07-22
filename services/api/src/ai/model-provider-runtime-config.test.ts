@@ -7,11 +7,11 @@ describe("model provider runtime config", () => {
     expect(
       getModelProviderRuntimeConfig({
         MODEL_PROVIDER_ATTEMPT_TIMEOUT_MS: "7500",
-        MODEL_PROVIDER_WORKFLOW_TIMEOUT_MS: "18000"
-      })
+        MODEL_PROVIDER_WORKFLOW_TIMEOUT_MS: "18000",
+      }),
     ).toMatchObject({
       providerAttemptTimeoutMs: 7500,
-      providerWorkflowTimeoutMs: 18000
+      providerWorkflowTimeoutMs: 18000,
     });
   });
 
@@ -19,10 +19,10 @@ describe("model provider runtime config", () => {
     expect(
       getModelProviderRuntimeConfig({
         MODEL_PROVIDER_ATTEMPT_TIMEOUT_MS: "0",
-        MODEL_PROVIDER_WORKFLOW_TIMEOUT_MS: "not-a-number"
-      })
+        MODEL_PROVIDER_WORKFLOW_TIMEOUT_MS: "not-a-number",
+      }),
     ).toEqual({
-      enableRealModelCalls: false
+      enableRealModelCalls: false,
     });
   });
 });

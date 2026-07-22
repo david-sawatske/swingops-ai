@@ -12,7 +12,7 @@ function getDatabaseTarget(databaseUrl: URL): string {
     databaseUrl.protocol,
     databaseUrl.hostname,
     databaseUrl.port || "5432",
-    getDatabaseName(databaseUrl)
+    getDatabaseName(databaseUrl),
   ].join("|");
 }
 
@@ -32,18 +32,23 @@ export function deriveTestDatabaseUrl(developmentDatabaseUrl: string): string {
 export function resolveTestDatabaseUrl(env: DatabaseUrlEnvironment): string {
   const developmentDatabaseUrl = new URL(env.DATABASE_URL);
   const testDatabaseUrl = new URL(
-    env.TEST_DATABASE_URL ?? deriveTestDatabaseUrl(env.DATABASE_URL)
+    env.TEST_DATABASE_URL ?? deriveTestDatabaseUrl(env.DATABASE_URL),
   );
   const testDatabaseName = getDatabaseName(testDatabaseUrl);
 
   if (!testDatabaseName.endsWith("_test")) {
     throw new Error(
-      "Refusing to reset a test database whose name does not end with _test."
+      "Refusing to reset a test database whose name does not end with _test.",
     );
   }
 
-  if (getDatabaseTarget(testDatabaseUrl) === getDatabaseTarget(developmentDatabaseUrl)) {
-    throw new Error("TEST_DATABASE_URL must not target the development database.");
+  if (
+    getDatabaseTarget(testDatabaseUrl) ===
+    getDatabaseTarget(developmentDatabaseUrl)
+  ) {
+    throw new Error(
+      "TEST_DATABASE_URL must not target the development database.",
+    );
   }
 
   return testDatabaseUrl.toString();

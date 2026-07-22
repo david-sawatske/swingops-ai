@@ -79,7 +79,7 @@
   margin: 0;
   border: 1px solid #d9dfd4;
   border-radius: 12px;
-  background: #ffffff;
+  background: #fff;
   color: #172017;
   font-size: 0.78rem;
   line-height: 1.45;
@@ -104,7 +104,7 @@
   width: 100%;
   border: 1px solid #cbd4c5;
   border-radius: 10px;
-  background: #ffffff;
+  background: #fff;
   color: #172017;
   padding: 10px 12px;
   resize: vertical;
@@ -124,7 +124,7 @@
   min-width: 260px;
 }
 
-@media (max-width: 720px) {
+@media (width <= 720px) {
   .review-queue-card__header {
     flex-direction: column;
   }
@@ -133,7 +133,6 @@
     grid-template-columns: 1fr;
   }
 }
-
 
 .hero__description {
   max-width: 760px;
@@ -147,7 +146,7 @@
   margin-top: 18px;
   border: 1px solid #d9dfd4;
   border-radius: 16px;
-  background: #ffffff;
+  background: #fff;
   overflow: hidden;
 }
 
@@ -181,4 +180,3 @@
   margin: 0;
   padding: 16px;
 }
-

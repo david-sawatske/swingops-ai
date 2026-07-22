@@ -14,10 +14,10 @@ export function getWorkflowEvalStatusClassName(status: WorkflowEvalStatus) {
     : "workflow-eval-status workflow-eval-status--failed";
 }
 
-export function formatWorkflowEvalExecutionMode(mode: WorkflowEvalExecutionMode) {
-  return mode === "MULTI_SOURCE_INTAKE"
-    ? "Source intake"
-    : "Guarded workflow";
+export function formatWorkflowEvalExecutionMode(
+  mode: WorkflowEvalExecutionMode,
+) {
+  return mode === "MULTI_SOURCE_INTAKE" ? "Source intake" : "Guarded workflow";
 }
 
 export function summarizeWorkflowEvalFailures(failures: WorkflowEvalFailure[]) {

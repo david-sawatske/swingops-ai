@@ -36,6 +36,23 @@ Run individual workspace typechecks:
     pnpm --filter @swingops/web typecheck
     pnpm --filter @swingops/api typecheck
 
+## Code quality commands
+
+Run the same code, stylesheet, and formatting checks used in continuous
+integration:
+
+    pnpm lint
+
+Run an individual check when narrowing down a failure:
+
+    pnpm lint:code
+    pnpm lint:styles
+    pnpm format:check
+
+Apply the configured formatter:
+
+    pnpm format
+
 ## Test commands
 
 Run all tests:
@@ -78,10 +95,10 @@ separate live-provider acceptance checks in `docs/guided-workflow.md`.
 
 The GitHub Actions workflow in `.github/workflows/ci.yml` runs on pushes and
 pull requests. It provisions PostgreSQL with pgvector, installs locked
-dependencies, validates configuration, typechecks, runs workspace tests,
-builds every workspace, installs Chromium, and executes the golden browser
-test. Browser traces, screenshots, videos, and the HTML report are uploaded
-when available.
+dependencies, validates configuration, checks code and stylesheet quality,
+verifies formatting, typechecks, runs workspace tests, builds every workspace,
+installs Chromium, and executes the golden browser test. Browser traces,
+screenshots, videos, and the HTML report are uploaded when available.
 
 Run web tests:
 
@@ -91,13 +108,15 @@ Run API tests:
 
     pnpm --filter @swingops/api test
 
-## Formatting guard
+## Patch guard
 
 Before committing, run:
 
+    pnpm lint
     git diff --check
 
-This catches whitespace errors and patch formatting issues.
+This validates source and stylesheet rules, repository formatting, and patch
+whitespace.
 
 ## What the tests cover
 

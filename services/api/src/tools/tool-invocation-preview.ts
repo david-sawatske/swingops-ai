@@ -5,13 +5,11 @@ import {
   type ToolExecutionMode,
   type ToolExecutionPolicyDecision,
   type ToolExecutionPolicyEvaluation,
-  type ToolExecutionPolicyReasonCode
+  type ToolExecutionPolicyReasonCode,
 } from "./tool-execution-policy.js";
 
 export type ToolInvocationPreviewStatus =
-  | "READY_TO_EXECUTE"
-  | "AWAITING_HUMAN_APPROVAL"
-  | "BLOCKED";
+  "READY_TO_EXECUTE" | "AWAITING_HUMAN_APPROVAL" | "BLOCKED";
 
 export type PreviewToolInvocationInput = {
   toolName: string;
@@ -52,7 +50,7 @@ export type ToolInvocationPreview = {
 };
 
 export function previewToolInvocation(
-  input: PreviewToolInvocationInput
+  input: PreviewToolInvocationInput,
 ): ToolInvocationPreview {
   const policyEvaluation = evaluateToolExecutionPolicy({
     toolName: input.toolName,
@@ -61,7 +59,7 @@ export function previewToolInvocation(
       : { executionMode: input.executionMode }),
     ...(input.humanApprovalGranted === undefined
       ? {}
-      : { humanApprovalGranted: input.humanApprovalGranted })
+      : { humanApprovalGranted: input.humanApprovalGranted }),
   });
 
   const invocation: ToolInvocationAuditPreview = {
@@ -76,7 +74,7 @@ export function previewToolInvocation(
     persisted: false,
     policyDecision: policyEvaluation.decision,
     policyReasonCodes: [...policyEvaluation.reasonCodes],
-    createdAt: input.createdAt ?? new Date().toISOString()
+    createdAt: input.createdAt ?? new Date().toISOString(),
   };
 
   return {
@@ -87,13 +85,13 @@ export function previewToolInvocation(
       executionAttempted: false,
       persisted: false,
       message:
-        "Tool invocation preview only. No tool execution was attempted and no ToolCallLog row was persisted."
-    }
+        "Tool invocation preview only. No tool execution was attempted and no ToolCallLog row was persisted.",
+    },
   };
 }
 
 function toInvocationPreviewStatus(
-  decision: ToolExecutionPolicyDecision
+  decision: ToolExecutionPolicyDecision,
 ): ToolInvocationPreviewStatus {
   if (decision === "ALLOW") {
     return "READY_TO_EXECUTE";

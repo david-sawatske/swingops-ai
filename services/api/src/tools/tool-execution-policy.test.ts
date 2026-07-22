@@ -6,7 +6,7 @@ describe("tool execution policy", () => {
   it("blocks unknown tools", () => {
     const evaluation = evaluateToolExecutionPolicy({
       toolName: "swingops.notRegistered",
-      executionMode: "AGENT_AUTONOMOUS"
+      executionMode: "AGENT_AUTONOMOUS",
     });
 
     expect(evaluation).toMatchObject({
@@ -14,13 +14,13 @@ describe("tool execution policy", () => {
       decision: "BLOCK",
       reasonCodes: ["TOOL_NOT_FOUND"],
       executionEnabled: false,
-      tool: null
+      tool: null,
     });
   });
 
   it("blocks registered tools in preview-only mode", () => {
     const evaluation = evaluateToolExecutionPolicy({
-      toolName: "swingops.workflowRuns.get"
+      toolName: "swingops.workflowRuns.get",
     });
 
     expect(evaluation).toMatchObject({
@@ -28,14 +28,14 @@ describe("tool execution policy", () => {
       decision: "BLOCK",
       reasonCodes: ["PREVIEW_ONLY_MODE"],
       executionMode: "PREVIEW_ONLY",
-      executionEnabled: false
+      executionEnabled: false,
     });
   });
 
   it("allows enabled low-risk read-only tools in autonomous mode", () => {
     const evaluation = evaluateToolExecutionPolicy({
       toolName: "swingops.tradeInValuation.estimate",
-      executionMode: "AGENT_AUTONOMOUS"
+      executionMode: "AGENT_AUTONOMOUS",
     });
 
     expect(evaluation).toMatchObject({
@@ -49,8 +49,8 @@ describe("tool execution policy", () => {
         enabled: true,
         riskLevel: "LOW",
         mutatesData: false,
-        requiresHumanApproval: false
-      }
+        requiresHumanApproval: false,
+      },
     });
   });
 
@@ -58,7 +58,7 @@ describe("tool execution policy", () => {
     const evaluation = evaluateToolExecutionPolicy({
       toolName: "swingops.tradeInOffer.create",
       executionMode: "HUMAN_APPROVED",
-      humanApprovalGranted: true
+      humanApprovalGranted: true,
     });
 
     expect(evaluation).toMatchObject({
@@ -71,15 +71,15 @@ describe("tool execution policy", () => {
         enabled: false,
         riskLevel: "HIGH",
         mutatesData: true,
-        requiresHumanApproval: true
-      }
+        requiresHumanApproval: true,
+      },
     });
   });
 
   it("keeps disabled high-risk mutation tools blocked before approval checks", () => {
     const evaluation = evaluateToolExecutionPolicy({
       toolName: "swingops.reviewQueueItems.dismiss",
-      executionMode: "AGENT_AUTONOMOUS"
+      executionMode: "AGENT_AUTONOMOUS",
     });
 
     expect(evaluation.decision).toBe("BLOCK");

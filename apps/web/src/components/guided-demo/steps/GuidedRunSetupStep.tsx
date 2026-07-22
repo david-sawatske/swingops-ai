@@ -9,22 +9,25 @@ export function GuidedRunSetupStep({ onContinue }: GuidedRunSetupStepProps) {
         <span className="model-route-card__eyebrow">Workflow overview</span>
         <h3>What operational task is this run supposed to complete?</h3>
         <p>
-          A golf retail team receives trade-in details through messy customer messages,
-          counter notes, malformed CSV rows, and system logs. The goal of this run is to
-          turn those signals into reviewed AI-ready records and a clear explanation of
-          what happened.
+          A golf retail team receives trade-in details through messy customer
+          messages, counter notes, malformed CSV rows, and system logs. The goal
+          of this run is to turn those signals into reviewed AI-ready records
+          and a clear explanation of what happened.
         </p>
 
         <section className="guided-flow-overview">
           <div className="guided-flow-overview__header">
             <h4>What this workflow will do</h4>
             <p>
-              The overview is not a numbered step. It sets context before the five
-              human-actionable workflow steps begin.
+              The overview is not a numbered step. It sets context before the
+              five human-actionable workflow steps begin.
             </p>
           </div>
 
-          <div className="guided-workflow-flowline" aria-label="Guided workflow phases">
+          <div
+            className="guided-workflow-flowline"
+            aria-label="Guided workflow phases"
+          >
             <span>Messy inputs</span>
             <span>Structured records</span>
             <span>Guarded workflow</span>
@@ -33,29 +36,33 @@ export function GuidedRunSetupStep({ onContinue }: GuidedRunSetupStepProps) {
           </div>
         </section>
 
-        <section className="guided-explainer-list" aria-label="Workflow overview explanation">
+        <section
+          className="guided-explainer-list"
+          aria-label="Workflow overview explanation"
+        >
           <article>
             <strong>Business trigger</strong>
             <p>
-              Trade-in data is incomplete, inconsistent, and spread across several
-              operational sources.
+              Trade-in data is incomplete, inconsistent, and spread across
+              several operational sources.
             </p>
           </article>
 
           <article>
             <strong>Workflow objective</strong>
             <p>
-              Normalize the source data, prepare durable records, run a deterministic
-              workflow with bounded model assistance, and preserve evidence for review.
+              Normalize the source data, prepare durable records, run a
+              deterministic workflow with bounded model assistance, and preserve
+              evidence for review.
             </p>
           </article>
 
           <article>
             <strong>Trust model</strong>
             <p>
-              Application code controls state transitions and tool policy. Model output is
-              limited to evidence-bound advice, while uncertain records remain visible for
-              human review.
+              Application code controls state transitions and tool policy. Model
+              output is limited to evidence-bound advice, while uncertain
+              records remain visible for human review.
             </p>
           </article>
         </section>
@@ -63,23 +70,26 @@ export function GuidedRunSetupStep({ onContinue }: GuidedRunSetupStepProps) {
         <details className="guided-workflow-details guided-workflow-details--compact">
           <summary>View the technical layers this run will demonstrate</summary>
           <p className="guided-workflow-details__intro">
-            These technical layers show how the workflow moves from messy source data to controlled, reviewable output: source normalization, system grounding, safe tool use, and review controls.
+            These technical layers show how the workflow moves from messy source
+            data to controlled, reviewable output: source normalization, system
+            grounding, safe tool use, and review controls.
           </p>
 
           <div className="guided-explainer-list">
             <article>
               <strong>Source layer</strong>
               <p>
-                Messy trade-in text is normalized into structured records with required
-                fields, missing-field signals, and review flags.
+                Messy trade-in text is normalized into structured records with
+                required fields, missing-field signals, and review flags.
               </p>
             </article>
 
             <article>
               <strong>System layer</strong>
               <p>
-                The workflow can use knowledge retrieval, inventory matching, valuation
-                estimates, model routing, read-only tools, and audit logs.
+                The workflow can use knowledge retrieval, inventory matching,
+                valuation estimates, model routing, read-only tools, and audit
+                logs.
               </p>
             </article>
 
@@ -87,8 +97,8 @@ export function GuidedRunSetupStep({ onContinue }: GuidedRunSetupStepProps) {
               <strong>Control layer</strong>
               <p>
                 The workflow should not silently guess or write unsafe changes.
-                Low-confidence output is routed to review, and unsafe mutation requests
-                are blocked.
+                Low-confidence output is routed to review, and unsafe mutation
+                requests are blocked.
               </p>
             </article>
           </div>
@@ -101,8 +111,8 @@ export function GuidedRunSetupStep({ onContinue }: GuidedRunSetupStepProps) {
             <span className="model-route-card__eyebrow">Start here</span>
             <h4>Move into the first workflow action</h4>
             <p>
-              Source intake is the first operational step. It is where you stage messy
-              source content and run normalization.
+              Source intake is the first operational step. It is where you stage
+              messy source content and run normalization.
             </p>
           </div>
         </div>
@@ -110,12 +120,17 @@ export function GuidedRunSetupStep({ onContinue }: GuidedRunSetupStepProps) {
         <section className="guided-next-step-note">
           <h4>What to look for as you continue</h4>
           <p>
-            Each following step should answer one question: what changed, which system was
-            involved, and why that output can or cannot be trusted yet.
+            Each following step should answer one question: what changed, which
+            system was involved, and why that output can or cannot be trusted
+            yet.
           </p>
         </section>
 
-        <button className="guided-step-primary-action" onClick={onContinue} type="button">
+        <button
+          className="guided-step-primary-action"
+          onClick={onContinue}
+          type="button"
+        >
           Continue to Messy Source Intake
         </button>
       </section>

@@ -1,22 +1,22 @@
 import {
   executeReadOnlyToolInvocation,
-  type ReadOnlyToolInvocationResult
+  type ReadOnlyToolInvocationResult,
 } from "./read-only-tool-invocation.js";
 import type {
   ToolExecutionMode,
-  ToolExecutionPolicyEvaluation
+  ToolExecutionPolicyEvaluation,
 } from "./tool-execution-policy.js";
 import { listAgentTools } from "./tool-registry.js";
 import {
   toAgentToolContract,
   toMcpInputSchema,
-  type McpCompatibleInputSchema
+  type McpCompatibleInputSchema,
 } from "./tool-contracts.js";
 import { sanitizeMcpToolOutput } from "./mcp-output-sanitizer.js";
 import { getExternalMcpServerReadiness } from "./mcp-server-readiness.js";
 import type {
   AgentToolContract,
-  AgentToolDefinition
+  AgentToolDefinition,
 } from "./tool-registry.types.js";
 
 export type McpCompatibleToolCallInput = {
@@ -100,25 +100,28 @@ export type McpCompatibleToolCallResponse = {
 };
 
 function toMcpCompatibleToolDefinition(
-  tool: AgentToolDefinition
+  tool: AgentToolDefinition,
 ): McpCompatibleToolDefinition {
   const contract = toAgentToolContract(tool);
-  const policyPreview = contract.allowedMode === "DISABLED"
-    ? {
-        decision: "BLOCK" as const,
-        reasonCodes: tool.enabled ? ["TOOL_ALLOWED" as const] : ["TOOL_DISABLED" as const],
-        reason: tool.enabled
-          ? "Tool is visible but not executable through this connector mode."
-          : "Tool is disabled and cannot be executed.",
-        executionEnabled: false
-      }
-    : {
-        decision: "ALLOW" as const,
-        reasonCodes: ["TOOL_ALLOWED" as const],
-        reason:
-          "Tool is enabled and policy allows execution in the requested mode.",
-        executionEnabled: true
-      };
+  const policyPreview =
+    contract.allowedMode === "DISABLED"
+      ? {
+          decision: "BLOCK" as const,
+          reasonCodes: tool.enabled
+            ? ["TOOL_ALLOWED" as const]
+            : ["TOOL_DISABLED" as const],
+          reason: tool.enabled
+            ? "Tool is visible but not executable through this connector mode."
+            : "Tool is disabled and cannot be executed.",
+          executionEnabled: false,
+        }
+      : {
+          decision: "ALLOW" as const,
+          reasonCodes: ["TOOL_ALLOWED" as const],
+          reason:
+            "Tool is enabled and policy allows execution in the requested mode.",
+          executionEnabled: true,
+        };
 
   return {
     name: tool.name,
@@ -137,13 +140,13 @@ function toMcpCompatibleToolDefinition(
       auditBehavior: tool.auditBehavior,
       redactionNotes: tool.redactionNotes,
       outputSchema: contract.outputSchema,
-      policyPreview
-    }
+      policyPreview,
+    },
   };
 }
 
 function getErrorMessage(
-  invocationResult: ReadOnlyToolInvocationResult
+  invocationResult: ReadOnlyToolInvocationResult,
 ): string | null {
   if (invocationResult.invocation.status === "SUCCEEDED") {
     return null;
@@ -166,14 +169,14 @@ export function listMcpCompatibleTools(): McpCompatibleToolListResponse {
       transport: "REST_ADAPTER",
       externalMcpServer: false,
       summary:
-        "Internal connector registry exposed through an MCP-compatible REST adapter. External MCP transport is not claimed in this slice."
+        "Internal connector registry exposed through an MCP-compatible REST adapter. External MCP transport is not claimed in this slice.",
     },
-    externalMcpReadiness: getExternalMcpServerReadiness()
+    externalMcpReadiness: getExternalMcpServerReadiness(),
   };
 }
 
 export async function callMcpCompatibleTool(
-  input: McpCompatibleToolCallInput
+  input: McpCompatibleToolCallInput,
 ): Promise<McpCompatibleToolCallResponse> {
   const invocationResult = await executeReadOnlyToolInvocation({
     toolName: input.toolId,
@@ -186,14 +189,14 @@ export async function callMcpCompatibleTool(
       ? {}
       : { workflowStepId: input.workflowStepId }),
     executionMode: input.invocationMode ?? "AGENT_AUTONOMOUS",
-    humanApprovalGranted: input.humanApprovalGranted ?? false
+    humanApprovalGranted: input.humanApprovalGranted ?? false,
   });
   const sanitizedOutput =
     invocationResult.connectorResult === null
       ? null
       : sanitizeMcpToolOutput({
           data: invocationResult.connectorResult.data,
-          tool: invocationResult.policyEvaluation.tool
+          tool: invocationResult.policyEvaluation.tool,
         });
 
   return {
@@ -205,7 +208,7 @@ export async function callMcpCompatibleTool(
       executionMode: invocationResult.policyEvaluation.executionMode,
       executionEnabled: invocationResult.policyEvaluation.executionEnabled,
       humanApprovalGranted:
-        invocationResult.policyEvaluation.humanApprovalGranted
+        invocationResult.policyEvaluation.humanApprovalGranted,
     },
     executionAttempted: invocationResult.invocation.executionAttempted,
     status: invocationResult.invocation.status,
@@ -215,7 +218,7 @@ export async function callMcpCompatibleTool(
       sanitizerVersion: sanitizedOutput?.metadata.sanitizerVersion ?? null,
       redactionNotes: sanitizedOutput?.metadata.redactionNotes ?? null,
       intentionallyExposedFieldsOnly:
-        sanitizedOutput?.metadata.intentionallyExposedFieldsOnly ?? false
+        sanitizedOutput?.metadata.intentionallyExposedFieldsOnly ?? false,
     },
     errorMessage: getErrorMessage(invocationResult),
     toolCallLogId: invocationResult.invocation.toolCallLogId,
@@ -226,7 +229,7 @@ export async function callMcpCompatibleTool(
       transport: "REST_ADAPTER",
       externalMcpServer: false,
       reusedInternalPolicyAndExecutor: true,
-      auditLogPersistence: "TOOL_CALL_LOG"
-    }
+      auditLogPersistence: "TOOL_CALL_LOG",
+    },
   };
 }

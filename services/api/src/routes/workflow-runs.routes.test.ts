@@ -14,7 +14,7 @@ describe("workflow run routes", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: "/workflow-runs"
+        url: "/workflow-runs",
       });
 
       expect(response.statusCode).toBe(200);
@@ -37,14 +37,14 @@ describe("workflow run routes", () => {
           items: {
             create: [
               {
-                rawText: "Callaway Rogue ST Max driver, stiff, RH"
-              }
-            ]
-          }
+                rawText: "Callaway Rogue ST Max driver, stiff, RH",
+              },
+            ],
+          },
         },
         include: {
-          items: true
-        }
+          items: true,
+        },
       });
 
       const intakeItem = intakeBatch.items[0];
@@ -56,20 +56,20 @@ describe("workflow run routes", () => {
           intakeBatchId: intakeBatch.id,
           intakeItemId: intakeItem!.id,
           workflowName: "workflow-runs-dashboard-list",
-          status: "QUEUED"
-        }
+          status: "QUEUED",
+        },
       });
 
       const response = await app.inject({
         method: "GET",
-        url: "/workflow-runs"
+        url: "/workflow-runs",
       });
 
       expect(response.statusCode).toBe(200);
 
       const body = response.json();
       const listedRun = body.workflowRuns.find(
-        (run: { id: string }) => run.id === workflowRun.id
+        (run: { id: string }) => run.id === workflowRun.id,
       );
 
       expect(listedRun).toMatchObject({
@@ -80,26 +80,26 @@ describe("workflow run routes", () => {
         status: "QUEUED",
         intakeBatch: {
           id: intakeBatch.id,
-          name: "Workflow Runs Dashboard Batch"
+          name: "Workflow Runs Dashboard Batch",
         },
         intakeItem: {
           id: intakeItem!.id,
-          rawText: "Callaway Rogue ST Max driver, stiff, RH"
+          rawText: "Callaway Rogue ST Max driver, stiff, RH",
         },
         latestModelCallLog: null,
         totalReviewQueueItemCount: 0,
-        openReviewQueueItemCount: 0
+        openReviewQueueItemCount: 0,
       });
 
       await prisma.workflowRun.delete({
         where: {
-          id: workflowRun.id
-        }
+          id: workflowRun.id,
+        },
       });
       await prisma.intakeBatch.delete({
         where: {
-          id: intakeBatch.id
-        }
+          id: intakeBatch.id,
+        },
       });
 
       await app.close();
@@ -110,8 +110,8 @@ describe("workflow run routes", () => {
 
       const workflowRun = await prisma.workflowRun.create({
         data: {
-          workflowName: "workflow-runs-dashboard-model-log"
-        }
+          workflowName: "workflow-runs-dashboard-model-log",
+        },
       });
 
       await prisma.modelCallLog.create({
@@ -123,18 +123,18 @@ describe("workflow run routes", () => {
           latencyMs: 42,
           estimatedCostUsd: 0,
           requestJson: {
-            routingGoal: "LOW_COST"
+            routingGoal: "LOW_COST",
           },
           responseJson: {
             routingDecision: {
               provider: "MOCK",
-              model: "older-model-route"
-            }
+              model: "older-model-route",
+            },
           },
           startedAt: new Date("2026-01-01T00:00:00.000Z"),
           completedAt: new Date("2026-01-01T00:00:01.000Z"),
-          createdAt: new Date("2026-01-01T00:00:01.000Z")
-        }
+          createdAt: new Date("2026-01-01T00:00:01.000Z"),
+        },
       });
 
       await prisma.modelCallLog.create({
@@ -146,7 +146,7 @@ describe("workflow run routes", () => {
           latencyMs: 24,
           estimatedCostUsd: 0,
           requestJson: {
-            routingGoal: "QUALITY"
+            routingGoal: "QUALITY",
           },
           responseJson: {
             routingDecision: {
@@ -154,25 +154,25 @@ describe("workflow run routes", () => {
               model: "latest-model-route",
               estimatedCostTier: "FREE",
               expectedLatencyTier: "LOW",
-              qualityTier: "LOW"
-            }
+              qualityTier: "LOW",
+            },
           },
           startedAt: new Date("2026-01-02T00:00:00.000Z"),
           completedAt: new Date("2026-01-02T00:00:01.000Z"),
-          createdAt: new Date("2026-01-02T00:00:01.000Z")
-        }
+          createdAt: new Date("2026-01-02T00:00:01.000Z"),
+        },
       });
 
       const response = await app.inject({
         method: "GET",
-        url: "/workflow-runs"
+        url: "/workflow-runs",
       });
 
       expect(response.statusCode).toBe(200);
 
       const body = response.json();
       const listedRun = body.workflowRuns.find(
-        (run: { id: string }) => run.id === workflowRun.id
+        (run: { id: string }) => run.id === workflowRun.id,
       );
 
       expect(listedRun.latestModelCallLog).toMatchObject({
@@ -183,14 +183,14 @@ describe("workflow run routes", () => {
         latencyMs: 24,
         estimatedCostUsd: 0,
         requestJson: {
-          routingGoal: "QUALITY"
-        }
+          routingGoal: "QUALITY",
+        },
       });
 
       await prisma.workflowRun.delete({
         where: {
-          id: workflowRun.id
-        }
+          id: workflowRun.id,
+        },
       });
 
       await app.close();
@@ -201,8 +201,8 @@ describe("workflow run routes", () => {
 
       const workflowRun = await prisma.workflowRun.create({
         data: {
-          workflowName: "workflow-runs-dashboard-tool-log-summary"
-        }
+          workflowName: "workflow-runs-dashboard-tool-log-summary",
+        },
       });
 
       await prisma.toolCallLog.create({
@@ -211,16 +211,16 @@ describe("workflow run routes", () => {
           toolName: "simulate.parseInput",
           status: "SUCCEEDED",
           inputJson: {
-            sku: "OLDER-1"
+            sku: "OLDER-1",
           },
           outputJson: {
             simulated: true,
-            parsedItemCount: 1
+            parsedItemCount: 1,
           },
           startedAt: new Date("2026-01-01T00:00:00.000Z"),
           completedAt: new Date("2026-01-01T00:00:01.000Z"),
-          createdAt: new Date("2026-01-01T00:00:01.000Z")
-        }
+          createdAt: new Date("2026-01-01T00:00:01.000Z"),
+        },
       });
 
       await prisma.toolCallLog.create({
@@ -229,7 +229,7 @@ describe("workflow run routes", () => {
           toolName: "inventory.reserveTradeInSlot",
           status: "STARTED",
           inputJson: {
-            sku: "AUDIT-ONLY-1"
+            sku: "AUDIT-ONLY-1",
           },
           outputJson: {
             previewOnly: true,
@@ -237,23 +237,23 @@ describe("workflow run routes", () => {
             policyDecision: "REQUIRES_HUMAN_APPROVAL",
             policyReasonCodes: ["MUTATION_TOOL", "HUMAN_APPROVAL_REQUIRED"],
             invocationStatus: "BLOCKED",
-            requestedBy: "operator@example.com"
+            requestedBy: "operator@example.com",
           },
           startedAt: new Date("2026-01-02T00:00:00.000Z"),
-          createdAt: new Date("2026-01-02T00:00:00.000Z")
-        }
+          createdAt: new Date("2026-01-02T00:00:00.000Z"),
+        },
       });
 
       const response = await app.inject({
         method: "GET",
-        url: "/workflow-runs"
+        url: "/workflow-runs",
       });
 
       expect(response.statusCode).toBe(200);
 
       const body = response.json();
       const listedRun = body.workflowRuns.find(
-        (run: { id: string }) => run.id === workflowRun.id
+        (run: { id: string }) => run.id === workflowRun.id,
       );
 
       expect(listedRun.latestToolCallLog).toMatchObject({
@@ -261,15 +261,15 @@ describe("workflow run routes", () => {
         toolName: "inventory.reserveTradeInSlot",
         status: "STARTED",
         inputJson: null,
-        outputJson: null
+        outputJson: null,
       });
       expect(listedRun.totalToolCallLogCount).toBe(2);
       expect(listedRun.auditOnlyToolCallLogCount).toBe(1);
 
       await prisma.workflowRun.delete({
         where: {
-          id: workflowRun.id
-        }
+          id: workflowRun.id,
+        },
       });
 
       await app.close();
@@ -286,33 +286,33 @@ describe("workflow run routes", () => {
               {
                 reason: "LOW_CONFIDENCE",
                 status: "OPEN",
-                originalText: "TM driver, shaft unknown"
+                originalText: "TM driver, shaft unknown",
               },
               {
                 reason: "AMBIGUOUS_INPUT",
                 status: "IN_REVIEW",
-                originalText: "Ping irons maybe 5-PW"
+                originalText: "Ping irons maybe 5-PW",
               },
               {
                 reason: "MISSING_REQUIRED_FIELDS",
                 status: "RESOLVED",
-                originalText: "Odyssey putter"
-              }
-            ]
-          }
-        }
+                originalText: "Odyssey putter",
+              },
+            ],
+          },
+        },
       });
 
       const response = await app.inject({
         method: "GET",
-        url: "/workflow-runs"
+        url: "/workflow-runs",
       });
 
       expect(response.statusCode).toBe(200);
 
       const body = response.json();
       const listedRun = body.workflowRuns.find(
-        (run: { id: string }) => run.id === workflowRun.id
+        (run: { id: string }) => run.id === workflowRun.id,
       );
 
       expect(listedRun.totalReviewQueueItemCount).toBe(3);
@@ -320,8 +320,8 @@ describe("workflow run routes", () => {
 
       await prisma.workflowRun.delete({
         where: {
-          id: workflowRun.id
-        }
+          id: workflowRun.id,
+        },
       });
 
       await app.close();
@@ -336,13 +336,13 @@ describe("workflow run routes", () => {
         method: "POST",
         url: "/workflow-runs/agentic-trade-in-demo",
         payload: {
-          rawInput: "x".repeat(20_001)
-        }
+          rawInput: "x".repeat(20_001),
+        },
       });
 
       expect(response.statusCode).toBe(400);
       expect(response.json()).toMatchObject({
-        error: "Invalid agentic trade-in demo request"
+        error: "Invalid agentic trade-in demo request",
       });
 
       await app.close();
@@ -353,15 +353,15 @@ describe("workflow run routes", () => {
       const rawInput = Array.from(
         { length: 10 },
         (_, index) =>
-          `Unknown demo club ${index + 1}, shaft unknown, condition unclear`
+          `Unknown demo club ${index + 1}, shaft unknown, condition unclear`,
       ).join("\n");
 
       const response = await app.inject({
         method: "POST",
         url: "/workflow-runs/agentic-trade-in-demo",
         payload: {
-          rawInput
-        }
+          rawInput,
+        },
       });
 
       expect(response.statusCode).toBe(200);
@@ -373,20 +373,20 @@ describe("workflow run routes", () => {
         eligibleRecordCount: 10,
         selectedRecordCount: 8,
         deferredRecordCount: 2,
-        maxSelectedRecordCount: 8
+        maxSelectedRecordCount: 8,
       });
       expect(body.fieldRepairExecution.recordOutcomes).toHaveLength(8);
       expect(body.reviewQueueItemsCreated).toHaveLength(10);
 
       await prisma.intakeBatch.delete({
         where: {
-          id: body.persisted.intakeBatchId
-        }
+          id: body.persisted.intakeBatchId,
+        },
       });
       await prisma.workflowRun.delete({
         where: {
-          id: body.persisted.workflowRunId
-        }
+          id: body.persisted.workflowRunId,
+        },
       });
       await app.close();
     });
@@ -397,8 +397,8 @@ describe("workflow run routes", () => {
       const priorWorkflowRun = await prisma.workflowRun.create({
         data: {
           workflowName: "prior-review-learning-source",
-          status: "COMPLETED"
-        }
+          status: "COMPLETED",
+        },
       });
 
       const priorReviewQueueItem = await prisma.reviewQueueItem.create({
@@ -409,9 +409,9 @@ describe("workflow run routes", () => {
           originalText: "Prior reviewed record with shaft stf",
           proposedGolfClubJson: {
             shaftFlex: null,
-            reviewReasonSummary: "Missing shaftFlex"
-          }
-        }
+            reviewReasonSummary: "Missing shaftFlex",
+          },
+        },
       });
 
       const reviewedTradeInRecord = await prisma.reviewedTradeInRecord.create({
@@ -420,8 +420,8 @@ describe("workflow run routes", () => {
           workflowRunId: priorWorkflowRun.id,
           originalText: "Prior reviewed record with shaft stf",
           correctedShaftFlex: "STIFF",
-          reviewerNotes: "Reviewer confirmed stf means STIFF."
-        }
+          reviewerNotes: "Reviewer confirmed stf means STIFF.",
+        },
       });
 
       await prisma.humanReviewLearningEvent.create({
@@ -433,34 +433,35 @@ describe("workflow run routes", () => {
           rawTextMatch: "stf",
           proposedValue: "Missing",
           correctedValue: "STIFF",
-          evidenceText: "Reviewer corrected shaft stf to STIFF."
-        }
+          evidenceText: "Reviewer corrected shaft stf to STIFF.",
+        },
       });
 
       const response = await app.inject({
         method: "POST",
         url: "/workflow-runs/agentic-trade-in-demo",
         payload: {
-          rawInput: "Titleist TSR 3w shaft stf condition 8.0 Average"
-        }
+          rawInput: "Titleist TSR 3w shaft stf condition 8.0 Average",
+        },
       });
 
       expect(response.statusCode).toBe(200);
 
       const body = response.json();
-      const priorReviewEvidence = body.priorReviewLearningEvidenceByItem.flatMap(
-        (item: { evidence: unknown[] }) => item.evidence
-      );
+      const priorReviewEvidence =
+        body.priorReviewLearningEvidenceByItem.flatMap(
+          (item: { evidence: unknown[] }) => item.evidence,
+        );
       const priorReviewSuggestions =
         body.priorReviewLearningSuggestionsByItem.flatMap(
-          (item: { suggestions: unknown[] }) => item.suggestions
+          (item: { suggestions: unknown[] }) => item.suggestions,
         );
 
       expect(body.priorReviewLearningEvidenceByItem).toHaveLength(
-        body.parsedItems.length
+        body.parsedItems.length,
       );
       expect(body.priorReviewLearningSuggestionsByItem).toHaveLength(
-        body.parsedItems.length
+        body.parsedItems.length,
       );
       expect(priorReviewEvidence).toEqual(
         expect.arrayContaining([
@@ -469,9 +470,9 @@ describe("workflow run routes", () => {
             correctedValue: "STIFF",
             strength: "STRONG",
             summary:
-              "Prior review evidence suggested shaftFlex = STIFF from similar raw text: stf."
-          })
-        ])
+              "Prior review evidence suggested shaftFlex = STIFF from similar raw text: stf.",
+          }),
+        ]),
       );
       expect(priorReviewSuggestions).toEqual(
         expect.arrayContaining([
@@ -481,27 +482,27 @@ describe("workflow run routes", () => {
             previousCorrectedValue: "STIFF",
             rawTextMatch: "stf",
             status: "SUGGESTED",
-            strength: "STRONG"
-          })
-        ])
+            strength: "STRONG",
+          }),
+        ]),
       );
       expect(body.finalSummary).toMatchObject({
         priorReviewEvidenceCount: priorReviewEvidence.length,
-        priorReviewSuggestionCount: priorReviewSuggestions.length
+        priorReviewSuggestionCount: priorReviewSuggestions.length,
       });
       expect(body.auditTrail).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             label: "Prior review evidence checked",
-            summary: expect.stringContaining("prior review suggestion")
-          })
-        ])
+            summary: expect.stringContaining("prior review suggestion"),
+          }),
+        ]),
       );
 
       await prisma.workflowRun.delete({
         where: {
-          id: priorWorkflowRun.id
-        }
+          id: priorWorkflowRun.id,
+        },
       });
 
       await app.close();
@@ -516,9 +517,9 @@ describe("workflow run routes", () => {
         payload: {
           rawInput: [
             "TM stealth2 drv 10.5 Ventus stiff, no hc, sky mark on crown",
-            "unknown maybe 5w shaft unknown condition unclear"
-          ].join("\n")
-        }
+            "unknown maybe 5w shaft unknown condition unclear",
+          ].join("\n"),
+        },
       });
 
       expect(response.statusCode).toBe(200);
@@ -532,20 +533,23 @@ describe("workflow run routes", () => {
         productLine: "Stealth 2",
         category: "DRIVER",
         shaftFlex: "STIFF",
-        missingFields: []
+        missingFields: [],
       });
       expect(body.parsedItems[1].confidence).toBeLessThan(0.72);
       expect(body.parsedItems[1].missingFields.length).toBeGreaterThan(0);
 
       expect(body.knowledgeMatchesByItem).toHaveLength(2);
-      expect(Array.isArray(body.knowledgeMatchesByItem[0].search.results)).toBe(true);
+      expect(Array.isArray(body.knowledgeMatchesByItem[0].search.results)).toBe(
+        true,
+      );
       if (body.knowledgeMatchesByItem[0].search.results.length > 0) {
         expect(body.knowledgeMatchesByItem[0].search.results[0]).toHaveProperty(
-          "scoreBreakdown"
+          "scoreBreakdown",
         );
-        expect(body.knowledgeMatchesByItem[0].search.results[0].scoreBreakdown.components).toHaveProperty(
-          "brand"
-        );
+        expect(
+          body.knowledgeMatchesByItem[0].search.results[0].scoreBreakdown
+            .components,
+        ).toHaveProperty("brand");
       }
 
       expect(body.inventoryMatchesByItem).toHaveLength(2);
@@ -556,9 +560,9 @@ describe("workflow run routes", () => {
           confidence: expect.any(Number),
           matchReasons: expect.arrayContaining([
             "Brand matched TaylorMade.",
-            "Product line matched Stealth 2."
-          ])
-        }
+            "Product line matched Stealth 2.",
+          ]),
+        },
       });
 
       expect(body.valuationEvidenceByItem).toHaveLength(2);
@@ -571,26 +575,28 @@ describe("workflow run routes", () => {
           reviewRequired: false,
           adjustments: expect.arrayContaining([
             expect.objectContaining({
-              reason: "Crown sky mark reduces the demo range."
+              reason: "Crown sky mark reduces the demo range.",
             }),
             expect.objectContaining({
-              reason: "Missing headcover reduces the demo range."
-            })
-          ])
-        }
+              reason: "Missing headcover reduces the demo range.",
+            }),
+          ]),
+        },
       });
-      expect(body.valuationEvidenceByItem[1].estimate.reviewRequired).toBe(true);
+      expect(body.valuationEvidenceByItem[1].estimate.reviewRequired).toBe(
+        true,
+      );
 
       expect(body.modelRoutingDecision).toMatchObject({
         selectedProvider: expect.any(String),
         selectedModel: expect.any(String),
-        candidatesConsidered: expect.any(Array)
+        candidatesConsidered: expect.any(Array),
       });
       expect(body.modelCallLog).toMatchObject({
         workflowRunId: body.persisted.workflowRunId,
         status: "SUCCEEDED",
         provider: "MOCK",
-        model: "mock-golf-workflow-model"
+        model: "mock-golf-workflow-model",
       });
       expect(body.modelCallLog.requestJson).toMatchObject({
         taskType: "FIELD_NORMALIZATION",
@@ -599,37 +605,45 @@ describe("workflow run routes", () => {
         allowDisabledProvidersForSimulation: false,
         providerDeadlines: {
           attemptTimeoutMs: 20_000,
-          workflowTimeoutMs: 30_000
-        }
+          workflowTimeoutMs: 30_000,
+        },
       });
       expect(body.fieldRepairExecution).toMatchObject({
         modelCallLogId: body.modelCallLog.id,
         jsonValid: true,
         validationPassed: true,
         suggestions: expect.any(Array),
-        validationErrors: []
+        validationErrors: [],
       });
 
-      expect(body.toolCallingPlan.plannedCalls.map((call: { toolName: string }) => call.toolName)).toEqual([
+      expect(
+        body.toolCallingPlan.plannedCalls.map(
+          (call: { toolName: string }) => call.toolName,
+        ),
+      ).toEqual([
         "swingops.workflowRuns.get",
         "swingops.knowledgeBase.search",
         "swingops.inventory.lookupProduct",
         "swingops.tradeInValuation.estimate",
         "swingops.reviewQueueItems.list",
-        "swingops.inventory.createSku"
+        "swingops.inventory.createSku",
       ]);
       expect(body.toolCallResults).toHaveLength(6);
-      expect(body.toolCallResults.filter((result: { status: string }) => result.status === "SUCCEEDED")).toHaveLength(5);
+      expect(
+        body.toolCallResults.filter(
+          (result: { status: string }) => result.status === "SUCCEEDED",
+        ),
+      ).toHaveLength(5);
       expect(body.blockedToolCallResult).toMatchObject({
         toolName: "swingops.inventory.createSku",
         status: "BLOCKED",
-        executionAttempted: false
+        executionAttempted: false,
       });
 
       expect(body.reviewQueueItemsCreated.length).toBeGreaterThanOrEqual(1);
       expect(body.reviewQueueItemsCreated[0]).toMatchObject({
         workflowRunId: body.persisted.workflowRunId,
-        status: "OPEN"
+        status: "OPEN",
       });
       expect(body.finalSummary).toMatchObject({
         parsedItemCount: 2,
@@ -639,7 +653,7 @@ describe("workflow run routes", () => {
         blockedMutationToolCallCount: 1,
         inventoryMatchCount: 1,
         valuationRangeCount: 1,
-        valuationReviewRequiredCount: 1
+        valuationReviewRequiredCount: 1,
       });
 
       expect(body.orchestrationTrace).toMatchObject({
@@ -649,91 +663,93 @@ describe("workflow run routes", () => {
           authority: "ADVISORY_ONLY",
           assistedStateIds: [
             "run-field-repair-model",
-            "retry-targeted-field-extraction"
-          ]
-        }
+            "retry-targeted-field-extraction",
+          ],
+        },
       });
       expect(body.orchestrationTrace.states).toHaveLength(8);
       expect(
         body.orchestrationTrace.states.every(
           (state: { transitionAuthority: string }) =>
-            state.transitionAuthority === "APPLICATION_CODE"
-        )
+            state.transitionAuthority === "APPLICATION_CODE",
+        ),
       ).toBe(true);
       expect(
         body.orchestrationTrace.states.filter(
           (state: { executionKind: string }) =>
-            state.executionKind === "BOUNDED_MODEL_ASSISTANCE"
-        )
+            state.executionKind === "BOUNDED_MODEL_ASSISTANCE",
+        ),
       ).toHaveLength(2);
       expect(body.orchestrationTrace.modelBoundary.prohibitedActions).toEqual(
         expect.arrayContaining([
           "Choose or change workflow states.",
           "Select or execute tools.",
           "Authorize mutations.",
-          "Write final records."
-        ])
+          "Write final records.",
+        ]),
       );
 
-      expect(body.executionPlan.map((step: { id: string }) => step.id)).toEqual([
-        "execution-plan-validate-fields",
-        "execution-plan-search-knowledge",
-        "execution-plan-match-inventory",
-        "execution-plan-estimate-value",
-        "execution-plan-select-tools",
-        "execution-plan-provider-fallback",
-        "execution-plan-retry-shaft-flex",
-        "execution-plan-human-review",
-        "execution-plan-block-mutation",
-        "execution-plan-record-quality-summary"
-      ]);
+      expect(body.executionPlan.map((step: { id: string }) => step.id)).toEqual(
+        [
+          "execution-plan-validate-fields",
+          "execution-plan-search-knowledge",
+          "execution-plan-match-inventory",
+          "execution-plan-estimate-value",
+          "execution-plan-select-tools",
+          "execution-plan-provider-fallback",
+          "execution-plan-retry-shaft-flex",
+          "execution-plan-human-review",
+          "execution-plan-block-mutation",
+          "execution-plan-record-quality-summary",
+        ],
+      );
       expect(body.executionPlan).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             label: "Attempt targeted retry for recoverable missing fields",
             actionType: "RETRY_EXTRACTION",
-            retryPolicy: "one targeted retry before human review"
+            retryPolicy: "one targeted retry before human review",
           }),
           expect.objectContaining({
             label: "Block unsafe mutations unless approved",
             actionType: "ENFORCE_POLICY",
-            status: "BLOCKED"
-          })
-        ])
+            status: "BLOCKED",
+          }),
+        ]),
       );
 
       expect(body.validationChecks).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             label: "Brand recognized",
-            status: "PASS"
+            status: "PASS",
           }),
           expect.objectContaining({
             label: "Shaft/flex data complete",
             status: "WARNING",
             field: "shaftFlex",
-            reviewRequired: true
+            reviewRequired: true,
           }),
           expect.objectContaining({
             label: "Inventory product match",
-            status: "PASS"
+            status: "PASS",
           }),
           expect.objectContaining({
             label: "Demo valuation range generated",
             status: "PASS",
-            field: "demoValuationRange"
+            field: "demoValuationRange",
           }),
           expect.objectContaining({
             label: "Review requirement determined",
             status: "WARNING",
-            reviewRequired: true
+            reviewRequired: true,
           }),
           expect.objectContaining({
             label: "Unsafe mutation blocked",
             status: "PASS",
-            reviewRequired: false
-          })
-        ])
+            reviewRequired: false,
+          }),
+        ]),
       );
 
       expect(body.retryEvents).toEqual([
@@ -744,8 +760,8 @@ describe("workflow run routes", () => {
           policy: "one targeted retry before human review",
           attemptCount: 1,
           maxAttempts: 1,
-          modelCallLogId: expect.any(String)
-        })
+          modelCallLogId: expect.any(String),
+        }),
       ]);
 
       expect(body.providerFallbackTrace).toMatchObject({
@@ -754,42 +770,44 @@ describe("workflow run routes", () => {
         finalModel: body.modelCallLog.model,
         fallbackUsed: false,
         simulationRequested: false,
-        attempts: expect.any(Array)
+        attempts: expect.any(Array),
       });
-      expect(body.providerFallbackTrace.attempts.length).toBeGreaterThanOrEqual(1);
+      expect(body.providerFallbackTrace.attempts.length).toBeGreaterThanOrEqual(
+        1,
+      );
 
       expect(body.toolSelectionRationales).toEqual([
         expect.objectContaining({
           toolName: "swingops.workflowRuns.get",
           expectedRiskLevel: "LOW",
-          expectedMutatesData: false
+          expectedMutatesData: false,
         }),
         expect.objectContaining({
           toolName: "swingops.knowledgeBase.search",
           expectedRiskLevel: "LOW",
-          expectedMutatesData: false
+          expectedMutatesData: false,
         }),
         expect.objectContaining({
           toolName: "swingops.inventory.lookupProduct",
           expectedRiskLevel: "LOW",
-          expectedMutatesData: false
+          expectedMutatesData: false,
         }),
         expect.objectContaining({
           toolName: "swingops.tradeInValuation.estimate",
           expectedRiskLevel: "LOW",
-          expectedMutatesData: false
+          expectedMutatesData: false,
         }),
         expect.objectContaining({
           toolName: "swingops.reviewQueueItems.list",
           expectedRiskLevel: "LOW",
-          expectedMutatesData: false
+          expectedMutatesData: false,
         }),
         expect.objectContaining({
           toolName: "swingops.inventory.createSku",
           expectedRiskLevel: "HIGH",
           expectedMutatesData: true,
-          expectedRequiresHumanApproval: true
-        })
+          expectedRequiresHumanApproval: true,
+        }),
       ]);
 
       expect(body.reviewOutcomes.length).toBeGreaterThanOrEqual(1);
@@ -798,7 +816,7 @@ describe("workflow run routes", () => {
         reason: body.reviewQueueItemsCreated[0].reason,
         validationWarnings: expect.any(Array),
         suggestedNextAction:
-          "Review the original text, confirm uncertain equipment fields, and approve or correct the proposed structured record."
+          "Review the original text, confirm uncertain equipment fields, and approve or correct the proposed structured record.",
       });
 
       expect(body.workflowQualitySummary).toMatchObject({
@@ -813,15 +831,17 @@ describe("workflow run routes", () => {
         valuationRangesGenerated: 1,
         valuationReviewRequired: 1,
         providerFallbackUsed: false,
-        evidenceCoverage: expect.any(String)
+        evidenceCoverage: expect.any(String),
       });
       expect(body.workflowQualitySummary.validationPassed).toBeGreaterThan(0);
       expect(body.workflowQualitySummary.validationWarnings).toBeGreaterThan(0);
       expect(body.workflowQualitySummary.summary).toContain(
-        "validation found unresolved uncertainty"
+        "validation found unresolved uncertainty",
       );
 
-      expect(body.auditTrail.map((event: { label: string }) => event.label)).toEqual([
+      expect(
+        body.auditTrail.map((event: { label: string }) => event.label),
+      ).toEqual([
         "Raw messy intake received",
         "Structured equipment records parsed",
         "RAG knowledge retrieved",
@@ -833,7 +853,7 @@ describe("workflow run routes", () => {
         "Mutation tool blocked",
         "Human review surfaced",
         "Prior review evidence checked",
-        "Final demo summary"
+        "Final demo summary",
       ]);
 
       expect(body.persisted.toolCallLogIds).toHaveLength(6);
@@ -841,21 +861,23 @@ describe("workflow run routes", () => {
       const persistedToolCallLogCount = await prisma.toolCallLog.count({
         where: {
           id: {
-            in: body.persisted.toolCallLogIds
-          }
-        }
+            in: body.persisted.toolCallLogIds,
+          },
+        },
       });
-      expect(persistedToolCallLogCount).toBe(body.persisted.toolCallLogIds.length);
+      expect(persistedToolCallLogCount).toBe(
+        body.persisted.toolCallLogIds.length,
+      );
 
       await prisma.intakeBatch.delete({
         where: {
-          id: body.persisted.intakeBatchId
-        }
+          id: body.persisted.intakeBatchId,
+        },
       });
       await prisma.workflowRun.delete({
         where: {
-          id: body.persisted.workflowRunId
-        }
+          id: body.persisted.workflowRunId,
+        },
       });
 
       await app.close();
@@ -866,13 +888,13 @@ describe("workflow run routes", () => {
 
       await prisma.knowledgeDocument.deleteMany({
         where: {
-          sourceName: DEMO_KNOWLEDGE_SOURCE_NAME
-        }
+          sourceName: DEMO_KNOWLEDGE_SOURCE_NAME,
+        },
       });
       await prisma.knowledgeIngestionRun.deleteMany({
         where: {
-          sourceName: DEMO_KNOWLEDGE_SOURCE_NAME
-        }
+          sourceName: DEMO_KNOWLEDGE_SOURCE_NAME,
+        },
       });
 
       const response = await app.inject({
@@ -887,9 +909,9 @@ describe("workflow run routes", () => {
             "Titleist TSR2 fairway wood, Stiff, 8.0 Average, standard length.",
             "Cleveland RTX 6 ZipCore wedge, Tour X-Stiff, 7.0 Below Average, groove wear noted.",
             "Odyssey White Hot OG putter, 8.0 Average, headcover included.",
-            "Mizuno JPX 923 Hot Metal iron set, Regular, 9.0 Above Average, 5-PW set."
-          ].join("\n")
-        }
+            "Mizuno JPX 923 Hot Metal iron set, Regular, 9.0 Above Average, 5-PW set.",
+          ].join("\n"),
+        },
       });
 
       expect(response.statusCode).toBe(200);
@@ -900,34 +922,41 @@ describe("workflow run routes", () => {
       expect(body.finalSummary).toMatchObject({
         parsedItemCount: 7,
         inventoryMatchCount: 7,
-        valuationRangeCount: 7
+        valuationRangeCount: 7,
       });
       expect(body.finalSummary.knowledgeMatchCount).toBeGreaterThan(0);
-      expect(body.workflowQualitySummary.evidenceCoverage).toMatch(/\/7 records$/);
-      expect(body.workflowQualitySummary.evidenceCoverage).not.toBe("0/7 records");
-      expect(body.knowledgeMatchesByItem.every(
-        (match: { search: { results: unknown[] } }) => match.search.results.length > 0
-      )).toBe(true);
+      expect(body.workflowQualitySummary.evidenceCoverage).toMatch(
+        /\/7 records$/,
+      );
+      expect(body.workflowQualitySummary.evidenceCoverage).not.toBe(
+        "0/7 records",
+      );
+      expect(
+        body.knowledgeMatchesByItem.every(
+          (match: { search: { results: unknown[] } }) =>
+            match.search.results.length > 0,
+        ),
+      ).toBe(true);
 
       await prisma.intakeBatch.delete({
         where: {
-          id: body.persisted.intakeBatchId
-        }
+          id: body.persisted.intakeBatchId,
+        },
       });
       await prisma.workflowRun.delete({
         where: {
-          id: body.persisted.workflowRunId
-        }
+          id: body.persisted.workflowRunId,
+        },
       });
       await prisma.knowledgeDocument.deleteMany({
         where: {
-          sourceName: DEMO_KNOWLEDGE_SOURCE_NAME
-        }
+          sourceName: DEMO_KNOWLEDGE_SOURCE_NAME,
+        },
       });
       await prisma.knowledgeIngestionRun.deleteMany({
         where: {
-          sourceName: DEMO_KNOWLEDGE_SOURCE_NAME
-        }
+          sourceName: DEMO_KNOWLEDGE_SOURCE_NAME,
+        },
       });
 
       await app.close();
@@ -941,8 +970,8 @@ describe("workflow run routes", () => {
         url: "/workflow-runs/agentic-trade-in-demo",
         payload: {
           rawInput: "unknown maybe 5w shaft unknown condition unclear",
-          demonstrateProviderFallback: true
-        }
+          demonstrateProviderFallback: true,
+        },
       });
 
       expect(response.statusCode).toBe(200);
@@ -951,12 +980,12 @@ describe("workflow run routes", () => {
 
       expect(body.modelRoutingDecision).toMatchObject({
         selectedProvider: "OPENAI",
-        selectedModel: "gpt-4.1-mini"
+        selectedModel: "gpt-4.1-mini",
       });
       expect(body.modelCallLog).toMatchObject({
         provider: "MOCK",
         model: "mock-golf-workflow-model",
-        status: "SUCCEEDED"
+        status: "SUCCEEDED",
       });
       expect(body.providerFallbackTrace).toMatchObject({
         selectedProvider: "OPENAI",
@@ -971,44 +1000,44 @@ describe("workflow run routes", () => {
             status: "FAILED",
             failureClass: "SERVER_ERROR",
             retryable: true,
-            errorMessage: expect.stringContaining("503 Service Unavailable")
+            errorMessage: expect.stringContaining("503 Service Unavailable"),
           }),
           expect.objectContaining({
             provider: "MOCK",
             status: "SUCCESS",
             failureClass: "NONE",
-            retryable: false
-          })
-        ]
+            retryable: false,
+          }),
+        ],
       });
 
       const attemptLogs = await prisma.modelCallAttemptLog.findMany({
         where: {
-          modelCallLogId: body.persisted.modelCallLogId
+          modelCallLogId: body.persisted.modelCallLogId,
         },
         orderBy: {
-          attemptOrder: "asc"
-        }
+          attemptOrder: "asc",
+        },
       });
 
       expect(attemptLogs.map((attempt) => attempt.provider)).toEqual([
         "OPENAI",
-        "MOCK"
+        "MOCK",
       ]);
       expect(attemptLogs.map((attempt) => attempt.status)).toEqual([
         "FAILED",
-        "SUCCESS"
+        "SUCCESS",
       ]);
 
       await prisma.intakeBatch.delete({
         where: {
-          id: body.persisted.intakeBatchId
-        }
+          id: body.persisted.intakeBatchId,
+        },
       });
       await prisma.workflowRun.delete({
         where: {
-          id: body.persisted.workflowRunId
-        }
+          id: body.persisted.workflowRunId,
+        },
       });
 
       await app.close();
@@ -1022,13 +1051,13 @@ describe("workflow run routes", () => {
         url: "/workflow-runs/agentic-trade-in-demo",
         payload: {
           rawInput: "TM stealth2 driver",
-          unexpected: true
-        }
+          unexpected: true,
+        },
       });
 
       expect(response.statusCode).toBe(400);
       expect(response.json()).toMatchObject({
-        error: "Invalid agentic trade-in demo request"
+        error: "Invalid agentic trade-in demo request",
       });
 
       await app.close();
@@ -1042,7 +1071,7 @@ describe("workflow run routes", () => {
       const response = await app.inject({
         method: "POST",
         url: "/workflow-runs/multi-source-intake-demo",
-        payload: {}
+        payload: {},
       });
 
       expect(response.statusCode).toBe(200);
@@ -1050,40 +1079,41 @@ describe("workflow run routes", () => {
       const body = response.json();
 
       expect(body.sourcesProcessed).toBe(4);
-      expect(body.sourceResults.map((source: { sourceType: string }) => source.sourceType)).toEqual([
-        "FREE_TEXT",
-        "POORLY_FORMED_CSV",
-        "EMAIL",
-        "LOG"
-      ]);
+      expect(
+        body.sourceResults.map(
+          (source: { sourceType: string }) => source.sourceType,
+        ),
+      ).toEqual(["FREE_TEXT", "POORLY_FORMED_CSV", "EMAIL", "LOG"]);
       expect(body.recordsExtracted).toBeGreaterThanOrEqual(8);
       expect(body.assetsCreated).toBe(6);
       expect(body.reviewNeeded).toBeGreaterThanOrEqual(1);
       expect(body.cleanedDatasetPreview).toHaveLength(body.recordsExtracted);
-      expect(body.inferredDatasetSchema.map((field: { fieldName: string }) => field.fieldName)).toContain(
-        "reviewNeeded"
-      );
+      expect(
+        body.inferredDatasetSchema.map(
+          (field: { fieldName: string }) => field.fieldName,
+        ),
+      ).toContain("reviewNeeded");
       expect(body.ragReadinessSummary).toMatchObject({
         embeddingReady: true,
-        ragIndexReady: true
+        ragIndexReady: true,
       });
       expect(body.finalSummary).toBe(
-        "Processed 4 source types into normalized records, inferred schema fields, metadata, review signals, and RAG-ready asset summaries."
+        "Processed 4 source types into normalized records, inferred schema fields, metadata, review signals, and RAG-ready asset summaries.",
       );
       expect(body.persistedIds).toMatchObject({
         intakeBatchId: expect.any(String),
-        workflowRunId: expect.any(String)
+        workflowRunId: expect.any(String),
       });
 
       await prisma.intakeBatch.delete({
         where: {
-          id: body.persistedIds.intakeBatchId
-        }
+          id: body.persistedIds.intakeBatchId,
+        },
       });
       await prisma.workflowRun.delete({
         where: {
-          id: body.persistedIds.workflowRunId
-        }
+          id: body.persistedIds.workflowRunId,
+        },
       });
 
       await app.close();
@@ -1096,8 +1126,8 @@ describe("workflow run routes", () => {
         method: "POST",
         url: "/workflow-runs/multi-source-intake-demo",
         payload: {
-          sourceTypes: ["POORLY_FORMED_CSV"]
-        }
+          sourceTypes: ["POORLY_FORMED_CSV"],
+        },
       });
 
       expect(response.statusCode).toBe(200);
@@ -1106,22 +1136,26 @@ describe("workflow run routes", () => {
 
       expect(body.sourcesProcessed).toBe(1);
       expect(body.sourceResults[0]).toMatchObject({
-        sourceType: "POORLY_FORMED_CSV"
+        sourceType: "POORLY_FORMED_CSV",
       });
       expect(body.sourceResults[0].metadata.operationalTags).toContain(
-        "delimiter-normalization"
+        "delimiter-normalization",
       );
-      expect(body.cleanedDatasetPreview.some((record: { brand: string | null }) => record.brand === "Callaway")).toBe(true);
+      expect(
+        body.cleanedDatasetPreview.some(
+          (record: { brand: string | null }) => record.brand === "Callaway",
+        ),
+      ).toBe(true);
 
       await prisma.intakeBatch.delete({
         where: {
-          id: body.persistedIds.intakeBatchId
-        }
+          id: body.persistedIds.intakeBatchId,
+        },
       });
       await prisma.workflowRun.delete({
         where: {
-          id: body.persistedIds.workflowRunId
-        }
+          id: body.persistedIds.workflowRunId,
+        },
       });
 
       await app.close();
@@ -1143,11 +1177,11 @@ describe("workflow run routes", () => {
                 "Subject: Trade estimate",
                 "",
                 "I have a Titleist TSR2 3 wood with Tensei stiff shaft.",
-                "There is face wear and I can bring it to store 104."
-              ].join("\n")
-            }
-          ]
-        }
+                "There is face wear and I can bring it to store 104.",
+              ].join("\n"),
+            },
+          ],
+        },
       });
 
       expect(response.statusCode).toBe(200);
@@ -1156,23 +1190,27 @@ describe("workflow run routes", () => {
       expect(body.sourcesProcessed).toBe(1);
       expect(body.sourceResults[0]).toMatchObject({
         sourceType: "EMAIL",
-        sourceName: "Forwarded customer email"
+        sourceName: "Forwarded customer email",
       });
-      expect(body.metadataSummary.customerEmails).toContain("alex.kim@example.com");
-      expect(body.metadataSummary.detectedStoreIds).toContain("104");
-      expect(body.cleanedDatasetPreview.some((record: { brand: string }) => record.brand === "Titleist")).toBe(
-        true
+      expect(body.metadataSummary.customerEmails).toContain(
+        "alex.kim@example.com",
       );
+      expect(body.metadataSummary.detectedStoreIds).toContain("104");
+      expect(
+        body.cleanedDatasetPreview.some(
+          (record: { brand: string }) => record.brand === "Titleist",
+        ),
+      ).toBe(true);
 
       await prisma.intakeBatch.delete({
         where: {
-          id: body.persistedIds.intakeBatchId
-        }
+          id: body.persistedIds.intakeBatchId,
+        },
       });
       await prisma.workflowRun.delete({
         where: {
-          id: body.persistedIds.workflowRunId
-        }
+          id: body.persistedIds.workflowRunId,
+        },
       });
 
       await app.close();
@@ -1185,52 +1223,58 @@ describe("workflow run routes", () => {
         method: "POST",
         url: "/workflow-runs/multi-source-intake-demo",
         payload: {
-          sourceTypes: ["EMAIL"]
-        }
+          sourceTypes: ["EMAIL"],
+        },
       });
 
       expect(emailResponse.statusCode).toBe(200);
 
       const emailBody = emailResponse.json();
-      expect(emailBody.metadataSummary.customerEmails).toContain("hannah.lee@example.com");
-      expect(emailBody.metadataSummary.attachmentNames).toContain("trade_sheet_8821.pdf");
+      expect(emailBody.metadataSummary.customerEmails).toContain(
+        "hannah.lee@example.com",
+      );
+      expect(emailBody.metadataSummary.attachmentNames).toContain(
+        "trade_sheet_8821.pdf",
+      );
 
       await prisma.intakeBatch.delete({
         where: {
-          id: emailBody.persistedIds.intakeBatchId
-        }
+          id: emailBody.persistedIds.intakeBatchId,
+        },
       });
       await prisma.workflowRun.delete({
         where: {
-          id: emailBody.persistedIds.workflowRunId
-        }
+          id: emailBody.persistedIds.workflowRunId,
+        },
       });
 
       const logResponse = await app.inject({
         method: "POST",
         url: "/workflow-runs/multi-source-intake-demo",
         payload: {
-          sourceTypes: ["LOG"]
-        }
+          sourceTypes: ["LOG"],
+        },
       });
 
       expect(logResponse.statusCode).toBe(200);
 
       const logBody = logResponse.json();
       expect(logBody.metadataSummary.eventTimestamps).toContain(
-        "2026-05-18T14:33:04Z"
+        "2026-05-18T14:33:04Z",
       );
-      expect(logBody.metadataSummary.operationalTags).toContain("import-observability");
+      expect(logBody.metadataSummary.operationalTags).toContain(
+        "import-observability",
+      );
 
       await prisma.intakeBatch.delete({
         where: {
-          id: logBody.persistedIds.intakeBatchId
-        }
+          id: logBody.persistedIds.intakeBatchId,
+        },
       });
       await prisma.workflowRun.delete({
         where: {
-          id: logBody.persistedIds.workflowRunId
-        }
+          id: logBody.persistedIds.workflowRunId,
+        },
       });
 
       await app.close();
@@ -1244,13 +1288,13 @@ describe("workflow run routes", () => {
         url: "/workflow-runs/multi-source-intake-demo",
         payload: {
           sourceTypes: ["FREE_TEXT"],
-          unexpected: true
-        }
+          unexpected: true,
+        },
       });
 
       expect(response.statusCode).toBe(400);
       expect(response.json()).toMatchObject({
-        error: "Invalid multi-source intake demo request"
+        error: "Invalid multi-source intake demo request",
       });
 
       await app.close();
@@ -1271,19 +1315,19 @@ describe("workflow run routes", () => {
               status: "COMPLETED",
               orderIndex: 1,
               inputJson: {
-                sourceType: "FREE_TEXT"
+                sourceType: "FREE_TEXT",
               },
               outputJson: {
-                recordCount: 1
+                recordCount: 1,
               },
               startedAt: new Date("2026-01-01T00:00:00.000Z"),
-              completedAt: new Date("2026-01-01T00:00:01.000Z")
-            }
-          }
+              completedAt: new Date("2026-01-01T00:00:01.000Z"),
+            },
+          },
         },
         include: {
-          steps: true
-        }
+          steps: true,
+        },
       });
 
       const workflowStep = workflowRun.steps[0]!;
@@ -1292,12 +1336,12 @@ describe("workflow run routes", () => {
         workflowRunId: workflowRun.id,
         workflowStepId: workflowStep.id,
         taskType: "INTAKE_PARSING",
-        goal: "LOW_COST"
+        goal: "LOW_COST",
       });
 
       const response = await app.inject({
         method: "GET",
-        url: `/workflow-runs/${workflowRun.id}`
+        url: `/workflow-runs/${workflowRun.id}`,
       });
 
       expect(response.statusCode).toBe(200);
@@ -1316,12 +1360,12 @@ describe("workflow run routes", () => {
           status: "COMPLETED",
           orderIndex: 1,
           inputJson: {
-            sourceType: "FREE_TEXT"
+            sourceType: "FREE_TEXT",
           },
           outputJson: {
-            recordCount: 1
-          }
-        })
+            recordCount: 1,
+          },
+        }),
       ]);
 
       expect(body.modelCallLogs).toHaveLength(1);
@@ -1334,7 +1378,7 @@ describe("workflow run routes", () => {
         workflowRunId: workflowRun.id,
         taskType: "INTAKE_PARSING",
         routingGoal: "LOW_COST",
-        mock: true
+        mock: true,
       });
       expect(body.modelCallLogs[0].responseJson).toMatchObject({
         mock: true,
@@ -1343,8 +1387,8 @@ describe("workflow run routes", () => {
           model: "mock-golf-workflow-model",
           estimatedCostTier: "FREE",
           expectedLatencyTier: "LOW",
-          qualityTier: "LOW"
-        }
+          qualityTier: "LOW",
+        },
       });
 
       expect(body.modelCallLogs[0].attemptLogs).toHaveLength(1);
@@ -1354,17 +1398,19 @@ describe("workflow run routes", () => {
         attemptOrder: 1,
         status: "SUCCESS",
         latencyMs: expect.any(Number),
-        estimatedCostUsd: 0
+        estimatedCostUsd: 0,
       });
-      expect(body.modelCallLogs[0].attemptLogs[0].latencyMs).toBeGreaterThanOrEqual(0);
+      expect(
+        body.modelCallLogs[0].attemptLogs[0].latencyMs,
+      ).toBeGreaterThanOrEqual(0);
       expect(body.modelCallLogs[0].attemptLogs[0].modelCallLogId).toBe(
-        body.modelCallLogs[0].id
+        body.modelCallLogs[0].id,
       );
 
       await prisma.workflowRun.delete({
         where: {
-          id: workflowRun.id
-        }
+          id: workflowRun.id,
+        },
       });
 
       await app.close();
@@ -1384,34 +1430,34 @@ describe("workflow run routes", () => {
                 stepType: "RETRIEVE_EVIDENCE",
                 status: "RUNNING",
                 orderIndex: 1,
-                startedAt: new Date()
+                startedAt: new Date(),
               },
               {
                 stepName: "future-step",
                 stepType: "FINALIZE_WORKFLOW",
-                orderIndex: 2
-              }
-            ]
-          }
+                orderIndex: 2,
+              },
+            ],
+          },
         },
         include: {
           steps: {
             orderBy: {
-              orderIndex: "asc"
-            }
-          }
-        }
+              orderIndex: "asc",
+            },
+          },
+        },
       });
 
       try {
         await failPersistedWorkflowRun({
           step: workflowRun.steps[0]!,
-          error: new Error("Evidence provider was unavailable.")
+          error: new Error("Evidence provider was unavailable."),
         });
 
         const response = await app.inject({
           method: "GET",
-          url: `/workflow-runs/${workflowRun.id}`
+          url: `/workflow-runs/${workflowRun.id}`,
         });
 
         expect(response.statusCode).toBe(200);
@@ -1431,19 +1477,18 @@ describe("workflow run routes", () => {
               id: workflowRun.steps[0]!.id,
               name: "active-step",
               type: "RETRIEVE_EVIDENCE",
-              orderIndex: 1
-            }
-          }
+              orderIndex: 1,
+            },
+          },
         });
-        expect(body.steps.map((step: { status: string }) => step.status)).toEqual([
-          "FAILED",
-          "SKIPPED"
-        ]);
+        expect(
+          body.steps.map((step: { status: string }) => step.status),
+        ).toEqual(["FAILED", "SKIPPED"]);
       } finally {
         await prisma.workflowRun.delete({
           where: {
-            id: workflowRun.id
-          }
+            id: workflowRun.id,
+          },
         });
         await app.close();
       }
@@ -1454,8 +1499,8 @@ describe("workflow run routes", () => {
 
       const workflowRun = await prisma.workflowRun.create({
         data: {
-          workflowName: "test-workflow-run-tool-preview-logs"
-        }
+          workflowName: "test-workflow-run-tool-preview-logs",
+        },
       });
 
       const toolCallLog = await prisma.toolCallLog.create({
@@ -1465,7 +1510,7 @@ describe("workflow run routes", () => {
           status: "STARTED",
           inputJson: {
             clubId: "club-123",
-            reservationType: "TRADE_IN_SLOT"
+            reservationType: "TRADE_IN_SLOT",
           },
           outputJson: {
             previewOnly: true,
@@ -1476,16 +1521,16 @@ describe("workflow run routes", () => {
             invocationStatus: "BLOCKED",
             requestedBy: "operator@example.com",
             persistedPurpose:
-              "Audit-only planned invocation preview. No tool execution was attempted."
+              "Audit-only planned invocation preview. No tool execution was attempted.",
           },
           startedAt: new Date("2026-02-01T00:00:00.000Z"),
-          createdAt: new Date("2026-02-01T00:00:00.000Z")
-        }
+          createdAt: new Date("2026-02-01T00:00:00.000Z"),
+        },
       });
 
       const response = await app.inject({
         method: "GET",
-        url: `/workflow-runs/${workflowRun.id}`
+        url: `/workflow-runs/${workflowRun.id}`,
       });
 
       expect(response.statusCode).toBe(200);
@@ -1501,7 +1546,7 @@ describe("workflow run routes", () => {
         status: "STARTED",
         inputJson: {
           clubId: "club-123",
-          reservationType: "TRADE_IN_SLOT"
+          reservationType: "TRADE_IN_SLOT",
         },
         outputJson: {
           previewOnly: true,
@@ -1510,15 +1555,15 @@ describe("workflow run routes", () => {
           policyDecision: "REQUIRES_HUMAN_APPROVAL",
           policyReasonCodes: ["MUTATION_TOOL", "HUMAN_APPROVAL_REQUIRED"],
           invocationStatus: "BLOCKED",
-          requestedBy: "operator@example.com"
-        }
+          requestedBy: "operator@example.com",
+        },
       });
       expect(body.toolCallLogs[0].completedAt).toBeNull();
 
       await prisma.workflowRun.delete({
         where: {
-          id: workflowRun.id
-        }
+          id: workflowRun.id,
+        },
       });
 
       await app.close();
@@ -1529,7 +1574,7 @@ describe("workflow run routes", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: "/workflow-runs/not-real"
+        url: "/workflow-runs/not-real",
       });
 
       expect(response.statusCode).toBe(404);
@@ -1541,5 +1586,4 @@ describe("workflow run routes", () => {
       await app.close();
     });
   });
-
 });

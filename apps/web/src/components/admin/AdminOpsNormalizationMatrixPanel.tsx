@@ -14,7 +14,9 @@ type FieldFilter = "ALL" | AdminOpsNormalizationMatrixEntry["field"];
 type ActionFilter = "ALL" | AdminOpsNormalizationMatrixEntry["action"];
 
 export function AdminOpsNormalizationMatrixPanel() {
-  const [entries, setEntries] = useState<AdminOpsNormalizationMatrixEntry[]>([]);
+  const [entries, setEntries] = useState<AdminOpsNormalizationMatrixEntry[]>(
+    [],
+  );
   const [searchText, setSearchText] = useState("");
   const [fieldFilter, setFieldFilter] = useState<FieldFilter>("ALL");
   const [actionFilter, setActionFilter] = useState<ActionFilter>("ALL");
@@ -110,7 +112,8 @@ export function AdminOpsNormalizationMatrixPanel() {
         </h3>
         <p>
           Search deterministic aliases, negative evidence, context requirements,
-          and repair-blocking rules that stay higher authority than model output.
+          and repair-blocking rules that stay higher authority than model
+          output.
         </p>
       </div>
 

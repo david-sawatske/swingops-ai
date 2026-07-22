@@ -1,7 +1,7 @@
 import type { AgentToolDefinition } from "../tool-registry.types.js";
 
 export const inventoryReadOnlyAgentTools: AgentToolDefinition[] = [
-{
+  {
     name: "swingops.inventory.lookupProduct",
     displayName: "Lookup inventory product",
     description:
@@ -14,45 +14,49 @@ export const inventoryReadOnlyAgentTools: AgentToolDefinition[] = [
           name: "brand",
           type: "string",
           required: false,
-          description: "Parsed club brand, such as TaylorMade, Titleist, Callaway, or PING."
+          description:
+            "Parsed club brand, such as TaylorMade, Titleist, Callaway, or PING.",
         },
         {
           name: "productLine",
           type: "string",
           required: false,
-          description: "Parsed product line or model family, such as Stealth 2 or TSR2."
+          description:
+            "Parsed product line or model family, such as Stealth 2 or TSR2.",
         },
         {
           name: "category",
           type: "string",
           required: false,
-          description: "Parsed equipment category, such as driver, fairway wood, or irons."
+          description:
+            "Parsed equipment category, such as driver, fairway wood, or irons.",
         },
         {
           name: "year",
           type: "number",
           required: false,
-          description: "Optional parsed or inferred product year."
+          description: "Optional parsed or inferred product year.",
         },
         {
           name: "shaftBrand",
           type: "string",
           required: false,
-          description: "Optional shaft brand parsed from the trade-in text."
+          description: "Optional shaft brand parsed from the trade-in text.",
         },
         {
           name: "shaftModel",
           type: "string",
           required: false,
-          description: "Optional shaft model parsed from the trade-in text."
+          description: "Optional shaft model parsed from the trade-in text.",
         },
         {
           name: "rawText",
           type: "string",
           required: false,
-          description: "Original messy trade-in text for alias and ambiguity matching."
-        }
-      ]
+          description:
+            "Original messy trade-in text for alias and ambiguity matching.",
+        },
+      ],
     },
     riskLevel: "LOW",
     requiresHumanApproval: false,
@@ -65,9 +69,9 @@ export const inventoryReadOnlyAgentTools: AgentToolDefinition[] = [
       "Returns the best internal product/SKU match, confidence, match reasons, and similar product candidates.",
     auditBehavior: "PERSIST_TOOL_CALL_LOG",
     redactionNotes:
-      "Returns intentionally seeded demo inventory fields only; no supplier cost, customer data, or operational credentials are exposed."
+      "Returns intentionally seeded demo inventory fields only; no supplier cost, customer data, or operational credentials are exposed.",
   },
-{
+  {
     name: "swingops.inventory.findSimilarProducts",
     displayName: "Find similar inventory products",
     description:
@@ -80,27 +84,27 @@ export const inventoryReadOnlyAgentTools: AgentToolDefinition[] = [
           name: "brand",
           type: "string",
           required: false,
-          description: "Parsed club brand."
+          description: "Parsed club brand.",
         },
         {
           name: "productLine",
           type: "string",
           required: false,
-          description: "Parsed product line or ambiguous product family."
+          description: "Parsed product line or ambiguous product family.",
         },
         {
           name: "category",
           type: "string",
           required: false,
-          description: "Parsed equipment category."
+          description: "Parsed equipment category.",
         },
         {
           name: "rawText",
           type: "string",
           required: false,
-          description: "Original messy trade-in text for candidate matching."
-        }
-      ]
+          description: "Original messy trade-in text for candidate matching.",
+        },
+      ],
     },
     riskLevel: "LOW",
     requiresHumanApproval: false,
@@ -113,12 +117,12 @@ export const inventoryReadOnlyAgentTools: AgentToolDefinition[] = [
       "Returns ranked similar internal product candidates with confidence and reason text.",
     auditBehavior: "PERSIST_TOOL_CALL_LOG",
     redactionNotes:
-      "Returns intentionally seeded demo inventory candidates only."
-  }
+      "Returns intentionally seeded demo inventory candidates only.",
+  },
 ];
 
 export const inventoryMutationAgentTools: AgentToolDefinition[] = [
-{
+  {
     name: "swingops.inventory.createSku",
     displayName: "Create inventory SKU",
     description:
@@ -131,9 +135,9 @@ export const inventoryMutationAgentTools: AgentToolDefinition[] = [
           name: "productId",
           type: "string",
           required: true,
-          description: "Product ID for the SKU to create."
-        }
-      ]
+          description: "Product ID for the SKU to create.",
+        },
+      ],
     },
     riskLevel: "HIGH",
     requiresHumanApproval: true,
@@ -146,6 +150,6 @@ export const inventoryMutationAgentTools: AgentToolDefinition[] = [
       "Mutation output is intentionally unavailable because SKU creation is blocked in read-only mode.",
     auditBehavior: "PERSIST_TOOL_CALL_LOG",
     redactionNotes:
-      "No mutation output is exposed; blocked attempts persist policy metadata only."
-  }
+      "No mutation output is exposed; blocked attempts persist policy metadata only.",
+  },
 ];

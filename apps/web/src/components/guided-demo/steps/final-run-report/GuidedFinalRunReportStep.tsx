@@ -74,9 +74,14 @@ export function GuidedFinalRunReportStep({
   const learningEvents = currentRunReviewQueueItems.flatMap(
     (item) => item.humanReviewLearningEvents,
   );
-  const correctionSummaries = getCorrectionSummaries(currentRunReviewQueueItems);
-  const groupedCorrectionSummaries = getGroupedCorrectionSummaries(correctionSummaries);
-  const ragReadyRecordCount = mergedRecords.filter((record) => record.ragReady).length;
+  const correctionSummaries = getCorrectionSummaries(
+    currentRunReviewQueueItems,
+  );
+  const groupedCorrectionSummaries =
+    getGroupedCorrectionSummaries(correctionSummaries);
+  const ragReadyRecordCount = mergedRecords.filter(
+    (record) => record.ragReady,
+  ).length;
   const finalRecordsStillNeedingReviewCount = mergedRecords.filter(
     (record) => record.status === "NEEDS_REVIEW" || record.reviewNeeded,
   ).length;
@@ -87,7 +92,9 @@ export function GuidedFinalRunReportStep({
           `${createdReviewItemCount} created`,
           `${openReviewItemCount} open`,
           `${resolvedReviewItemCount} resolved`,
-          dismissedReviewItemCount > 0 ? `${dismissedReviewItemCount} dismissed` : null,
+          dismissedReviewItemCount > 0
+            ? `${dismissedReviewItemCount} dismissed`
+            : null,
         ]
           .filter(Boolean)
           .join("; ");
@@ -123,14 +130,20 @@ export function GuidedFinalRunReportStep({
         <h3>What happened across the five-step workflow?</h3>
         <p>
           The final report mirrors the workflow you just walked through: messy
-          intake, AI-ready records, guarded execution, validation review, and final
-          written output.
+          intake, AI-ready records, guarded execution, validation review, and
+          final written output.
         </p>
 
-        <div className="guided-step-mini-list" aria-label="Final report explanation">
+        <div
+          className="guided-step-mini-list"
+          aria-label="Final report explanation"
+        >
           <article>
             <strong>Input</strong>
-            <p>Source intake records, workflow trace, review decisions, and persisted output records.</p>
+            <p>
+              Source intake records, workflow trace, review decisions, and
+              persisted output records.
+            </p>
           </article>
 
           <article>
@@ -140,7 +153,10 @@ export function GuidedFinalRunReportStep({
 
           <article>
             <strong>Output</strong>
-            <p>A final report showing merged final records, review changes, final writes, and readiness.</p>
+            <p>
+              A final report showing merged final records, review changes, final
+              writes, and readiness.
+            </p>
           </article>
         </div>
       </section>
@@ -151,8 +167,8 @@ export function GuidedFinalRunReportStep({
             <span className="model-route-card__eyebrow">Do the work</span>
             <h4>Read the workflow from intake to final output</h4>
             <p>
-              This report uses the same five actionable steps as the guided run and shows the merged
-              final state first.
+              This report uses the same five actionable steps as the guided run
+              and shows the merged final state first.
             </p>
           </div>
         </div>
@@ -181,11 +197,11 @@ export function GuidedFinalRunReportStep({
               <div className="guided-final-section__header">
                 <h4>Current record outcomes</h4>
                 <p>
-                  This table shows the current merged form of each record using only
-                  the workflow evidence and saved review decisions that applied to that
-                  record. The preview uses the same columns and layout as the Step 2
-                  snapshot. Open the full table to see value ranges and each record's
-                  current outcome.
+                  This table shows the current merged form of each record using
+                  only the workflow evidence and saved review decisions that
+                  applied to that record. The preview uses the same columns and
+                  layout as the Step 2 snapshot. Open the full table to see
+                  value ranges and each record's current outcome.
                 </p>
               </div>
 
@@ -201,7 +217,9 @@ export function GuidedFinalRunReportStep({
             />
 
             <FinalReadinessSummary
-              finalRecordsStillNeedingReviewCount={finalRecordsStillNeedingReviewCount}
+              finalRecordsStillNeedingReviewCount={
+                finalRecordsStillNeedingReviewCount
+              }
               mergedRecordCount={mergedRecords.length}
               openReviewItemCount={openReviewItemCount}
             />
@@ -217,7 +235,11 @@ export function GuidedFinalRunReportStep({
               reviewStatusSummary={reviewStatusSummary}
             />
 
-            <button className="guided-step-primary-action" onClick={onReset} type="button">
+            <button
+              className="guided-step-primary-action"
+              onClick={onReset}
+              type="button"
+            >
               Start over
             </button>
           </>
@@ -225,8 +247,8 @@ export function GuidedFinalRunReportStep({
           <div className="guided-final-review-callout">
             <strong>Final report waiting for a workflow result</strong>
             <p>
-              Run Step 3 first. If Step 3 failed before final output, fix the error
-              shown there and rerun the guarded workflow.
+              Run Step 3 first. If Step 3 failed before final output, fix the
+              error shown there and rerun the guarded workflow.
             </p>
           </div>
         )}

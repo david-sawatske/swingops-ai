@@ -5,7 +5,7 @@ export async function healthRoutes(app: FastifyInstance): Promise<void> {
     return {
       status: "ok",
       service: "swingops-api",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   });
 }

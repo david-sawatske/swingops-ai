@@ -4,36 +4,27 @@ import { z } from "zod";
 import {
   getAgentTool,
   listAgentTools,
-  type AgentToolRegistryFilter
+  type AgentToolRegistryFilter,
 } from "../tools/tool-registry.js";
 import { previewToolExecutionPolicy } from "../tools/tool-execution-policy.js";
 import { previewToolInvocation } from "../tools/tool-invocation-preview.js";
 import {
   persistToolInvocationPreviewLog,
-  ToolInvocationPreviewLogRequiresWorkflowContextError
+  ToolInvocationPreviewLogRequiresWorkflowContextError,
 } from "../tools/tool-invocation-preview-logging.js";
 import { executeReadOnlyToolInvocation } from "../tools/read-only-tool-invocation.js";
 import {
   callMcpCompatibleTool,
-  listMcpCompatibleTools
+  listMcpCompatibleTools,
 } from "../tools/mcp-compatible-tool-surface.js";
 import {
   listConnectorCatalog,
-  listConnectorInvocationHistory
+  listConnectorInvocationHistory,
 } from "../tools/connector-catalog.js";
 
-const agentToolCategorySchema = z.enum([
-  "INTAKE",
-  "WORKFLOW",
-  "REVIEW_QUEUE"
-]);
+const agentToolCategorySchema = z.enum(["INTAKE", "WORKFLOW", "REVIEW_QUEUE"]);
 
-const agentToolRiskLevelSchema = z.enum([
-  "LOW",
-  "MEDIUM",
-  "HIGH",
-  "CRITICAL"
-]);
+const agentToolRiskLevelSchema = z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]);
 
 const booleanQuerySchema = z
   .enum(["true", "false"])
@@ -45,29 +36,29 @@ const listAgentToolsQuerySchema = z
     riskLevel: agentToolRiskLevelSchema.optional(),
     enabled: booleanQuerySchema.optional(),
     mutatesData: booleanQuerySchema.optional(),
-    requiresHumanApproval: booleanQuerySchema.optional()
+    requiresHumanApproval: booleanQuerySchema.optional(),
   })
   .strict();
 
 const agentToolParamsSchema = z.object({
-  name: z.string().min(1)
+  name: z.string().min(1),
 });
 
 const mcpCompatibleToolParamsSchema = z.object({
-  toolId: z.string().min(1)
+  toolId: z.string().min(1),
 });
 
 const toolExecutionModeSchema = z.enum([
   "PREVIEW_ONLY",
   "AGENT_AUTONOMOUS",
-  "HUMAN_APPROVED"
+  "HUMAN_APPROVED",
 ]);
 
 const toolExecutionPolicyPreviewBodySchema = z
   .object({
     toolName: z.string().min(1),
     executionMode: toolExecutionModeSchema.default("PREVIEW_ONLY"),
-    humanApprovalGranted: z.boolean().default(false)
+    humanApprovalGranted: z.boolean().default(false),
   })
   .strict();
 
@@ -79,7 +70,7 @@ const toolInvocationPreviewBodySchema = z
     workflowRunId: z.string().min(1).optional(),
     workflowStepId: z.string().min(1).optional(),
     executionMode: toolExecutionModeSchema.default("PREVIEW_ONLY"),
-    humanApprovalGranted: z.boolean().default(false)
+    humanApprovalGranted: z.boolean().default(false),
   })
   .strict();
 
@@ -91,7 +82,7 @@ const readOnlyToolInvocationBodySchema = z
     workflowRunId: z.string().min(1).optional(),
     workflowStepId: z.string().min(1).optional(),
     executionMode: toolExecutionModeSchema.default("AGENT_AUTONOMOUS"),
-    humanApprovalGranted: z.boolean().default(false)
+    humanApprovalGranted: z.boolean().default(false),
   })
   .strict();
 
@@ -102,18 +93,18 @@ const mcpCompatibleToolCallBodySchema = z
     workflowRunId: z.string().min(1).optional(),
     workflowStepId: z.string().min(1).optional(),
     invocationMode: toolExecutionModeSchema.default("AGENT_AUTONOMOUS"),
-    humanApprovalGranted: z.boolean().default(false)
+    humanApprovalGranted: z.boolean().default(false),
   })
   .strict();
 
 const invocationHistoryQuerySchema = z
   .object({
-    limit: z.coerce.number().int().min(1).max(100).default(25)
+    limit: z.coerce.number().int().min(1).max(100).default(25),
   })
   .strict();
 
 function toRegistryFilter(
-  query: z.infer<typeof listAgentToolsQuerySchema>
+  query: z.infer<typeof listAgentToolsQuerySchema>,
 ): AgentToolRegistryFilter {
   return {
     ...(query.category === undefined ? {} : { category: query.category }),
@@ -124,12 +115,12 @@ function toRegistryFilter(
       : { mutatesData: query.mutatesData }),
     ...(query.requiresHumanApproval === undefined
       ? {}
-      : { requiresHumanApproval: query.requiresHumanApproval })
+      : { requiresHumanApproval: query.requiresHumanApproval }),
   };
 }
 
 function toPreviewInvocationInput(
-  data: z.infer<typeof toolInvocationPreviewBodySchema>
+  data: z.infer<typeof toolInvocationPreviewBodySchema>,
 ) {
   return {
     toolName: data.toolName,
@@ -142,12 +133,12 @@ function toPreviewInvocationInput(
       : { workflowRunId: data.workflowRunId }),
     ...(data.workflowStepId === undefined
       ? {}
-      : { workflowStepId: data.workflowStepId })
+      : { workflowStepId: data.workflowStepId }),
   };
 }
 
 function toReadOnlyInvocationInput(
-  data: z.infer<typeof readOnlyToolInvocationBodySchema>
+  data: z.infer<typeof readOnlyToolInvocationBodySchema>,
 ) {
   return {
     toolName: data.toolName,
@@ -160,7 +151,7 @@ function toReadOnlyInvocationInput(
       : { workflowRunId: data.workflowRunId }),
     ...(data.workflowStepId === undefined
       ? {}
-      : { workflowStepId: data.workflowStepId })
+      : { workflowStepId: data.workflowStepId }),
   };
 }
 
@@ -170,28 +161,29 @@ export async function toolRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.get("/mcp/tools/invocations/history", async (request, reply) => {
-    const parsedQuery = invocationHistoryQuerySchema.safeParse(request.query ?? {});
+    const parsedQuery = invocationHistoryQuerySchema.safeParse(
+      request.query ?? {},
+    );
 
     if (!parsedQuery.success) {
       return reply.status(400).send({
         error: "Invalid tool invocation history query",
-        details: parsedQuery.error.flatten()
+        details: parsedQuery.error.flatten(),
       });
     }
 
     return listConnectorInvocationHistory(parsedQuery.data.limit);
   });
 
-
   app.post("/mcp/tools/invocations/preview", async (request, reply) => {
     const parsedBody = toolInvocationPreviewBodySchema.safeParse(
-      request.body ?? {}
+      request.body ?? {},
     );
 
     if (!parsedBody.success) {
       return reply.status(400).send({
         error: "Invalid tool invocation preview request",
-        details: parsedBody.error.flatten()
+        details: parsedBody.error.flatten(),
       });
     }
 
@@ -200,26 +192,26 @@ export async function toolRoutes(app: FastifyInstance): Promise<void> {
 
   app.post("/mcp/tools/invocations/preview-log", async (request, reply) => {
     const parsedBody = toolInvocationPreviewBodySchema.safeParse(
-      request.body ?? {}
+      request.body ?? {},
     );
 
     if (!parsedBody.success) {
       return reply.status(400).send({
         error: "Invalid tool invocation preview log request",
-        details: parsedBody.error.flatten()
+        details: parsedBody.error.flatten(),
       });
     }
 
     try {
       return await persistToolInvocationPreviewLog(
-        toPreviewInvocationInput(parsedBody.data)
+        toPreviewInvocationInput(parsedBody.data),
       );
     } catch (error) {
       if (
         error instanceof ToolInvocationPreviewLogRequiresWorkflowContextError
       ) {
         return reply.status(400).send({
-          error: error.message
+          error: error.message,
         });
       }
 
@@ -229,47 +221,52 @@ export async function toolRoutes(app: FastifyInstance): Promise<void> {
 
   app.post("/mcp/tools/execution-policy/preview", async (request, reply) => {
     const parsedBody = toolExecutionPolicyPreviewBodySchema.safeParse(
-      request.body ?? {}
+      request.body ?? {},
     );
 
     if (!parsedBody.success) {
       return reply.status(400).send({
         error: "Invalid tool execution policy preview request",
-        details: parsedBody.error.flatten()
+        details: parsedBody.error.flatten(),
       });
     }
 
     return previewToolExecutionPolicy({
       toolName: parsedBody.data.toolName,
       executionMode: parsedBody.data.executionMode,
-      humanApprovalGranted: parsedBody.data.humanApprovalGranted
+      humanApprovalGranted: parsedBody.data.humanApprovalGranted,
     });
   });
 
-  app.post("/mcp/tools/invocations/execute-readonly", async (request, reply) => {
-    const parsedBody = readOnlyToolInvocationBodySchema.safeParse(
-      request.body ?? {}
-    );
+  app.post(
+    "/mcp/tools/invocations/execute-readonly",
+    async (request, reply) => {
+      const parsedBody = readOnlyToolInvocationBodySchema.safeParse(
+        request.body ?? {},
+      );
 
-    if (!parsedBody.success) {
-      return reply.status(400).send({
-        error: "Invalid read-only tool invocation request",
-        details: parsedBody.error.flatten()
-      });
-    }
+      if (!parsedBody.success) {
+        return reply.status(400).send({
+          error: "Invalid read-only tool invocation request",
+          details: parsedBody.error.flatten(),
+        });
+      }
 
-    return executeReadOnlyToolInvocation(
-      toReadOnlyInvocationInput(parsedBody.data)
-    );
-  });
+      return executeReadOnlyToolInvocation(
+        toReadOnlyInvocationInput(parsedBody.data),
+      );
+    },
+  );
 
   app.get("/mcp/tools", async (request, reply) => {
-    const parsedQuery = listAgentToolsQuerySchema.safeParse(request.query ?? {});
+    const parsedQuery = listAgentToolsQuerySchema.safeParse(
+      request.query ?? {},
+    );
 
     if (!parsedQuery.success) {
       return reply.status(400).send({
         error: "Invalid agent tool registry query",
-        details: parsedQuery.error.flatten()
+        details: parsedQuery.error.flatten(),
       });
     }
 
@@ -285,29 +282,31 @@ export async function toolRoutes(app: FastifyInstance): Promise<void> {
         transport: "REST_ADAPTER",
         executionEnabled: true,
         status:
-          "Filtered registry response. Use the unfiltered response for MCP-compatible tools/list semantics."
-      }
+          "Filtered registry response. Use the unfiltered response for MCP-compatible tools/list semantics.",
+      },
     };
   });
 
   app.post("/mcp/tools/:toolId/call", async (request, reply) => {
-    const parsedParams = mcpCompatibleToolParamsSchema.safeParse(request.params);
+    const parsedParams = mcpCompatibleToolParamsSchema.safeParse(
+      request.params,
+    );
 
     if (!parsedParams.success) {
       return reply.status(400).send({
         error: "Invalid MCP-compatible tool call params",
-        details: parsedParams.error.flatten()
+        details: parsedParams.error.flatten(),
       });
     }
 
     const parsedBody = mcpCompatibleToolCallBodySchema.safeParse(
-      request.body ?? {}
+      request.body ?? {},
     );
 
     if (!parsedBody.success) {
       return reply.status(400).send({
         error: "Invalid MCP-compatible tool call request",
-        details: parsedBody.error.flatten()
+        details: parsedBody.error.flatten(),
       });
     }
 
@@ -324,7 +323,7 @@ export async function toolRoutes(app: FastifyInstance): Promise<void> {
         ? {}
         : { workflowStepId: parsedBody.data.workflowStepId }),
       invocationMode: parsedBody.data.invocationMode,
-      humanApprovalGranted: parsedBody.data.humanApprovalGranted
+      humanApprovalGranted: parsedBody.data.humanApprovalGranted,
     });
   });
 
@@ -334,7 +333,7 @@ export async function toolRoutes(app: FastifyInstance): Promise<void> {
     if (!parsedParams.success) {
       return reply.status(400).send({
         error: "Invalid agent tool lookup params",
-        details: parsedParams.error.flatten()
+        details: parsedParams.error.flatten(),
       });
     }
 
@@ -342,12 +341,12 @@ export async function toolRoutes(app: FastifyInstance): Promise<void> {
 
     if (!tool) {
       return reply.status(404).send({
-        error: "Agent tool not found"
+        error: "Agent tool not found",
       });
     }
 
     return {
-      tool
+      tool,
     };
   });
 }

@@ -86,10 +86,7 @@ export function AdminOpsQualitySafeguards() {
       {safeguards.length > 0 ? (
         <div className="admin-ops-quality-safeguards__list">
           {safeguards.map((safeguard) => (
-            <div
-              className="admin-ops-quality-safeguard"
-              key={safeguard.label}
-            >
+            <div className="admin-ops-quality-safeguard" key={safeguard.label}>
               <span>{safeguard.label}</span>
               <strong>{safeguard.value}</strong>
             </div>

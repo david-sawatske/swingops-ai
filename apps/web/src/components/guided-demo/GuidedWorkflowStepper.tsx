@@ -21,7 +21,10 @@ export function GuidedWorkflowStepper<TStep extends string>({
   steps,
 }: GuidedWorkflowStepperProps<TStep>) {
   return (
-    <aside className="guided-workflow-stepper" aria-label="Guided workflow steps">
+    <aside
+      className="guided-workflow-stepper"
+      aria-label="Guided workflow steps"
+    >
       {steps.map((step, index) => {
         const status = getStepStatus(step.id, index);
 

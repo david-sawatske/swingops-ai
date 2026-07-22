@@ -1,6 +1,10 @@
 .guided-final-outcome-card {
-  background: linear-gradient(135deg, rgba(238, 247, 237, 0.88), rgba(255, 255, 255, 0.72));
-  border: 1px solid rgba(39, 57, 44, 0.14);
+  background: linear-gradient(
+    135deg,
+    rgb(238 247 237 / 88%),
+    rgb(255 255 255 / 72%)
+  );
+  border: 1px solid rgb(39 57 44 / 14%);
   border-radius: 18px;
   margin-bottom: 1rem;
   padding: 0.9rem 1rem;
@@ -11,7 +15,7 @@
 }
 
 .guided-final-outcome-card p {
-  color: rgba(20, 36, 23, 0.7);
+  color: rgb(20 36 23 / 70%);
   font-size: 0.88rem;
   line-height: 1.45;
   margin: 0;
@@ -25,8 +29,8 @@
 }
 
 .guided-final-summary-grid article {
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(39, 57, 44, 0.12);
+  background: rgb(255 255 255 / 72%);
+  border: 1px solid rgb(39 57 44 / 12%);
   border-radius: 16px;
   padding: 0.7rem 0.8rem;
 }
@@ -41,7 +45,7 @@
 }
 
 .guided-final-summary-grid span {
-  color: rgba(20, 36, 23, 0.68);
+  color: rgb(20 36 23 / 68%);
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.035em;
@@ -50,7 +54,7 @@
 }
 
 .guided-final-section {
-  border-top: 1px solid rgba(39, 57, 44, 0.12);
+  border-top: 1px solid rgb(39 57 44 / 12%);
   padding-top: 0.9rem;
 }
 
@@ -67,7 +71,7 @@
 }
 
 .guided-final-section__header p {
-  color: rgba(20, 36, 23, 0.68);
+  color: rgb(20 36 23 / 68%);
   font-size: 0.86rem;
   line-height: 1.45;
   margin: 0;
@@ -77,8 +81,8 @@
 .guided-final-system-list {
   display: grid;
   gap: 0;
-  border-bottom: 1px solid rgba(39, 57, 44, 0.12);
-  border-top: 1px solid rgba(39, 57, 44, 0.12);
+  border-bottom: 1px solid rgb(39 57 44 / 12%);
+  border-top: 1px solid rgb(39 57 44 / 12%);
 }
 
 .guided-final-system-list article {
@@ -89,7 +93,7 @@
 }
 
 .guided-final-system-list article + article {
-  border-top: 1px solid rgba(39, 57, 44, 0.12);
+  border-top: 1px solid rgb(39 57 44 / 12%);
 }
 
 .guided-final-system-list strong {
@@ -98,15 +102,15 @@
 }
 
 .guided-final-system-list p {
-  color: rgba(20, 36, 23, 0.7);
+  color: rgb(20 36 23 / 70%);
   font-size: 0.86rem;
   line-height: 1.4;
   margin: 0;
 }
 
 .guided-final-review-callout {
-  background: rgba(247, 250, 246, 0.72);
-  border: 1px solid rgba(39, 57, 44, 0.12);
+  background: rgb(247 250 246 / 72%);
+  border: 1px solid rgb(39 57 44 / 12%);
   border-radius: 16px;
   padding: 0.75rem 0.85rem;
 }
@@ -119,7 +123,7 @@
 }
 
 .guided-final-review-callout p {
-  color: rgba(20, 36, 23, 0.7);
+  color: rgb(20 36 23 / 70%);
   font-size: 0.86rem;
   line-height: 1.45;
   margin: 0;
@@ -133,14 +137,14 @@
 }
 
 .guided-final-trace-list div {
-  background: rgba(255, 255, 255, 0.68);
-  border: 1px solid rgba(39, 57, 44, 0.1);
+  background: rgb(255 255 255 / 68%);
+  border: 1px solid rgb(39 57 44 / 10%);
   border-radius: 14px;
   padding: 0.65rem 0.7rem;
 }
 
 .guided-final-trace-list dt {
-  color: rgba(20, 36, 23, 0.58);
+  color: rgb(20 36 23 / 58%);
   font-size: 0.66rem;
   font-weight: 800;
   letter-spacing: 0.045em;
@@ -157,14 +161,14 @@
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 860px) {
+@media (width <= 860px) {
   .guided-final-summary-grid,
   .guided-final-trace-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .guided-final-summary-grid,
   .guided-final-system-list article,
   .guided-final-trace-list {
@@ -176,11 +180,10 @@
   }
 }
 
-
 /* main-run-model-execution-visibility */
 .guided-model-execution-card {
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(39, 57, 44, 0.12);
+  background: rgb(255 255 255 / 78%);
+  border: 1px solid rgb(39 57 44 / 12%);
   border-radius: 16px;
   display: grid;
   gap: 0.75rem;
@@ -204,7 +207,7 @@
 }
 
 .guided-model-execution-card__header p {
-  color: rgba(20, 36, 23, 0.68);
+  color: rgb(20 36 23 / 68%);
   font-size: 0.82rem;
   line-height: 1.45;
   margin: 0;
@@ -218,14 +221,14 @@
 }
 
 .guided-model-execution-metrics div {
-  background: rgba(247, 250, 246, 0.72);
-  border: 1px solid rgba(39, 57, 44, 0.1);
+  background: rgb(247 250 246 / 72%);
+  border: 1px solid rgb(39 57 44 / 10%);
   border-radius: 14px;
   padding: 0.6rem 0.65rem;
 }
 
 .guided-model-execution-metrics dt {
-  color: rgba(20, 36, 23, 0.58);
+  color: rgb(20 36 23 / 58%);
   font-size: 0.62rem;
   font-weight: 900;
   letter-spacing: 0.055em;
@@ -242,10 +245,10 @@
 }
 
 .guided-model-assistance-scope-notice {
-  background: rgba(238, 245, 236, 0.82);
-  border: 1px solid rgba(55, 92, 58, 0.18);
+  background: rgb(238 245 236 / 82%);
+  border: 1px solid rgb(55 92 58 / 18%);
   border-radius: 12px;
-  color: rgba(20, 36, 23, 0.72);
+  color: rgb(20 36 23 / 72%);
   font-size: 0.76rem;
   line-height: 1.45;
   margin: 0;
@@ -265,8 +268,8 @@
 }
 
 .guided-field-repair-suggestion-list li {
-  background: rgba(247, 250, 246, 0.72);
-  border: 1px solid rgba(39, 57, 44, 0.1);
+  background: rgb(247 250 246 / 72%);
+  border: 1px solid rgb(39 57 44 / 10%);
   border-radius: 14px;
   padding: 0.6rem 0.65rem;
 }
@@ -279,7 +282,7 @@
 }
 
 .guided-field-repair-suggestion-list p {
-  color: rgba(20, 36, 23, 0.66);
+  color: rgb(20 36 23 / 66%);
   font-size: 0.78rem;
   line-height: 1.4;
   margin: 0;
@@ -289,7 +292,7 @@
   margin-top: 0.75rem;
 }
 
-@media (max-width: 760px) {
+@media (width <= 760px) {
   .guided-model-execution-card__header {
     display: grid;
   }
@@ -299,7 +302,7 @@
   }
 }
 
-@media (max-width: 520px) {
+@media (width <= 520px) {
   .guided-model-execution-metrics {
     grid-template-columns: 1fr;
   }
@@ -311,7 +314,7 @@
 }
 
 .guided-final-provenance {
-  border-top: 1px solid rgba(39, 57, 44, 0.12);
+  border-top: 1px solid rgb(39 57 44 / 12%);
   margin-top: 1rem;
   padding-top: 1rem;
 }
@@ -321,7 +324,7 @@
 }
 
 .guided-final-provenance__header p {
-  color: rgba(20, 36, 23, 0.66);
+  color: rgb(20 36 23 / 66%);
   font-size: 0.84rem;
   line-height: 1.45;
   margin: 0;
@@ -329,8 +332,8 @@
 }
 
 .guided-final-provenance__records {
-  border-bottom: 1px solid rgba(39, 57, 44, 0.12);
-  border-top: 1px solid rgba(39, 57, 44, 0.12);
+  border-bottom: 1px solid rgb(39 57 44 / 12%);
+  border-top: 1px solid rgb(39 57 44 / 12%);
   margin-top: 0.8rem;
 }
 
@@ -339,7 +342,7 @@
 }
 
 .guided-final-provenance-record + .guided-final-provenance-record {
-  border-top: 1px solid rgba(39, 57, 44, 0.12);
+  border-top: 1px solid rgb(39 57 44 / 12%);
 }
 
 .guided-final-provenance-record__header {
@@ -360,13 +363,13 @@
 }
 
 .guided-final-provenance-record__header > div span {
-  color: rgba(20, 36, 23, 0.58);
+  color: rgb(20 36 23 / 58%);
   font-size: 0.74rem;
 }
 
 .guided-final-provenance-record__status {
-  background: rgba(41, 69, 45, 0.08);
-  border: 1px solid rgba(41, 69, 45, 0.14);
+  background: rgb(41 69 45 / 8%);
+  border: 1px solid rgb(41 69 45 / 14%);
   border-radius: 999px;
   color: #29452d;
   flex: 0 0 auto;
@@ -391,7 +394,7 @@
 }
 
 .guided-final-provenance-list > div + div {
-  border-top: 1px solid rgba(39, 57, 44, 0.08);
+  border-top: 1px solid rgb(39 57 44 / 8%);
 }
 
 .guided-final-provenance-list dt {
@@ -401,13 +404,13 @@
 }
 
 .guided-final-provenance-list dd {
-  color: rgba(20, 36, 23, 0.68);
+  color: rgb(20 36 23 / 68%);
   font-size: 0.78rem;
   line-height: 1.42;
   margin: 0;
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .guided-final-provenance-record__header {
     align-items: start;
     flex-direction: column;
@@ -439,7 +442,7 @@
 }
 
 .guided-final-provenance-record__summary::before {
-  color: rgba(20, 36, 23, 0.62);
+  color: rgb(20 36 23 / 62%);
   content: "›";
   flex: 0 0 auto;
   font-size: 1rem;
@@ -467,13 +470,13 @@
 }
 
 .guided-final-provenance-record__identity > span {
-  color: rgba(20, 36, 23, 0.56);
+  color: rgb(20 36 23 / 56%);
   font-size: 0.7rem;
 }
 
 .guided-final-provenance-record[open]
   > .guided-final-provenance-record__summary {
-  border-bottom: 1px solid rgba(39, 57, 44, 0.08);
+  border-bottom: 1px solid rgb(39 57 44 / 8%);
 }
 
 .guided-final-provenance-record > .guided-final-provenance-list {
@@ -494,8 +497,7 @@
   padding-bottom: 0.45rem;
 }
 
-.guided-step-workspace
-  .guided-expanded-table.guided-finalized-table {
+.guided-step-workspace .guided-expanded-table.guided-finalized-table {
   min-width: 1180px;
   width: max-content;
 }
@@ -506,7 +508,7 @@
   white-space: normal;
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .guided-final-provenance-record__summary {
     align-items: flex-start;
     flex-wrap: wrap;
@@ -521,7 +523,6 @@
     padding-left: 1.35rem;
   }
 }
-
 
 /* model-review-assistance */
 .guided-model-assistance {
@@ -543,15 +544,15 @@
 }
 
 .guided-model-assistance__header p {
-  color: rgba(20, 36, 23, 0.66);
+  color: rgb(20 36 23 / 66%);
   font-size: 0.76rem;
   line-height: 1.4;
   margin: 0.2rem 0 0;
 }
 
 .guided-model-assistance__header > span {
-  background: rgba(240, 253, 244, 0.88);
-  border: 1px solid rgba(22, 101, 52, 0.2);
+  background: rgb(240 253 244 / 88%);
+  border: 1px solid rgb(22 101 52 / 20%);
   border-radius: 999px;
   color: #166534;
   font-size: 0.7rem;
@@ -566,8 +567,8 @@
 }
 
 .guided-model-assistance-card {
-  background: rgba(247, 250, 246, 0.76);
-  border: 1px solid rgba(39, 57, 44, 0.12);
+  background: rgb(247 250 246 / 76%);
+  border: 1px solid rgb(39 57 44 / 12%);
   border-left-width: 4px;
   border-radius: 14px;
   display: grid;
@@ -597,7 +598,7 @@
 .guided-model-assistance-card__heading span,
 .guided-model-assistance-card__detail > span,
 .guided-model-assistance-card__question > span {
-  color: rgba(20, 36, 23, 0.58);
+  color: rgb(20 36 23 / 58%);
   display: block;
   font-size: 0.64rem;
   font-weight: 900;
@@ -620,7 +621,7 @@
 }
 
 .guided-model-assistance-card__summary {
-  color: rgba(20, 36, 23, 0.76);
+  color: rgb(20 36 23 / 76%);
   font-size: 0.8rem;
   line-height: 1.45;
   margin: 0;
@@ -638,7 +639,7 @@
 .guided-model-assistance-card__items li,
 .guided-model-assistance-card__detail li,
 .guided-model-assistance-card__evidence li {
-  color: rgba(20, 36, 23, 0.72);
+  color: rgb(20 36 23 / 72%);
   font-size: 0.76rem;
   line-height: 1.4;
 }
@@ -653,8 +654,8 @@
 }
 
 .guided-model-assistance-card__question {
-  background: rgba(255, 255, 255, 0.74);
-  border: 1px solid rgba(39, 57, 44, 0.1);
+  background: rgb(255 255 255 / 74%);
+  border: 1px solid rgb(39 57 44 / 10%);
   border-radius: 10px;
   padding: 0.55rem 0.6rem;
 }
@@ -668,19 +669,19 @@
 }
 
 .guided-model-assistance-card__evidence summary {
-  color: rgba(20, 36, 23, 0.72);
+  color: rgb(20 36 23 / 72%);
   cursor: pointer;
   font-size: 0.72rem;
   font-weight: 800;
 }
 
 .guided-model-assistance-card__evidence p {
-  color: rgba(20, 36, 23, 0.64);
+  color: rgb(20 36 23 / 64%);
   font-size: 0.74rem;
   margin: 0.35rem 0 0;
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .guided-model-assistance__header,
   .guided-model-assistance-card__heading {
     display: grid;
@@ -693,8 +694,8 @@
 
 /* guided-step3-provider-fallback-transparency */
 .guided-model-fallback-notice {
-  background: rgba(255, 247, 237, 0.76);
-  border: 1px solid rgba(180, 83, 9, 0.2);
+  background: rgb(255 247 237 / 76%);
+  border: 1px solid rgb(180 83 9 / 20%);
   border-left: 4px solid #b45309;
   border-radius: 14px;
   display: grid;
@@ -717,7 +718,7 @@
 }
 
 .guided-model-fallback-notice__header p {
-  color: rgba(20, 36, 23, 0.7);
+  color: rgb(20 36 23 / 70%);
   font-size: 0.78rem;
   line-height: 1.45;
   margin: 0.24rem 0 0;
@@ -738,14 +739,14 @@
 }
 
 .guided-model-fallback-notice__details dl div {
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(180, 83, 9, 0.12);
+  background: rgb(255 255 255 / 70%);
+  border: 1px solid rgb(180 83 9 / 12%);
   border-radius: 10px;
   padding: 0.55rem 0.6rem;
 }
 
 .guided-model-fallback-notice__details dt {
-  color: rgba(20, 36, 23, 0.56);
+  color: rgb(20 36 23 / 56%);
   font-size: 0.62rem;
   font-weight: 900;
   letter-spacing: 0.045em;
@@ -761,15 +762,14 @@
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .guided-model-fallback-notice__header,
   .guided-model-fallback-notice__details dl {
     display: grid;
     grid-template-columns: 1fr;
   }
 
-  .guided-model-fallback-notice__header
-    .guided-validation-status {
+  .guided-model-fallback-notice__header .guided-validation-status {
     justify-self: flex-start;
   }
 }

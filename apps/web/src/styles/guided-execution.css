@@ -6,7 +6,7 @@
 .guided-return-panel button {
   border: 1px solid #c9dac3;
   border-radius: 999px;
-  background: #ffffff;
+  background: #fff;
   color: #2e402b;
   font-size: 0.9rem;
   font-weight: 850;
@@ -55,7 +55,7 @@
   border-color: #f2b5aa;
 }
 
-@media (max-width: 720px) {
+@media (width <= 720px) {
   .guided-execution-evidence-grid {
     grid-template-columns: 1fr;
   }
@@ -73,9 +73,9 @@
   display: grid;
   gap: 0.25rem;
   padding: 0.75rem;
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  border: 1px solid rgb(148 163 184 / 22%);
   border-radius: 0.8rem;
-  background: rgba(15, 23, 42, 0.34);
+  background: rgb(15 23 42 / 34%);
 }
 
 .guided-workflow-compact-list span {
@@ -90,7 +90,7 @@
 
 .guided-workflow-inline-details {
   margin-top: 0.9rem;
-  border-top: 1px solid rgba(20, 44, 23, 0.12);
+  border-top: 1px solid rgb(20 44 23 / 12%);
   padding-top: 0.75rem;
 }
 
@@ -104,8 +104,8 @@
 }
 
 .guided-workflow-inline-details .guided-workflow-compact-list li {
-  background: rgba(255, 255, 255, 0.72);
-  border-color: rgba(20, 44, 23, 0.12);
+  background: rgb(255 255 255 / 72%);
+  border-color: rgb(20 44 23 / 12%);
 }
 
 .guided-workflow-inline-details .guided-workflow-compact-list span {
@@ -113,7 +113,7 @@
 }
 
 .guided-workflow-inline-details .guided-workflow-compact-list small {
-  color: rgba(20, 44, 23, 0.72);
+  color: rgb(20 44 23 / 72%);
 }
 
 .guided-workflow-compact-list--plan {
@@ -124,7 +124,8 @@
   grid-column: 1 / -1;
 }
 
-.guided-execution-evidence-card:has(.guided-workflow-inline-details[open]) .guided-workflow-compact-list {
+.guided-execution-evidence-card:has(.guided-workflow-inline-details[open])
+  .guided-workflow-compact-list {
   grid-template-columns: 1fr;
 }
 
@@ -136,17 +137,24 @@
   width: 100%;
 }
 
-.guided-execution-evidence-card .guided-workflow-inline-details[open] .guided-workflow-compact-list {
+.guided-execution-evidence-card
+  .guided-workflow-inline-details[open]
+  .guided-workflow-compact-list {
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.65rem;
 }
 
-.guided-execution-evidence-card .guided-workflow-inline-details[open] .guided-workflow-compact-list li {
+.guided-execution-evidence-card
+  .guided-workflow-inline-details[open]
+  .guided-workflow-compact-list
+  li {
   width: 100%;
 }
 
-.guided-execution-evidence-card .guided-workflow-inline-details[open] .agentic-demo-metadata {
+.guided-execution-evidence-card
+  .guided-workflow-inline-details[open]
+  .agentic-demo-metadata {
   display: grid;
   grid-template-columns: 1fr;
 }
@@ -170,9 +178,9 @@
 }
 
 .guided-workflow-check-details {
-  border: 1px solid rgba(20, 44, 23, 0.12);
+  border: 1px solid rgb(20 44 23 / 12%);
   border-radius: 0.72rem;
-  background: rgba(255, 255, 255, 0.72);
+  background: rgb(255 255 255 / 72%);
 }
 
 .guided-workflow-check-details summary {
@@ -209,7 +217,7 @@
 }
 
 .guided-workflow-check-details summary small {
-  color: rgba(20, 44, 23, 0.62);
+  color: rgb(20 44 23 / 62%);
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -230,24 +238,24 @@
 }
 
 .guided-workflow-check-status--pass {
-  background: rgba(34, 197, 94, 0.12);
+  background: rgb(34 197 94 / 12%);
   color: #166534;
 }
 
 .guided-workflow-check-status--warning {
-  background: rgba(245, 158, 11, 0.16);
+  background: rgb(245 158 11 / 16%);
   color: #92400e;
 }
 
 .guided-workflow-check-status--fail {
-  background: rgba(239, 68, 68, 0.14);
+  background: rgb(239 68 68 / 14%);
   color: #991b1b;
 }
 
 .guided-workflow-club-details {
-  border: 1px solid rgba(20, 44, 23, 0.12);
+  border: 1px solid rgb(20 44 23 / 12%);
   border-radius: 0.72rem;
-  background: rgba(255, 255, 255, 0.72);
+  background: rgb(255 255 255 / 72%);
 }
 
 .guided-workflow-club-details summary {
@@ -284,7 +292,7 @@
 }
 
 .guided-workflow-club-details summary small {
-  color: rgba(20, 44, 23, 0.62);
+  color: rgb(20 44 23 / 62%);
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -310,7 +318,7 @@
   align-items: start;
   gap: 0.55rem;
   padding: 0.55rem 0;
-  border-top: 1px solid rgba(20, 44, 23, 0.08);
+  border-top: 1px solid rgb(20 44 23 / 8%);
 }
 
 .guided-workflow-club-checks span:nth-of-type(2) {
@@ -319,7 +327,7 @@
 }
 
 .guided-workflow-club-checks small {
-  color: rgba(20, 44, 23, 0.68);
+  color: rgb(20 44 23 / 68%);
   line-height: 1.35;
 }
 
@@ -367,7 +375,7 @@
   min-width: 0;
 }
 
-@media (max-width: 720px) {
+@media (width <= 720px) {
   .guided-workflow-club-details summary {
     grid-template-columns: auto minmax(0, 1fr);
     grid-template-areas:
@@ -382,14 +390,14 @@
   gap: 0.85rem;
   margin-top: 0.9rem;
   padding: 0.95rem;
-  border: 1px solid rgba(20, 44, 23, 0.12);
+  border: 1px solid rgb(20 44 23 / 12%);
   border-radius: 0.9rem;
-  background: rgba(20, 44, 23, 0.035);
+  background: rgb(20 44 23 / 3.5%);
 }
 
 .guided-workflow-policy-footnote p {
   margin: 0.25rem 0 0;
-  color: rgba(20, 44, 23, 0.72);
+  color: rgb(20 44 23 / 72%);
   font-size: 0.9rem;
   line-height: 1.45;
 }
@@ -408,7 +416,7 @@
   gap: 0.55rem;
   align-items: start;
   padding-top: 0.5rem;
-  border-top: 1px solid rgba(20, 44, 23, 0.08);
+  border-top: 1px solid rgb(20 44 23 / 8%);
 }
 
 .guided-workflow-policy-checks strong {
@@ -416,7 +424,6 @@
 }
 
 .guided-workflow-policy-checks small {
-  color: rgba(20, 44, 23, 0.68);
+  color: rgb(20 44 23 / 68%);
   line-height: 1.35;
 }
-

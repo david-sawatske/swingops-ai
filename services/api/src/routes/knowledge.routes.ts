@@ -6,7 +6,7 @@ import { ingestDemoKnowledgeBase } from "../knowledge/knowledge-ingestion.js";
 import { runKnowledgeRetrievalEvals } from "../knowledge/knowledge-evals.js";
 import {
   listKnowledgeChunks,
-  searchKnowledgeBase
+  searchKnowledgeBase,
 } from "../knowledge/knowledge-search.js";
 
 const knowledgeChunkTypeSchema = z.enum([
@@ -14,7 +14,7 @@ const knowledgeChunkTypeSchema = z.enum([
   "TRADE_IN_POLICY",
   "CONDITION_GUIDE",
   "BRAND_ALIAS",
-  "SHAFT_FLEX_GUIDE"
+  "SHAFT_FLEX_GUIDE",
 ]);
 
 const knowledgeSearchBodySchema = z
@@ -23,7 +23,7 @@ const knowledgeSearchBodySchema = z
     brand: z.string().min(1).optional(),
     category: z.string().min(1).optional(),
     chunkType: knowledgeChunkTypeSchema.optional(),
-    maxResults: z.number().int().min(1).max(10).optional()
+    maxResults: z.number().int().min(1).max(10).optional(),
   })
   .strict();
 
@@ -42,7 +42,7 @@ export async function knowledgeRoutes(app: FastifyInstance): Promise<void> {
     if (!parsedBody.success) {
       return reply.status(400).send({
         error: "Invalid knowledge search request",
-        details: parsedBody.error.flatten()
+        details: parsedBody.error.flatten(),
       });
     }
 
@@ -59,7 +59,7 @@ export async function knowledgeRoutes(app: FastifyInstance): Promise<void> {
         : { chunkType: parsedBody.data.chunkType as KnowledgeChunkType }),
       ...(parsedBody.data.maxResults === undefined
         ? {}
-        : { maxResults: parsedBody.data.maxResults })
+        : { maxResults: parsedBody.data.maxResults }),
     });
   });
 

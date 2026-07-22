@@ -13,11 +13,17 @@ function asNumber(value: unknown): number | null {
 
 function asStringArray(value: unknown): string[] {
   return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    ? value.filter(
+        (item): item is string =>
+          typeof item === "string" && item.trim().length > 0,
+      )
     : [];
 }
 
-function formatCurrencyRange(lowValue: unknown, highValue: unknown): string | null {
+function formatCurrencyRange(
+  lowValue: unknown,
+  highValue: unknown,
+): string | null {
   const low = asNumber(lowValue);
   const high = asNumber(highValue);
 
@@ -48,23 +54,6 @@ function toFieldLabel(value: string) {
     .replace(/\s+/g, " ")
     .trim()
     .replace(/^./, (first) => first.toUpperCase());
-}
-
-function getConfidenceIssue(proposed: Record<string, unknown>): ReviewQueueReviewIssue | null {
-  const confidence =
-    asNumber(proposed.confidenceScore) ??
-    asNumber(proposed.confidence);
-
-  if (confidence === null || confidence >= 0.72) {
-    return null;
-  }
-
-  return {
-    id: "low-parse-confidence",
-    label: "Review low parse confidence",
-    detail: `Parsed confidence is ${confidence.toFixed(2)}, so the normalized club fields need human confirmation.`,
-    severity: "Review",
-  };
 }
 
 function getDemoValuationIssue(
@@ -152,7 +141,10 @@ function buildReviewIssues(input: {
   }
 
   for (const note of input.uncertaintyNotes) {
-    if (issues.some((issue) => issue.detail === note) || isIgnoredReviewField(note)) {
+    if (
+      issues.some((issue) => issue.detail === note) ||
+      isIgnoredReviewField(note)
+    ) {
       continue;
     }
 
@@ -219,7 +211,9 @@ export function getGroundingMatchNamesFromReviewItem(
       ? grounding.matches
       : [];
 
-  const knowledgeMatches = Array.isArray(item.proposedGolfClubJson.knowledgeMatches)
+  const knowledgeMatches = Array.isArray(
+    item.proposedGolfClubJson.knowledgeMatches,
+  )
     ? item.proposedGolfClubJson.knowledgeMatches
     : [];
 
@@ -227,7 +221,10 @@ export function getGroundingMatchNamesFromReviewItem(
     .filter(isRecord)
     .map((match) => {
       const brand = asString(match.brand);
-      const model = asString(match.model) ?? asString(match.productLine) ?? asString(match.title);
+      const model =
+        asString(match.model) ??
+        asString(match.productLine) ??
+        asString(match.title);
 
       return brand && model ? `${brand} ${model}` : model;
     })
@@ -321,7 +318,10 @@ export function getReviewQueueEvidenceSummary(
     : null;
 
   const demoRangeText = demoValuationRange
-    ? formatCurrencyRange(demoValuationRange.lowValue, demoValuationRange.highValue)
+    ? formatCurrencyRange(
+        demoValuationRange.lowValue,
+        demoValuationRange.highValue,
+      )
     : null;
 
   const demoValuationRangeSummary = demoValuationRange
@@ -330,7 +330,9 @@ export function getReviewQueueEvidenceSummary(
         asString(demoValuationRange.confidence)
           ? `confidence ${asString(demoValuationRange.confidence)}`
           : null,
-        demoValuationRange.reviewRequired === true ? "review required" : "review not required",
+        demoValuationRange.reviewRequired === true
+          ? "review required"
+          : "review not required",
       ]
         .filter((part): part is string => Boolean(part))
         .join(" · ")
@@ -388,7 +390,9 @@ export function getReviewQueueEvidenceSummary(
 
   return {
     parsedClubLabel:
-      parsedClubParts.length > 0 ? parsedClubParts.join(" ") : "Unresolved club details",
+      parsedClubParts.length > 0
+        ? parsedClubParts.join(" ")
+        : "Unresolved club details",
     rawText:
       item.originalText ??
       ("intakeItem" in item ? item.intakeItem?.rawText : null) ??

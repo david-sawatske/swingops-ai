@@ -56,7 +56,10 @@ function resolveBrowserTestDatabaseUrl() {
     );
   }
 
-  if (getDatabaseTarget(testDatabaseUrl) === getDatabaseTarget(developmentDatabaseUrl)) {
+  if (
+    getDatabaseTarget(testDatabaseUrl) ===
+    getDatabaseTarget(developmentDatabaseUrl)
+  ) {
     throw new Error("Browser tests must not target the development database.");
   }
 

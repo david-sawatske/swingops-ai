@@ -14,7 +14,7 @@ import type {
   ValidationCheckSeverity,
   ValidationCheckStatus,
   WorkflowQualityStatus,
-  WorkflowQualitySummary
+  WorkflowQualitySummary,
 } from "./workflow-quality-types.js";
 
 type ToolCallingPlan = EndToEndAgenticTradeInDemoResult["toolCallingPlan"];
@@ -33,7 +33,7 @@ function itemNeedsReview(item: ParsedTradeInDemoItem): boolean {
 
 function validationStatusForRequiredField(
   value: string | null,
-  hasUncertainty: boolean
+  hasUncertainty: boolean,
 ): ValidationCheckStatus {
   if (!value) {
     return "WARNING";
@@ -44,7 +44,7 @@ function validationStatusForRequiredField(
 
 function validationSeverityForStatus(
   status: ValidationCheckStatus,
-  reviewRequired: boolean
+  reviewRequired: boolean,
 ): ValidationCheckSeverity {
   if (status === "FAIL") {
     return "HIGH";
@@ -72,11 +72,6 @@ export function buildValidationChecks(input: {
 
   for (const item of input.parsedItems) {
     const reviewRequired = itemNeedsReview(item);
-    const knowledgeMatch = input.knowledgeMatchesByItem.find(
-      (match) => match.parsedItemId === item.id
-    );
-    const knowledgeResultCount = knowledgeMatch?.search.results.length ?? 0;
-
     const fieldChecks: {
       idSuffix: string;
       label: string;
@@ -93,8 +88,9 @@ export function buildValidationChecks(input: {
         field: "brand",
         value: item.brand,
         hasUncertainty: false,
-        missingMessage: "Brand could not be recognized from the raw trade-in text.",
-        presentMessage: `Brand recognized as ${item.brand}.`
+        missingMessage:
+          "Brand could not be recognized from the raw trade-in text.",
+        presentMessage: `Brand recognized as ${item.brand}.`,
       },
       {
         idSuffix: "product-line",
@@ -103,7 +99,7 @@ export function buildValidationChecks(input: {
         value: item.productLine,
         hasUncertainty: item.uncertaintyNotes.includes("model uncertain"),
         missingMessage: "Product line is missing or ambiguous.",
-        presentMessage: `Product line parsed as ${item.productLine}.`
+        presentMessage: `Product line parsed as ${item.productLine}.`,
       },
       {
         idSuffix: "category",
@@ -112,7 +108,7 @@ export function buildValidationChecks(input: {
         value: item.category,
         hasUncertainty: false,
         missingMessage: "Equipment category could not be classified.",
-        presentMessage: `Category classified as ${item.category}.`
+        presentMessage: `Category classified as ${item.category}.`,
       },
       {
         idSuffix: "shaft-flex",
@@ -125,8 +121,8 @@ export function buildValidationChecks(input: {
         presentMessage: isShaftFlexApplicable(item.category)
           ? `Shaft flex parsed as ${item.shaftFlex}.`
           : "Shaft flex is not applicable to putters.",
-        notApplicable: !isShaftFlexApplicable(item.category)
-      }
+        notApplicable: !isShaftFlexApplicable(item.category),
+      },
     ];
 
     for (const fieldCheck of fieldChecks) {
@@ -134,7 +130,7 @@ export function buildValidationChecks(input: {
         ? "PASS"
         : validationStatusForRequiredField(
             fieldCheck.value,
-            fieldCheck.hasUncertainty
+            fieldCheck.hasUncertainty,
           );
       const checkReviewRequired = fieldCheck.notApplicable
         ? false
@@ -151,15 +147,15 @@ export function buildValidationChecks(input: {
             : fieldCheck.missingMessage,
         field: fieldCheck.field,
         recordId: item.id,
-        reviewRequired: checkReviewRequired
+        reviewRequired: checkReviewRequired,
       });
     }
 
     const inventoryMatch = input.inventoryMatchesByItem.find(
-      (match) => match.parsedItemId === item.id
+      (match) => match.parsedItemId === item.id,
     );
     const valuationEvidence = input.valuationEvidenceByItem.find(
-      (evidence) => evidence.parsedItemId === item.id
+      (evidence) => evidence.parsedItemId === item.id,
     );
 
     checks.push({
@@ -172,7 +168,7 @@ export function buildValidationChecks(input: {
         : "No internal inventory product cleared the match threshold.",
       field: "inventoryMatch",
       recordId: item.id,
-      reviewRequired: !inventoryMatch?.lookup.productId
+      reviewRequired: !inventoryMatch?.lookup.productId,
     });
 
     checks.push({
@@ -184,15 +180,14 @@ export function buildValidationChecks(input: {
             ? "WARNING"
             : "PASS"
           : "WARNING",
-      severity:
-        valuationEvidence?.estimate.reviewRequired ? "MEDIUM" : "INFO",
+      severity: valuationEvidence?.estimate.reviewRequired ? "MEDIUM" : "INFO",
       message:
         valuationEvidence && valuationEvidence.estimate.highValue > 0
           ? `Demo trade-in range ${valuationEvidence.estimate.lowValue}-${valuationEvidence.estimate.highValue} generated with ${valuationEvidence.estimate.confidence} confidence.`
           : "No demo valuation range was generated.",
       field: "demoValuationRange",
       recordId: item.id,
-      reviewRequired: valuationEvidence?.estimate.reviewRequired ?? true
+      reviewRequired: valuationEvidence?.estimate.reviewRequired ?? true,
     });
 
     checks.push({
@@ -206,21 +201,20 @@ export function buildValidationChecks(input: {
           : `Confidence ${item.confidence} is below the review threshold.`,
       field: "confidence",
       recordId: item.id,
-      reviewRequired: item.confidence < 0.72 || reviewRequired
+      reviewRequired: item.confidence < 0.72 || reviewRequired,
     });
   }
 
   const recordsWithKnowledgeEvidence = input.knowledgeMatchesByItem.filter(
-    (match) => match.search.results.length > 0
+    (match) => match.search.results.length > 0,
   ).length;
   const recordsWithInventoryMatches = input.inventoryMatchesByItem.filter(
-    (match) => match.lookup.productId !== null
+    (match) => match.lookup.productId !== null,
   ).length;
   const recordsWithValuationRanges = input.valuationEvidenceByItem.filter(
-    (evidence) => evidence.estimate.highValue > 0
+    (evidence) => evidence.estimate.highValue > 0,
   ).length;
-  const evidenceCoverageMessage =
-    `${recordsWithKnowledgeEvidence}/${input.parsedItems.length} records had weighted knowledge evidence; ${recordsWithInventoryMatches}/${input.parsedItems.length} had inventory matches; ${recordsWithValuationRanges}/${input.parsedItems.length} had demo valuation ranges.`;
+  const evidenceCoverageMessage = `${recordsWithKnowledgeEvidence}/${input.parsedItems.length} records had weighted knowledge evidence; ${recordsWithInventoryMatches}/${input.parsedItems.length} had inventory matches; ${recordsWithValuationRanges}/${input.parsedItems.length} had demo valuation ranges.`;
 
   checks.push({
     id: "workflow-knowledge-evidence-coverage",
@@ -240,7 +234,7 @@ export function buildValidationChecks(input: {
     message: evidenceCoverageMessage,
     field: null,
     recordId: null,
-    reviewRequired: recordsWithKnowledgeEvidence === 0
+    reviewRequired: recordsWithKnowledgeEvidence === 0,
   });
 
   checks.push({
@@ -253,7 +247,7 @@ export function buildValidationChecks(input: {
       : "Validation did not require human review.",
     field: null,
     recordId: null,
-    reviewRequired: input.parsedItems.some(itemNeedsReview)
+    reviewRequired: input.parsedItems.some(itemNeedsReview),
   });
 
   checks.push({
@@ -267,14 +261,14 @@ export function buildValidationChecks(input: {
         : "No mutation policy block was observed in this run.",
     field: null,
     recordId: null,
-    reviewRequired: false
+    reviewRequired: false,
   });
 
   return checks;
 }
 
 function getProviderFallbackAttempts(
-  modelCallLog: ModelCallLog
+  modelCallLog: ModelCallLog,
 ): ProviderFallbackTraceAttempt[] {
   const responseJson = modelCallLog.responseJson as
     | {
@@ -305,7 +299,7 @@ function getSelectedProviderRoute(modelCallLog: ModelCallLog): {
   return {
     provider:
       responseJson?.routingDecision?.selectedProvider ?? modelCallLog.provider,
-    model: responseJson?.routingDecision?.selectedModel ?? modelCallLog.model
+    model: responseJson?.routingDecision?.selectedModel ?? modelCallLog.model,
   };
 }
 
@@ -313,14 +307,12 @@ export function buildProviderFallbackTrace(
   modelCallLog: ModelCallLog,
   input: {
     simulationRequested: boolean;
-  }
+  },
 ): ProviderFallbackTrace {
   const attempts = getProviderFallbackAttempts(modelCallLog);
   const selectedRoute = getSelectedProviderRoute(modelCallLog);
   const unsuccessfulAttempts = attempts.filter(
-    (attempt) =>
-      attempt.status !== "SUCCESS" &&
-      attempt.status !== "SUCCEEDED"
+    (attempt) => attempt.status !== "SUCCESS" && attempt.status !== "SUCCEEDED",
   );
 
   return {
@@ -337,19 +329,19 @@ export function buildProviderFallbackTrace(
         ? input.simulationRequested
           ? `Provider fallback simulation captured ${unsuccessfulAttempts.length} expected unsuccessful attempt(s) before ${modelCallLog.provider} completed the run.`
           : `Automatic provider fallback captured ${unsuccessfulAttempts.length} skipped or failed attempt(s) before ${modelCallLog.provider} completed the run.`
-        : `${modelCallLog.provider} completed the run without provider fallback.`
+        : `${modelCallLog.provider} completed the run without provider fallback.`,
   };
 }
 
 export function buildToolSelectionRationales(
-  toolCallingPlan: ToolCallingPlan
+  toolCallingPlan: ToolCallingPlan,
 ): ToolSelectionRationale[] {
   return toolCallingPlan.plannedCalls.map((call) => ({
     toolName: call.toolName,
     rationale: call.reason,
     expectedRiskLevel: call.expectedRiskLevel,
     expectedMutatesData: call.expectedMutatesData,
-    expectedRequiresHumanApproval: call.expectedRequiresHumanApproval
+    expectedRequiresHumanApproval: call.expectedRequiresHumanApproval,
   }));
 }
 
@@ -360,13 +352,11 @@ export function buildReviewOutcomes(input: {
 }): ReviewOutcome[] {
   return input.reviewQueueItemsCreated.map((item) => {
     const parsedItem = input.parsedItems.find(
-      (candidate) => candidate.rawLine === item.originalText
+      (candidate) => candidate.rawLine === item.originalText,
     );
     const validationWarnings = input.validationChecks
       .filter(
-        (check) =>
-          check.recordId === parsedItem?.id &&
-          check.status !== "PASS"
+        (check) => check.recordId === parsedItem?.id && check.status !== "PASS",
       )
       .map((check) => check.message);
 
@@ -376,7 +366,7 @@ export function buildReviewOutcomes(input: {
       reason: item.reason,
       validationWarnings,
       suggestedNextAction:
-        "Review the original text, confirm uncertain equipment fields, and approve or correct the proposed structured record."
+        "Review the original text, confirm uncertain equipment fields, and approve or correct the proposed structured record.",
     };
   });
 }
@@ -390,14 +380,14 @@ export function buildExecutionPlan(input: {
   blockedMutationCount: number;
 }): ExecutionPlanStep[] {
   const hasWarnings = input.validationChecks.some(
-    (check) => check.status === "WARNING"
+    (check) => check.status === "WARNING",
   );
   const hasReview = input.reviewOutcomes.length > 0;
   const hasResolvedRetry = input.retryEvents.some(
-    (event) => event.status === "RESOLVED"
+    (event) => event.status === "RESOLVED",
   );
   const hasUnresolvedRetry = input.retryEvents.some(
-    (event) => event.status === "UNRESOLVED"
+    (event) => event.status === "UNRESOLVED",
   );
 
   return [
@@ -407,7 +397,8 @@ export function buildExecutionPlan(input: {
       purpose:
         "Check extracted golf club fields before the workflow trusts structured output.",
       actionType: "VALIDATE_FIELDS",
-      expectedOutput: "Field-level validation checks with pass or warning status.",
+      expectedOutput:
+        "Field-level validation checks with pass or warning status.",
       status: hasWarnings ? "NEEDS_REVIEW" : "COMPLETED",
       linkedTraceEventIds: ["audit-event-2"],
       requiredTools: [],
@@ -415,10 +406,10 @@ export function buildExecutionPlan(input: {
         "brand recognized",
         "product line present",
         "category valid",
-        "shaft/flex data complete"
+        "shaft/flex data complete",
       ],
       retryPolicy: null,
-      safetyPolicy: null
+      safetyPolicy: null,
     },
     {
       id: "execution-plan-search-knowledge",
@@ -432,7 +423,7 @@ export function buildExecutionPlan(input: {
       requiredTools: ["swingops.knowledgeBase.search"],
       validationRules: ["knowledge evidence found"],
       retryPolicy: null,
-      safetyPolicy: "read-only connector execution"
+      safetyPolicy: "read-only connector execution",
     },
     {
       id: "execution-plan-match-inventory",
@@ -440,13 +431,14 @@ export function buildExecutionPlan(input: {
       purpose:
         "Use internal inventory evidence to connect messy trade-in records to product and SKU candidates.",
       actionType: "MATCH_INVENTORY",
-      expectedOutput: "Inventory product match, SKU, confidence, and similar candidates.",
+      expectedOutput:
+        "Inventory product match, SKU, confidence, and similar candidates.",
       status: "COMPLETED",
       linkedTraceEventIds: ["audit-event-4"],
       requiredTools: ["swingops.inventory.lookupProduct"],
       validationRules: ["inventory product match"],
       retryPolicy: null,
-      safetyPolicy: "read-only inventory lookup"
+      safetyPolicy: "read-only inventory lookup",
     },
     {
       id: "execution-plan-estimate-value",
@@ -454,13 +446,14 @@ export function buildExecutionPlan(input: {
       purpose:
         "Use seeded valuation evidence to generate a demo trade-in range with condition and accessory adjustments.",
       actionType: "ESTIMATE_VALUE",
-      expectedOutput: "Demo valuation range, confidence, adjustments, and review reasons.",
+      expectedOutput:
+        "Demo valuation range, confidence, adjustments, and review reasons.",
       status: hasWarnings ? "NEEDS_REVIEW" : "COMPLETED",
       linkedTraceEventIds: ["audit-event-5"],
       requiredTools: ["swingops.tradeInValuation.estimate"],
       validationRules: ["demo valuation range generated"],
       retryPolicy: null,
-      safetyPolicy: "read-only valuation lookup"
+      safetyPolicy: "read-only valuation lookup",
     },
     {
       id: "execution-plan-select-tools",
@@ -468,19 +461,19 @@ export function buildExecutionPlan(input: {
       purpose:
         "Record the application-selected workflow, knowledge, and review tools for execution.",
       actionType: "SELECT_TOOLS",
-      expectedOutput: "Tool plan with concise selection rationale and risk level.",
+      expectedOutput:
+        "Tool plan with concise selection rationale and risk level.",
       status: "COMPLETED",
       linkedTraceEventIds: ["audit-event-8"],
       requiredTools: input.toolSelectionRationales.map((tool) => tool.toolName),
       validationRules: [],
       retryPolicy: null,
-      safetyPolicy: "MCP-compatible read-only tool policy"
+      safetyPolicy: "MCP-compatible read-only tool policy",
     },
     {
       id: "execution-plan-provider-fallback",
       label: "Route model request with fallback",
-      purpose:
-        "Select a model by goal and preserve provider attempt evidence.",
+      purpose: "Select a model by goal and preserve provider attempt evidence.",
       actionType: "RECORD_TRACE",
       expectedOutput: "Provider attempts, skipped reasons, and final provider.",
       status: "COMPLETED",
@@ -488,7 +481,7 @@ export function buildExecutionPlan(input: {
       requiredTools: [],
       validationRules: [],
       retryPolicy: null,
-      safetyPolicy: null
+      safetyPolicy: null,
     },
     {
       id: "execution-plan-retry-shaft-flex",
@@ -506,7 +499,7 @@ export function buildExecutionPlan(input: {
       requiredTools: [],
       validationRules: ["shaft/flex data complete"],
       retryPolicy: "one targeted retry before human review",
-      safetyPolicy: null
+      safetyPolicy: null,
     },
     {
       id: "execution-plan-human-review",
@@ -520,7 +513,7 @@ export function buildExecutionPlan(input: {
       requiredTools: ["swingops.reviewQueueItems.list"],
       validationRules: ["review requirement determined"],
       retryPolicy: "preserve review requirement when retry is unresolved",
-      safetyPolicy: null
+      safetyPolicy: null,
     },
     {
       id: "execution-plan-block-mutation",
@@ -534,7 +527,7 @@ export function buildExecutionPlan(input: {
       requiredTools: ["swingops.inventory.createSku"],
       validationRules: ["unsafe mutation blocked if attempted"],
       retryPolicy: null,
-      safetyPolicy: "human approval required for mutation tools"
+      safetyPolicy: "human approval required for mutation tools",
     },
     {
       id: "execution-plan-record-quality-summary",
@@ -548,8 +541,8 @@ export function buildExecutionPlan(input: {
       requiredTools: [],
       validationRules: [],
       retryPolicy: null,
-      safetyPolicy: null
-    }
+      safetyPolicy: null,
+    },
   ];
 }
 
@@ -565,32 +558,32 @@ export function buildWorkflowQualitySummary(input: {
   valuationEvidenceByItem: ValuationEvidenceByItem;
 }): WorkflowQualitySummary {
   const validationPassed = input.validationChecks.filter(
-    (check) => check.status === "PASS"
+    (check) => check.status === "PASS",
   ).length;
   const validationWarnings = input.validationChecks.filter(
-    (check) => check.status === "WARNING"
+    (check) => check.status === "WARNING",
   ).length;
   const validationFailures = input.validationChecks.filter(
-    (check) => check.status === "FAIL"
+    (check) => check.status === "FAIL",
   ).length;
   const blockedMutations = input.toolCallResults.filter(
-    (result) => result.status === "BLOCKED"
+    (result) => result.status === "BLOCKED",
   ).length;
   const retryAttempts = input.retryEvents.reduce(
     (count, event) => count + event.attemptCount,
-    0
+    0,
   );
   const recordsWithEvidence = input.knowledgeMatchesByItem.filter(
-    (match) => match.search.results.length > 0
+    (match) => match.search.results.length > 0,
   ).length;
   const inventoryMatches = input.inventoryMatchesByItem.filter(
-    (match) => match.lookup.productId !== null
+    (match) => match.lookup.productId !== null,
   ).length;
   const valuationRangesGenerated = input.valuationEvidenceByItem.filter(
-    (evidence) => evidence.estimate.highValue > 0
+    (evidence) => evidence.estimate.highValue > 0,
   ).length;
   const valuationReviewRequired = input.valuationEvidenceByItem.filter(
-    (evidence) => evidence.estimate.reviewRequired
+    (evidence) => evidence.estimate.reviewRequired,
   ).length;
   const status: WorkflowQualityStatus =
     validationFailures > 0
@@ -619,6 +612,6 @@ export function buildWorkflowQualitySummary(input: {
     summary:
       input.reviewOutcomes.length > 0
         ? `Workflow completed with ${input.reviewOutcomes.length} review item(s) because validation found unresolved uncertainty.`
-        : "Workflow completed without human review because validation checks passed."
+        : "Workflow completed without human review because validation checks passed.",
   };
 }

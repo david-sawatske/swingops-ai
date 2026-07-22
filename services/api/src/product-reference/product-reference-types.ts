@@ -1,10 +1,5 @@
 export type ProductReferenceCategory =
-  | "DRIVER"
-  | "FAIRWAY_WOOD"
-  | "HYBRID"
-  | "IRON_SET"
-  | "WEDGE"
-  | "PUTTER";
+  "DRIVER" | "FAIRWAY_WOOD" | "HYBRID" | "IRON_SET" | "WEDGE" | "PUTTER";
 
 export type ProductReferenceRecord = {
   productId: string;

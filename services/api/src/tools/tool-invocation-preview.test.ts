@@ -7,13 +7,13 @@ describe("tool invocation preview", () => {
     const preview = previewToolInvocation({
       toolName: "swingops.workflowRuns.get",
       inputJson: {
-        id: "workflow-run-1"
+        id: "workflow-run-1",
       },
       requestedBy: "agent.test",
       workflowRunId: "workflow-run-1",
       executionMode: "AGENT_AUTONOMOUS",
       invocationId: "preview-1",
-      createdAt: "2026-05-28T17:00:00.000Z"
+      createdAt: "2026-05-28T17:00:00.000Z",
     });
 
     expect(preview).toMatchObject({
@@ -25,23 +25,23 @@ describe("tool invocation preview", () => {
         workflowRunId: "workflow-run-1",
         workflowStepId: null,
         inputJson: {
-          id: "workflow-run-1"
+          id: "workflow-run-1",
         },
         executionAttempted: false,
         persisted: false,
         policyDecision: "ALLOW",
         policyReasonCodes: ["TOOL_ALLOWED"],
-        createdAt: "2026-05-28T17:00:00.000Z"
+        createdAt: "2026-05-28T17:00:00.000Z",
       },
       policyEvaluation: {
         decision: "ALLOW",
-        executionEnabled: true
+        executionEnabled: true,
       },
       previewMetadata: {
         status: "DRY_RUN_ONLY",
         executionAttempted: false,
-        persisted: false
-      }
+        persisted: false,
+      },
     });
   });
 
@@ -49,7 +49,7 @@ describe("tool invocation preview", () => {
     const preview = previewToolInvocation({
       toolName: "swingops.workflowRuns.get",
       invocationId: "preview-2",
-      createdAt: "2026-05-28T17:01:00.000Z"
+      createdAt: "2026-05-28T17:01:00.000Z",
     });
 
     expect(preview.invocation).toMatchObject({
@@ -58,7 +58,7 @@ describe("tool invocation preview", () => {
       policyDecision: "BLOCK",
       policyReasonCodes: ["PREVIEW_ONLY_MODE"],
       executionAttempted: false,
-      persisted: false
+      persisted: false,
     });
     expect(preview.policyEvaluation.executionEnabled).toBe(false);
   });
@@ -68,12 +68,12 @@ describe("tool invocation preview", () => {
       toolName: "swingops.reviewQueueItems.resolve",
       inputJson: {
         id: "review-item-1",
-        reviewerNotes: "Looks correct."
+        reviewerNotes: "Looks correct.",
       },
       executionMode: "HUMAN_APPROVED",
       humanApprovalGranted: true,
       invocationId: "preview-3",
-      createdAt: "2026-05-28T17:02:00.000Z"
+      createdAt: "2026-05-28T17:02:00.000Z",
     });
 
     expect(preview.invocation).toMatchObject({
@@ -83,7 +83,7 @@ describe("tool invocation preview", () => {
       policyDecision: "BLOCK",
       policyReasonCodes: ["TOOL_DISABLED"],
       executionAttempted: false,
-      persisted: false
+      persisted: false,
     });
   });
 
@@ -92,7 +92,7 @@ describe("tool invocation preview", () => {
       toolName: "swingops.notRegistered",
       executionMode: "AGENT_AUTONOMOUS",
       invocationId: "preview-4",
-      createdAt: "2026-05-28T17:03:00.000Z"
+      createdAt: "2026-05-28T17:03:00.000Z",
     });
 
     expect(preview.invocation).toMatchObject({
@@ -100,7 +100,7 @@ describe("tool invocation preview", () => {
       toolName: "swingops.notRegistered",
       status: "BLOCKED",
       policyDecision: "BLOCK",
-      policyReasonCodes: ["TOOL_NOT_FOUND"]
+      policyReasonCodes: ["TOOL_NOT_FOUND"],
     });
     expect(preview.policyEvaluation.tool).toBeNull();
   });

@@ -8,7 +8,7 @@ async function startServer(): Promise<void> {
   try {
     await app.listen({
       host: env.API_HOST,
-      port: env.API_PORT
+      port: env.API_PORT,
     });
   } catch (error) {
     app.log.error(error, "Failed to start API server");

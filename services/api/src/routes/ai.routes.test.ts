@@ -14,8 +14,8 @@ describe("AI routes", () => {
           taskType: "INTAKE_PARSING",
           preferredGoal: "HIGH_QUALITY",
           requireJson: true,
-          allowDisabledProvidersForSimulation: true
-        }
+          allowDisabledProvidersForSimulation: true,
+        },
       });
 
       expect(response.statusCode).toBe(200);
@@ -26,7 +26,7 @@ describe("AI routes", () => {
         taskType: "INTAKE_PARSING",
         preferredGoal: "HIGH_QUALITY",
         requireJson: true,
-        allowDisabledProvidersForSimulation: true
+        allowDisabledProvidersForSimulation: true,
       });
 
       expect(body.routingDecision).toMatchObject({
@@ -45,11 +45,11 @@ describe("AI routes", () => {
           modelEnabled: true,
           enabledForExecution: false,
           selected: true,
-          healthStatus: "HEALTHY"
+          healthStatus: "HEALTHY",
         },
         fallbackProvider: "AZURE_OPENAI",
         fallbackModel: "azure-gpt-4.1-mini",
-        fallbackReason: null
+        fallbackReason: null,
       });
 
       expect(body.routingDecision.candidatesConsidered).toHaveLength(5);
@@ -57,20 +57,16 @@ describe("AI routes", () => {
       expect(body.routingDecision.routingFactors).toEqual(
         expect.arrayContaining([
           "OPENAI health is HEALTHY.",
-          "Preferred routing goal is HIGH_QUALITY."
-        ])
+          "Preferred routing goal is HIGH_QUALITY.",
+        ]),
       );
       expect(body.routingDecision.estimatedLatencyMs).toBe(650);
       expect(body.routingDecision.estimatedCostUsd).toBeGreaterThan(0);
-      expect(body.routingDecision.candidatesConsidered.map(
-        (candidate: { provider: string }) => candidate.provider
-      )).toEqual([
-        "MOCK",
-        "OPENAI",
-        "ANTHROPIC",
-        "AZURE_OPENAI",
-        "OLLAMA"
-      ]);
+      expect(
+        body.routingDecision.candidatesConsidered.map(
+          (candidate: { provider: string }) => candidate.provider,
+        ),
+      ).toEqual(["MOCK", "OPENAI", "ANTHROPIC", "AZURE_OPENAI", "OLLAMA"]);
       expect(body.routingDecision.rejectedCandidates).toEqual([]);
 
       await app.close();
@@ -83,8 +79,8 @@ describe("AI routes", () => {
         method: "POST",
         url: "/ai/model-routing/preview",
         payload: {
-          taskType: "REVIEW_SUMMARY"
-        }
+          taskType: "REVIEW_SUMMARY",
+        },
       });
 
       expect(response.statusCode).toBe(200);
@@ -95,7 +91,7 @@ describe("AI routes", () => {
         taskType: "REVIEW_SUMMARY",
         preferredGoal: "LOW_COST",
         requireJson: true,
-        allowDisabledProvidersForSimulation: true
+        allowDisabledProvidersForSimulation: true,
       });
 
       expect(body.routingDecision).toMatchObject({
@@ -103,7 +99,7 @@ describe("AI routes", () => {
         model: "mock-golf-workflow-model",
         estimatedCostTier: "FREE",
         expectedLatencyTier: "LOW",
-        qualityTier: "LOW"
+        qualityTier: "LOW",
       });
 
       await app.close();
@@ -119,8 +115,8 @@ describe("AI routes", () => {
           taskType: "INTAKE_PARSING",
           preferredGoal: "HIGH_QUALITY",
           requireJson: true,
-          allowDisabledProvidersForSimulation: false
-        }
+          allowDisabledProvidersForSimulation: false,
+        },
       });
 
       expect(response.statusCode).toBe(200);
@@ -133,10 +129,10 @@ describe("AI routes", () => {
           expect.objectContaining({
             provider: "ANTHROPIC",
             rejectedReasons: expect.arrayContaining([
-              "Provider/model is disabled for execution. Enable simulation preview to consider it."
-            ])
-          })
-        ])
+              "Provider/model is disabled for execution. Enable simulation preview to consider it.",
+            ]),
+          }),
+        ]),
       );
 
       await app.close();
@@ -152,8 +148,8 @@ describe("AI routes", () => {
           taskType: "VALIDATION",
           preferredGoal: "LOCAL_ONLY",
           requireJson: true,
-          allowDisabledProvidersForSimulation: true
-        }
+          allowDisabledProvidersForSimulation: true,
+        },
       });
 
       expect(response.statusCode).toBe(200);
@@ -164,17 +160,17 @@ describe("AI routes", () => {
         provider: "MOCK",
         model: "mock-golf-workflow-model",
         fallbackReason:
-          "Fallback mock model because no eligible local model supports VALIDATION."
+          "Fallback mock model because no eligible local model supports VALIDATION.",
       });
       expect(body.routingDecision.rejectedCandidates).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             provider: "OLLAMA",
             rejectedReasons: expect.arrayContaining([
-              "Does not support task type VALIDATION."
-            ])
-          })
-        ])
+              "Does not support task type VALIDATION.",
+            ]),
+          }),
+        ]),
       );
 
       await app.close();
@@ -188,12 +184,14 @@ describe("AI routes", () => {
         url: "/ai/model-routing/preview",
         payload: {
           taskType: "NOT_A_TASK",
-          preferredGoal: "HIGH_QUALITY"
-        }
+          preferredGoal: "HIGH_QUALITY",
+        },
       });
 
       expect(response.statusCode).toBe(400);
-      expect(response.json().error).toBe("Invalid model routing preview request");
+      expect(response.json().error).toBe(
+        "Invalid model routing preview request",
+      );
 
       await app.close();
     });

@@ -1,13 +1,13 @@
 import {
   getModelProvider,
-  listModelConfigs
+  listModelConfigs,
 } from "./model-provider-registry.js";
 import { estimateModelProviderCost } from "./model-provider-costs.js";
 import type { ModelProviderCostMetadata } from "./model-provider-costs.js";
 import { getModelProviderHealth } from "./model-provider-health.js";
 import type {
   ModelProviderHealthMetadata,
-  ModelProviderHealthStatus
+  ModelProviderHealthStatus,
 } from "./model-provider-health.js";
 import type {
   ModelCostTier,
@@ -15,16 +15,13 @@ import type {
   ModelProviderModelConfig,
   ModelProviderName,
   ModelQualityTier,
-  ModelTaskType
+  ModelTaskType,
 } from "./model-provider.types.js";
 
 export type ModelProvider = ModelProviderName;
 
 export type ModelRoutingGoal =
-  | "LOW_COST"
-  | "LOW_LATENCY"
-  | "HIGH_QUALITY"
-  | "LOCAL_ONLY";
+  "LOW_COST" | "LOW_LATENCY" | "HIGH_QUALITY" | "LOCAL_ONLY";
 
 export type ModelRouteRequest = {
   goal?: ModelRoutingGoal;
@@ -89,7 +86,9 @@ export type ModelRouteDecision = {
 type ModelRouteOptions = {
   modelConfigs?: ModelProviderModelConfig[];
   providerEnabledByName?: Partial<Record<ModelProviderName, boolean>>;
-  providerHealthByName?: Partial<Record<ModelProviderName, ModelProviderHealthMetadata>>;
+  providerHealthByName?: Partial<
+    Record<ModelProviderName, ModelProviderHealthMetadata>
+  >;
 };
 
 type ScoredCandidate = {
@@ -104,7 +103,7 @@ const mockFallbackModelMetadata: ModelRouteCandidateSummary = {
     "INTAKE_PARSING",
     "FIELD_NORMALIZATION",
     "VALIDATION",
-    "REVIEW_SUMMARY"
+    "REVIEW_SUMMARY",
   ],
   supportsJson: true,
   costTier: "FREE",
@@ -114,7 +113,8 @@ const mockFallbackModelMetadata: ModelRouteCandidateSummary = {
   modelEnabled: true,
   enabledForExecution: true,
   healthStatus: "HEALTHY",
-  healthReason: "Local deterministic mock provider is available for development.",
+  healthReason:
+    "Local deterministic mock provider is available for development.",
   estimatedLatencyMs: 75,
   inputCostPer1MTokensUsd: 0,
   outputCostPer1MTokensUsd: 0,
@@ -122,11 +122,7 @@ const mockFallbackModelMetadata: ModelRouteCandidateSummary = {
   estimatedOutputTokens: 450,
   estimatedCostUsd: 0,
   selected: true,
-  reasonCodes: [
-    "PROVIDER_HEALTHY",
-    "COST_WITHIN_BUDGET",
-    "LOW_COST_ROUTE"
-  ]
+  reasonCodes: ["PROVIDER_HEALTHY", "COST_WITHIN_BUDGET", "LOW_COST_ROUTE"],
 };
 
 const mockFallbackDecisionBase = {
@@ -142,18 +138,18 @@ const mockFallbackDecisionBase = {
   estimatedInputTokens: 1200,
   estimatedOutputTokens: 450,
   estimatedCostUsd: 0,
-  selectedModelMetadata: mockFallbackModelMetadata
+  selectedModelMetadata: mockFallbackModelMetadata,
 };
 
 export function routeModel(
   request: ModelRouteRequest,
-  options: ModelRouteOptions = {}
+  options: ModelRouteOptions = {},
 ): ModelRouteDecision {
   const preferredGoal = request.preferredGoal ?? request.goal ?? "LOW_COST";
   const modelConfigs = options.modelConfigs ?? listModelConfigs();
 
   const candidateSummaries = modelConfigs.map((modelConfig) =>
-    toCandidateSummary(modelConfig, options)
+    toCandidateSummary(modelConfig, options),
   );
   const rejectedCandidates: ModelRouteRejectedCandidate[] = [];
   const eligibleCandidates: ScoredCandidate[] = [];
@@ -163,20 +159,20 @@ export function routeModel(
     const rejectedReasons = getRejectedReasons({
       request,
       preferredGoal,
-      summary
+      summary,
     });
 
     if (rejectedReasons.length > 0) {
       rejectedCandidates.push({
         ...summary,
-        rejectedReasons
+        rejectedReasons,
       });
       continue;
     }
 
     eligibleCandidates.push({
       modelConfig,
-      summary
+      summary,
     });
   }
 
@@ -185,7 +181,7 @@ export function routeModel(
   if (selectedCandidate) {
     const fallbackCandidate = selectFallbackCandidate(
       eligibleCandidates,
-      selectedCandidate.summary
+      selectedCandidate.summary,
     );
 
     return toRouteDecision({
@@ -193,12 +189,12 @@ export function routeModel(
       summary: selectedCandidate.summary,
       candidatesConsidered: markSelectedCandidate(
         candidateSummaries,
-        selectedCandidate.summary
+        selectedCandidate.summary,
       ),
       rejectedCandidates,
       fallbackCandidate,
       fallbackReason: null,
-      preferredGoal
+      preferredGoal,
     });
   }
 
@@ -210,14 +206,14 @@ export function routeModel(
     selectedReason: fallbackReason,
     routingFactors: [
       "No eligible configured provider/model matched the request.",
-      "Fallback mock route keeps workflow execution deterministic for local development."
+      "Fallback mock route keeps workflow execution deterministic for local development.",
     ],
     candidatesConsidered: candidateSummaries,
     providerCandidates: candidateSummaries,
     rejectedCandidates,
     fallbackProvider: null,
     fallbackModel: null,
-    fallbackReason
+    fallbackReason,
   };
 }
 
@@ -229,7 +225,9 @@ function getRejectedReasons(input: {
   const rejectedReasons: string[] = [];
 
   if (!input.summary.supportedTaskTypes.includes(input.request.taskType)) {
-    rejectedReasons.push(`Does not support task type ${input.request.taskType}.`);
+    rejectedReasons.push(
+      `Does not support task type ${input.request.taskType}.`,
+    );
   }
 
   if (input.request.requireJson === true && !input.summary.supportsJson) {
@@ -240,7 +238,9 @@ function getRejectedReasons(input: {
     input.preferredGoal === "LOCAL_ONLY" &&
     input.summary.provider !== "OLLAMA"
   ) {
-    rejectedReasons.push("Rejected because LOCAL_ONLY requires a local provider.");
+    rejectedReasons.push(
+      "Rejected because LOCAL_ONLY requires a local provider.",
+    );
   }
 
   if (input.summary.healthStatus === "UNAVAILABLE") {
@@ -252,7 +252,7 @@ function getRejectedReasons(input: {
     !input.summary.enabledForExecution
   ) {
     rejectedReasons.push(
-      "Provider/model is disabled for execution. Enable simulation preview to consider it."
+      "Provider/model is disabled for execution. Enable simulation preview to consider it.",
     );
   }
 
@@ -261,56 +261,59 @@ function getRejectedReasons(input: {
 
 function selectCandidate(
   candidates: ScoredCandidate[],
-  preferredGoal: ModelRoutingGoal
+  preferredGoal: ModelRoutingGoal,
 ): ScoredCandidate | null {
   if (candidates.length === 0) {
     return null;
   }
 
-  return [...candidates].sort((left, right) => {
-    const healthComparison =
-      getHealthRank(left.summary.healthStatus) -
-      getHealthRank(right.summary.healthStatus);
+  return (
+    [...candidates].sort((left, right) => {
+      const healthComparison =
+        getHealthRank(left.summary.healthStatus) -
+        getHealthRank(right.summary.healthStatus);
 
-    if (healthComparison !== 0) {
-      return healthComparison;
-    }
+      if (healthComparison !== 0) {
+        return healthComparison;
+      }
 
-    if (preferredGoal === "LOW_COST" || preferredGoal === "LOCAL_ONLY") {
+      if (preferredGoal === "LOW_COST" || preferredGoal === "LOCAL_ONLY") {
+        return (
+          left.summary.estimatedCostUsd - right.summary.estimatedCostUsd ||
+          getCostRank(left.summary.costTier) -
+            getCostRank(right.summary.costTier) ||
+          left.summary.estimatedLatencyMs - right.summary.estimatedLatencyMs ||
+          getQualityRank(right.summary.qualityTier) -
+            getQualityRank(left.summary.qualityTier)
+        );
+      }
+
+      if (preferredGoal === "LOW_LATENCY") {
+        return (
+          left.summary.estimatedLatencyMs - right.summary.estimatedLatencyMs ||
+          getLatencyRank(left.summary.latencyTier) -
+            getLatencyRank(right.summary.latencyTier) ||
+          left.summary.estimatedCostUsd - right.summary.estimatedCostUsd ||
+          getQualityRank(right.summary.qualityTier) -
+            getQualityRank(left.summary.qualityTier)
+        );
+      }
+
       return (
-        left.summary.estimatedCostUsd - right.summary.estimatedCostUsd ||
-        getCostRank(left.summary.costTier) - getCostRank(right.summary.costTier) ||
-        left.summary.estimatedLatencyMs - right.summary.estimatedLatencyMs ||
         getQualityRank(right.summary.qualityTier) -
-          getQualityRank(left.summary.qualityTier)
-      );
-    }
-
-    if (preferredGoal === "LOW_LATENCY") {
-      return (
-        left.summary.estimatedLatencyMs - right.summary.estimatedLatencyMs ||
-        getLatencyRank(left.summary.latencyTier) -
-          getLatencyRank(right.summary.latencyTier) ||
+          getQualityRank(left.summary.qualityTier) ||
+        getHighQualityProviderRank(left.summary.provider) -
+          getHighQualityProviderRank(right.summary.provider) ||
         left.summary.estimatedCostUsd - right.summary.estimatedCostUsd ||
-        getQualityRank(right.summary.qualityTier) -
-          getQualityRank(left.summary.qualityTier)
+        left.summary.estimatedLatencyMs - right.summary.estimatedLatencyMs
       );
-    }
-
-    return (
-      getQualityRank(right.summary.qualityTier) -
-        getQualityRank(left.summary.qualityTier) ||
-      getHighQualityProviderRank(left.summary.provider) -
-        getHighQualityProviderRank(right.summary.provider) ||
-      left.summary.estimatedCostUsd - right.summary.estimatedCostUsd ||
-      left.summary.estimatedLatencyMs - right.summary.estimatedLatencyMs
-    );
-  })[0] ?? null;
+    })[0] ?? null
+  );
 }
 
 function selectFallbackCandidate(
   candidates: ScoredCandidate[],
-  selectedSummary: ModelRouteCandidateSummary
+  selectedSummary: ModelRouteCandidateSummary,
 ): ModelRouteCandidateSummary | null {
   return (
     candidates
@@ -318,14 +321,16 @@ function selectFallbackCandidate(
       .filter(
         (candidate) =>
           candidate.provider !== selectedSummary.provider ||
-          candidate.model !== selectedSummary.model
+          candidate.model !== selectedSummary.model,
       )
       .sort((left, right) => {
         return (
-          getHealthRank(left.healthStatus) - getHealthRank(right.healthStatus) ||
+          getHealthRank(left.healthStatus) -
+            getHealthRank(right.healthStatus) ||
           getHighQualityProviderRank(left.provider) -
             getHighQualityProviderRank(right.provider) ||
-          getQualityRank(right.qualityTier) - getQualityRank(left.qualityTier) ||
+          getQualityRank(right.qualityTier) -
+            getQualityRank(left.qualityTier) ||
           left.estimatedCostUsd - right.estimatedCostUsd ||
           left.estimatedLatencyMs - right.estimatedLatencyMs
         );
@@ -342,8 +347,14 @@ function toRouteDecision(input: {
   fallbackReason: string | null;
   preferredGoal: ModelRoutingGoal;
 }): ModelRouteDecision {
-  const selectedReason = buildSelectedReason(input.summary, input.preferredGoal);
-  const routingFactors = buildRoutingFactors(input.summary, input.preferredGoal);
+  const selectedReason = buildSelectedReason(
+    input.summary,
+    input.preferredGoal,
+  );
+  const routingFactors = buildRoutingFactors(
+    input.summary,
+    input.preferredGoal,
+  );
 
   return {
     provider: input.modelConfig.provider,
@@ -363,20 +374,20 @@ function toRouteDecision(input: {
     routingFactors,
     selectedModelMetadata: {
       ...input.summary,
-      selected: true
+      selected: true,
     },
     candidatesConsidered: input.candidatesConsidered,
     providerCandidates: input.candidatesConsidered,
     rejectedCandidates: input.rejectedCandidates,
     fallbackProvider: input.fallbackCandidate?.provider ?? null,
     fallbackModel: input.fallbackCandidate?.model ?? null,
-    fallbackReason: input.fallbackReason
+    fallbackReason: input.fallbackReason,
   };
 }
 
 function toCandidateSummary(
   modelConfig: ModelProviderModelConfig,
-  options: ModelRouteOptions
+  options: ModelRouteOptions,
 ): ModelRouteCandidateSummary {
   const providerEnabled =
     options.providerEnabledByName?.[modelConfig.provider] ??
@@ -406,8 +417,8 @@ function toCandidateSummary(
     reasonCodes: buildReasonCodes({
       modelConfig,
       health,
-      cost
-    })
+      cost,
+    }),
   };
 }
 
@@ -417,7 +428,7 @@ function toCostSummary(cost: ModelProviderCostMetadata) {
     outputCostPer1MTokensUsd: cost.outputCostPer1MTokensUsd,
     estimatedInputTokens: cost.estimatedInputTokens,
     estimatedOutputTokens: cost.estimatedOutputTokens,
-    estimatedCostUsd: cost.estimatedCostUsd
+    estimatedCostUsd: cost.estimatedCostUsd,
   };
 }
 
@@ -444,7 +455,10 @@ function buildReasonCodes(input: {
     reasonCodes.push("QUALITY_TARGET_HIGH");
   }
 
-  if (input.modelConfig.costTier === "FREE" || input.modelConfig.costTier === "LOW") {
+  if (
+    input.modelConfig.costTier === "FREE" ||
+    input.modelConfig.costTier === "LOW"
+  ) {
     reasonCodes.push("COST_EFFICIENT");
   }
 
@@ -461,7 +475,7 @@ function buildReasonCodes(input: {
 
 function buildSelectedReason(
   summary: ModelRouteCandidateSummary,
-  preferredGoal: ModelRoutingGoal
+  preferredGoal: ModelRoutingGoal,
 ): string {
   const goalPhrase =
     preferredGoal === "HIGH_QUALITY"
@@ -477,32 +491,32 @@ function buildSelectedReason(
 
 function buildRoutingFactors(
   summary: ModelRouteCandidateSummary,
-  preferredGoal: ModelRoutingGoal
+  preferredGoal: ModelRoutingGoal,
 ): string[] {
   return [
     `${summary.provider} health is ${summary.healthStatus}.`,
     `Estimated latency is ${summary.estimatedLatencyMs}ms.`,
     `Estimated request cost is $${summary.estimatedCostUsd.toFixed(6)}.`,
     `Quality tier is ${summary.qualityTier}.`,
-    `Preferred routing goal is ${preferredGoal}.`
+    `Preferred routing goal is ${preferredGoal}.`,
   ];
 }
 
 function markSelectedCandidate(
   candidates: ModelRouteCandidateSummary[],
-  selectedCandidate: ModelRouteCandidateSummary
+  selectedCandidate: ModelRouteCandidateSummary,
 ): ModelRouteCandidateSummary[] {
   return candidates.map((candidate) => ({
     ...candidate,
     selected:
       candidate.provider === selectedCandidate.provider &&
-      candidate.model === selectedCandidate.model
+      candidate.model === selectedCandidate.model,
   }));
 }
 
 function getFallbackReason(
   taskType: ModelTaskType,
-  preferredGoal: ModelRoutingGoal
+  preferredGoal: ModelRoutingGoal,
 ): string {
   if (preferredGoal === "LOCAL_ONLY") {
     return `Fallback mock model because no eligible local model supports ${taskType}.`;
@@ -517,7 +531,7 @@ function getHighQualityProviderRank(provider: ModelProviderName): number {
     OPENAI: 1,
     AZURE_OPENAI: 2,
     OLLAMA: 3,
-    MOCK: 4
+    MOCK: 4,
   };
 
   return ranks[provider];
@@ -527,7 +541,7 @@ function getHealthRank(healthStatus: ModelProviderHealthStatus): number {
   const ranks: Record<ModelProviderHealthStatus, number> = {
     HEALTHY: 0,
     DEGRADED: 1,
-    UNAVAILABLE: 2
+    UNAVAILABLE: 2,
   };
 
   return ranks[healthStatus];
@@ -538,7 +552,7 @@ function getCostRank(costTier: ModelCostTier): number {
     FREE: 0,
     LOW: 1,
     MEDIUM: 2,
-    HIGH: 3
+    HIGH: 3,
   };
 
   return ranks[costTier];
@@ -548,7 +562,7 @@ function getLatencyRank(latencyTier: ModelLatencyTier): number {
   const ranks: Record<ModelLatencyTier, number> = {
     LOW: 0,
     MEDIUM: 1,
-    HIGH: 2
+    HIGH: 2,
   };
 
   return ranks[latencyTier];
@@ -558,7 +572,7 @@ function getQualityRank(qualityTier: ModelQualityTier): number {
   const ranks: Record<ModelQualityTier, number> = {
     LOW: 0,
     MEDIUM: 1,
-    HIGH: 2
+    HIGH: 2,
   };
 
   return ranks[qualityTier];

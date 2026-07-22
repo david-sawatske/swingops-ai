@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { prisma } from "../lib/prisma.js";
 import {
   persistToolInvocationPreviewLog,
-  ToolInvocationPreviewLogRequiresWorkflowContextError
+  ToolInvocationPreviewLogRequiresWorkflowContextError,
 } from "./tool-invocation-preview-logging.js";
 
 const testWorkflowName = "test-tool-invocation-preview-log";
@@ -11,8 +11,8 @@ const testWorkflowName = "test-tool-invocation-preview-log";
 afterEach(async () => {
   await prisma.workflowRun.deleteMany({
     where: {
-      workflowName: testWorkflowName
-    }
+      workflowName: testWorkflowName,
+    },
   });
 });
 
@@ -20,20 +20,20 @@ describe("tool invocation preview logging", () => {
   it("persists an audit-only planned invocation preview for an allowed read-only tool", async () => {
     const workflowRun = await prisma.workflowRun.create({
       data: {
-        workflowName: testWorkflowName
-      }
+        workflowName: testWorkflowName,
+      },
     });
 
     const preview = await persistToolInvocationPreviewLog({
       toolName: "swingops.workflowRuns.get",
       inputJson: {
-        id: workflowRun.id
+        id: workflowRun.id,
       },
       requestedBy: "agent.test",
       workflowRunId: workflowRun.id,
       executionMode: "AGENT_AUTONOMOUS",
       invocationId: "preview-log-1",
-      createdAt: "2026-05-28T17:30:00.000Z"
+      createdAt: "2026-05-28T17:30:00.000Z",
     });
 
     expect(preview.invocation).toMatchObject({
@@ -45,14 +45,14 @@ describe("tool invocation preview logging", () => {
       persisted: true,
       policyDecision: "ALLOW",
       policyReasonCodes: ["TOOL_ALLOWED"],
-      toolCallLogId: preview.toolCallLog.id
+      toolCallLogId: preview.toolCallLog.id,
     });
 
     expect(preview.previewMetadata).toMatchObject({
       status: "DRY_RUN_ONLY",
       executionAttempted: false,
       persisted: true,
-      toolCallLogId: preview.toolCallLog.id
+      toolCallLogId: preview.toolCallLog.id,
     });
 
     expect(preview.toolCallLog).toMatchObject({
@@ -61,11 +61,11 @@ describe("tool invocation preview logging", () => {
       toolName: "swingops.workflowRuns.get",
       status: "STARTED",
       completedAt: null,
-      errorMessage: null
+      errorMessage: null,
     });
 
     expect(preview.toolCallLog.inputJson).toMatchObject({
-      id: workflowRun.id
+      id: workflowRun.id,
     });
 
     expect(preview.toolCallLog.outputJson).toMatchObject({
@@ -79,22 +79,22 @@ describe("tool invocation preview logging", () => {
       invocationId: "preview-log-1",
       executionMode: "AGENT_AUTONOMOUS",
       executionEnabled: true,
-      humanApprovalGranted: false
+      humanApprovalGranted: false,
     });
   });
 
   it("persists a blocked planned invocation preview without attempting execution", async () => {
     const workflowRun = await prisma.workflowRun.create({
       data: {
-        workflowName: testWorkflowName
-      }
+        workflowName: testWorkflowName,
+      },
     });
 
     const preview = await persistToolInvocationPreviewLog({
       toolName: "swingops.workflowRuns.get",
       workflowRunId: workflowRun.id,
       invocationId: "preview-log-2",
-      createdAt: "2026-05-28T17:31:00.000Z"
+      createdAt: "2026-05-28T17:31:00.000Z",
     });
 
     expect(preview.invocation).toMatchObject({
@@ -102,7 +102,7 @@ describe("tool invocation preview logging", () => {
       executionAttempted: false,
       persisted: true,
       policyDecision: "BLOCK",
-      policyReasonCodes: ["PREVIEW_ONLY_MODE"]
+      policyReasonCodes: ["PREVIEW_ONLY_MODE"],
     });
 
     expect(preview.toolCallLog.status).toBe("STARTED");
@@ -115,17 +115,17 @@ describe("tool invocation preview logging", () => {
       policyReasonCodes: ["PREVIEW_ONLY_MODE"],
       invocationStatus: "BLOCKED",
       executionMode: "PREVIEW_ONLY",
-      executionEnabled: false
+      executionEnabled: false,
     });
   });
 
   it("rejects persistence when no workflow context is supplied", async () => {
     await expect(
       persistToolInvocationPreviewLog({
-        toolName: "swingops.workflowRuns.get"
-      })
+        toolName: "swingops.workflowRuns.get",
+      }),
     ).rejects.toBeInstanceOf(
-      ToolInvocationPreviewLogRequiresWorkflowContextError
+      ToolInvocationPreviewLogRequiresWorkflowContextError,
     );
   });
 });

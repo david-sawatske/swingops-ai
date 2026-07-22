@@ -28,15 +28,14 @@ export type GoldenDemonstrationHistoryResult = {
 
 export async function ensureGoldenDemonstrationHistory(): Promise<GoldenDemonstrationHistoryResult> {
   return prisma.$transaction(async (tx) => {
-    const existingLearningEvent =
-      await tx.humanReviewLearningEvent.findUnique({
-        where: {
-          id: GOLDEN_DEMONSTRATION_HISTORY_IDS.learningEventId,
-        },
-        select: {
-          id: true,
-        },
-      });
+    const existingLearningEvent = await tx.humanReviewLearningEvent.findUnique({
+      where: {
+        id: GOLDEN_DEMONSTRATION_HISTORY_IDS.learningEventId,
+      },
+      select: {
+        id: true,
+      },
+    });
 
     await tx.workflowRun.upsert({
       where: {
@@ -100,41 +99,38 @@ export async function ensureGoldenDemonstrationHistory(): Promise<GoldenDemonstr
       },
     });
 
-    const reviewedTradeInRecord =
-      await tx.reviewedTradeInRecord.upsert({
-        where: {
-          reviewQueueItemId:
-            GOLDEN_DEMONSTRATION_HISTORY_IDS.reviewQueueItemId,
-        },
-        create: {
-          id: GOLDEN_DEMONSTRATION_HISTORY_IDS.reviewedTradeInRecordId,
-          reviewQueueItemId:
-            GOLDEN_DEMONSTRATION_HISTORY_IDS.reviewQueueItemId,
-          workflowRunId: GOLDEN_DEMONSTRATION_HISTORY_IDS.workflowRunId,
-          originalText: HISTORICAL_SOURCE_TEXT,
-          correctedBrand: "PING",
-          correctedProductLine: "G425",
-          correctedCategory: "IRON_SET",
-          correctedShaftFlex: "STIFF",
-          correctedConditionGrade: "8.0 Average",
-          correctedDemoValue: 210,
-          reviewerNotes: HISTORICAL_REVIEWER_NOTE,
-          approvedAt: HISTORICAL_REVIEW_DATE,
-          createdAt: HISTORICAL_REVIEW_DATE,
-        },
-        update: {
-          workflowRunId: GOLDEN_DEMONSTRATION_HISTORY_IDS.workflowRunId,
-          originalText: HISTORICAL_SOURCE_TEXT,
-          correctedBrand: "PING",
-          correctedProductLine: "G425",
-          correctedCategory: "IRON_SET",
-          correctedShaftFlex: "STIFF",
-          correctedConditionGrade: "8.0 Average",
-          correctedDemoValue: 210,
-          reviewerNotes: HISTORICAL_REVIEWER_NOTE,
-          approvedAt: HISTORICAL_REVIEW_DATE,
-        },
-      });
+    const reviewedTradeInRecord = await tx.reviewedTradeInRecord.upsert({
+      where: {
+        reviewQueueItemId: GOLDEN_DEMONSTRATION_HISTORY_IDS.reviewQueueItemId,
+      },
+      create: {
+        id: GOLDEN_DEMONSTRATION_HISTORY_IDS.reviewedTradeInRecordId,
+        reviewQueueItemId: GOLDEN_DEMONSTRATION_HISTORY_IDS.reviewQueueItemId,
+        workflowRunId: GOLDEN_DEMONSTRATION_HISTORY_IDS.workflowRunId,
+        originalText: HISTORICAL_SOURCE_TEXT,
+        correctedBrand: "PING",
+        correctedProductLine: "G425",
+        correctedCategory: "IRON_SET",
+        correctedShaftFlex: "STIFF",
+        correctedConditionGrade: "8.0 Average",
+        correctedDemoValue: 210,
+        reviewerNotes: HISTORICAL_REVIEWER_NOTE,
+        approvedAt: HISTORICAL_REVIEW_DATE,
+        createdAt: HISTORICAL_REVIEW_DATE,
+      },
+      update: {
+        workflowRunId: GOLDEN_DEMONSTRATION_HISTORY_IDS.workflowRunId,
+        originalText: HISTORICAL_SOURCE_TEXT,
+        correctedBrand: "PING",
+        correctedProductLine: "G425",
+        correctedCategory: "IRON_SET",
+        correctedShaftFlex: "STIFF",
+        correctedConditionGrade: "8.0 Average",
+        correctedDemoValue: 210,
+        reviewerNotes: HISTORICAL_REVIEWER_NOTE,
+        approvedAt: HISTORICAL_REVIEW_DATE,
+      },
+    });
 
     await tx.humanReviewLearningEvent.upsert({
       where: {
@@ -143,31 +139,27 @@ export async function ensureGoldenDemonstrationHistory(): Promise<GoldenDemonstr
       create: {
         id: GOLDEN_DEMONSTRATION_HISTORY_IDS.learningEventId,
         reviewedTradeInRecordId: reviewedTradeInRecord.id,
-        reviewQueueItemId:
-          GOLDEN_DEMONSTRATION_HISTORY_IDS.reviewQueueItemId,
+        reviewQueueItemId: GOLDEN_DEMONSTRATION_HISTORY_IDS.reviewQueueItemId,
         workflowRunId: GOLDEN_DEMONSTRATION_HISTORY_IDS.workflowRunId,
         fieldName: "shaftFlex",
         rawTextMatch: "shaft firm",
         proposedValue: "Missing",
         correctedValue: "STIFF",
         evidenceText: "Reviewer corrected shaft firm to STIFF.",
-        confidenceImpact:
-          "Require reviewer confirmation before applying.",
+        confidenceImpact: "Require reviewer confirmation before applying.",
         reviewerNotes: HISTORICAL_REVIEWER_NOTE,
         createdAt: HISTORICAL_REVIEW_DATE,
       },
       update: {
         reviewedTradeInRecordId: reviewedTradeInRecord.id,
-        reviewQueueItemId:
-          GOLDEN_DEMONSTRATION_HISTORY_IDS.reviewQueueItemId,
+        reviewQueueItemId: GOLDEN_DEMONSTRATION_HISTORY_IDS.reviewQueueItemId,
         workflowRunId: GOLDEN_DEMONSTRATION_HISTORY_IDS.workflowRunId,
         fieldName: "shaftFlex",
         rawTextMatch: "shaft firm",
         proposedValue: "Missing",
         correctedValue: "STIFF",
         evidenceText: "Reviewer corrected shaft firm to STIFF.",
-        confidenceImpact:
-          "Require reviewer confirmation before applying.",
+        confidenceImpact: "Require reviewer confirmation before applying.",
         reviewerNotes: HISTORICAL_REVIEWER_NOTE,
       },
     });
@@ -175,8 +167,7 @@ export async function ensureGoldenDemonstrationHistory(): Promise<GoldenDemonstr
     return {
       created: existingLearningEvent === null,
       workflowRunId: GOLDEN_DEMONSTRATION_HISTORY_IDS.workflowRunId,
-      reviewQueueItemId:
-        GOLDEN_DEMONSTRATION_HISTORY_IDS.reviewQueueItemId,
+      reviewQueueItemId: GOLDEN_DEMONSTRATION_HISTORY_IDS.reviewQueueItemId,
       reviewedTradeInRecordId: reviewedTradeInRecord.id,
       learningEventId: GOLDEN_DEMONSTRATION_HISTORY_IDS.learningEventId,
       fieldName: "shaftFlex",

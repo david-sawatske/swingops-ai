@@ -4,7 +4,7 @@ import { LEGACY_FREEFORM_NOTES_INTAKE_SOURCE_TYPE } from "../intake/legacy-intak
 import { prisma } from "../lib/prisma.js";
 import {
   failIntakeBatchAfterWorkflowSetupError,
-  failPersistedWorkflowRun
+  failPersistedWorkflowRun,
 } from "./workflow-run-failure.js";
 
 describe("workflow run failure transitions", () => {
@@ -18,10 +18,10 @@ describe("workflow run failure transitions", () => {
         items: {
           create: {
             rawText: "Pending workflow setup item",
-            status: "PROCESSING"
-          }
-        }
-      }
+            status: "PROCESSING",
+          },
+        },
+      },
     });
 
     try {
@@ -30,11 +30,11 @@ describe("workflow run failure transitions", () => {
 
       const persistedBatch = await prisma.intakeBatch.findUniqueOrThrow({
         where: {
-          id: intakeBatch.id
+          id: intakeBatch.id,
         },
         include: {
-          items: true
-        }
+          items: true,
+        },
       });
 
       expect(persistedBatch.status).toBe("FAILED");
@@ -42,8 +42,8 @@ describe("workflow run failure transitions", () => {
     } finally {
       await prisma.intakeBatch.delete({
         where: {
-          id: intakeBatch.id
-        }
+          id: intakeBatch.id,
+        },
       });
     }
   });
@@ -59,18 +59,18 @@ describe("workflow run failure transitions", () => {
           create: [
             {
               rawText: "Active intake item",
-              status: "PROCESSING"
+              status: "PROCESSING",
             },
             {
               rawText: "Already structured intake item",
-              status: "STRUCTURED"
-            }
-          ]
-        }
+              status: "STRUCTURED",
+            },
+          ],
+        },
       },
       include: {
-        items: true
-      }
+        items: true,
+      },
     });
 
     const workflowRun = await prisma.workflowRun.create({
@@ -87,37 +87,37 @@ describe("workflow run failure transitions", () => {
               status: "COMPLETED",
               orderIndex: 1,
               startedAt: new Date(),
-              completedAt: new Date()
+              completedAt: new Date(),
             },
             {
               stepName: "failed-step",
               stepType: "RETRIEVE_EVIDENCE",
               status: "RUNNING",
               orderIndex: 2,
-              startedAt: new Date()
+              startedAt: new Date(),
             },
             {
               stepName: "other-active-step",
               stepType: "EXTRACT_GOLF_CLUB_FIELDS",
               status: "RETRYING",
               orderIndex: 3,
-              startedAt: new Date()
+              startedAt: new Date(),
             },
             {
               stepName: "future-step",
               stepType: "FINALIZE_WORKFLOW",
-              orderIndex: 4
-            }
-          ]
-        }
+              orderIndex: 4,
+            },
+          ],
+        },
       },
       include: {
         steps: {
           orderBy: {
-            orderIndex: "asc"
-          }
-        }
-      }
+            orderIndex: "asc",
+          },
+        },
+      },
     });
 
     const failedStep = workflowRun.steps[1]!;
@@ -127,8 +127,8 @@ describe("workflow run failure transitions", () => {
         workflowRunId: workflowRun.id,
         workflowStepId: failedStep.id,
         toolName: "swingops.test.activeTool",
-        status: "STARTED"
-      }
+        status: "STARTED",
+      },
     });
 
     await prisma.modelCallLog.create({
@@ -137,25 +137,25 @@ describe("workflow run failure transitions", () => {
         workflowStepId: failedStep.id,
         provider: "MOCK",
         model: "active-test-model",
-        status: "STARTED"
-      }
+        status: "STARTED",
+      },
     });
 
     try {
       const providerError = Object.assign(
         new Error("Provider connection was interrupted."),
         {
-          code: "UPSTREAM_UNAVAILABLE"
-        }
+          code: "UPSTREAM_UNAVAILABLE",
+        },
       );
       const failedRun = await failPersistedWorkflowRun({
         step: failedStep,
-        error: providerError
+        error: providerError,
       });
 
       expect(failedRun).toMatchObject({
         status: "FAILED",
-        errorMessage: "Provider connection was interrupted."
+        errorMessage: "Provider connection was interrupted.",
       });
       expect(failedRun.completedAt).toBeInstanceOf(Date);
       expect(failedRun.failureJson).toMatchObject({
@@ -167,72 +167,74 @@ describe("workflow run failure transitions", () => {
           id: failedStep.id,
           name: "failed-step",
           type: "RETRIEVE_EVIDENCE",
-          orderIndex: 2
+          orderIndex: 2,
         },
         cause: {
           name: "Error",
           code: "UPSTREAM_UNAVAILABLE",
-          message: "Provider connection was interrupted."
-        }
+          message: "Provider connection was interrupted.",
+        },
       });
 
       const steps = await prisma.workflowStep.findMany({
         where: {
-          workflowRunId: workflowRun.id
+          workflowRunId: workflowRun.id,
         },
         orderBy: {
-          orderIndex: "asc"
-        }
+          orderIndex: "asc",
+        },
       });
 
       expect(steps.map((step) => step.status)).toEqual([
         "COMPLETED",
         "FAILED",
         "FAILED",
-        "SKIPPED"
+        "SKIPPED",
       ]);
       expect(steps[0]?.completedAt).toBeInstanceOf(Date);
-      expect(steps.slice(1).every((step) => step.completedAt !== null)).toBe(true);
+      expect(steps.slice(1).every((step) => step.completedAt !== null)).toBe(
+        true,
+      );
       expect(steps[1]?.outputJson).toMatchObject({
         failure: {
-          code: "WORKFLOW_STEP_EXECUTION_FAILED"
-        }
+          code: "WORKFLOW_STEP_EXECUTION_FAILED",
+        },
       });
 
       const persistedBatch = await prisma.intakeBatch.findUniqueOrThrow({
         where: {
-          id: intakeBatch.id
+          id: intakeBatch.id,
         },
         include: {
           items: {
             orderBy: {
-              createdAt: "asc"
-            }
-          }
-        }
+              createdAt: "asc",
+            },
+          },
+        },
       });
 
       expect(persistedBatch.status).toBe("FAILED");
       expect(
         Object.fromEntries(
-          persistedBatch.items.map((item) => [item.rawText, item.status])
-        )
+          persistedBatch.items.map((item) => [item.rawText, item.status]),
+        ),
       ).toEqual({
         "Active intake item": "FAILED",
-        "Already structured intake item": "STRUCTURED"
+        "Already structured intake item": "STRUCTURED",
       });
 
       const [toolCallLog, modelCallLog] = await Promise.all([
         prisma.toolCallLog.findFirstOrThrow({
           where: {
-            workflowRunId: workflowRun.id
-          }
+            workflowRunId: workflowRun.id,
+          },
         }),
         prisma.modelCallLog.findFirstOrThrow({
           where: {
-            workflowRunId: workflowRun.id
-          }
-        })
+            workflowRunId: workflowRun.id,
+          },
+        }),
       ]);
 
       expect(toolCallLog.status).toBe("FAILED");
@@ -244,34 +246,36 @@ describe("workflow run failure transitions", () => {
       const originalFailureJson = failedRun.failureJson;
       const repeatedTransition = await failPersistedWorkflowRun({
         step: failedStep,
-        error: new Error("A later error must not replace the first failure.")
+        error: new Error("A later error must not replace the first failure."),
       });
 
-      expect(repeatedTransition.completedAt?.getTime()).toBe(originalCompletedAt);
+      expect(repeatedTransition.completedAt?.getTime()).toBe(
+        originalCompletedAt,
+      );
       expect(repeatedTransition.failureJson).toEqual(originalFailureJson);
       expect(repeatedTransition.errorMessage).toBe(
-        "Provider connection was interrupted."
+        "Provider connection was interrupted.",
       );
     } finally {
       await prisma.toolCallLog.deleteMany({
         where: {
-          workflowRunId: workflowRun.id
-        }
+          workflowRunId: workflowRun.id,
+        },
       });
       await prisma.modelCallLog.deleteMany({
         where: {
-          workflowRunId: workflowRun.id
-        }
+          workflowRunId: workflowRun.id,
+        },
       });
       await prisma.workflowRun.delete({
         where: {
-          id: workflowRun.id
-        }
+          id: workflowRun.id,
+        },
       });
       await prisma.intakeBatch.delete({
         where: {
-          id: intakeBatch.id
-        }
+          id: intakeBatch.id,
+        },
       });
     }
   });

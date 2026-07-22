@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type {
-  ExecuteEndToEndAgenticTradeInDemoResponse,
-} from "../../../types/workflow";
+import type { ExecuteEndToEndAgenticTradeInDemoResponse } from "../../../types/workflow";
 import {
   getModelAssistanceScopeNotice,
   getOrchestrationSummary,
@@ -77,9 +75,7 @@ describe("getProviderFallbackNotice", () => {
       summary: "Preferred provider completed successfully.",
     };
 
-    expect(
-      getProviderFallbackNotice(trace, validatedExecution),
-    ).toBeNull();
+    expect(getProviderFallbackNotice(trace, validatedExecution)).toBeNull();
   });
 
   it("explains the failed preferred attempt and successful fallback", () => {
@@ -101,8 +97,7 @@ describe("getProviderFallbackNotice", () => {
           retryable: false,
           reason:
             "Provider OPENAI / gpt-4.1-mini did not complete successfully.",
-          errorMessage:
-            "OPENAI adapter request failed with 400 Bad Request.",
+          errorMessage: "OPENAI adapter request failed with 400 Bad Request.",
           latencyMs: 1628,
           estimatedCostUsd: 0.0012,
           timeoutMs: 10000,
@@ -114,8 +109,7 @@ describe("getProviderFallbackNotice", () => {
           status: "SUCCESS",
           failureClass: "NONE",
           retryable: false,
-          reason:
-            "Provider MOCK / mock-golf-workflow-model succeeded.",
+          reason: "Provider MOCK / mock-golf-workflow-model succeeded.",
           errorMessage: null,
           latencyMs: 2,
           estimatedCostUsd: 0,
@@ -125,17 +119,14 @@ describe("getProviderFallbackNotice", () => {
       summary: "Fallback provider completed the request.",
     };
 
-    expect(
-      getProviderFallbackNotice(trace, validatedExecution),
-    ).toEqual({
+    expect(getProviderFallbackNotice(trace, validatedExecution)).toEqual({
       title: "Fallback test passed",
       summary:
         "A simulated service error prevented OPENAI · gpt-4.1-mini from completing. MOCK · mock-golf-workflow-model completed the model review assistance.",
       statusLabel: "Simulated outage",
       preferredProvider: "OPENAI · gpt-4.1-mini",
       preferredStatus: "failed",
-      reason:
-        "OPENAI adapter request failed with 400 Bad Request.",
+      reason: "OPENAI adapter request failed with 400 Bad Request.",
       preferredLatencyMs: 1628,
       attemptDeadlineMs: 10000,
       failureClass: "CLIENT_ERROR",
@@ -186,9 +177,7 @@ describe("getProviderFallbackNotice", () => {
       summary: "Automatic provider fallback completed the request.",
     };
 
-    expect(
-      getProviderFallbackNotice(trace, validatedExecution),
-    ).toMatchObject({
+    expect(getProviderFallbackNotice(trace, validatedExecution)).toMatchObject({
       title: "Automatic fallback completed this run",
       summary:
         "OPENAI · gpt-4.1-mini did not complete successfully. MOCK · mock-golf-workflow-model completed the model review assistance.",

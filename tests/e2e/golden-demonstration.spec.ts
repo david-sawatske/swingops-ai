@@ -42,8 +42,9 @@ test("completes the deterministic golden demonstration from intake to final repo
     await expect(
       page.getByRole("heading", { name: "What did intake create?" }),
     ).toBeVisible();
-    await expect(page.getByText("Extracted", { exact: true }).locator(".."))
-      .toContainText("5");
+    await expect(
+      page.getByText("Extracted", { exact: true }).locator(".."),
+    ).toContainText("5");
     await expect(page.getByRole("cell", { name: "Cleveland" })).toBeVisible();
     await expect(page.getByRole("cell", { name: "TaylorMade" })).toBeVisible();
     await expect(page.getByRole("cell", { name: "Odyssey" })).toBeVisible();
@@ -55,7 +56,9 @@ test("completes the deterministic golden demonstration from intake to final repo
       .click();
     await page.getByRole("button", { name: "Run Guarded Workflow" }).click();
 
-    await expect(page.getByText("Workflow run completed", { exact: true })).toBeVisible({
+    await expect(
+      page.getByText("Workflow run completed", { exact: true }),
+    ).toBeVisible({
       timeout: 30_000,
     });
     const modelSummary = page.getByLabel("Model execution summary");
@@ -73,7 +76,9 @@ test("completes the deterministic golden demonstration from intake to final repo
         name: "Which records need attention before the final report?",
       }),
     ).toBeVisible();
-    await expect(page.getByText("4 active", { exact: true }).first()).toBeVisible();
+    await expect(
+      page.getByText("4 active", { exact: true }).first(),
+    ).toBeVisible();
 
     const taylorMadeReview = page.getByLabel(
       "TaylorMade · Stealth 2 · Driver review record",
@@ -114,8 +119,12 @@ test("completes the deterministic golden demonstration from intake to final repo
       .click();
     await expect(odysseyReview).toContainText("Review status: resolved");
 
-    await expect(page.getByText("2 active", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("2 open · 2 resolved", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("2 active", { exact: true }).first(),
+    ).toBeVisible();
+    await expect(
+      page.getByText("2 open · 2 resolved", { exact: true }),
+    ).toBeVisible();
 
     await page
       .getByRole("button", { name: "Continue to Final Run Report" })
@@ -126,7 +135,9 @@ test("completes the deterministic golden demonstration from intake to final repo
       }),
     ).toBeVisible();
 
-    const readyRecords = page.getByRole("heading", { name: "Ready records" }).locator("..");
+    const readyRecords = page
+      .getByRole("heading", { name: "Ready records" })
+      .locator("..");
     await expect(readyRecords).toContainText("3");
     await expect(
       page.getByText(
@@ -134,17 +145,21 @@ test("completes the deterministic golden demonstration from intake to final repo
         { exact: true },
       ),
     ).toBeVisible();
-    await expect(page.getByText("2 item(s) still need human review")).toBeVisible();
-    await expect(page.getByText("record(s) updated by review").locator("..")).toContainText(
-      "2",
-    );
-    await expect(page.getByText("field correction(s) captured").locator("..")).toContainText(
-      "2",
-    );
-    await expect(page.getByText("learning event(s) written").locator("..")).toContainText(
-      "2",
-    );
+    await expect(
+      page.getByText("2 item(s) still need human review"),
+    ).toBeVisible();
+    await expect(
+      page.getByText("record(s) updated by review").locator(".."),
+    ).toContainText("2");
+    await expect(
+      page.getByText("field correction(s) captured").locator(".."),
+    ).toContainText("2");
+    await expect(
+      page.getByText("learning event(s) written").locator(".."),
+    ).toContainText("2");
   } finally {
-    expect.soft(browserFailures, "browser console, page, and server failures").toEqual([]);
+    expect
+      .soft(browserFailures, "browser console, page, and server failures")
+      .toEqual([]);
   }
 });

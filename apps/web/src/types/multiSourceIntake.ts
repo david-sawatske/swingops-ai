@@ -1,10 +1,7 @@
 import type { ParserEvidence } from "./parserEvidence";
 
 export type MultiSourceIntakeSourceType =
-  | "FREE_TEXT"
-  | "POORLY_FORMED_CSV"
-  | "EMAIL"
-  | "LOG";
+  "FREE_TEXT" | "POORLY_FORMED_CSV" | "EMAIL" | "LOG";
 
 export type MultiSourceIntakeSourceInput = {
   sourceType: MultiSourceIntakeSourceType;

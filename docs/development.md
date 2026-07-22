@@ -86,6 +86,14 @@ Use the URL printed by Vite to open the web app.
 
 ## Run validation
 
+Run code, stylesheet, and formatting checks:
+
+    pnpm lint
+
+Apply formatting after editing source or documentation:
+
+    pnpm format
+
 Typecheck the web app:
 
     pnpm --filter @swingops/web typecheck
@@ -107,9 +115,11 @@ Run all tests:
 
     pnpm -r test
 
-Check whitespace and patch formatting before committing:
+Check the complete local validation surface before committing:
 
-    git diff --check
+    pnpm lint
+    pnpm typecheck
+    pnpm test
 
 ## Demo knowledge ingestion
 
@@ -172,6 +182,7 @@ Recommended local workflow:
 Make a small focused change, then validate:
 
     git diff --check
+    pnpm lint
     pnpm --filter @swingops/web typecheck
     pnpm --filter @swingops/api typecheck
 

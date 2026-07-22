@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   deriveTestDatabaseUrl,
-  resolveTestDatabaseUrl
+  resolveTestDatabaseUrl,
 } from "./database-urls.js";
 
 const developmentDatabaseUrl =
@@ -20,7 +20,7 @@ describe("test database URL safety", () => {
     const result = resolveTestDatabaseUrl({
       DATABASE_URL: developmentDatabaseUrl,
       TEST_DATABASE_URL:
-        "postgresql://user:password@localhost:5433/custom_swingops_test?schema=public"
+        "postgresql://user:password@localhost:5433/custom_swingops_test?schema=public",
     });
 
     expect(new URL(result).pathname).toBe("/custom_swingops_test");
@@ -33,8 +33,8 @@ describe("test database URL safety", () => {
     expect(() =>
       resolveTestDatabaseUrl({
         DATABASE_URL: developmentDatabaseNamedLikeTest,
-        TEST_DATABASE_URL: developmentDatabaseNamedLikeTest
-      })
+        TEST_DATABASE_URL: developmentDatabaseNamedLikeTest,
+      }),
     ).toThrow("must not target the development database");
   });
 
@@ -43,8 +43,8 @@ describe("test database URL safety", () => {
       resolveTestDatabaseUrl({
         DATABASE_URL: developmentDatabaseUrl,
         TEST_DATABASE_URL:
-          "postgresql://user:password@localhost:5433/swingops_ai_testing?schema=public"
-      })
+          "postgresql://user:password@localhost:5433/swingops_ai_testing?schema=public",
+      }),
     ).toThrow("does not end with _test");
   });
 });

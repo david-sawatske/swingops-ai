@@ -12,11 +12,7 @@ export type ExecutionPlanActionType =
   | "RECORD_TRACE";
 
 export type ExecutionPlanStepStatus =
-  | "PENDING"
-  | "COMPLETED"
-  | "NEEDS_REVIEW"
-  | "BLOCKED"
-  | "SKIPPED";
+  "PENDING" | "COMPLETED" | "NEEDS_REVIEW" | "BLOCKED" | "SKIPPED";
 
 export type ExecutionPlanStep = {
   id: string;
@@ -107,10 +103,7 @@ export type ReviewOutcome = {
 };
 
 export type WorkflowQualityStatus =
-  | "READY"
-  | "NEEDS_REVIEW"
-  | "FAILED_VALIDATION"
-  | "BLOCKED";
+  "READY" | "NEEDS_REVIEW" | "FAILED_VALIDATION" | "BLOCKED";
 
 export type WorkflowQualitySummary = {
   status: WorkflowQualityStatus;

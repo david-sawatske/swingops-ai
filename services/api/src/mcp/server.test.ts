@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import {
   getDefaultEnvironment,
-  StdioClientTransport
+  StdioClientTransport,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -44,7 +44,9 @@ function requireToolCallLogId(content: Record<string, unknown>): string {
   const toolCallLogId = content.toolCallLogId;
 
   if (typeof toolCallLogId !== "string") {
-    throw new Error("Expected the MCP tool result to include a ToolCallLog ID.");
+    throw new Error(
+      "Expected the MCP tool result to include a ToolCallLog ID.",
+    );
   }
 
   createdToolCallLogIds.push(toolCallLogId);
@@ -59,9 +61,9 @@ afterEach(async () => {
   await prisma.toolCallLog.deleteMany({
     where: {
       id: {
-        in: createdToolCallLogIds.splice(0)
-      }
-    }
+        in: createdToolCallLogIds.splice(0),
+      },
+    },
   });
 });
 
@@ -69,7 +71,7 @@ describe("MCP stdio server", () => {
   it("negotiates with an SDK client and enforces execution policy across the process boundary", async () => {
     const client = new Client({
       name: "swingops-stdio-transport-test",
-      version: "0.1.0"
+      version: "0.1.0",
     });
     const transport = new StdioClientTransport({
       command: process.execPath,
@@ -79,9 +81,9 @@ describe("MCP stdio server", () => {
         ...getDefaultEnvironment(),
         DATABASE_URL: requireDatabaseUrl(),
         NODE_ENV: "test",
-        LOG_LEVEL: "silent"
+        LOG_LEVEL: "silent",
       },
-      stderr: "pipe"
+      stderr: "pipe",
     });
 
     let serverStderr = "";
@@ -94,7 +96,7 @@ describe("MCP stdio server", () => {
 
       expect(client.getServerVersion()).toMatchObject({
         name: "swingops-external-readonly-mcp-server",
-        version: "0.1.0"
+        version: "0.1.0",
       });
 
       const toolList = await client.listTools();
@@ -104,26 +106,26 @@ describe("MCP stdio server", () => {
           expect.objectContaining({
             name: "swingops.workflowRuns.list",
             inputSchema: expect.objectContaining({
-              type: "object"
-            })
+              type: "object",
+            }),
           }),
           expect.objectContaining({
-            name: "swingops.reviewQueueItems.resolve"
-          })
-        ])
+            name: "swingops.reviewQueueItems.resolve",
+          }),
+        ]),
       );
 
       const allowedResult = await client.callTool({
         name: "swingops.workflowRuns.list",
         arguments: {
-          maxResults: 1
-        }
+          maxResults: 1,
+        },
       });
       const allowedContent = requireStructuredContent(allowedResult);
       const allowedToolCallLogId = requireToolCallLogId(allowedContent);
 
       expect(allowedResult).toMatchObject({
-        isError: false
+        isError: false,
       });
       expect(allowedContent).toMatchObject({
         toolId: "swingops.workflowRuns.list",
@@ -131,27 +133,27 @@ describe("MCP stdio server", () => {
         executionAttempted: true,
         policyDecision: {
           decision: "ALLOW",
-          reasonCodes: ["TOOL_ALLOWED"]
+          reasonCodes: ["TOOL_ALLOWED"],
         },
         transportMetadata: {
           transport: "STDIO",
           auditLogPersistence: "TOOL_CALL_LOG",
-          mutationExecutionEnabled: false
-        }
+          mutationExecutionEnabled: false,
+        },
       });
 
       const blockedResult = await client.callTool({
         name: "swingops.reviewQueueItems.resolve",
         arguments: {
           id: "review-item-transport-test",
-          reviewerNotes: "Transport policy verification."
-        }
+          reviewerNotes: "Transport policy verification.",
+        },
       });
       const blockedContent = requireStructuredContent(blockedResult);
       const blockedToolCallLogId = requireToolCallLogId(blockedContent);
 
       expect(blockedResult).toMatchObject({
-        isError: true
+        isError: true,
       });
       expect(blockedContent).toMatchObject({
         toolId: "swingops.reviewQueueItems.resolve",
@@ -160,16 +162,16 @@ describe("MCP stdio server", () => {
         errorMessage: "Tool is disabled and cannot be executed.",
         policyDecision: {
           decision: "BLOCK",
-          reasonCodes: ["TOOL_DISABLED"]
-        }
+          reasonCodes: ["TOOL_DISABLED"],
+        },
       });
 
       const persistedLogs = await prisma.toolCallLog.findMany({
         where: {
           id: {
-            in: [allowedToolCallLogId, blockedToolCallLogId]
-          }
-        }
+            in: [allowedToolCallLogId, blockedToolCallLogId],
+          },
+        },
       });
 
       expect(persistedLogs).toEqual(
@@ -178,22 +180,22 @@ describe("MCP stdio server", () => {
             id: allowedToolCallLogId,
             toolName: "swingops.workflowRuns.list",
             status: "SUCCEEDED",
-            errorMessage: null
+            errorMessage: null,
           }),
           expect.objectContaining({
             id: blockedToolCallLogId,
             toolName: "swingops.reviewQueueItems.resolve",
             status: "FAILED",
-            errorMessage: "Tool is disabled and cannot be executed."
-          })
-        ])
+            errorMessage: "Tool is disabled and cannot be executed.",
+          }),
+        ]),
       );
     } catch (error) {
       const detail = serverStderr.trim();
 
       if (detail) {
         throw new Error(`MCP stdio server failed: ${detail}`, {
-          cause: error
+          cause: error,
         });
       }
 

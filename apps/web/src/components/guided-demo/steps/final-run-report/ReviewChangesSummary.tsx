@@ -54,7 +54,9 @@ export function ReviewChangesSummary({
                 <h5>{group.recordLabel}</h5>
                 <dl>
                   {group.corrections.map((correction) => (
-                    <div key={`${correction.fieldName}-${correction.afterValue}`}>
+                    <div
+                      key={`${correction.fieldName}-${correction.afterValue}`}
+                    >
                       <dt>{correction.label}</dt>
                       <dd>
                         <span>{correction.beforeValue}</span>
@@ -69,7 +71,8 @@ export function ReviewChangesSummary({
           </div>
           {groupedCorrectionSummaries.length > 8 ? (
             <p className="guided-validation-empty-note">
-              Showing 8 of {groupedCorrectionSummaries.length} corrected records.
+              Showing 8 of {groupedCorrectionSummaries.length} corrected
+              records.
             </p>
           ) : null}
         </details>

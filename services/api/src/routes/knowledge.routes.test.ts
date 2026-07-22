@@ -7,20 +7,20 @@ import { DEMO_KNOWLEDGE_SOURCE_NAME } from "../knowledge/knowledge-seed-data.js"
 afterEach(async () => {
   await prisma.toolCallLog.deleteMany({
     where: {
-      toolName: "swingops.knowledgeBase.search"
-    }
+      toolName: "swingops.knowledgeBase.search",
+    },
   });
 
   await prisma.knowledgeDocument.deleteMany({
     where: {
-      sourceName: DEMO_KNOWLEDGE_SOURCE_NAME
-    }
+      sourceName: DEMO_KNOWLEDGE_SOURCE_NAME,
+    },
   });
 
   await prisma.knowledgeIngestionRun.deleteMany({
     where: {
-      sourceName: DEMO_KNOWLEDGE_SOURCE_NAME
-    }
+      sourceName: DEMO_KNOWLEDGE_SOURCE_NAME,
+    },
   });
 });
 
@@ -30,7 +30,7 @@ describe("knowledge routes", () => {
 
     const ingestResponse = await app.inject({
       method: "POST",
-      url: "/knowledge/ingest-demo"
+      url: "/knowledge/ingest-demo",
     });
 
     expect(ingestResponse.statusCode).toBe(200);
@@ -38,7 +38,7 @@ describe("knowledge routes", () => {
       status: "SUCCEEDED",
       sourceName: DEMO_KNOWLEDGE_SOURCE_NAME,
       documentsCreated: 3,
-      chunksCreated: 71
+      chunksCreated: 71,
     });
 
     const searchResponse = await app.inject({
@@ -46,8 +46,8 @@ describe("knowledge routes", () => {
       url: "/knowledge/search",
       payload: {
         query: "Cally AiSmoke 3w reg",
-        maxResults: 3
-      }
+        maxResults: 3,
+      },
     });
 
     expect(searchResponse.statusCode).toBe(200);
@@ -58,25 +58,25 @@ describe("knowledge routes", () => {
       scoreBreakdown: {
         components: {
           brand: {
-            weight: 0.25
+            weight: 0.25,
           },
           productLine: {
-            weight: 0.3
+            weight: 0.3,
           },
           category: {
-            weight: 0.15
+            weight: 0.15,
           },
           shaft: {
-            weight: 0.15
+            weight: 0.15,
           },
           notes: {
-            weight: 0.1
+            weight: 0.1,
           },
           vector: {
-            weight: 0.05
-          }
-        }
-      }
+            weight: 0.05,
+          },
+        },
+      },
     });
 
     await app.close();
@@ -87,7 +87,7 @@ describe("knowledge routes", () => {
 
     await app.inject({
       method: "POST",
-      url: "/knowledge/ingest-demo"
+      url: "/knowledge/ingest-demo",
     });
 
     const response = await app.inject({
@@ -97,8 +97,8 @@ describe("knowledge routes", () => {
         query: "Mizuno JPX 923 Hot Metal iron set Regular 5-PW",
         brand: "Mizuno",
         category: "IRON_SET",
-        maxResults: 3
-      }
+        maxResults: 3,
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -107,9 +107,9 @@ describe("knowledge routes", () => {
         expect.objectContaining({
           brand: "Mizuno",
           productLine: "JPX 923 Hot Metal",
-          category: "IRON_SET"
-        })
-      ])
+          category: "IRON_SET",
+        }),
+      ]),
     );
 
     await app.close();
@@ -120,19 +120,19 @@ describe("knowledge routes", () => {
 
     await app.inject({
       method: "POST",
-      url: "/knowledge/ingest-demo"
+      url: "/knowledge/ingest-demo",
     });
 
     const response = await app.inject({
       method: "POST",
-      url: "/knowledge/evals/run"
+      url: "/knowledge/evals/run",
     });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
       casesEvaluated: 16,
       passCount: 16,
-      failedCases: []
+      failedCases: [],
     });
 
     await app.close();
@@ -143,7 +143,7 @@ describe("knowledge routes", () => {
 
     await app.inject({
       method: "POST",
-      url: "/knowledge/ingest-demo"
+      url: "/knowledge/ingest-demo",
     });
 
     const response = await app.inject({
@@ -152,10 +152,10 @@ describe("knowledge routes", () => {
       payload: {
         arguments: {
           query: "Ping g430 max xstiff 9",
-          maxResults: 3
+          maxResults: 3,
         },
-        requestedBy: "agent.route-test"
-      }
+        requestedBy: "agent.route-test",
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -169,7 +169,7 @@ describe("knowledge routes", () => {
       policyDecision: {
         decision: "ALLOW",
         reasonCodes: ["TOOL_ALLOWED"],
-        executionEnabled: true
+        executionEnabled: true,
       },
       resultJson: {
         knowledgeBaseSearch: {
@@ -177,10 +177,10 @@ describe("knowledge routes", () => {
             expect.objectContaining({
               brand: "PING",
               productLine: "G430 Max",
-              category: "DRIVER"
-            })
-          ])
-        }
+              category: "DRIVER",
+            }),
+          ]),
+        },
       },
       toolCallLogId: expect.any(String),
       mcpSurface: {
@@ -188,20 +188,20 @@ describe("knowledge routes", () => {
         transport: "REST_ADAPTER",
         externalMcpServer: false,
         reusedInternalPolicyAndExecutor: true,
-        auditLogPersistence: "TOOL_CALL_LOG"
-      }
+        auditLogPersistence: "TOOL_CALL_LOG",
+      },
     });
 
     const persistedLog = await prisma.toolCallLog.findUnique({
       where: {
-        id: body.toolCallLogId
-      }
+        id: body.toolCallLogId,
+      },
     });
 
     expect(persistedLog).toMatchObject({
       toolName: "swingops.knowledgeBase.search",
       status: "SUCCEEDED",
-      errorMessage: null
+      errorMessage: null,
     });
 
     await app.close();

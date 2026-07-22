@@ -2,7 +2,7 @@ import {
   callMcpCompatibleTool,
   listMcpCompatibleTools,
   type McpCompatibleToolCallResponse,
-  type McpCompatibleToolDefinition
+  type McpCompatibleToolDefinition,
 } from "../tools/mcp-compatible-tool-surface.js";
 
 export type ExternalMcpTextContent = {
@@ -81,20 +81,20 @@ export function listExternalMcpTools(): ExternalMcpToolListResponse {
       auditLogPersistence: "TOOL_CALL_LOG",
       mutationExecutionEnabled: false,
       summary:
-        "Local stdio MCP server transport that wraps the existing SwingOps connector contracts, policy evaluator, read-only executor, ToolCallLog persistence, and output sanitizer."
-    }
+        "Local stdio MCP server transport that wraps the existing SwingOps connector contracts, policy evaluator, read-only executor, ToolCallLog persistence, and output sanitizer.",
+    },
   };
 }
 
 export async function callExternalMcpTool(
-  input: ExternalMcpToolCallInput
+  input: ExternalMcpToolCallInput,
 ): Promise<ExternalMcpToolCallResponse> {
   const response = await callMcpCompatibleTool({
     toolId: input.name,
     ...(input.arguments === undefined ? {} : { arguments: input.arguments }),
     requestedBy: "agent.external-mcp-stdio",
     invocationMode: "AGENT_AUTONOMOUS",
-    humanApprovalGranted: false
+    humanApprovalGranted: false,
   });
 
   const isError = response.status !== "SUCCEEDED";
@@ -103,8 +103,8 @@ export async function callExternalMcpTool(
     content: [
       {
         type: "text",
-        text: summarizeToolCall(response)
-      }
+        text: summarizeToolCall(response),
+      },
     ],
     isError,
     structuredContent: {
@@ -125,8 +125,8 @@ export async function callExternalMcpTool(
         productionAuthImplemented: false,
         reusedInternalPolicyAndExecutor: true,
         auditLogPersistence: "TOOL_CALL_LOG",
-        mutationExecutionEnabled: false
-      }
-    }
+        mutationExecutionEnabled: false,
+      },
+    },
   };
 }

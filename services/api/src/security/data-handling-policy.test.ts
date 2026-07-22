@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   applyDataHandlingPolicy,
-  attachDataHandlingDiagnostics
+  attachDataHandlingDiagnostics,
 } from "./data-handling-policy.js";
 
 describe("data handling policy", () => {
@@ -16,9 +16,9 @@ describe("data handling policy", () => {
         apiKey: "top-secret-provider-key",
         usage: {
           promptTokens: 125,
-          completionTokens: 25
-        }
-      }
+          completionTokens: 25,
+        },
+      },
     });
 
     expect(result.value).toEqual({
@@ -28,8 +28,8 @@ describe("data handling policy", () => {
       apiKey: "[REDACTED:AUTHENTICATION_SECRET]",
       usage: {
         promptTokens: 125,
-        completionTokens: 25
-      }
+        completionTokens: 25,
+      },
     });
     expect(result.diagnostics).toMatchObject({
       context: "MODEL_AUDIT_LOG",
@@ -42,8 +42,8 @@ describe("data handling policy", () => {
         "AUTHENTICATION_SECRET",
         "EMAIL_ADDRESS",
         "PHONE_NUMBER",
-        "GOVERNMENT_IDENTIFIER"
-      ]
+        "GOVERNMENT_IDENTIFIER",
+      ],
     });
   });
 
@@ -53,8 +53,8 @@ describe("data handling policy", () => {
     const result = applyDataHandlingPolicy({
       context: "MODEL_AUDIT_LOG",
       value: {
-        sourceText
-      }
+        sourceText,
+      },
     });
 
     expect(result.value).toEqual({ sourceText });
@@ -63,9 +63,9 @@ describe("data handling policy", () => {
       promptInjectionIndicators: [
         "INSTRUCTION_OVERRIDE",
         "PROMPT_EXTRACTION",
-        "ROLE_MANIPULATION"
+        "ROLE_MANIPULATION",
       ],
-      promptInjectionAction: "ADVISORY_ONLY"
+      promptInjectionAction: "ADVISORY_ONLY",
     });
   });
 
@@ -78,23 +78,23 @@ describe("data handling policy", () => {
         accessToken: "external-token-value",
         nested: {
           authorization: "Bearer abcdefghijklmnop",
-          message: "Customer email is customer@example.com"
-        }
-      }
+          message: "Customer email is customer@example.com",
+        },
+      },
     });
 
     expect(result.value).toEqual({
       id: "record-1",
       nested: {
-        message: "Customer email is [REDACTED:EMAIL_ADDRESS]"
-      }
+        message: "Customer email is [REDACTED:EMAIL_ADDRESS]",
+      },
     });
     expect(result.diagnostics).toMatchObject({
       mode: "OMIT_SENSITIVE_FIELDS",
       retentionClass: "TRANSIENT_RESPONSE",
       redacted: true,
       redactionCount: 3,
-      redactionTypes: ["AUTHENTICATION_SECRET", "EMAIL_ADDRESS"]
+      redactionTypes: ["AUTHENTICATION_SECRET", "EMAIL_ADDRESS"],
     });
   });
 
@@ -103,9 +103,9 @@ describe("data handling policy", () => {
       applyDataHandlingPolicy({
         context: "TOOL_AUDIT_LOG",
         value: {
-          id: "record-1"
-        }
-      })
+          id: "record-1",
+        },
+      }),
     );
 
     expect(persisted).toMatchObject({
@@ -113,8 +113,8 @@ describe("data handling policy", () => {
       dataHandlingPolicy: {
         context: "TOOL_AUDIT_LOG",
         redacted: false,
-        promptInjectionAction: "ADVISORY_ONLY"
-      }
+        promptInjectionAction: "ADVISORY_ONLY",
+      },
     });
   });
 });

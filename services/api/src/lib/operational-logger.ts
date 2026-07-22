@@ -4,5 +4,5 @@ import { env } from "../config/env.js";
 
 export const operationalLogger = pino({
   level: env.LOG_LEVEL,
-  name: "swingops-api"
+  name: "swingops-api",
 });

@@ -62,6 +62,9 @@ jobs:
       - name: Validate environment contract
         run: pnpm config:check
 
+      - name: Lint and verify formatting
+        run: pnpm lint
+
       - name: Typecheck
         run: pnpm typecheck
 

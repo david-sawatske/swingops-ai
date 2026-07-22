@@ -1,5 +1,8 @@
 import type { InventoryProductLookupResult } from "./inventory-service.js";
-import { lookupInventoryProduct, type InventoryLookupInput } from "./inventory-service.js";
+import {
+  lookupInventoryProduct,
+  type InventoryLookupInput,
+} from "./inventory-service.js";
 import { demoValuationRanges } from "./trade-in-valuation-demo-data.js";
 
 export type TradeInValuationConfidence = "HIGH" | "MEDIUM" | "LOW";
@@ -45,29 +48,29 @@ const conditionAdjustmentRules: AdjustmentRule[] = [
     patterns: ["sky mark", "skymark", "crown mark"],
     reason: "Crown sky mark reduces the demo range.",
     lowImpact: -18,
-    highImpact: -24
+    highImpact: -24,
   },
   {
     id: "face-wear",
     patterns: ["face wear", "worn face"],
     reason: "Face wear reduces the demo range.",
     lowImpact: -10,
-    highImpact: -16
+    highImpact: -16,
   },
   {
     id: "paint-wear",
     patterns: ["paint wear", "paint chip", "paint chips"],
     reason: "Paint wear reduces the demo range.",
     lowImpact: -8,
-    highImpact: -12
+    highImpact: -12,
   },
   {
     id: "worn-grips",
     patterns: ["worn grips", "grips worn", "needs grips"],
     reason: "Worn grips reduce the demo range.",
     lowImpact: -15,
-    highImpact: -22
-  }
+    highImpact: -22,
+  },
 ];
 
 const accessoryAdjustmentRules: AdjustmentRule[] = [
@@ -76,22 +79,22 @@ const accessoryAdjustmentRules: AdjustmentRule[] = [
     patterns: ["no hc", "no headcover", "missing headcover"],
     reason: "Missing headcover reduces the demo range.",
     lowImpact: -8,
-    highImpact: -12
+    highImpact: -12,
   },
   {
     id: "headcover-included",
     patterns: ["hc included", "headcover included", "with headcover"],
     reason: "Included headcover supports the unadjusted accessory range.",
     lowImpact: 0,
-    highImpact: 0
+    highImpact: 0,
   },
   {
     id: "missing-wrench",
     patterns: ["no wrench", "missing wrench"],
     reason: "Missing wrench reduces the demo range for adjustable clubs.",
     lowImpact: -5,
-    highImpact: -8
-  }
+    highImpact: -8,
+  },
 ];
 
 function normalizeText(value: string): string {
@@ -105,17 +108,16 @@ function normalizeText(value: string): string {
 function notesContain(notes: string[], patterns: string[]): boolean {
   const normalizedNotes = normalizeText(notes.join(" "));
 
-  return patterns.some((pattern) => normalizedNotes.includes(normalizeText(pattern)));
+  return patterns.some((pattern) =>
+    normalizedNotes.includes(normalizeText(pattern)),
+  );
 }
 
 function clampValue(value: number): number {
   return Math.max(Math.round(value), 0);
 }
 
-function applyRules(input: {
-  rules: AdjustmentRule[];
-  notes: string[];
-}): {
+function applyRules(input: { rules: AdjustmentRule[]; notes: string[] }): {
   lowAdjustment: number;
   highAdjustment: number;
   adjustments: TradeInValuationAdjustment[];
@@ -135,7 +137,7 @@ function applyRules(input: {
             ? "$0"
             : `${rule.lowImpact < 0 ? "-" : "+"}$${Math.abs(rule.lowImpact)} to ${
                 rule.highImpact < 0 ? "-" : "+"
-              }$${Math.abs(rule.highImpact)}`
+              }$${Math.abs(rule.highImpact)}`,
       });
 
       return summary;
@@ -143,8 +145,8 @@ function applyRules(input: {
     {
       lowAdjustment: 0,
       highAdjustment: 0,
-      adjustments: [] as TradeInValuationAdjustment[]
-    }
+      adjustments: [] as TradeInValuationAdjustment[],
+    },
   );
 }
 
@@ -153,7 +155,11 @@ function hasUnclearCondition(notes: string[]): boolean {
     return true;
   }
 
-  return notesContain(notes, ["condition unclear", "unclear condition", "unknown condition"]);
+  return notesContain(notes, [
+    "condition unclear",
+    "unclear condition",
+    "unknown condition",
+  ]);
 }
 
 function getConfidence(input: {
@@ -173,11 +179,13 @@ function getConfidence(input: {
 }
 
 export function estimateTradeInValuation(
-  input: TradeInValuationInput
+  input: TradeInValuationInput,
 ): TradeInValuationResult {
   const inventoryMatch = input.inventoryMatch ?? lookupInventoryProduct(input);
   const productId = inventoryMatch.productId;
-  const baseRange = demoValuationRanges.find((range) => range.productId === productId);
+  const baseRange = demoValuationRanges.find(
+    (range) => range.productId === productId,
+  );
   const conditionNotes = input.conditionNotes ?? [];
   const accessoriesNotes = input.accessoriesNotes ?? [];
 
@@ -186,26 +194,30 @@ export function estimateTradeInValuation(
       lowValue: 0,
       highValue: 0,
       confidence: "LOW",
-      valueFactors: ["No seeded demo valuation range was available for the internal product match."],
+      valueFactors: [
+        "No seeded demo valuation range was available for the internal product match.",
+      ],
       adjustments: [],
       reviewRequired: true,
-      reviewReasons: ["No internal product match was available for valuation."]
+      reviewReasons: ["No internal product match was available for valuation."],
     };
   }
 
   const conditionSummary = applyRules({
     rules: conditionAdjustmentRules,
-    notes: conditionNotes
+    notes: conditionNotes,
   });
   const accessorySummary = applyRules({
     rules: accessoryAdjustmentRules,
-    notes: accessoriesNotes
+    notes: accessoriesNotes,
   });
 
   const reviewReasons: string[] = [];
 
   if (inventoryMatch.confidence < 0.72) {
-    reviewReasons.push("Inventory match confidence is below the valuation threshold.");
+    reviewReasons.push(
+      "Inventory match confidence is below the valuation threshold.",
+    );
   }
 
   if (hasUnclearCondition(conditionNotes)) {
@@ -213,21 +225,25 @@ export function estimateTradeInValuation(
   }
 
   const adjustedLowValue = clampValue(
-    baseRange.lowValue + conditionSummary.lowAdjustment + accessorySummary.lowAdjustment
+    baseRange.lowValue +
+      conditionSummary.lowAdjustment +
+      accessorySummary.lowAdjustment,
   );
   const adjustedHighValue = clampValue(
-    baseRange.highValue + conditionSummary.highAdjustment + accessorySummary.highAdjustment
+    baseRange.highValue +
+      conditionSummary.highAdjustment +
+      accessorySummary.highAdjustment,
   );
   const adjustments = [
     ...conditionSummary.adjustments,
-    ...accessorySummary.adjustments
+    ...accessorySummary.adjustments,
   ];
 
   const reviewRequired = reviewReasons.length > 0;
   const confidence = getConfidence({
     inventoryConfidence: inventoryMatch.confidence,
     reviewRequired,
-    adjustmentCount: adjustments.length
+    adjustmentCount: adjustments.length,
   });
 
   return {
@@ -239,22 +255,22 @@ export function estimateTradeInValuation(
       `Inventory match confidence ${inventoryMatch.confidence}.`,
       adjustments.length > 0
         ? "Condition and accessory notes changed the demo range."
-        : "No condition or accessory penalties were applied."
+        : "No condition or accessory penalties were applied.",
     ],
     adjustments,
     reviewRequired,
-    reviewReasons
+    reviewReasons,
   };
 }
 
 export function explainTradeInValuationAdjustments(
-  input: TradeInValuationInput
+  input: TradeInValuationInput,
 ): TradeInAdjustmentExplanationResult {
   const estimate = estimateTradeInValuation(input);
 
   return {
     adjustments: estimate.adjustments,
     valueFactors: estimate.valueFactors,
-    reviewReasons: estimate.reviewReasons
+    reviewReasons: estimate.reviewReasons,
   };
 }

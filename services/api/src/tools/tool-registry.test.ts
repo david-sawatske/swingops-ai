@@ -21,11 +21,11 @@ describe("agent tool registry", () => {
       "swingops.reviewQueueItems.list",
       "swingops.reviewQueueItems.get",
       "swingops.reviewQueueItems.resolve",
-      "swingops.reviewQueueItems.dismiss"
+      "swingops.reviewQueueItems.dismiss",
     ]);
 
     expect(
-      tools.filter((tool) => tool.enabled).map((tool) => tool.name)
+      tools.filter((tool) => tool.enabled).map((tool) => tool.name),
     ).toEqual([
       "swingops.clubReference.search",
       "swingops.knowledgeBase.search",
@@ -36,7 +36,7 @@ describe("agent tool registry", () => {
       "swingops.workflowRuns.list",
       "swingops.workflowRuns.get",
       "swingops.reviewQueueItems.list",
-      "swingops.reviewQueueItems.get"
+      "swingops.reviewQueueItems.get",
     ]);
   });
 
@@ -53,27 +53,24 @@ describe("agent tool registry", () => {
       implementationStatus: "ROUTE_BACKED",
       existingHttpRoute: {
         method: "POST",
-        path: "/knowledge/search"
-      }
+        path: "/knowledge/search",
+      },
     });
-    expect(knowledgeTool?.inputShape.fields.map((field) => field.name)).toEqual([
-      "query",
-      "sourceName",
-      "brand",
-      "category",
-      "chunkType",
-      "maxResults"
-    ]);
+    expect(knowledgeTool?.inputShape.fields.map((field) => field.name)).toEqual(
+      ["query", "sourceName", "brand", "category", "chunkType", "maxResults"],
+    );
     expect(knowledgeTool).toMatchObject({
       displayName: "Search knowledge base",
       outputSummary: expect.stringContaining("scoreBreakdown"),
       auditBehavior: "PERSIST_TOOL_CALL_LOG",
-      redactionNotes: expect.stringContaining("sanitized")
+      redactionNotes: expect.stringContaining("sanitized"),
     });
   });
 
   it("registers inventory and valuation read-only tools", () => {
-    const inventoryLookupTool = getAgentTool("swingops.inventory.lookupProduct");
+    const inventoryLookupTool = getAgentTool(
+      "swingops.inventory.lookupProduct",
+    );
     const valuationTool = getAgentTool("swingops.tradeInValuation.estimate");
 
     expect(inventoryLookupTool).toMatchObject({
@@ -82,16 +79,18 @@ describe("agent tool registry", () => {
       requiresHumanApproval: false,
       mutatesData: false,
       enabled: true,
-      implementationStatus: "REGISTERED"
+      implementationStatus: "REGISTERED",
     });
-    expect(inventoryLookupTool?.inputShape.fields.map((field) => field.name)).toEqual([
+    expect(
+      inventoryLookupTool?.inputShape.fields.map((field) => field.name),
+    ).toEqual([
       "brand",
       "productLine",
       "category",
       "year",
       "shaftBrand",
       "shaftModel",
-      "rawText"
+      "rawText",
     ]);
 
     expect(valuationTool).toMatchObject({
@@ -101,9 +100,11 @@ describe("agent tool registry", () => {
       mutatesData: false,
       enabled: true,
       implementationStatus: "REGISTERED",
-      outputSummary: expect.stringContaining("demo valuation range")
+      outputSummary: expect.stringContaining("demo valuation range"),
     });
-    expect(valuationTool?.redactionNotes).toContain("seeded demo valuation ranges");
+    expect(valuationTool?.redactionNotes).toContain(
+      "seeded demo valuation ranges",
+    );
   });
 
   it("marks review and internal mutation tools as high-risk, approval-required, and disabled for execution", () => {
@@ -121,8 +122,8 @@ describe("agent tool registry", () => {
       implementationStatus: "DISABLED_PREVIEW_ONLY",
       existingHttpRoute: {
         method: "POST",
-        path: "/review-queue-items/:id/resolve"
-      }
+        path: "/review-queue-items/:id/resolve",
+      },
     });
 
     expect(dismissTool).toMatchObject({
@@ -133,8 +134,8 @@ describe("agent tool registry", () => {
       implementationStatus: "DISABLED_PREVIEW_ONLY",
       existingHttpRoute: {
         method: "POST",
-        path: "/review-queue-items/:id/dismiss"
-      }
+        path: "/review-queue-items/:id/dismiss",
+      },
     });
 
     for (const tool of [createSkuTool, createOfferTool, sendMessageTool]) {
@@ -143,7 +144,7 @@ describe("agent tool registry", () => {
         requiresHumanApproval: true,
         mutatesData: true,
         enabled: false,
-        implementationStatus: "DISABLED_PREVIEW_ONLY"
+        implementationStatus: "DISABLED_PREVIEW_ONLY",
       });
     }
   });
@@ -151,19 +152,19 @@ describe("agent tool registry", () => {
   it("filters tools by category and enabled status", () => {
     const enabledReviewTools = listAgentTools({
       category: "REVIEW_QUEUE",
-      enabled: true
+      enabled: true,
     });
 
     expect(enabledReviewTools.map((tool) => tool.name)).toEqual([
       "swingops.reviewQueueItems.list",
-      "swingops.reviewQueueItems.get"
+      "swingops.reviewQueueItems.get",
     ]);
   });
 
   it("filters tools by data mutation and approval requirements", () => {
     const approvalRequiredMutationTools = listAgentTools({
       mutatesData: true,
-      requiresHumanApproval: true
+      requiresHumanApproval: true,
     });
 
     expect(approvalRequiredMutationTools.map((tool) => tool.name)).toEqual([
@@ -171,7 +172,7 @@ describe("agent tool registry", () => {
       "swingops.tradeInOffer.create",
       "swingops.customerMessage.send",
       "swingops.reviewQueueItems.resolve",
-      "swingops.reviewQueueItems.dismiss"
+      "swingops.reviewQueueItems.dismiss",
     ]);
   });
 

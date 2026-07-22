@@ -8,7 +8,7 @@ describe("workflow eval routes", () => {
 
     const response = await app.inject({
       method: "GET",
-      url: "/workflow-evals/scenarios"
+      url: "/workflow-evals/scenarios",
     });
 
     expect(response.statusCode).toBe(200);
@@ -17,24 +17,24 @@ describe("workflow eval routes", () => {
         expect.objectContaining({
           id: "clean-fully-parsed-record",
           sourceType: "FREE_TEXT",
-          executionMode: "MULTI_SOURCE_INTAKE"
+          executionMode: "MULTI_SOURCE_INTAKE",
         }),
         expect.objectContaining({
           id: "unknown-shaft-and-value-no-defaults",
           sourceType: "FREE_TEXT",
-          executionMode: "MULTI_SOURCE_INTAKE"
+          executionMode: "MULTI_SOURCE_INTAKE",
         }),
         expect.objectContaining({
           id: "parser-variant-field-evidence",
           sourceType: "LOG",
-          executionMode: "MULTI_SOURCE_INTAKE"
+          executionMode: "MULTI_SOURCE_INTAKE",
         }),
         expect.objectContaining({
           id: "prior-review-suggestion-not-auto-applied",
           sourceType: "FREE_TEXT",
-          executionMode: "GUARDED_AGENT_WORKFLOW"
-        })
-      ])
+          executionMode: "GUARDED_AGENT_WORKFLOW",
+        }),
+      ]),
     );
 
     await app.close();
@@ -45,7 +45,7 @@ describe("workflow eval routes", () => {
 
     const response = await app.inject({
       method: "POST",
-      url: "/workflow-evals/run"
+      url: "/workflow-evals/run",
     });
 
     expect(response.statusCode).toBe(200);
@@ -55,7 +55,7 @@ describe("workflow eval routes", () => {
     expect(body.summary).toEqual({
       total: 4,
       passed: 4,
-      failed: 0
+      failed: 0,
     });
     expect(body.results).toHaveLength(4);
     expect(body.results).toEqual(
@@ -64,19 +64,19 @@ describe("workflow eval routes", () => {
           scenarioId: "unknown-shaft-and-value-no-defaults",
           status: "PASSED",
           observed: expect.objectContaining({
-            reviewItemCount: 1
+            reviewItemCount: 1,
           }),
-          failures: []
+          failures: [],
         }),
         expect.objectContaining({
           scenarioId: "prior-review-suggestion-not-auto-applied",
           status: "PASSED",
           observed: expect.objectContaining({
-            priorReviewSuggestionCount: 1
+            priorReviewSuggestionCount: 1,
           }),
-          failures: []
-        })
-      ])
+          failures: [],
+        }),
+      ]),
     );
 
     await app.close();

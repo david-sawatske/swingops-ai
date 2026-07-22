@@ -1,6 +1,6 @@
 import {
   applyDataHandlingPolicy,
-  DATA_HANDLING_POLICY_VERSION
+  DATA_HANDLING_POLICY_VERSION,
 } from "../security/data-handling-policy.js";
 import type { AgentToolDefinition } from "./tool-registry.types.js";
 
@@ -21,7 +21,7 @@ export function sanitizeMcpToolOutput(input: {
   const sanitized = applyDataHandlingPolicy({
     value: input.data,
     context: "EXTERNAL_TOOL_OUTPUT",
-    mode: "OMIT_SENSITIVE_FIELDS"
+    mode: "OMIT_SENSITIVE_FIELDS",
   });
 
   return {
@@ -32,7 +32,7 @@ export function sanitizeMcpToolOutput(input: {
       redactionNotes:
         input.tool?.redactionNotes ??
         "Unknown tool output was sanitized using generic sensitive-field omission and content redaction.",
-      intentionallyExposedFieldsOnly: true
-    }
+      intentionallyExposedFieldsOnly: true,
+    },
   };
 }

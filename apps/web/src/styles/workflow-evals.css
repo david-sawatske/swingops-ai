@@ -5,7 +5,7 @@
 }
 
 .app-mode-tabs__button {
-  border: 1px solid rgba(148, 163, 184, 0.28);
+  border: 1px solid rgb(148 163 184 / 28%);
   border-radius: 1rem;
   cursor: pointer;
   display: grid;
@@ -26,8 +26,8 @@
 }
 
 .app-mode-tabs__button--active {
-  border-color: rgba(59, 130, 246, 0.7);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+  border-color: rgb(59 130 246 / 70%);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 12%);
 }
 
 .workflow-eval-page {
@@ -72,7 +72,7 @@
 .workflow-eval-input-panel,
 .workflow-eval-observed-panel,
 .workflow-eval-evidence-list article {
-  border: 1px solid rgba(148, 163, 184, 0.28);
+  border: 1px solid rgb(148 163 184 / 28%);
   border-radius: 0.85rem;
   padding: 0.75rem;
 }
@@ -119,15 +119,15 @@
 }
 
 .workflow-eval-status--passed {
-  background: rgba(34, 197, 94, 0.14);
+  background: rgb(34 197 94 / 14%);
 }
 
 .workflow-eval-status--failed {
-  background: rgba(239, 68, 68, 0.14);
+  background: rgb(239 68 68 / 14%);
 }
 
 .workflow-eval-status--ready {
-  background: rgba(148, 163, 184, 0.16);
+  background: rgb(148 163 184 / 16%);
 }
 
 .workflow-eval-observed-header {
@@ -142,7 +142,7 @@
 }
 
 .workflow-eval-success-note {
-  border: 1px solid rgba(34, 197, 94, 0.22);
+  border: 1px solid rgb(34 197 94 / 22%);
   border-radius: 999px;
   font-size: 0.78rem;
   font-weight: 700;
@@ -158,7 +158,7 @@
 }
 
 .workflow-eval-proof-strip article {
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  border: 1px solid rgb(148 163 184 / 22%);
   border-radius: 0.75rem;
   display: grid;
   gap: 0.2rem;
@@ -181,7 +181,7 @@
 }
 
 .workflow-eval-result-details {
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  border: 1px solid rgb(148 163 184 / 22%);
   border-radius: 0.75rem;
   padding: 0.65rem;
 }
@@ -203,7 +203,7 @@
 }
 
 .workflow-eval-observed-field {
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  border: 1px solid rgb(148 163 184 / 20%);
   border-radius: 0.7rem;
   padding: 0.55rem;
 }
@@ -220,12 +220,12 @@
 }
 
 .workflow-eval-error {
-  border: 1px solid rgba(239, 68, 68, 0.25);
+  border: 1px solid rgb(239 68 68 / 25%);
   border-radius: 0.85rem;
   padding: 0.85rem;
 }
 
-@media (max-width: 700px) {
+@media (width <= 700px) {
   .app-mode-tabs {
     grid-template-columns: 1fr;
   }
@@ -274,7 +274,7 @@
 }
 
 .workflow-eval-evidence-list {
-  border-top: 1px solid rgba(148, 163, 184, 0.22);
+  border-top: 1px solid rgb(148 163 184 / 22%);
   gap: 0.25rem;
   padding-top: 0.5rem;
 }
@@ -286,7 +286,7 @@
 }
 
 .workflow-eval-evidence-list article + article {
-  border-top: 1px solid rgba(148, 163, 184, 0.14);
+  border-top: 1px solid rgb(148 163 184 / 14%);
 }
 
 .workflow-eval-evidence-list p {
@@ -294,7 +294,7 @@
 }
 
 .workflow-eval-suggestion-list {
-  border: 1px solid rgba(34, 197, 94, 0.22);
+  border: 1px solid rgb(34 197 94 / 22%);
   border-radius: 0.75rem;
   display: grid;
   gap: 0.55rem;
@@ -411,7 +411,7 @@
 }
 
 .workflow-eval-interpretation-note {
-  border: 1px solid rgba(59, 130, 246, 0.18);
+  border: 1px solid rgb(59 130 246 / 18%);
   border-radius: 0.85rem;
   font-size: 0.86rem;
   margin: 0;

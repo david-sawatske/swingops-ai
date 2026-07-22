@@ -14,10 +14,10 @@ describe("MCP output sanitizer", () => {
           {
             summary:
               "Contact customer@example.com or 612-555-0101 for follow-up.",
-            api_key: "private-provider-key"
-          }
-        ]
-      }
+            api_key: "private-provider-key",
+          },
+        ],
+      },
     });
 
     expect(result).toEqual({
@@ -27,17 +27,17 @@ describe("MCP output sanitizer", () => {
         records: [
           {
             summary:
-              "Contact [REDACTED:EMAIL_ADDRESS] or [REDACTED:PHONE_NUMBER] for follow-up."
-          }
-        ]
+              "Contact [REDACTED:EMAIL_ADDRESS] or [REDACTED:PHONE_NUMBER] for follow-up.",
+          },
+        ],
       },
       metadata: {
         sanitized: true,
         sanitizerVersion: "2026-07-21",
         redactionNotes:
           "Unknown tool output was sanitized using generic sensitive-field omission and content redaction.",
-        intentionallyExposedFieldsOnly: true
-      }
+        intentionallyExposedFieldsOnly: true,
+      },
     });
   });
 });

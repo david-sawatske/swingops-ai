@@ -1,10 +1,12 @@
-import type { MultiSourceIntakeRecord, MultiSourceIntakeSchemaField, MultiSourceIntakeSourceResult, MultiSourceIntakeSourceType } from "./multiSourceIntake";
+import type {
+  MultiSourceIntakeRecord,
+  MultiSourceIntakeSchemaField,
+  MultiSourceIntakeSourceResult,
+  MultiSourceIntakeSourceType,
+} from "./multiSourceIntake";
 
 export type AiReadyIntakeRecordStatus =
-  | "READY_FOR_REVIEW"
-  | "READY_FOR_RAG"
-  | "NEEDS_REVIEW"
-  | "SUPERSEDED";
+  "READY_FOR_REVIEW" | "READY_FOR_RAG" | "NEEDS_REVIEW" | "SUPERSEDED";
 
 export type AiReadyIntakeRecord = {
   id: string;

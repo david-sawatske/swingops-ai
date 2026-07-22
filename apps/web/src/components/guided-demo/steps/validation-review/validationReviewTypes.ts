@@ -15,7 +15,10 @@ export type GuidedValidationReviewStepProps = {
   currentRunReviewQueueItems: GlobalReviewQueueItem[];
   onContinue: () => void;
   onOpenReviewQueue: () => void;
-  onReviewQueueNotesChange: (reviewQueueItemId: string, reviewerNotes: string) => void;
+  onReviewQueueNotesChange: (
+    reviewQueueItemId: string,
+    reviewerNotes: string,
+  ) => void;
   onResolveReviewQueueItemWithCorrections: (input: {
     reviewQueueItemId: string;
     request: ResolveReviewQueueItemWithCorrectionsRequest;

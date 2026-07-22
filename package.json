@@ -14,7 +14,11 @@
     "test:e2e:install": "playwright install chromium",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "lint": "pnpm -r lint",
+    "lint": "pnpm lint:code && pnpm lint:styles && pnpm format:check",
+    "lint:code": "eslint . --max-warnings=0",
+    "lint:styles": "stylelint \"apps/web/src/**/*.css\"",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "config:check": "pnpm --filter @swingops/api config:check",
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",
@@ -34,8 +38,16 @@
   "author": "David Sawatske",
   "license": "MIT",
   "devDependencies": {
+    "@eslint/js": "^9.39.0",
     "@playwright/test": "^1.61.1",
     "@types/node": "^22.10.7",
-    "typescript": "^5.7.3"
+    "eslint": "^9.39.0",
+    "eslint-plugin-react-hooks": "^7.0.0",
+    "globals": "^16.5.0",
+    "prettier": "^3.6.0",
+    "stylelint": "^16.25.0",
+    "stylelint-config-standard": "^39.0.0",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.46.0"
   }
 }

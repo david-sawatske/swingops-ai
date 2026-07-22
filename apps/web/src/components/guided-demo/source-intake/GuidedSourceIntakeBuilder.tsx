@@ -15,10 +15,7 @@ import type {
   GuidedSourceIntakeBuilderProps,
   SourceInputMode,
 } from "./sourceIntakeTypes";
-import {
-  createBlankSource,
-  toRunnableSources,
-} from "./sourceIntakeUtils";
+import { createBlankSource, toRunnableSources } from "./sourceIntakeUtils";
 
 export function GuidedSourceIntakeBuilder({
   result,
@@ -33,28 +30,22 @@ export function GuidedSourceIntakeBuilder({
   const [sourceInputModes, setSourceInputModes] = useState<
     (SourceInputMode | null)[]
   >([null]);
-  const [uploadedFileNames, setUploadedFileNames] = useState<(string | null)[]>([
-    null,
-  ]);
+  const [uploadedFileNames, setUploadedFileNames] = useState<(string | null)[]>(
+    [null],
+  );
   const [selectedSourceTypes, setSelectedSourceTypes] = useState<
     (MultiSourceIntakeSourceType | null)[]
   >([null]);
-  const [
-    isPreparingGoldenDemonstration,
-    setIsPreparingGoldenDemonstration,
-  ] = useState(false);
-  const [
-    hasLoadedGoldenDemonstration,
-    setHasLoadedGoldenDemonstration,
-  ] = useState(false);
-  const [
-    goldenDemonstrationMessage,
-    setGoldenDemonstrationMessage,
-  ] = useState<string | null>(null);
-  const [
-    goldenDemonstrationError,
-    setGoldenDemonstrationError,
-  ] = useState<string | null>(null);
+  const [isPreparingGoldenDemonstration, setIsPreparingGoldenDemonstration] =
+    useState(false);
+  const [hasLoadedGoldenDemonstration, setHasLoadedGoldenDemonstration] =
+    useState(false);
+  const [goldenDemonstrationMessage, setGoldenDemonstrationMessage] = useState<
+    string | null
+  >(null);
+  const [goldenDemonstrationError, setGoldenDemonstrationError] = useState<
+    string | null
+  >(null);
 
   const runnableSources = useMemo(() => toRunnableSources(sources), [sources]);
   const readySourceCount = runnableSources.length;
@@ -239,15 +230,9 @@ export function GuidedSourceIntakeBuilder({
       const goldenSources = createGoldenDemonstrationSources();
 
       setSources(goldenSources);
-      setSourceInputModes(
-        goldenSources.map(() => "PASTE" as const),
-      );
-      setUploadedFileNames(
-        goldenSources.map(() => null),
-      );
-      setSelectedSourceTypes(
-        goldenSources.map((source) => source.sourceType),
-      );
+      setSourceInputModes(goldenSources.map(() => "PASTE" as const));
+      setUploadedFileNames(goldenSources.map(() => null));
+      setSelectedSourceTypes(goldenSources.map((source) => source.sourceType));
       setHasLoadedGoldenDemonstration(true);
 
       setGoldenDemonstrationMessage(
@@ -288,9 +273,9 @@ export function GuidedSourceIntakeBuilder({
             Stage the complete five-record demonstration.
           </strong>
           <p>
-            This prepares one earlier reviewer-approved correction and
-            loads four editable source types. It does not normalize the
-            records or run the model.
+            This prepares one earlier reviewer-approved correction and loads
+            four editable source types. It does not normalize the records or run
+            the model.
           </p>
         </div>
 
@@ -315,19 +300,13 @@ export function GuidedSourceIntakeBuilder({
       </section>
 
       {goldenDemonstrationMessage ? (
-        <p
-          aria-live="polite"
-          className="form-message form-message--success"
-        >
+        <p aria-live="polite" className="form-message form-message--success">
           {goldenDemonstrationMessage}
         </p>
       ) : null}
 
       {goldenDemonstrationError ? (
-        <p
-          aria-live="assertive"
-          className="form-message form-message--error"
-        >
+        <p aria-live="assertive" className="form-message form-message--error">
           {goldenDemonstrationError}
         </p>
       ) : null}

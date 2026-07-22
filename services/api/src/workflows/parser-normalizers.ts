@@ -3,19 +3,18 @@ import type { ParserFieldEvidence } from "./parser-evidence.js";
 
 type NormalizedParserFieldValue = string | number;
 
-export type NormalizedParserFieldResult<T extends NormalizedParserFieldValue> = {
-  value: T | null;
-  evidence?: ParserFieldEvidence;
-};
+export type NormalizedParserFieldResult<T extends NormalizedParserFieldValue> =
+  {
+    value: T | null;
+    evidence?: ParserFieldEvidence;
+  };
 
 type TextParserMatchCandidate<T extends string> = {
   value: T;
   aliases: RegExp[];
 };
 
-function createContextualShaftCodePattern(
-  ...codes: string[]
-): RegExp {
+function createContextualShaftCodePattern(...codes: string[]): RegExp {
   const codeAlternatives = codes.join("|");
 
   return new RegExp(
@@ -25,7 +24,7 @@ function createContextualShaftCodePattern(
       "(?:" +
       codeAlternatives +
       ")\\b",
-    "i"
+    "i",
   );
 }
 
@@ -38,8 +37,8 @@ const SHAFT_FLEX_CANDIDATES: TextParserMatchCandidate<string>[] = [
       /\btour\s*x\s*-?\s*stiff\b/i,
       /\btx\s*flex\b/i,
       /\btour\s*x\b/i,
-      /\bTOUR_X_STIFF\b/
-    ]
+      /\bTOUR_X_STIFF\b/,
+    ],
   },
   {
     value: "X_STIFF",
@@ -48,8 +47,8 @@ const SHAFT_FLEX_CANDIDATES: TextParserMatchCandidate<string>[] = [
       /\bshaft\s+(?:flex\s+)?x\s*-?\s*stiff\b/i,
       /\bx\s*-?\s*stiff\b/i,
       /\bx\s*flex\b/i,
-      /\bX_STIFF\b/
-    ]
+      /\bX_STIFF\b/,
+    ],
   },
   {
     value: "STIFF",
@@ -60,8 +59,8 @@ const SHAFT_FLEX_CANDIDATES: TextParserMatchCandidate<string>[] = [
       /\bstiff\b/i,
       /\bs\s*flex\b/i,
       /\btensei\s+s\b/i,
-      /\bSTIFF\b/
-    ]
+      /\bSTIFF\b/,
+    ],
   },
   {
     value: "REGULAR",
@@ -72,8 +71,8 @@ const SHAFT_FLEX_CANDIDATES: TextParserMatchCandidate<string>[] = [
       /\br\s*flex\b/i,
       /\breg\b/i,
       /\bregular\b/i,
-      /\bREGULAR\b/
-    ]
+      /\bREGULAR\b/,
+    ],
   },
   {
     value: "SENIOR",
@@ -84,8 +83,8 @@ const SHAFT_FLEX_CANDIDATES: TextParserMatchCandidate<string>[] = [
       /\bsenior\b/i,
       /\bsr\s*flex\b/i,
       /\ba\s*flex\b/i,
-      /\bSENIOR\b/
-    ]
+      /\bSENIOR\b/,
+    ],
   },
   {
     value: "LADIES",
@@ -95,52 +94,53 @@ const SHAFT_FLEX_CANDIDATES: TextParserMatchCandidate<string>[] = [
       /\blad(?:y|ies)\s*flex\b/i,
       /\blad(y|ies)\b/i,
       /\bl\s*flex\b/i,
-      /\bLADIES\b/
-    ]
-  }
+      /\bLADIES\b/,
+    ],
+  },
 ];
 
-const APPROVED_CONDITION_GRADE_CANDIDATES: TextParserMatchCandidate<string>[] = [
-  {
-    value: "9.5 Mint",
-    aliases: [
-      /\b9\.5\s*Mint\b/i,
-      /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*mint\b/i
-    ]
-  },
-  {
-    value: "9.0 Above Average",
-    aliases: [
-      /\b9\.0\s*Above\s*Average\b/i,
-      /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*(?:above\s*(?:avg|average)|aa)\b/i
-    ]
-  },
-  {
-    value: "8.0 Average",
-    aliases: [
-      /\b8\.0\s*Average\b/i,
-      /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*(?:avg|average)\b/i
-    ]
-  },
-  {
-    value: "7.0 Below Average",
-    aliases: [
-      /\b7\.0\s*Below\s*Average\b/i,
-      /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*(?:below\s*(?:avg|average)|ba)\b/i
-    ]
-  },
-  {
-    value: "6.0 Poor",
-    aliases: [
-      /\b6\.0\s*Poor\b/i,
-      /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*poor\b/i
-    ]
-  }
-];
+const APPROVED_CONDITION_GRADE_CANDIDATES: TextParserMatchCandidate<string>[] =
+  [
+    {
+      value: "9.5 Mint",
+      aliases: [
+        /\b9\.5\s*Mint\b/i,
+        /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*mint\b/i,
+      ],
+    },
+    {
+      value: "9.0 Above Average",
+      aliases: [
+        /\b9\.0\s*Above\s*Average\b/i,
+        /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*(?:above\s*(?:avg|average)|aa)\b/i,
+      ],
+    },
+    {
+      value: "8.0 Average",
+      aliases: [
+        /\b8\.0\s*Average\b/i,
+        /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*(?:avg|average)\b/i,
+      ],
+    },
+    {
+      value: "7.0 Below Average",
+      aliases: [
+        /\b7\.0\s*Below\s*Average\b/i,
+        /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*(?:below\s*(?:avg|average)|ba)\b/i,
+      ],
+    },
+    {
+      value: "6.0 Poor",
+      aliases: [
+        /\b6\.0\s*Poor\b/i,
+        /\b(?:condition|cond)(?:\s*grade|_grade)?\s*(?:=|:)?\s*poor\b/i,
+      ],
+    },
+  ];
 
 const TRADE_IN_VALUE_ALIASES = [
   /\b(?:trade\s*-?\s*in\s+value|trade\s+value|estimated\s+value|value)\s*(?:=|is|:)?\s*\$?(\d{2,4})\b/i,
-  /\$(\d{2,4})\b/
+  /\$(\d{2,4})\b/,
 ];
 
 type ParserMatch<T extends NormalizedParserFieldValue> = {
@@ -167,23 +167,21 @@ const NON_CONDITION_FIELD_PATTERN =
 
 function stripOtherFieldScopedNegativeEvidence(
   text: string,
-  otherFieldPattern: string
+  otherFieldPattern: string,
 ): string {
-  const scopedNegativePattern =
-    new RegExp(
-      `(?:\\b(?:${otherFieldPattern})\\b\\s*(?:=|:|is)?\\s*["']?\\b(?:${NEGATIVE_EVIDENCE_TERM_PATTERN})\\b["']?)|(?:["']?\\b(?:${NEGATIVE_EVIDENCE_TERM_PATTERN})\\b["']?\\s+\\b(?:${otherFieldPattern})\\b)`,
-      "gi"
-    );
+  const scopedNegativePattern = new RegExp(
+    `(?:\\b(?:${otherFieldPattern})\\b\\s*(?:=|:|is)?\\s*["']?\\b(?:${NEGATIVE_EVIDENCE_TERM_PATTERN})\\b["']?)|(?:["']?\\b(?:${NEGATIVE_EVIDENCE_TERM_PATTERN})\\b["']?\\s+\\b(?:${otherFieldPattern})\\b)`,
+    "gi",
+  );
 
-  return text.replace(
-    scopedNegativePattern,
-    (match) => " ".repeat(match.length)
+  return text.replace(scopedNegativePattern, (match) =>
+    " ".repeat(match.length),
   );
 }
 
 function getAllPatternMatches(
   text: string,
-  pattern: RegExp
+  pattern: RegExp,
 ): RegExpExecArray[] {
   const flags = pattern.flags.includes("g")
     ? pattern.flags
@@ -193,17 +191,12 @@ function getAllPatternMatches(
   return Array.from(text.matchAll(matcher));
 }
 
-function getParserMatches<
-  T extends NormalizedParserFieldValue
->(
+function getParserMatches<T extends NormalizedParserFieldValue>(
   text: string,
   pattern: RegExp,
-  value: T
+  value: T,
 ): ParserMatch<T>[] {
-  return getAllPatternMatches(
-    text,
-    pattern
-  ).flatMap((match) => {
+  return getAllPatternMatches(text, pattern).flatMap((match) => {
     if (!match[0] || match.index === undefined) {
       return [];
     }
@@ -211,33 +204,27 @@ function getParserMatches<
     return [
       {
         value,
-        sourceText:
-          compactParserEvidenceSourceText(match[0]),
+        sourceText: compactParserEvidenceSourceText(match[0]),
         index: match.index,
-        end: match.index + match[0].length
-      }
+        end: match.index + match[0].length,
+      },
     ];
   });
 }
 
 function selectNonOverlappingParserMatches<
-  T extends NormalizedParserFieldValue
->(
-  matches: ParserMatch<T>[]
-): ParserMatch<T>[] {
+  T extends NormalizedParserFieldValue,
+>(matches: ParserMatch<T>[]): ParserMatch<T>[] {
   const selected: ParserMatch<T>[] = [];
 
-  for (
-    const match of [...matches].sort(
-      (left, right) =>
-        right.sourceText.length - left.sourceText.length ||
-        left.index - right.index
-    )
-  ) {
+  for (const match of [...matches].sort(
+    (left, right) =>
+      right.sourceText.length - left.sourceText.length ||
+      left.index - right.index,
+  )) {
     const overlapsSelectedMatch = selected.some(
       (selectedMatch) =>
-        match.index < selectedMatch.end &&
-        match.end > selectedMatch.index
+        match.index < selectedMatch.end && match.end > selectedMatch.index,
     );
 
     if (!overlapsSelectedMatch) {
@@ -248,14 +235,14 @@ function selectNonOverlappingParserMatches<
   return selected.sort(
     (left, right) =>
       left.index - right.index ||
-      right.sourceText.length - left.sourceText.length
+      right.sourceText.length - left.sourceText.length,
   );
 }
 
 function findTextParserMatch<T extends string>(
   text: string,
   candidates: TextParserMatchCandidate<T>[],
-  negativeEvidencePattern?: RegExp
+  negativeEvidencePattern?: RegExp,
 ): NormalizedParserFieldResult<T> {
   if (negativeEvidencePattern?.test(text)) {
     return { value: null };
@@ -263,23 +250,13 @@ function findTextParserMatch<T extends string>(
 
   const matches = candidates.flatMap((candidate) =>
     candidate.aliases.flatMap((alias) =>
-      getParserMatches(
-        text,
-        alias,
-        candidate.value
-      )
-    )
+      getParserMatches(text, alias, candidate.value),
+    ),
   );
-  const selectedMatches =
-    selectNonOverlappingParserMatches(matches);
-  const uniqueValues = new Set(
-    selectedMatches.map((match) => match.value)
-  );
+  const selectedMatches = selectNonOverlappingParserMatches(matches);
+  const uniqueValues = new Set(selectedMatches.map((match) => match.value));
 
-  if (
-    selectedMatches.length === 0 ||
-    uniqueValues.size !== 1
-  ) {
+  if (selectedMatches.length === 0 || uniqueValues.size !== 1) {
     return { value: null };
   }
 
@@ -289,83 +266,68 @@ function findTextParserMatch<T extends string>(
     value: selectedMatch.value,
     evidence: {
       value: selectedMatch.value,
-      sourceText: selectedMatch.sourceText
-    }
+      sourceText: selectedMatch.sourceText,
+    },
   };
 }
 
-export function detectShaftFlexWithEvidence(text: string): NormalizedParserFieldResult<string> {
-  const shaftScopedText =
-    stripOtherFieldScopedNegativeEvidence(
-      text,
-      NON_SHAFT_FIELD_PATTERN
-    );
+export function detectShaftFlexWithEvidence(
+  text: string,
+): NormalizedParserFieldResult<string> {
+  const shaftScopedText = stripOtherFieldScopedNegativeEvidence(
+    text,
+    NON_SHAFT_FIELD_PATTERN,
+  );
 
   return findTextParserMatch(
     shaftScopedText,
     SHAFT_FLEX_CANDIDATES,
-    SHAFT_FLEX_NEGATIVE_EVIDENCE_PATTERN
+    SHAFT_FLEX_NEGATIVE_EVIDENCE_PATTERN,
   );
 }
 
-export function detectApprovedConditionGradeWithEvidence(text: string): NormalizedParserFieldResult<string> {
-  const conditionScopedText =
-    stripOtherFieldScopedNegativeEvidence(
-      text,
-      NON_CONDITION_FIELD_PATTERN
-    );
+export function detectApprovedConditionGradeWithEvidence(
+  text: string,
+): NormalizedParserFieldResult<string> {
+  const conditionScopedText = stripOtherFieldScopedNegativeEvidence(
+    text,
+    NON_CONDITION_FIELD_PATTERN,
+  );
 
   return findTextParserMatch(
     conditionScopedText,
     APPROVED_CONDITION_GRADE_CANDIDATES,
-    CONDITION_GRADE_NEGATIVE_EVIDENCE_PATTERN
+    CONDITION_GRADE_NEGATIVE_EVIDENCE_PATTERN,
   );
 }
 
-export function detectTradeInValueWithEvidence(text: string): NormalizedParserFieldResult<number> {
-  const matches = TRADE_IN_VALUE_ALIASES.flatMap(
-    (alias) =>
-      getAllPatternMatches(
-        text,
-        alias
-      ).flatMap((match) => {
-        const numberText =
-          match[1] ??
-          match[0]?.match(/\d{2,4}/)?.[0];
+export function detectTradeInValueWithEvidence(
+  text: string,
+): NormalizedParserFieldResult<number> {
+  const matches = TRADE_IN_VALUE_ALIASES.flatMap((alias) =>
+    getAllPatternMatches(text, alias).flatMap((match) => {
+      const numberText = match[1] ?? match[0]?.match(/\d{2,4}/)?.[0];
 
-        if (
-          !match[0] ||
-          match.index === undefined ||
-          !numberText
-        ) {
-          return [];
-        }
+      if (!match[0] || match.index === undefined || !numberText) {
+        return [];
+      }
 
-        const value = Number(numberText);
+      const value = Number(numberText);
 
-        return [
-          {
-            value,
-            sourceText:
-              compactParserEvidenceSourceText(
-                match[0]
-              ),
-            index: match.index,
-            end: match.index + match[0].length
-          }
-        ];
-      })
+      return [
+        {
+          value,
+          sourceText: compactParserEvidenceSourceText(match[0]),
+          index: match.index,
+          end: match.index + match[0].length,
+        },
+      ];
+    }),
   );
-  const selectedMatches =
-    selectNonOverlappingParserMatches(matches);
-  const uniqueValues = new Set(
-    selectedMatches.map((match) => match.value)
-  );
+  const selectedMatches = selectNonOverlappingParserMatches(matches);
+  const uniqueValues = new Set(selectedMatches.map((match) => match.value));
 
-  if (
-    selectedMatches.length === 0 ||
-    uniqueValues.size !== 1
-  ) {
+  if (selectedMatches.length === 0 || uniqueValues.size !== 1) {
     return { value: null };
   }
 
@@ -375,7 +337,7 @@ export function detectTradeInValueWithEvidence(text: string): NormalizedParserFi
     value: selectedMatch.value,
     evidence: {
       value: selectedMatch.value,
-      sourceText: selectedMatch.sourceText
-    }
+      sourceText: selectedMatch.sourceText,
+    },
   };
 }

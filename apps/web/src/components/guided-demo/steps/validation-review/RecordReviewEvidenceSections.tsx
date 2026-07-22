@@ -52,7 +52,11 @@ function RecordFieldGrid({ card }: { card: RecordReviewCard }) {
     {
       label: "Trade-in value",
       value:
-        getFirstValue(card.parsedRecord, ["tradeInValue", "demoValue", "value"]) ??
+        getFirstValue(card.parsedRecord, [
+          "tradeInValue",
+          "demoValue",
+          "value",
+        ]) ??
         getFirstValue(proposedRecord, ["tradeInValue", "demoValue", "value"]),
       currency: true,
       evidenceKeys: ["tradeInValue", "demoValue", "value"],
@@ -278,8 +282,8 @@ export function PassedRecordReviewSummary({
       <div className="guided-passed-record-summary__status">
         <strong>Record passed review gates.</strong>
         <p>
-          This record has no active review item. The available system evidence is
-          summarized below.
+          This record has no active review item. The available system evidence
+          is summarized below.
         </p>
       </div>
 

@@ -1,7 +1,7 @@
 import {
   demoInventoryProducts,
   type DemoInventoryProduct,
-  type InventoryProductCategory
+  type InventoryProductCategory,
 } from "./inventory-demo-data.js";
 
 export type InventoryLookupInput = {
@@ -55,7 +55,7 @@ const brandAliases = new Map<string, string>([
   ["taylor made", "taylormade"],
   ["cally", "callaway"],
   ["titleist", "titleist"],
-  ["ping", "ping"]
+  ["ping", "ping"],
 ]);
 
 const categoryAliases = new Map<string, InventoryProductCategory>([
@@ -76,7 +76,7 @@ const categoryAliases = new Map<string, InventoryProductCategory>([
   ["irons", "IRON_SET"],
   ["iron set", "IRON_SET"],
   ["wedge", "WEDGE"],
-  ["putter", "PUTTER"]
+  ["putter", "PUTTER"],
 ]);
 
 function normalizeText(value: string | null | undefined): string {
@@ -96,7 +96,9 @@ function normalizeBrand(value: string | null | undefined): string {
   return brandAliases.get(normalized) ?? normalized;
 }
 
-function normalizeCategory(value: string | null | undefined): InventoryProductCategory | null {
+function normalizeCategory(
+  value: string | null | undefined,
+): InventoryProductCategory | null {
   const normalized = normalizeText(value);
   return categoryAliases.get(normalized) ?? null;
 }
@@ -106,13 +108,12 @@ function includesNormalized(haystack: string, needle: string): boolean {
     return false;
   }
 
-  return haystack.includes(needle) || compact(haystack).includes(compact(needle));
+  return (
+    haystack.includes(needle) || compact(haystack).includes(compact(needle))
+  );
 }
 
-function containsNormalizedPhrase(
-  haystack: string,
-  needle: string
-): boolean {
+function containsNormalizedPhrase(haystack: string, needle: string): boolean {
   const normalizedHaystack = normalizeText(haystack);
   const normalizedNeedle = normalizeText(needle);
 
@@ -120,55 +121,43 @@ function containsNormalizedPhrase(
     return false;
   }
 
-  return ` ${normalizedHaystack} `.includes(
-    ` ${normalizedNeedle} `
-  );
+  return ` ${normalizedHaystack} `.includes(` ${normalizedNeedle} `);
 }
 
-function getProductIdentifiers(
-  product: DemoInventoryProduct
-): string[] {
+function getProductIdentifiers(product: DemoInventoryProduct): string[] {
   return [
     normalizeText(product.productLine),
-    ...product.aliases.map(normalizeText)
+    ...product.aliases.map(normalizeText),
   ];
 }
 
-function inputHasModelUncertainty(
-  input: InventoryLookupInput
-): boolean {
+function inputHasModelUncertainty(input: InventoryLookupInput): boolean {
   const uncertaintyText = normalizeText(
-    [input.productLine, input.rawText]
-      .filter(Boolean)
-      .join(" ")
+    [input.productLine, input.rawText].filter(Boolean).join(" "),
   );
 
   const modelEvidenceText = uncertaintyText
     .replace(
       /\b(?:condition|cond|shaft|flex|value|valuation)\s+(?:unknown|unclear|uncertain|pending)\b/g,
-      " "
+      " ",
     )
     .replace(
       /\bserial(?:\s+number)?(?:\s+is)?\s+(?:unknown|unreadable|unclear|missing|pending)\b/g,
-      " "
+      " ",
     )
     .replace(/\s+/g, " ")
     .trim();
 
   const uncertaintyTerms = modelEvidenceText.split(" ");
 
-  return [
-    "maybe",
-    "possibly",
-    "unknown",
-    "unclear",
-    "uncertain"
-  ].some((term) => uncertaintyTerms.includes(term));
+  return ["maybe", "possibly", "unknown", "unclear", "uncertain"].some((term) =>
+    uncertaintyTerms.includes(term),
+  );
 }
 
 function productFamiliesOverlap(
   first: DemoInventoryProduct,
-  second: DemoInventoryProduct
+  second: DemoInventoryProduct,
 ): boolean {
   if (normalizeBrand(first.brand) !== normalizeBrand(second.brand)) {
     return false;
@@ -177,17 +166,17 @@ function productFamiliesOverlap(
   const firstLine = compact(normalizeText(first.productLine));
   const secondLine = compact(normalizeText(second.productLine));
 
-  return (
-    firstLine.includes(secondLine) ||
-    secondLine.includes(firstLine)
-  );
+  return firstLine.includes(secondLine) || secondLine.includes(firstLine);
 }
 
 function roundConfidence(value: number): number {
   return Math.round(Math.min(Math.max(value, 0), 0.99) * 100) / 100;
 }
 
-function scoreProduct(input: InventoryLookupInput, product: DemoInventoryProduct): ScoredProduct {
+function scoreProduct(
+  input: InventoryLookupInput,
+  product: DemoInventoryProduct,
+): ScoredProduct {
   const reasons: string[] = [];
   let score = 0;
   const hasModelUncertainty = inputHasModelUncertainty(input);
@@ -196,16 +185,22 @@ function scoreProduct(input: InventoryLookupInput, product: DemoInventoryProduct
   const productBrand = normalizeBrand(product.brand);
   const inputProductLine = normalizeText(input.productLine);
   const inputCategory = normalizeCategory(input.category);
-  const inputShaftText = normalizeText([input.shaftBrand, input.shaftModel].filter(Boolean).join(" "));
+  const inputShaftText = normalizeText(
+    [input.shaftBrand, input.shaftModel].filter(Boolean).join(" "),
+  );
   const rawText = normalizeText(input.rawText);
-  const searchableText = normalizeText([
-    input.brand,
-    input.productLine,
-    input.category,
-    input.shaftBrand,
-    input.shaftModel,
-    input.rawText
-  ].filter(Boolean).join(" "));
+  const searchableText = normalizeText(
+    [
+      input.brand,
+      input.productLine,
+      input.category,
+      input.shaftBrand,
+      input.shaftModel,
+      input.rawText,
+    ]
+      .filter(Boolean)
+      .join(" "),
+  );
 
   if (inputBrand && inputBrand === productBrand) {
     score += 0.32;
@@ -217,37 +212,32 @@ function scoreProduct(input: InventoryLookupInput, product: DemoInventoryProduct
 
   const exactProductLineMatched = inputProductLine
     ? productIdentifiers.some(
-        (identifier) =>
-          compact(identifier) === compactInputProductLine
+        (identifier) => compact(identifier) === compactInputProductLine,
       )
     : productIdentifiers.some((identifier) =>
-        containsNormalizedPhrase(searchableText, identifier)
+        containsNormalizedPhrase(searchableText, identifier),
       );
 
   const partialProductLineMatched =
     !exactProductLineMatched &&
-    (
-      productIdentifiers.some((identifier) =>
-        includesNormalized(searchableText, identifier)
-      ) ||
+    (productIdentifiers.some((identifier) =>
+      includesNormalized(searchableText, identifier),
+    ) ||
       Boolean(
         inputProductLine &&
         productIdentifiers.some(
           (identifier) =>
             includesNormalized(identifier, inputProductLine) ||
-            includesNormalized(inputProductLine, identifier)
-        )
-      )
-    );
+            includesNormalized(inputProductLine, identifier),
+        ),
+      ));
 
   if (exactProductLineMatched) {
     score += 0.34;
     reasons.push(`Product line matched ${product.productLine}.`);
   } else if (partialProductLineMatched) {
     score += 0.18;
-    reasons.push(
-      `Product family partially matched ${product.productLine}.`
-    );
+    reasons.push(`Product family partially matched ${product.productLine}.`);
   }
 
   if (inputCategory && inputCategory === product.category) {
@@ -276,7 +266,9 @@ function scoreProduct(input: InventoryLookupInput, product: DemoInventoryProduct
 
   if (hasModelUncertainty && score > 0) {
     score -= 0.12;
-    reasons.push("Input included model uncertainty, so match confidence was reduced.");
+    reasons.push(
+      "Input included model uncertainty, so match confidence was reduced.",
+    );
   }
 
   if (score > 0 && score < 0.45) {
@@ -286,11 +278,13 @@ function scoreProduct(input: InventoryLookupInput, product: DemoInventoryProduct
   return {
     product,
     score: roundConfidence(score),
-    reasons
+    reasons,
   };
 }
 
-function toSimilarProduct(scoredProduct: ScoredProduct): SimilarInventoryProduct {
+function toSimilarProduct(
+  scoredProduct: ScoredProduct,
+): SimilarInventoryProduct {
   return {
     productId: scoredProduct.product.productId,
     sku: scoredProduct.product.sku,
@@ -298,7 +292,7 @@ function toSimilarProduct(scoredProduct: ScoredProduct): SimilarInventoryProduct
     productLine: scoredProduct.product.productLine,
     category: scoredProduct.product.category,
     confidence: scoredProduct.score,
-    reason: scoredProduct.reasons[0] ?? "Similar internal product candidate."
+    reason: scoredProduct.reasons[0] ?? "Similar internal product candidate.",
   };
 }
 
@@ -310,7 +304,7 @@ function getScoredProducts(input: InventoryLookupInput): ScoredProduct[] {
 }
 
 export function lookupInventoryProduct(
-  input: InventoryLookupInput
+  input: InventoryLookupInput,
 ): InventoryProductLookupResult {
   const scoredProducts = getScoredProducts(input);
   const bestMatch = scoredProducts[0];
@@ -324,8 +318,10 @@ export function lookupInventoryProduct(
       category: normalizeCategory(input.category),
       year: input.year ?? null,
       confidence: 0,
-      matchReasons: ["No internal SKU match cleared the minimum demo confidence threshold."],
-      similarProducts: scoredProducts.slice(0, 3).map(toSimilarProduct)
+      matchReasons: [
+        "No internal SKU match cleared the minimum demo confidence threshold.",
+      ],
+      similarProducts: scoredProducts.slice(0, 3).map(toSimilarProduct),
     };
   }
 
@@ -334,32 +330,24 @@ export function lookupInventoryProduct(
 
   const candidatesAreTied =
     Boolean(secondBestMatch) &&
-    bestMatch.score - secondBestMatch!.score <=
-      AMBIGUOUS_MATCH_SCORE_MARGIN;
+    bestMatch.score - secondBestMatch!.score <= AMBIGUOUS_MATCH_SCORE_MARGIN;
 
   const uncertainInputHasAlternatives =
-    Boolean(secondBestMatch) &&
-    inputHasModelUncertainty(input);
+    Boolean(secondBestMatch) && inputHasModelUncertainty(input);
 
   const missingCategoryHasFamilyConflict =
     Boolean(secondBestMatch) &&
     !inputCategory &&
     secondBestMatch!.score >= 0.45 &&
-    bestMatch.product.category !==
-      secondBestMatch!.product.category &&
-    productFamiliesOverlap(
-      bestMatch.product,
-      secondBestMatch!.product
-    );
+    bestMatch.product.category !== secondBestMatch!.product.category &&
+    productFamiliesOverlap(bestMatch.product, secondBestMatch!.product);
 
   if (
     secondBestMatch &&
     secondBestMatch.score >= MINIMUM_MATCH_CONFIDENCE &&
-    (
-      candidatesAreTied ||
+    (candidatesAreTied ||
       uncertainInputHasAlternatives ||
-      missingCategoryHasFamilyConflict
-    )
+      missingCategoryHasFamilyConflict)
   ) {
     return {
       productId: null,
@@ -370,9 +358,9 @@ export function lookupInventoryProduct(
       year: input.year ?? null,
       confidence: bestMatch.score,
       matchReasons: [
-        "Multiple internal products had similar evidence and require generation confirmation."
+        "Multiple internal products had similar evidence and require generation confirmation.",
       ],
-      similarProducts: scoredProducts.slice(0, 3).map(toSimilarProduct)
+      similarProducts: scoredProducts.slice(0, 3).map(toSimilarProduct),
     };
   }
 
@@ -390,15 +378,15 @@ export function lookupInventoryProduct(
     year: bestMatch.product.year,
     confidence: bestMatch.score,
     matchReasons: bestMatch.reasons,
-    similarProducts
+    similarProducts,
   };
 }
 
 export function findSimilarInventoryProducts(
-  input: InventoryLookupInput
+  input: InventoryLookupInput,
 ): InventorySimilarProductsResult {
   return {
     query: input,
-    similarProducts: getScoredProducts(input).slice(0, 5).map(toSimilarProduct)
+    similarProducts: getScoredProducts(input).slice(0, 5).map(toSimilarProduct),
   };
 }

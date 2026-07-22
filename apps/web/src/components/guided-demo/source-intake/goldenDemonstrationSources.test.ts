@@ -46,9 +46,9 @@ describe("createGoldenDemonstrationSources", () => {
     ];
 
     for (const marker of expectedRecordMarkers) {
-      expect(
-        sources.some((source) => source.rawContent.includes(marker)),
-      ).toBe(true);
+      expect(sources.some((source) => source.rawContent.includes(marker))).toBe(
+        true,
+      );
     }
 
     expect(
@@ -64,8 +64,6 @@ describe("createGoldenDemonstrationSources", () => {
     firstRun[0]!.rawContent = "Edited locally";
 
     expect(secondRun[0]?.sourceName).toBe("Golden counter intake");
-    expect(secondRun[0]?.rawContent).toContain(
-      "Cleveland RTX 6 ZipCore wedge",
-    );
+    expect(secondRun[0]?.rawContent).toContain("Cleveland RTX 6 ZipCore wedge");
   });
 });

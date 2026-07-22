@@ -13,7 +13,9 @@ import {
   getSourceCandidateRecords,
 } from "./finalRunReportUtils";
 
-function makeCandidateRecord(overrides: Partial<RecordSummary> = {}): RecordSummary {
+function makeCandidateRecord(
+  overrides: Partial<RecordSummary> = {},
+): RecordSummary {
   return {
     id: "candidate-1",
     intakeItemId: "intake-item-1",
@@ -49,8 +51,7 @@ function makeResult(
     parsedItems: [
       {
         id: "parsed-item-1",
-        rawLine:
-          "Titleist TSR2 3w Stiff condition 8.0 Average value 145",
+        rawLine: "Titleist TSR2 3w Stiff condition 8.0 Average value 145",
         brand: "Titleist",
         productLine: "TSR2",
         model: "TSR2",
@@ -167,7 +168,8 @@ describe("finalRunReportUtils", () => {
             reviewQueueItemId: "review-item-1",
             workflowRunId: "workflow-run-1",
             intakeItemId: "intake-item-1",
-            originalText: "Titleist TSR2 3w Regular condition 7.0 Below Average",
+            originalText:
+              "Titleist TSR2 3w Regular condition 7.0 Below Average",
             correctedBrand: "Titleist",
             correctedProductLine: "TSR2",
             correctedCategory: "FAIRWAY_WOOD",
@@ -210,7 +212,9 @@ describe("finalRunReportUtils", () => {
     expect(mergedRecord.conditionGrade).toBe("8.0 Average");
     expect(mergedRecord.tradeInValue).toBe(145);
     expect(mergedRecord.valueLabel).toBe("$145");
-    expect(mergedRecord.transformationNotes).toContain("Step 4 resolved review item");
+    expect(mergedRecord.transformationNotes).toContain(
+      "Step 4 resolved review item",
+    );
   });
 
   it("marks a corrected record resolved when source text matches but the candidate started incomplete", () => {
@@ -478,8 +482,12 @@ describe("finalRunReportUtils", () => {
     expect(mergedRecord.ragReady).toBe(true);
     expect(mergedRecord.reviewNeeded).toBe(false);
     expect(mergedRecord.finalReviewLabel).toBe("Clear");
-    expect(mergedRecord.finalReviewDetail).toBe("Cleared with workflow evidence");
-    expect(mergedRecord.transformationNotes).toContain("Step 3 added valuation range $130–$160");
+    expect(mergedRecord.finalReviewDetail).toBe(
+      "Cleared with workflow evidence",
+    );
+    expect(mergedRecord.transformationNotes).toContain(
+      "Step 3 added valuation range $130–$160",
+    );
   });
 
   it("does not clear review when non-value fields are still missing", () => {
@@ -511,7 +519,9 @@ describe("finalRunReportUtils", () => {
     expect(mergedRecord.ragReady).toBe(false);
     expect(mergedRecord.reviewNeeded).toBe(true);
     expect(mergedRecord.finalReviewLabel).toBe("Needs review");
-    expect(mergedRecord.finalReviewDetail).toBe("Record still flagged for review");
+    expect(mergedRecord.finalReviewDetail).toBe(
+      "Record still flagged for review",
+    );
   });
 
   it("falls back cleanly when no valuation range exists", () => {
@@ -576,10 +586,8 @@ describe("finalRunReportUtils", () => {
         brand: "Callaway",
         productLine: "Rogue ST Max",
         category: "DRIVER",
-        rawText:
-          "Callaway Rogue ST Max driver Stiff condition 8.0 Average",
-        cleanedText:
-          "Callaway Rogue ST Max driver Stiff condition 8.0 Average",
+        rawText: "Callaway Rogue ST Max driver Stiff condition 8.0 Average",
+        cleanedText: "Callaway Rogue ST Max driver Stiff condition 8.0 Average",
         tradeInValue: null,
         valueLabel: "—",
       }),

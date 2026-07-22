@@ -1,6 +1,6 @@
 import {
   FIELD_REPAIR_AUTO_ACCEPT_CONFIDENCE_THRESHOLD,
-  type FieldRepairSuggestion
+  type FieldRepairSuggestion,
 } from "./main-run-field-repair.js";
 import { isShaftFlexApplicable } from "./golf-field-applicability.js";
 import type { ParsedTradeInDemoItem } from "./trade-in-demo-parser.js";
@@ -23,25 +23,23 @@ type ShaftFlexSuggestion = Extract<
 function hasShaftFlexIssue(item: ParsedTradeInDemoItem): boolean {
   return (
     isShaftFlexApplicable(item.category) &&
-    (
-      !item.shaftFlex ||
+    (!item.shaftFlex ||
       item.missingFields.includes("shaftFlex") ||
       item.uncertaintyNotes.some((note) => /\bshaft\b/i.test(note)) ||
       /\b(?:shaft(?:\s+flex)?|flex)\b[^.,;|]{0,48}\b(?:unknown|unclear|pending|not\s+listed|tbd|not\s+sure)\b/i.test(
-        item.rawLine
-      )
-    )
+        item.rawLine,
+      ))
   );
 }
 
 export function findTargetedFieldRetryCandidate(
-  parsedItems: ParsedTradeInDemoItem[]
+  parsedItems: ParsedTradeInDemoItem[],
 ): ParsedTradeInDemoItem | null {
   return parsedItems.find(hasShaftFlexIssue) ?? null;
 }
 
 export function buildSkippedTargetedFieldRetry(
-  parsedItems: ParsedTradeInDemoItem[]
+  parsedItems: ParsedTradeInDemoItem[],
 ): TargetedFieldRetryResult {
   return {
     parsedItems,
@@ -58,8 +56,8 @@ export function buildSkippedTargetedFieldRetry(
       before: null,
       after: null,
       message:
-        "Targeted retry was skipped because validation did not find an incomplete shaft/flex field."
-    }
+        "Targeted retry was skipped because validation did not find an incomplete shaft/flex field.",
+    },
   };
 }
 
@@ -72,12 +70,12 @@ export function completeTargetedFieldRetry(input: {
   suggestions: FieldRepairSuggestion[];
 }): TargetedFieldRetryResult {
   const retryCandidate = input.parsedItems.find(
-    (item) => item.id === input.recordId
+    (item) => item.id === input.recordId,
   );
 
   if (!retryCandidate || !hasShaftFlexIssue(retryCandidate)) {
     throw new Error(
-      `Targeted shaft-flex retry candidate was not found: ${input.recordId}.`
+      `Targeted shaft-flex retry candidate was not found: ${input.recordId}.`,
     );
   }
 
@@ -91,22 +89,20 @@ export function completeTargetedFieldRetry(input: {
             FIELD_REPAIR_AUTO_ACCEPT_CONFIDENCE_THRESHOLD &&
           retryCandidate.rawLine
             .toLowerCase()
-            .includes(suggestion.sourcePhrase.toLowerCase())
+            .includes(suggestion.sourcePhrase.toLowerCase()),
       )
     : [];
   const eligibleValues = new Set(
-    eligibleSuggestions.map((suggestion) => suggestion.candidateValue)
+    eligibleSuggestions.map((suggestion) => suggestion.candidateValue),
   );
   const selectedSuggestion =
-    eligibleValues.size === 1 ? eligibleSuggestions[0] ?? null : null;
+    eligibleValues.size === 1 ? (eligibleSuggestions[0] ?? null) : null;
   const conflictsWithExistingValue = Boolean(
     selectedSuggestion &&
-      retryCandidate.shaftFlex &&
-      retryCandidate.shaftFlex !== selectedSuggestion.candidateValue
+    retryCandidate.shaftFlex &&
+    retryCandidate.shaftFlex !== selectedSuggestion.candidateValue,
   );
-  const canResolve = Boolean(
-    selectedSuggestion && !conflictsWithExistingValue
-  );
+  const canResolve = Boolean(selectedSuggestion && !conflictsWithExistingValue);
   const repairedItem: ParsedTradeInDemoItem = canResolve
     ? {
         ...retryCandidate,
@@ -115,19 +111,19 @@ export function completeTargetedFieldRetry(input: {
           ...(retryCandidate.parserEvidence ?? {}),
           shaftFlex: {
             value: selectedSuggestion!.candidateValue,
-            sourceText: selectedSuggestion!.sourcePhrase
-          }
+            sourceText: selectedSuggestion!.sourcePhrase,
+          },
         },
         missingFields: retryCandidate.missingFields.filter(
-          (field) => field !== "shaftFlex"
+          (field) => field !== "shaftFlex",
         ),
         uncertaintyNotes: retryCandidate.uncertaintyNotes.filter(
-          (note) => !/\bshaft\b/i.test(note)
-        )
+          (note) => !/\bshaft\b/i.test(note),
+        ),
       }
     : retryCandidate;
   const parsedItems = input.parsedItems.map((item) =>
-    item.id === repairedItem.id ? repairedItem : item
+    item.id === repairedItem.id ? repairedItem : item,
   );
   const unresolvedReason = !input.validationPassed
     ? "the retry output did not pass validation"
@@ -152,7 +148,7 @@ export function completeTargetedFieldRetry(input: {
       before: {
         shaftFlex: retryCandidate.shaftFlex,
         missingFields: retryCandidate.missingFields,
-        uncertaintyNotes: retryCandidate.uncertaintyNotes
+        uncertaintyNotes: retryCandidate.uncertaintyNotes,
       },
       after: {
         shaftFlex: repairedItem.shaftFlex,
@@ -160,11 +156,11 @@ export function completeTargetedFieldRetry(input: {
         uncertaintyNotes: repairedItem.uncertaintyNotes,
         validationPassed: input.validationPassed,
         validationErrors: input.validationErrors,
-        eligibleSuggestionCount: eligibleSuggestions.length
+        eligibleSuggestionCount: eligibleSuggestions.length,
       },
       message: canResolve
         ? "One targeted extraction retry produced a validated, high-confidence shaft-flex value and repaired the record before review."
-        : `One targeted extraction retry ran, but ${unresolvedReason}, so the record remains in human review.`
-    }
+        : `One targeted extraction retry ran, but ${unresolvedReason}, so the record remains in human review.`,
+    },
   };
 }

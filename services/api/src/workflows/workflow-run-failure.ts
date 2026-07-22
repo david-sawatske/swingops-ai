@@ -51,13 +51,13 @@ function buildWorkflowFailureDetails(input: {
       id: input.step.id,
       name: input.step.stepName,
       type: input.step.stepType,
-      orderIndex: input.step.orderIndex
+      orderIndex: input.step.orderIndex,
     },
     cause: {
       name: getErrorName(input.error),
       code: getErrorCode(input.error),
-      message
-    }
+      message,
+    },
   } as const satisfies Prisma.InputJsonObject;
 }
 
@@ -67,8 +67,8 @@ export async function failPersistedWorkflowRun(input: {
 }): Promise<WorkflowRun> {
   const existingRun = await prisma.workflowRun.findUniqueOrThrow({
     where: {
-      id: input.step.workflowRunId
-    }
+      id: input.step.workflowRunId,
+    },
   });
 
   if (existingRun.status !== "QUEUED" && existingRun.status !== "RUNNING") {
@@ -79,28 +79,26 @@ export async function failPersistedWorkflowRun(input: {
   const failureDetails = buildWorkflowFailureDetails({
     step: input.step,
     error: input.error,
-    occurredAt
+    occurredAt,
   });
   const errorMessage = failureDetails.message;
-  const stoppedMessage =
-    `Stopped because workflow step "${input.step.stepName}" failed.`;
-  const skippedMessage =
-    `Skipped because workflow step "${input.step.stepName}" failed.`;
+  const stoppedMessage = `Stopped because workflow step "${input.step.stepName}" failed.`;
+  const skippedMessage = `Skipped because workflow step "${input.step.stepName}" failed.`;
 
   await prisma.$transaction(async (transaction) => {
     const transition = await transaction.workflowRun.updateMany({
       where: {
         id: input.step.workflowRunId,
         status: {
-          in: [...ACTIVE_WORKFLOW_RUN_STATUSES]
-        }
+          in: [...ACTIVE_WORKFLOW_RUN_STATUSES],
+        },
       },
       data: {
         status: "FAILED",
         completedAt: occurredAt,
         errorMessage,
-        failureJson: failureDetails
-      }
+        failureJson: failureDetails,
+      },
     });
 
     if (transition.count === 0) {
@@ -111,73 +109,73 @@ export async function failPersistedWorkflowRun(input: {
       where: {
         id: input.step.id,
         status: {
-          in: ["PENDING", ...ACTIVE_WORKFLOW_STEP_STATUSES]
-        }
+          in: ["PENDING", ...ACTIVE_WORKFLOW_STEP_STATUSES],
+        },
       },
       data: {
         status: "FAILED",
         outputJson: {
-          failure: failureDetails
+          failure: failureDetails,
         },
         errorMessage,
-        completedAt: occurredAt
-      }
+        completedAt: occurredAt,
+      },
     });
 
     await transaction.workflowStep.updateMany({
       where: {
         workflowRunId: input.step.workflowRunId,
         id: {
-          not: input.step.id
+          not: input.step.id,
         },
         status: {
-          in: [...ACTIVE_WORKFLOW_STEP_STATUSES]
-        }
+          in: [...ACTIVE_WORKFLOW_STEP_STATUSES],
+        },
       },
       data: {
         status: "FAILED",
         errorMessage: stoppedMessage,
-        completedAt: occurredAt
-      }
+        completedAt: occurredAt,
+      },
     });
 
     await transaction.workflowStep.updateMany({
       where: {
         workflowRunId: input.step.workflowRunId,
         id: {
-          not: input.step.id
+          not: input.step.id,
         },
-        status: "PENDING"
+        status: "PENDING",
       },
       data: {
         status: "SKIPPED",
         errorMessage: skippedMessage,
-        completedAt: occurredAt
-      }
+        completedAt: occurredAt,
+      },
     });
 
     await transaction.toolCallLog.updateMany({
       where: {
         workflowRunId: input.step.workflowRunId,
-        status: "STARTED"
+        status: "STARTED",
       },
       data: {
         status: "FAILED",
         errorMessage: stoppedMessage,
-        completedAt: occurredAt
-      }
+        completedAt: occurredAt,
+      },
     });
 
     await transaction.modelCallLog.updateMany({
       where: {
         workflowRunId: input.step.workflowRunId,
-        status: "STARTED"
+        status: "STARTED",
       },
       data: {
         status: "FAILED",
         errorMessage: stoppedMessage,
-        completedAt: occurredAt
-      }
+        completedAt: occurredAt,
+      },
     });
 
     if (existingRun.intakeBatchId) {
@@ -185,60 +183,60 @@ export async function failPersistedWorkflowRun(input: {
         where: {
           id: existingRun.intakeBatchId,
           status: {
-            in: ["QUEUED", "PROCESSING"]
-          }
+            in: ["QUEUED", "PROCESSING"],
+          },
         },
         data: {
-          status: "FAILED"
-        }
+          status: "FAILED",
+        },
       });
 
       await transaction.intakeItem.updateMany({
         where: {
           intakeBatchId: existingRun.intakeBatchId,
           status: {
-            in: ["PENDING", "PROCESSING"]
-          }
+            in: ["PENDING", "PROCESSING"],
+          },
         },
         data: {
-          status: "FAILED"
-        }
+          status: "FAILED",
+        },
       });
     }
   });
 
   return prisma.workflowRun.findUniqueOrThrow({
     where: {
-      id: input.step.workflowRunId
-    }
+      id: input.step.workflowRunId,
+    },
   });
 }
 
 export async function failIntakeBatchAfterWorkflowSetupError(
-  intakeBatchId: string
+  intakeBatchId: string,
 ): Promise<void> {
   await prisma.$transaction([
     prisma.intakeBatch.updateMany({
       where: {
         id: intakeBatchId,
         status: {
-          in: ["QUEUED", "PROCESSING"]
-        }
+          in: ["QUEUED", "PROCESSING"],
+        },
       },
       data: {
-        status: "FAILED"
-      }
+        status: "FAILED",
+      },
     }),
     prisma.intakeItem.updateMany({
       where: {
         intakeBatchId,
         status: {
-          in: ["PENDING", "PROCESSING"]
-        }
+          in: ["PENDING", "PROCESSING"],
+        },
       },
       data: {
-        status: "FAILED"
-      }
-    })
+        status: "FAILED",
+      },
+    }),
   ]);
 }

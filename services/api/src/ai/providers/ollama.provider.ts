@@ -7,7 +7,7 @@ import {
   getFetch,
   getModelProviderRuntimeConfig,
   normalizeTextModelOutput,
-  readObject
+  readObject,
 } from "../model-provider-runtime-config.js";
 
 export const ollamaProvider: ModelProviderAdapter = {
@@ -24,14 +24,14 @@ export const ollamaProvider: ModelProviderAdapter = {
       supportedTaskTypes: [
         "INTAKE_PARSING",
         "FIELD_NORMALIZATION",
-        "REVIEW_SUMMARY"
+        "REVIEW_SUMMARY",
       ],
       supportsJson: true,
       costTier: "FREE",
       latencyTier: "HIGH",
       qualityTier: "MEDIUM",
-      enabled: true
-    }
+      enabled: true,
+    },
   ],
   async execute(input) {
     const config = input.runtimeConfig ?? getModelProviderRuntimeConfig();
@@ -39,36 +39,36 @@ export const ollamaProvider: ModelProviderAdapter = {
     assertRealModelCallsEnabled({
       provider: "OLLAMA",
       config,
-      missingConfigHint: "Required env: OLLAMA_BASE_URL."
+      missingConfigHint: "Required env: OLLAMA_BASE_URL.",
     });
 
     const baseUrl = assertConfiguredString({
       provider: "OLLAMA",
       value: config.ollamaBaseUrl,
-      envName: "OLLAMA_BASE_URL"
+      envName: "OLLAMA_BASE_URL",
     }).replace(/\/$/, "");
     const model = config.ollamaModel ?? input.model;
 
     const response = await getFetch(input.fetchFn)(`${baseUrl}/api/generate`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         model,
         prompt: buildProviderPrompt({
           ...input,
-          model
+          model,
         }),
         stream: false,
-        format: "json"
+        format: "json",
       }),
-      ...(input.signal ? { signal: input.signal } : {})
+      ...(input.signal ? { signal: input.signal } : {}),
     });
 
     await assertSuccessfulResponse({
       provider: "OLLAMA",
-      response
+      response,
     });
 
     const body = readObject(await response.json(), "OLLAMA");
@@ -78,7 +78,7 @@ export const ollamaProvider: ModelProviderAdapter = {
       provider: "OLLAMA",
       model,
       taskType: input.taskType,
-      text
+      text,
     });
-  }
+  },
 };

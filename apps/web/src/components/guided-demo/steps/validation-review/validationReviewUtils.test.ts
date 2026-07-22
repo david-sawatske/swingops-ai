@@ -44,7 +44,6 @@ describe("getParserEvidenceForField", () => {
   });
 });
 
-
 describe("getModelReviewOutcomeForRecord", () => {
   const outcomes: ModelReviewOutcome[] = [
     {
@@ -76,9 +75,9 @@ describe("getModelReviewOutcomeForRecord", () => {
   ];
 
   it("matches assistance by exact parsed record identity", () => {
-    expect(
-      getModelReviewOutcomeForRecord(outcomes, "parsed_item_7"),
-    ).toEqual(outcomes[1]);
+    expect(getModelReviewOutcomeForRecord(outcomes, "parsed_item_7")).toEqual(
+      outcomes[1],
+    );
   });
 
   it("does not fall back to an unrelated model outcome", () => {

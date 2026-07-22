@@ -11,20 +11,20 @@ const WORKFLOW_CONFIG_SNAPSHOT = {
       name: "fieldRepairConfidence",
       value: "validated output required",
       description:
-        "Model field repair is treated as a suggestion until deterministic parsing, reference data, validation rules, or review evidence supports it."
+        "Model field repair is treated as a suggestion until deterministic parsing, reference data, validation rules, or review evidence supports it.",
     },
     {
       name: "reviewRouting",
       value: "always active",
       description:
-        "Missing fields, ambiguous evidence, low-confidence repair, negative evidence, and invalid enum output remain review-facing."
+        "Missing fields, ambiguous evidence, low-confidence repair, negative evidence, and invalid enum output remain review-facing.",
     },
     {
       name: "modelAuthority",
       value: "secondary",
       description:
-        "Deterministic parsing, structured reference data, knowledge grounding, internal systems, and prior human review corrections remain higher authority than model output."
-    }
+        "Deterministic parsing, structured reference data, knowledge grounding, internal systems, and prior human review corrections remain higher authority than model output.",
+    },
   ],
   reviewRoutingRules: [
     {
@@ -32,37 +32,37 @@ const WORKFLOW_CONFIG_SNAPSHOT = {
       label: "Missing required field",
       effect: "NEEDS_REVIEW",
       description:
-        "Records with missing required values stay visible for human review rather than receiving invented defaults."
+        "Records with missing required values stay visible for human review rather than receiving invented defaults.",
     },
     {
       ruleId: "negative-evidence",
       label: "Negative evidence blocks repair",
       effect: "BLOCK_REPAIR",
       description:
-        "Terms such as unknown, unclear, pending, not listed, question marks, and tbd block model repair suggestions for the affected field."
+        "Terms such as unknown, unclear, pending, not listed, question marks, and tbd block model repair suggestions for the affected field.",
     },
     {
       ruleId: "ambiguous-category",
       label: "Ambiguous category routes to review",
       effect: "NEEDS_REVIEW",
       description:
-        "Ambiguous category evidence should not be forced into the nearest enum when deterministic rules cannot support it."
-    }
+        "Ambiguous category evidence should not be forced into the nearest enum when deterministic rules cannot support it.",
+    },
   ],
   providerRoutingPolicy: [
     {
       taskType: "MAIN_RUN_FIELD_REPAIR",
       primaryProvider: "runtime configured provider",
       fallbackProvider: "MOCK",
-      validationRequired: true
-    }
+      validationRequired: true,
+    },
   ],
   mutationPolicy: {
     readOnlyToolsOnly: true,
     blockedMutationsVisible: true,
     description:
-      "Admin Ops is read-only in this slice and does not expose free-form configuration or unsafe tool mutation."
-  }
+      "Admin Ops is read-only in this slice and does not expose free-form configuration or unsafe tool mutation.",
+  },
 } as const;
 
 function safeNumber(value: number | null): number {
@@ -88,10 +88,10 @@ type AdminOpsProviderAttemptInput = {
 };
 
 export function getAdminOpsProviderAttemptTelemetry(
-  attempts: AdminOpsProviderAttemptInput[]
+  attempts: AdminOpsProviderAttemptInput[],
 ) {
   const successfulAttempts = attempts.filter((attempt) =>
-    SUCCESSFUL_MODEL_ATTEMPT_STATUSES.has(attempt.status)
+    SUCCESSFUL_MODEL_ATTEMPT_STATUSES.has(attempt.status),
   ).length;
   const byProviderModelMap = new Map<
     string,
@@ -110,8 +110,7 @@ export function getAdminOpsProviderAttemptTelemetry(
 
   for (const attempt of attempts) {
     const key = `${attempt.provider}:${attempt.model}`;
-    const successful =
-      SUCCESSFUL_MODEL_ATTEMPT_STATUSES.has(attempt.status);
+    const successful = SUCCESSFUL_MODEL_ATTEMPT_STATUSES.has(attempt.status);
     const existing = byProviderModelMap.get(key) ?? {
       provider: attempt.provider,
       model: attempt.model,
@@ -121,15 +120,13 @@ export function getAdminOpsProviderAttemptTelemetry(
       totalLatencyMs: 0,
       latencyAttemptCount: 0,
       estimatedCostTotal: 0,
-      latestFailureMessage: null
+      latestFailureMessage: null,
     };
 
     existing.attemptCount += 1;
     existing.successfulAttemptCount += successful ? 1 : 0;
     existing.nonSuccessfulAttemptCount += successful ? 0 : 1;
-    existing.estimatedCostTotal += safeNumber(
-      attempt.estimatedCostUsd
-    );
+    existing.estimatedCostTotal += safeNumber(attempt.estimatedCostUsd);
 
     if (attempt.latencyMs !== null) {
       existing.totalLatencyMs += attempt.latencyMs;
@@ -149,48 +146,34 @@ export function getAdminOpsProviderAttemptTelemetry(
   return {
     totalAttempts: attempts.length,
     successfulAttempts,
-    nonSuccessfulAttempts:
-      attempts.length - successfulAttempts,
-    attemptSuccessRate: calculateRate(
-      successfulAttempts,
-      attempts.length
-    ),
-    byProviderModel: Array.from(
-      byProviderModelMap.values()
-    )
+    nonSuccessfulAttempts: attempts.length - successfulAttempts,
+    attemptSuccessRate: calculateRate(successfulAttempts, attempts.length),
+    byProviderModel: Array.from(byProviderModelMap.values())
       .map((entry) => ({
         provider: entry.provider,
         model: entry.model,
         attemptCount: entry.attemptCount,
-        successfulAttemptCount:
-          entry.successfulAttemptCount,
-        nonSuccessfulAttemptCount:
-          entry.nonSuccessfulAttemptCount,
+        successfulAttemptCount: entry.successfulAttemptCount,
+        nonSuccessfulAttemptCount: entry.nonSuccessfulAttemptCount,
         averageLatencyMs:
           entry.latencyAttemptCount > 0
-            ? Math.round(
-                entry.totalLatencyMs /
-                  entry.latencyAttemptCount
-              )
+            ? Math.round(entry.totalLatencyMs / entry.latencyAttemptCount)
             : null,
         estimatedCostTotal:
-          Math.round(
-            entry.estimatedCostTotal * 1_000_000
-          ) / 1_000_000,
-        latestFailureMessage:
-          entry.latestFailureMessage
+          Math.round(entry.estimatedCostTotal * 1_000_000) / 1_000_000,
+        latestFailureMessage: entry.latestFailureMessage,
       }))
       .sort(
         (left, right) =>
           left.provider.localeCompare(right.provider) ||
-          left.model.localeCompare(right.model)
-      )
+          left.model.localeCompare(right.model),
+      ),
   };
 }
 
 function getStringFromNormalizedJson(
   normalizedJson: unknown,
-  fieldName: string
+  fieldName: string,
 ): string | null {
   if (
     normalizedJson !== null &&
@@ -222,7 +205,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function getRecordField(
   value: unknown,
-  fieldName: string
+  fieldName: string,
 ): Record<string, unknown> | null {
   if (!isRecord(value)) {
     return null;
@@ -253,10 +236,7 @@ function getStringField(value: unknown, fieldName: string): string | null {
   return typeof fieldValue === "string" ? fieldValue : null;
 }
 
-function getBooleanField(
-  value: unknown,
-  fieldName: string
-): boolean | null {
+function getBooleanField(value: unknown, fieldName: string): boolean | null {
   if (!isRecord(value)) {
     return null;
   }
@@ -268,7 +248,7 @@ function getBooleanField(
 
 export function getAdminOpsModelAssistanceTelemetry(
   requestJson: unknown,
-  responseJson: unknown
+  responseJson: unknown,
 ): AdminOpsModelAssistanceTelemetry {
   const request = isRecord(requestJson) ? requestJson : null;
   const response = isRecord(responseJson) ? responseJson : null;
@@ -286,51 +266,32 @@ export function getAdminOpsModelAssistanceTelemetry(
       recordOutcomeCount: 0,
       repairSuggestedCount: 0,
       candidateComparisonCount: 0,
-      noSafeRepairCount: 0
+      noSafeRepairCount: 0,
     };
   }
 
   const executionInput = getRecordField(request, "inputJson");
-  const selectedRecordCount = getArrayField(
-    executionInput,
-    "records"
-  ).length;
+  const selectedRecordCount = getArrayField(executionInput, "records").length;
   const validation = getRecordField(response, "validation");
-  const validationPassed = getBooleanField(
-    validation,
-    "validationPassed"
-  );
-  const providerExecution = getRecordField(
-    response,
-    "providerExecution"
-  );
-  const providerOutput = getRecordField(
-    providerExecution,
-    "outputJson"
-  );
+  const validationPassed = getBooleanField(validation, "validationPassed");
+  const providerExecution = getRecordField(response, "providerExecution");
+  const providerOutput = getRecordField(providerExecution, "outputJson");
   const parsedProviderOutput =
     getRecordField(providerOutput, "parsedJson") ?? providerOutput;
   const acceptedOutcomes =
     validationPassed === true
-      ? getArrayField(parsedProviderOutput, "recordOutcomes").filter(
-          isRecord
-        )
+      ? getArrayField(parsedProviderOutput, "recordOutcomes").filter(isRecord)
       : [];
 
   const repairSuggestedCount = acceptedOutcomes.filter(
-    (outcome) =>
-      getStringField(outcome, "outcomeType") ===
-      "REPAIR_SUGGESTED"
+    (outcome) => getStringField(outcome, "outcomeType") === "REPAIR_SUGGESTED",
   ).length;
   const candidateComparisonCount = acceptedOutcomes.filter(
     (outcome) =>
-      getStringField(outcome, "outcomeType") ===
-      "CANDIDATE_COMPARISON"
+      getStringField(outcome, "outcomeType") === "CANDIDATE_COMPARISON",
   ).length;
   const noSafeRepairCount = acceptedOutcomes.filter(
-    (outcome) =>
-      getStringField(outcome, "outcomeType") ===
-      "NO_SAFE_REPAIR"
+    (outcome) => getStringField(outcome, "outcomeType") === "NO_SAFE_REPAIR",
   ).length;
 
   return {
@@ -338,12 +299,10 @@ export function getAdminOpsModelAssistanceTelemetry(
     validationPassed,
     selectedRecordCount,
     recordOutcomeCount:
-      repairSuggestedCount +
-      candidateComparisonCount +
-      noSafeRepairCount,
+      repairSuggestedCount + candidateComparisonCount + noSafeRepairCount,
     repairSuggestedCount,
     candidateComparisonCount,
-    noSafeRepairCount
+    noSafeRepairCount,
   };
 }
 
@@ -357,7 +316,10 @@ function getSortedCountEntries(counts: Record<string, number>): Array<{
 }> {
   return Object.entries(counts)
     .map(([label, count]) => ({ label, count }))
-    .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
+    .sort(
+      (left, right) =>
+        right.count - left.count || left.label.localeCompare(right.label),
+    );
 }
 
 function getMissingFieldsFromNormalizedJson(normalizedJson: unknown): string[] {
@@ -367,10 +329,13 @@ function getMissingFieldsFromNormalizedJson(normalizedJson: unknown): string[] {
     !Array.isArray(normalizedJson) &&
     "missingFields" in normalizedJson
   ) {
-    const missingFields = (normalizedJson as { missingFields?: unknown }).missingFields;
+    const missingFields = (normalizedJson as { missingFields?: unknown })
+      .missingFields;
 
     if (Array.isArray(missingFields)) {
-      return missingFields.filter((field): field is string => typeof field === "string");
+      return missingFields.filter(
+        (field): field is string => typeof field === "string",
+      );
     }
   }
 
@@ -387,20 +352,20 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
           reviewNeeded: true,
           ragReady: true,
           normalizedJson: true,
-          createdAt: true
+          createdAt: true,
         },
         orderBy: {
-          createdAt: "desc"
-        }
+          createdAt: "desc",
+        },
       }),
       prisma.workflowRun.findMany({
         select: {
-          status: true
+          status: true,
         },
         orderBy: {
-          createdAt: "desc"
+          createdAt: "desc",
         },
-        take: 500
+        take: 500,
       }),
       prisma.modelCallLog.findMany({
         select: {
@@ -421,164 +386,192 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
               reason: true,
               errorMessage: true,
               latencyMs: true,
-              estimatedCostUsd: true
+              estimatedCostUsd: true,
             },
             orderBy: {
-              attemptOrder: "asc"
-            }
-          }
+              attemptOrder: "asc",
+            },
+          },
         },
         orderBy: {
-          createdAt: "desc"
+          createdAt: "desc",
         },
-        take: 500
-      })
+        take: 500,
+      }),
     ]);
 
     const activeAiReadyRecords = aiReadyRecords.filter(
-      (record) => record.status !== "SUPERSEDED"
+      (record) => record.status !== "SUPERSEDED",
     );
-    const aiReadyByStatus = aiReadyRecords.reduce<Record<string, number>>((counts, record) => {
-      incrementCount(counts, record.status);
-
-      return counts;
-    }, {});
-    const aiReadyBySourceType = aiReadyRecords.reduce<Record<string, number>>((counts, record) => {
-      incrementCount(counts, record.sourceType);
-
-      return counts;
-    }, {});
-    const missingFieldCounts = activeAiReadyRecords.reduce<Record<string, number>>(
+    const aiReadyByStatus = aiReadyRecords.reduce<Record<string, number>>(
       (counts, record) => {
-        for (const field of getMissingFieldsFromNormalizedJson(record.normalizedJson)) {
-          incrementCount(counts, field);
-        }
+        incrementCount(counts, record.status);
 
         return counts;
       },
-      {}
+      {},
     );
+    const aiReadyBySourceType = aiReadyRecords.reduce<Record<string, number>>(
+      (counts, record) => {
+        incrementCount(counts, record.sourceType);
+
+        return counts;
+      },
+      {},
+    );
+    const missingFieldCounts = activeAiReadyRecords.reduce<
+      Record<string, number>
+    >((counts, record) => {
+      for (const field of getMissingFieldsFromNormalizedJson(
+        record.normalizedJson,
+      )) {
+        incrementCount(counts, field);
+      }
+
+      return counts;
+    }, {});
     const categoryCounts = activeAiReadyRecords.reduce<Record<string, number>>(
       (counts, record) => {
-        const category = getStringFromNormalizedJson(record.normalizedJson, "category") ?? "Blank";
+        const category =
+          getStringFromNormalizedJson(record.normalizedJson, "category") ??
+          "Blank";
 
         incrementCount(counts, category);
 
         return counts;
       },
-      {}
+      {},
     );
-    const sourceQuality = getSortedCountEntries(aiReadyBySourceType).map(({ label }) => {
-      const sourceRecords = aiReadyRecords.filter((record) => record.sourceType === label);
-      const activeSourceRecords = sourceRecords.filter((record) => record.status !== "SUPERSEDED");
+    const sourceQuality = getSortedCountEntries(aiReadyBySourceType).map(
+      ({ label }) => {
+        const sourceRecords = aiReadyRecords.filter(
+          (record) => record.sourceType === label,
+        );
+        const activeSourceRecords = sourceRecords.filter(
+          (record) => record.status !== "SUPERSEDED",
+        );
 
-      return {
-        sourceType: label,
-        total: sourceRecords.length,
-        active: activeSourceRecords.length,
-        reviewNeeded: activeSourceRecords.filter((record) => record.reviewNeeded).length,
-        groundingReady: activeSourceRecords.filter((record) => record.ragReady).length,
-        superseded: sourceRecords.filter((record) => record.status === "SUPERSEDED").length
-      };
-    });
+        return {
+          sourceType: label,
+          total: sourceRecords.length,
+          active: activeSourceRecords.length,
+          reviewNeeded: activeSourceRecords.filter(
+            (record) => record.reviewNeeded,
+          ).length,
+          groundingReady: activeSourceRecords.filter(
+            (record) => record.ragReady,
+          ).length,
+          superseded: sourceRecords.filter(
+            (record) => record.status === "SUPERSEDED",
+          ).length,
+        };
+      },
+    );
     const now = Date.now();
     const oneDayInMs = 24 * 60 * 60 * 1000;
     const newestAiReadyRecord = aiReadyRecords[0] ?? null;
     const aiReadyFreshness = {
-      newestCreatedAt: newestAiReadyRecord ? newestAiReadyRecord.createdAt.toISOString() : null,
+      newestCreatedAt: newestAiReadyRecord
+        ? newestAiReadyRecord.createdAt.toISOString()
+        : null,
       last24Hours: aiReadyRecords.filter(
-        (record) => now - record.createdAt.getTime() <= oneDayInMs
+        (record) => now - record.createdAt.getTime() <= oneDayInMs,
       ).length,
       last7Days: aiReadyRecords.filter(
-        (record) => now - record.createdAt.getTime() <= 7 * oneDayInMs
+        (record) => now - record.createdAt.getTime() <= 7 * oneDayInMs,
       ).length,
       last30Days: aiReadyRecords.filter(
-        (record) => now - record.createdAt.getTime() <= 30 * oneDayInMs
-      ).length
+        (record) => now - record.createdAt.getTime() <= 30 * oneDayInMs,
+      ).length,
     };
 
     const workflowRunsByStatus = workflowRuns.reduce<Record<string, number>>(
       (counts, run) => ({
         ...counts,
-        [run.status]: (counts[run.status] ?? 0) + 1
+        [run.status]: (counts[run.status] ?? 0) + 1,
       }),
-      {}
+      {},
     );
 
-    const callsWithLatency = modelCallLogs.filter((call) => call.latencyMs !== null);
-    const failedModelCalls = modelCallLogs.filter((call) => call.status === "FAILED").length;
-    const succeededModelCalls = modelCallLogs.filter((call) => call.status === "SUCCEEDED").length;
+    const callsWithLatency = modelCallLogs.filter(
+      (call) => call.latencyMs !== null,
+    );
+    const failedModelCalls = modelCallLogs.filter(
+      (call) => call.status === "FAILED",
+    ).length;
+    const succeededModelCalls = modelCallLogs.filter(
+      (call) => call.status === "SUCCEEDED",
+    ).length;
     const modelCallTelemetry = modelCallLogs.map((call) => ({
       call,
       assistance: getAdminOpsModelAssistanceTelemetry(
         call.requestJson,
-        call.responseJson
-      )
+        call.responseJson,
+      ),
     }));
     const validationTrackedCalls = modelCallTelemetry.filter(
-      ({ assistance }) => assistance.validationPassed !== null
+      ({ assistance }) => assistance.validationPassed !== null,
     );
     const validationPassedCalls = validationTrackedCalls.filter(
-      ({ assistance }) => assistance.validationPassed === true
+      ({ assistance }) => assistance.validationPassed === true,
     ).length;
     const validationFailedCalls =
       validationTrackedCalls.length - validationPassedCalls;
     const assistanceCalls = modelCallTelemetry.filter(
-      ({ assistance }) => assistance.isAssistanceCall
+      ({ assistance }) => assistance.isAssistanceCall,
     );
     const assistanceValidationTrackedCalls = assistanceCalls.filter(
-      ({ assistance }) => assistance.validationPassed !== null
+      ({ assistance }) => assistance.validationPassed !== null,
     );
     const assistanceValidationPassedCalls =
       assistanceValidationTrackedCalls.filter(
-        ({ assistance }) => assistance.validationPassed === true
+        ({ assistance }) => assistance.validationPassed === true,
       ).length;
     const selectedRecordCount = assistanceCalls.reduce(
-      (total, { assistance }) =>
-        total + assistance.selectedRecordCount,
-      0
+      (total, { assistance }) => total + assistance.selectedRecordCount,
+      0,
     );
     const recordOutcomeCount = assistanceCalls.reduce(
-      (total, { assistance }) =>
-        total + assistance.recordOutcomeCount,
-      0
+      (total, { assistance }) => total + assistance.recordOutcomeCount,
+      0,
     );
     const repairSuggestedCount = assistanceCalls.reduce(
-      (total, { assistance }) =>
-        total + assistance.repairSuggestedCount,
-      0
+      (total, { assistance }) => total + assistance.repairSuggestedCount,
+      0,
     );
     const candidateComparisonCount = assistanceCalls.reduce(
-      (total, { assistance }) =>
-        total + assistance.candidateComparisonCount,
-      0
+      (total, { assistance }) => total + assistance.candidateComparisonCount,
+      0,
     );
     const noSafeRepairCount = assistanceCalls.reduce(
-      (total, { assistance }) =>
-        total + assistance.noSafeRepairCount,
-      0
+      (total, { assistance }) => total + assistance.noSafeRepairCount,
+      0,
     );
-    const fallbackCount = modelCallLogs.filter((call) =>
-      call.attemptLogs.length > 1 ||
-      call.attemptLogs.some((attempt) => !SUCCESSFUL_MODEL_ATTEMPT_STATUSES.has(attempt.status))
+    const fallbackCount = modelCallLogs.filter(
+      (call) =>
+        call.attemptLogs.length > 1 ||
+        call.attemptLogs.some(
+          (attempt) => !SUCCESSFUL_MODEL_ATTEMPT_STATUSES.has(attempt.status),
+        ),
     ).length;
-    const providerAttemptTelemetry =
-      getAdminOpsProviderAttemptTelemetry(
-        modelCallLogs.flatMap((call) => call.attemptLogs)
-      );
+    const providerAttemptTelemetry = getAdminOpsProviderAttemptTelemetry(
+      modelCallLogs.flatMap((call) => call.attemptLogs),
+    );
     const estimatedCostTotal = modelCallLogs.reduce(
       (total, call) => total + safeNumber(call.estimatedCostUsd),
-      0
+      0,
     );
     const totalTokens = modelCallLogs.reduce(
       (total, call) => total + safeNumber(call.totalTokens),
-      0
+      0,
     );
     const averageLatencyMs =
       callsWithLatency.length > 0
         ? Math.round(
-            callsWithLatency.reduce((total, call) => total + safeNumber(call.latencyMs), 0) /
-              callsWithLatency.length
+            callsWithLatency.reduce(
+              (total, call) => total + safeNumber(call.latencyMs),
+              0,
+            ) / callsWithLatency.length,
           )
         : null;
 
@@ -624,14 +617,16 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
         recordOutcomeCount: 0,
         repairSuggestedCount: 0,
         candidateComparisonCount: 0,
-        noSafeRepairCount: 0
+        noSafeRepairCount: 0,
       };
       const hasFallbackSignal =
         call.attemptLogs.length > 1 ||
-        call.attemptLogs.some((attempt) => !SUCCESSFUL_MODEL_ATTEMPT_STATUSES.has(attempt.status));
+        call.attemptLogs.some(
+          (attempt) => !SUCCESSFUL_MODEL_ATTEMPT_STATUSES.has(attempt.status),
+        );
       const assistance = getAdminOpsModelAssistanceTelemetry(
         call.requestJson,
-        call.responseJson
+        call.responseJson,
       );
 
       existing.callCount += 1;
@@ -643,18 +638,12 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
         assistance.validationPassed === null ? 0 : 1;
       existing.validationPassedCallCount +=
         assistance.validationPassed === true ? 1 : 0;
-      existing.assistanceCallCount +=
-        assistance.isAssistanceCall ? 1 : 0;
-      existing.selectedRecordCount +=
-        assistance.selectedRecordCount;
-      existing.recordOutcomeCount +=
-        assistance.recordOutcomeCount;
-      existing.repairSuggestedCount +=
-        assistance.repairSuggestedCount;
-      existing.candidateComparisonCount +=
-        assistance.candidateComparisonCount;
-      existing.noSafeRepairCount +=
-        assistance.noSafeRepairCount;
+      existing.assistanceCallCount += assistance.isAssistanceCall ? 1 : 0;
+      existing.selectedRecordCount += assistance.selectedRecordCount;
+      existing.recordOutcomeCount += assistance.recordOutcomeCount;
+      existing.repairSuggestedCount += assistance.repairSuggestedCount;
+      existing.candidateComparisonCount += assistance.candidateComparisonCount;
+      existing.noSafeRepairCount += assistance.noSafeRepairCount;
 
       if (call.latencyMs !== null) {
         existing.totalLatencyMs += call.latencyMs;
@@ -664,54 +653,62 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
       byProviderModelMap.set(key, existing);
     }
 
-    const byProviderModel = Array.from(byProviderModelMap.values()).map((entry) => ({
-      provider: entry.provider,
-      model: entry.model,
-      callCount: entry.callCount,
-      failedCallCount: entry.failedCallCount,
-      fallbackCount: entry.fallbackCount,
-      averageLatencyMs:
-        entry.latencyCallCount > 0
-          ? Math.round(entry.totalLatencyMs / entry.latencyCallCount)
-          : null,
-      estimatedCostTotal: Math.round(entry.estimatedCostTotal * 1_000_000) / 1_000_000,
-      totalTokens: entry.totalTokens,
-      validationTrackedCallCount: entry.validationTrackedCallCount,
-      validationPassedCallCount: entry.validationPassedCallCount,
-      validationPassRate: calculateRate(
-        entry.validationPassedCallCount,
-        entry.validationTrackedCallCount
-      ),
-      assistanceCallCount: entry.assistanceCallCount,
-      selectedRecordCount: entry.selectedRecordCount,
-      recordOutcomeCount: entry.recordOutcomeCount,
-      outcomeCoverageRate: calculateRate(
-        entry.recordOutcomeCount,
-        entry.selectedRecordCount
-      ),
-      repairSuggestedCount: entry.repairSuggestedCount,
-      candidateComparisonCount: entry.candidateComparisonCount,
-      noSafeRepairCount: entry.noSafeRepairCount
-    }));
+    const byProviderModel = Array.from(byProviderModelMap.values()).map(
+      (entry) => ({
+        provider: entry.provider,
+        model: entry.model,
+        callCount: entry.callCount,
+        failedCallCount: entry.failedCallCount,
+        fallbackCount: entry.fallbackCount,
+        averageLatencyMs:
+          entry.latencyCallCount > 0
+            ? Math.round(entry.totalLatencyMs / entry.latencyCallCount)
+            : null,
+        estimatedCostTotal:
+          Math.round(entry.estimatedCostTotal * 1_000_000) / 1_000_000,
+        totalTokens: entry.totalTokens,
+        validationTrackedCallCount: entry.validationTrackedCallCount,
+        validationPassedCallCount: entry.validationPassedCallCount,
+        validationPassRate: calculateRate(
+          entry.validationPassedCallCount,
+          entry.validationTrackedCallCount,
+        ),
+        assistanceCallCount: entry.assistanceCallCount,
+        selectedRecordCount: entry.selectedRecordCount,
+        recordOutcomeCount: entry.recordOutcomeCount,
+        outcomeCoverageRate: calculateRate(
+          entry.recordOutcomeCount,
+          entry.selectedRecordCount,
+        ),
+        repairSuggestedCount: entry.repairSuggestedCount,
+        candidateComparisonCount: entry.candidateComparisonCount,
+        noSafeRepairCount: entry.noSafeRepairCount,
+      }),
+    );
 
     return {
       aiReadyRecords: {
         total: aiReadyRecords.length,
         active: activeAiReadyRecords.length,
-        superseded: aiReadyRecords.filter((record) => record.status === "SUPERSEDED").length,
+        superseded: aiReadyRecords.filter(
+          (record) => record.status === "SUPERSEDED",
+        ).length,
         byStatus: aiReadyByStatus,
         bySourceType: aiReadyBySourceType,
-        reviewNeeded: activeAiReadyRecords.filter((record) => record.reviewNeeded).length,
-        ragReady: activeAiReadyRecords.filter((record) => record.ragReady).length,
+        reviewNeeded: activeAiReadyRecords.filter(
+          (record) => record.reviewNeeded,
+        ).length,
+        ragReady: activeAiReadyRecords.filter((record) => record.ragReady)
+          .length,
         missingFieldCounts,
         missingFieldHotspots: getSortedCountEntries(missingFieldCounts),
         categoryMix: getSortedCountEntries(categoryCounts),
         sourceQuality,
-        freshness: aiReadyFreshness
+        freshness: aiReadyFreshness,
       },
       workflowRuns: {
         total: workflowRuns.length,
-        byStatus: workflowRunsByStatus
+        byStatus: workflowRunsByStatus,
       },
       modelExecutions: {
         totalCalls: modelCallLogs.length,
@@ -721,50 +718,49 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
         fallbackRate: calculateRate(fallbackCount, modelCallLogs.length),
         executionSuccessRate: calculateRate(
           succeededModelCalls,
-          modelCallLogs.length
+          modelCallLogs.length,
         ),
         validationTrackedCalls: validationTrackedCalls.length,
         validationPassedCalls,
         validationFailedCalls,
         validationPassRate: calculateRate(
           validationPassedCalls,
-          validationTrackedCalls.length
+          validationTrackedCalls.length,
         ),
         assistance: {
           totalCalls: assistanceCalls.length,
-          validationTrackedCalls:
-            assistanceValidationTrackedCalls.length,
-          validationPassedCalls:
-            assistanceValidationPassedCalls,
+          validationTrackedCalls: assistanceValidationTrackedCalls.length,
+          validationPassedCalls: assistanceValidationPassedCalls,
           validationFailedCalls:
             assistanceValidationTrackedCalls.length -
             assistanceValidationPassedCalls,
           validationPassRate: calculateRate(
             assistanceValidationPassedCalls,
-            assistanceValidationTrackedCalls.length
+            assistanceValidationTrackedCalls.length,
           ),
           selectedRecords: selectedRecordCount,
           recordOutcomes: recordOutcomeCount,
           outcomeCoverageRate: calculateRate(
             recordOutcomeCount,
-            selectedRecordCount
+            selectedRecordCount,
           ),
           repairSuggested: repairSuggestedCount,
           candidateComparison: candidateComparisonCount,
-          noSafeRepair: noSafeRepairCount
+          noSafeRepair: noSafeRepairCount,
         },
         attempts: providerAttemptTelemetry,
         averageLatencyMs,
-        estimatedCostTotal: Math.round(estimatedCostTotal * 1_000_000) / 1_000_000,
+        estimatedCostTotal:
+          Math.round(estimatedCostTotal * 1_000_000) / 1_000_000,
         totalTokens,
-        byProviderModel
-      }
+        byProviderModel,
+      },
     };
   });
 
   app.get("/admin/ops/workflow-config", async () => WORKFLOW_CONFIG_SNAPSHOT);
 
   app.get("/admin/ops/normalization-matrix", async () => ({
-    entries: getGolfTermNormalizationMatrix()
+    entries: getGolfTermNormalizationMatrix(),
   }));
 }
