@@ -96,7 +96,7 @@ describe("external MCP server transport adapter", () => {
       },
       outputSafety: {
         sanitized: true,
-        sanitizerVersion: "2026-06-06",
+        sanitizerVersion: "2026-07-21",
         intentionallyExposedFieldsOnly: true
       },
       transportMetadata: {

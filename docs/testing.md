@@ -1,6 +1,7 @@
 # Testing
 
-SwingOps AI uses TypeScript typechecking and Vitest tests across the workspace.
+SwingOps AI uses TypeScript typechecking and Vitest tests across the workspace,
+plus Playwright for the complete guided browser journey.
 
 ## Test database isolation
 
@@ -42,6 +43,47 @@ Run all tests:
 
     pnpm -r test
 
+## Golden-demonstration browser test
+
+Install the Chromium runtime once:
+
+    pnpm test:e2e:install
+
+Start the local PostgreSQL service, then run the browser suite:
+
+    pnpm db:up
+    pnpm test:e2e
+
+`pnpm test:e2e` prepares the guarded test database, starts isolated API and web
+servers, and walks the golden demonstration from source staging through the
+final run report. The test verifies the five expected records, deterministic
+model-assistance outcomes, two supported review corrections, final readiness
+counts, and the absence of browser errors or server responses at status 500 and
+above.
+
+The browser servers force `NODE_ENV=test` and disable real model calls. API
+traffic uses the resolved `TEST_DATABASE_URL`; the runner refuses a database
+whose name does not end in `_test` or matches the development target. It uses
+ports 4010 and 4174 by default so it can run separately from the standard local
+development servers.
+
+Failure artifacts are written to:
+
+    playwright-report
+    test-results/e2e
+
+This deterministic suite protects the product journey. It does not replace the
+separate live-provider acceptance checks in `docs/guided-workflow.md`.
+
+## Continuous integration
+
+The GitHub Actions workflow in `.github/workflows/ci.yml` runs on pushes and
+pull requests. It provisions PostgreSQL with pgvector, installs locked
+dependencies, validates configuration, typechecks, runs workspace tests,
+builds every workspace, installs Chromium, and executes the golden browser
+test. Browser traces, screenshots, videos, and the HTML report are uploaded
+when available.
+
 Run web tests:
 
     pnpm --filter @swingops/web test
@@ -79,6 +121,15 @@ These tests protect:
 - Final report record merging.
 - Final readiness status behavior.
 - Review correction summary behavior.
+
+### Browser tests
+
+The end-to-end test is located at:
+
+    tests/e2e/golden-demonstration.spec.ts
+
+It protects the primary guided path across the web app, API, persistence layer,
+deterministic model provider, review correction writes, and final report.
 
 ### API route tests
 

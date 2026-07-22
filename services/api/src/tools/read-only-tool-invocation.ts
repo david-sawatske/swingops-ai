@@ -11,6 +11,11 @@ import {
   explainTradeInValuationAdjustments
 } from "../internal-systems/trade-in-valuation-service.js";
 import { searchKnowledgeBase } from "../knowledge/knowledge-search.js";
+import {
+  applyDataHandlingPolicy,
+  attachDataHandlingDiagnostics,
+  sanitizeAuditText
+} from "../security/data-handling-policy.js";
 import { searchClubReference } from "./club-reference.js";
 import {
   evaluateToolExecutionPolicy,
@@ -238,12 +243,13 @@ function successOutputJson(input: {
   };
 }
 
-function toInputJsonValue(inputJson: unknown | null): Prisma.InputJsonValue | undefined {
-  if (inputJson === null) {
-    return undefined;
-  }
-
-  return inputJson as Prisma.InputJsonValue;
+function toPersistedToolAuditJson(value: unknown): Prisma.InputJsonObject {
+  return attachDataHandlingDiagnostics(
+    applyDataHandlingPolicy({
+      value,
+      context: "TOOL_AUDIT_LOG"
+    })
+  ) as Prisma.InputJsonObject;
 }
 
 async function createStartedToolCallLog(input: {
@@ -252,7 +258,10 @@ async function createStartedToolCallLog(input: {
   workflowStepId: string | null;
   inputJson: unknown | null;
 }) {
-  const inputJson = toInputJsonValue(input.inputJson);
+  const inputJson =
+    input.inputJson === null
+      ? undefined
+      : toPersistedToolAuditJson(input.inputJson);
 
   return prisma.toolCallLog.create({
     data: {
@@ -271,15 +280,24 @@ async function completeToolCallLog(input: {
   outputJson: Prisma.InputJsonObject;
   errorMessage?: string;
 }) {
+  const outputJson = toPersistedToolAuditJson(input.outputJson);
+
   return prisma.toolCallLog.update({
     where: {
       id: input.toolCallLogId
     },
     data: {
       status: input.status,
-      outputJson: input.outputJson,
+      outputJson,
       completedAt: new Date(),
-      ...(input.errorMessage === undefined ? {} : { errorMessage: input.errorMessage })
+      ...(input.errorMessage === undefined
+        ? {}
+        : {
+            errorMessage: sanitizeAuditText(
+              input.errorMessage,
+              "TOOL_AUDIT_LOG"
+            )
+          })
     }
   });
 }

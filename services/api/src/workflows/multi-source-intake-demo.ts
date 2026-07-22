@@ -6,6 +6,10 @@ import type {
   ProductReferenceProvider
 } from "../product-reference/product-reference-provider.js";
 import {
+  applyDataHandlingPolicy,
+  attachDataHandlingDiagnostics
+} from "../security/data-handling-policy.js";
+import {
   buildRecord,
   cleanText,
   detectTimestamps,
@@ -186,6 +190,15 @@ const SHARED_SCHEMA: MultiSourceIntakeSourceResult["inferredSchema"] = [
 
 function toInputJson(value: unknown): Prisma.InputJsonValue {
   return value as Prisma.InputJsonValue;
+}
+
+function toPersistedToolAuditJson(value: unknown): Prisma.InputJsonValue {
+  return attachDataHandlingDiagnostics(
+    applyDataHandlingPolicy({
+      value,
+      context: "TOOL_AUDIT_LOG"
+    })
+  ) as Prisma.InputJsonObject;
 }
 
 function getOperationalTags(source: MultiSourceInput): string[] {
@@ -646,11 +659,11 @@ async function persistDemoAudit(input: {
             workflowStepId: step.id,
             toolName: auditToolOutput.toolName,
             status: "SUCCEEDED",
-            inputJson: toInputJson({
+            inputJson: toPersistedToolAuditJson({
               workflowRunId: workflowRun.id,
               demo: "multi-source-intake-demo"
             }),
-            outputJson: toInputJson({
+            outputJson: toPersistedToolAuditJson({
               ...auditToolOutput.outputJson,
               persistedPurpose:
                 "Audit-only deterministic demo asset summary. No external connector execution was attempted."

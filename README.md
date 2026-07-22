@@ -68,6 +68,7 @@ For a deeper walkthrough, see [Guided Workflow](docs/guided-workflow.md).
 - pgvector-compatible knowledge storage
 - Zod
 - Vitest
+- Playwright
 - MCP SDK
 
 ## Quick start
@@ -106,7 +107,7 @@ Open the web app using the URL printed by Vite. The default product experience i
 Environment files are workspace-local so the API, Prisma, and Vite use their
 native loading behavior:
 
-- Node.js and pnpm.
+- Node.js and pnpm. CI uses Node.js 22 and the package-manager version declared in `package.json`.
 - Docker for the local PostgreSQL service.
 - `services/api/.env`, copied from `services/api/.env.example`, for the API and Prisma.
 - `apps/web/.env` only when overriding the web app's default `http://localhost:4000` API URL; use `apps/web/.env.example` as the template.
@@ -163,6 +164,16 @@ Run all tests:
 
     pnpm -r test
 
+Install the browser used by the end-to-end suite, then run the deterministic
+five-step demonstration against the guarded test database:
+
+    pnpm test:e2e:install
+    pnpm test:e2e
+
+The browser suite starts isolated API and web servers, forces deterministic
+model behavior, and refuses to use a database whose name does not end in
+`_test`.
+
 ## Repository structure
 
     apps/web
@@ -186,6 +197,7 @@ Run all tests:
 - [Guided Workflow](docs/guided-workflow.md)
 - [Backend Systems](docs/backend-systems.md)
 - [Data Models](docs/data-models.md)
+- [Data Handling Boundaries](docs/data-handling.md)
 - [AI Workflow Concepts](docs/ai-workflow-concepts.md)
 - [Development](docs/development.md)
 - [Testing](docs/testing.md)

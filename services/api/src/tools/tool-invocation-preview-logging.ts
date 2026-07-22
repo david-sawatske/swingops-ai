@@ -2,6 +2,10 @@ import type { Prisma, ToolCallLog } from "@prisma/client";
 
 import { prisma } from "../lib/prisma.js";
 import {
+  applyDataHandlingPolicy,
+  attachDataHandlingDiagnostics
+} from "../security/data-handling-policy.js";
+import {
   previewToolInvocation,
   type PreviewToolInvocationInput,
   type ToolInvocationPreview
@@ -58,6 +62,15 @@ function toAuditOutputJson(
   };
 }
 
+function toPersistedToolAuditJson(value: unknown): Prisma.InputJsonObject {
+  return attachDataHandlingDiagnostics(
+    applyDataHandlingPolicy({
+      value,
+      context: "TOOL_AUDIT_LOG"
+    })
+  ) as Prisma.InputJsonObject;
+}
+
 export async function persistToolInvocationPreviewLog(
   input: PersistToolInvocationPreviewLogInput
 ): Promise<PersistedToolInvocationPreview> {
@@ -79,8 +92,8 @@ export async function persistToolInvocationPreviewLog(
       status: "STARTED",
       ...(preview.invocation.inputJson === null
         ? {}
-        : { inputJson: preview.invocation.inputJson as Prisma.InputJsonValue }),
-      outputJson: toAuditOutputJson(preview)
+        : { inputJson: toPersistedToolAuditJson(preview.invocation.inputJson) }),
+      outputJson: toPersistedToolAuditJson(toAuditOutputJson(preview))
     }
   });
 

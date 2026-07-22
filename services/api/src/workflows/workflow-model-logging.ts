@@ -17,6 +17,11 @@ import type {
   ModelRoutingGoal
 } from "../ai/model-router.js";
 import { prisma } from "../lib/prisma.js";
+import {
+  applyDataHandlingPolicy,
+  attachDataHandlingDiagnostics,
+  sanitizeAuditText
+} from "../security/data-handling-policy.js";
 
 export type ModelExecutionOutputValidationResult = {
   jsonValid: boolean;
@@ -100,6 +105,15 @@ function toProviderExecutionLogJson(
   };
 }
 
+function toPersistedModelAuditJson(value: unknown): Prisma.InputJsonObject {
+  return attachDataHandlingDiagnostics(
+    applyDataHandlingPolicy({
+      value,
+      context: "MODEL_AUDIT_LOG"
+    })
+  ) as Prisma.InputJsonObject;
+}
+
 export async function createModelExecutionLogForWorkflowRun(
   input: CreateModelExecutionLogInput
 ): Promise<ModelCallLog> {
@@ -139,6 +153,55 @@ export async function createModelExecutionLogForWorkflowRun(
   const validationFailed =
     validationResult !== null && !validationResult.validationPassed;
   const completedAt = new Date();
+  const errorMessage = validationFailed
+    ? buildValidationErrorMessage(validationResult)
+    : executionResult.errorMessage;
+  const requestJson = toPersistedModelAuditJson({
+    workflowRunId: input.workflowRunId,
+    taskType: input.taskType,
+    routingGoal: input.goal,
+    requireJson,
+    allowDisabledProvidersForSimulation,
+    providerFallbackExecutor: true,
+    providerDeadlines: {
+      attemptTimeoutMs: executionResult.deadline.attemptTimeoutMs,
+      workflowTimeoutMs: executionResult.deadline.workflowTimeoutMs
+    },
+    ...(input.outputSchema
+      ? {
+          outputSchema: {
+            name: input.outputSchema.name,
+            version: input.outputSchema.version,
+            strict: input.outputSchema.strict
+          }
+        }
+      : {}),
+    ...(input.policyKey ? { policyKey: input.policyKey } : {}),
+    ...(input.agentName ? { agentName: input.agentName } : {}),
+    ...(input.workflowName ? { workflowName: input.workflowName } : {}),
+    ...(input.workflowStep ? { workflowStep: input.workflowStep } : {}),
+    inputJson: executionInputJson,
+    mock: executionResult.provider === "MOCK"
+  });
+  const responseJson = toPersistedModelAuditJson({
+    providerFallbackExecutor: true,
+    mock: executionResult.provider === "MOCK",
+    ...(input.policyKey ? { policyKey: input.policyKey } : {}),
+    ...(input.agentName ? { agentName: input.agentName } : {}),
+    ...(input.workflowName ? { workflowName: input.workflowName } : {}),
+    ...(input.workflowStep ? { workflowStep: input.workflowStep } : {}),
+    ...(validationResult
+      ? {
+          validation: {
+            jsonValid: validationResult.jsonValid,
+            validationPassed: validationResult.validationPassed,
+            validationErrors: validationResult.validationErrors
+          }
+        }
+      : {}),
+    providerExecution: toProviderExecutionLogJson(executionResult),
+    routingDecision: toRoutingDecisionLogJson(executionResult.routingDecision)
+  });
 
   const modelCallLog = await prisma.modelCallLog.create({
     data: {
@@ -161,63 +224,26 @@ export async function createModelExecutionLogForWorkflowRun(
           0
         ) || 0,
       completedAt,
-      errorMessage: validationFailed
-        ? buildValidationErrorMessage(validationResult)
-        : executionResult.errorMessage,
-      requestJson: {
-        workflowRunId: input.workflowRunId,
-        taskType: input.taskType,
-        routingGoal: input.goal,
-        requireJson,
-        allowDisabledProvidersForSimulation,
-        providerFallbackExecutor: true,
-        providerDeadlines: {
-          attemptTimeoutMs: executionResult.deadline.attemptTimeoutMs,
-          workflowTimeoutMs: executionResult.deadline.workflowTimeoutMs
-        },
-        ...(input.outputSchema
-          ? {
-              outputSchema: {
-                name: input.outputSchema.name,
-                version: input.outputSchema.version,
-                strict: input.outputSchema.strict
-              }
-            }
-          : {}),
-        ...(input.policyKey ? { policyKey: input.policyKey } : {}),
-        ...(input.agentName ? { agentName: input.agentName } : {}),
-        ...(input.workflowName ? { workflowName: input.workflowName } : {}),
-        ...(input.workflowStep ? { workflowStep: input.workflowStep } : {}),
-        inputJson: executionInputJson as Prisma.InputJsonObject,
-        mock: executionResult.provider === "MOCK"
-      },
-      responseJson: {
-        providerFallbackExecutor: true,
-        mock: executionResult.provider === "MOCK",
-        ...(input.policyKey ? { policyKey: input.policyKey } : {}),
-        ...(input.agentName ? { agentName: input.agentName } : {}),
-        ...(input.workflowName ? { workflowName: input.workflowName } : {}),
-        ...(input.workflowStep ? { workflowStep: input.workflowStep } : {}),
-        ...(validationResult
-          ? {
-              validation: {
-                jsonValid: validationResult.jsonValid,
-                validationPassed: validationResult.validationPassed,
-                validationErrors: validationResult.validationErrors
-              }
-            }
-          : {}),
-        providerExecution: toProviderExecutionLogJson(executionResult),
-        routingDecision: toRoutingDecisionLogJson(executionResult.routingDecision)
-      },
+      errorMessage:
+        errorMessage === null
+          ? null
+          : sanitizeAuditText(errorMessage, "MODEL_AUDIT_LOG"),
+      requestJson,
+      responseJson,
       attemptLogs: {
         create: executionResult.attempts.map((attempt) => ({
           provider: attempt.provider,
           model: attempt.model,
           attemptOrder: attempt.attemptOrder,
           status: attempt.status,
-          reason: attempt.reason,
-          errorMessage: attempt.errorMessage,
+          reason: sanitizeAuditText(attempt.reason, "MODEL_AUDIT_LOG"),
+          errorMessage:
+            attempt.errorMessage === null
+              ? null
+              : sanitizeAuditText(
+                  attempt.errorMessage,
+                  "MODEL_AUDIT_LOG"
+                ),
           latencyMs: attempt.latencyMs,
           estimatedCostUsd: attempt.estimatedCostUsd,
           startedAt: attempt.startedAt,

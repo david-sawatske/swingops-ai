@@ -8,6 +8,8 @@ build
 coverage
 .next
 .vite
+playwright-report
+test-results
 
 # TypeScript
 *.tsbuildinfo

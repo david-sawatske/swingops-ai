@@ -2525,7 +2525,11 @@ export function RecordReviewCardView({
   }
 
   return (
-    <details className="guided-record-review-card" open={isEditing}>
+    <details
+      aria-label={`${card.label} review record`}
+      className="guided-record-review-card"
+      open={isEditing}
+    >
       <summary className="guided-record-review-card__header">
         <div>
           <span className="model-route-card__eyebrow">Record {card.index + 1}</span>

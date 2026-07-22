@@ -9,6 +9,9 @@
     "dev": "pnpm -r --parallel dev",
     "build": "pnpm -r build",
     "test:db:prepare": "pnpm --filter @swingops/api test:db:prepare",
+    "pretest:e2e": "pnpm test:db:prepare",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install chromium",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
@@ -31,6 +34,7 @@
   "author": "David Sawatske",
   "license": "MIT",
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/node": "^22.10.7",
     "typescript": "^5.7.3"
   }

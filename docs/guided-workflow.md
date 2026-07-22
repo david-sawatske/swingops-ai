@@ -482,7 +482,7 @@ The initial review checkpoint should contain four active review items and one au
 Resolve only:
 
 1. TaylorMade Stealth 2
-   - Select **Review and save correction**.
+   - Select **Use prior approved value**.
    - Confirm Shaft flex changes from missing to Stiff.
    - Confirm the source phrase is `shaft firm`.
    - Select **Save correction and resolve**.
@@ -557,6 +557,11 @@ The repeated run should demonstrate that:
 For a clean first run, the seeded historical evidence guarantees the `shaft firm` to Stiff match. After Odyssey has been reviewed once, later runs may also surface `cosmetics poor` to 6.0 Poor as reusable prior-review evidence.
 
 ### Browser acceptance checklist
+
+The deterministic portion of this checklist is automated by
+`tests/e2e/golden-demonstration.spec.ts` and runs with `pnpm test:e2e`. The live
+OpenAI evidence check remains a separate manual acceptance step because the
+automated browser run disables external model calls.
 
 - [ ] Golden loader stages four editable source types without running normalization.
 - [ ] Step 2 creates exactly five records with preserved source evidence.

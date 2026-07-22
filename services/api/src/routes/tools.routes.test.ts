@@ -996,7 +996,7 @@ describe("tool routes", () => {
         errorMessage: null,
         outputSafety: {
           sanitized: true,
-          sanitizerVersion: "2026-06-06",
+          sanitizerVersion: "2026-07-21",
           redactionNotes: expect.any(String),
           intentionallyExposedFieldsOnly: true
         },
