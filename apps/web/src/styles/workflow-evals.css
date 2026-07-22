@@ -30,11 +30,6 @@
   box-shadow: 0 0 0 3px rgb(59 130 246 / 12%);
 }
 
-.workflow-eval-page {
-  display: grid;
-  gap: 0.85rem;
-}
-
 .workflow-eval-hero-card {
   display: grid;
   gap: 1rem;
@@ -93,29 +88,8 @@
   font-size: 1.55rem;
 }
 
-.workflow-eval-scenario-card__header {
-  align-items: flex-start;
-  display: flex;
-  gap: 0.75rem;
-  justify-content: space-between;
-}
-
 .workflow-eval-scenario-card__header h4 {
   margin-bottom: 0.25rem;
-}
-
-.workflow-eval-input-panel pre {
-  margin: 0.45rem 0 0;
-  overflow-x: auto;
-  white-space: pre-wrap;
-}
-
-.workflow-eval-status {
-  border-radius: 999px;
-  display: inline-flex;
-  font-size: 0.7rem;
-  font-weight: 800;
-  padding: 0.2rem 0.5rem;
 }
 
 .workflow-eval-status--passed {
@@ -151,20 +125,6 @@
   white-space: nowrap;
 }
 
-.workflow-eval-proof-strip {
-  display: grid;
-  gap: 0.5rem;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-}
-
-.workflow-eval-proof-strip article {
-  border: 1px solid rgb(148 163 184 / 22%);
-  border-radius: 0.75rem;
-  display: grid;
-  gap: 0.2rem;
-  padding: 0.55rem;
-}
-
 .workflow-eval-proof-strip span {
   font-size: 0.66rem;
   font-weight: 800;
@@ -180,43 +140,9 @@
   grid-column: span 2;
 }
 
-.workflow-eval-result-details {
-  border: 1px solid rgb(148 163 184 / 22%);
-  border-radius: 0.75rem;
-  padding: 0.65rem;
-}
-
-.workflow-eval-result-details summary {
-  cursor: pointer;
-  font-weight: 700;
-}
-
 .workflow-eval-expected-list {
   margin: 0.6rem 0 0;
   padding-left: 1.2rem;
-}
-
-.workflow-eval-record-snapshot dl {
-  display: grid;
-  gap: 0.45rem;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-}
-
-.workflow-eval-observed-field {
-  border: 1px solid rgb(148 163 184 / 20%);
-  border-radius: 0.7rem;
-  padding: 0.55rem;
-}
-
-.workflow-eval-observed-field dt {
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.workflow-eval-observed-field dd {
-  margin: 0.2rem 0 0;
 }
 
 .workflow-eval-error {
@@ -225,26 +151,9 @@
   padding: 0.85rem;
 }
 
-@media (width <= 700px) {
-  .app-mode-tabs {
-    grid-template-columns: 1fr;
-  }
-
-  .workflow-eval-scenario-card__header,
-  .workflow-eval-observed-header {
-    display: grid;
-  }
-
-  .workflow-eval-proof-strip__wide {
-    grid-column: span 1;
-  }
-}
-
-.workflow-eval-result-details {
-  padding: 0.5rem 0.65rem;
-}
-
 .workflow-eval-result-details summary {
+  cursor: pointer;
+  font-weight: 700;
   line-height: 1.2;
 }
 
@@ -254,6 +163,7 @@
 }
 
 .workflow-eval-record-snapshot dl {
+  display: grid;
   gap: 0.35rem 0.9rem;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   margin: 0;
@@ -266,6 +176,9 @@
 }
 
 .workflow-eval-observed-field dt {
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   font-size: 0.62rem;
 }
 
@@ -374,7 +287,25 @@
 }
 
 .workflow-eval-scenario-card__header {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
   gap: 0.55rem;
+}
+
+@media (width <= 700px) {
+  .app-mode-tabs {
+    grid-template-columns: 1fr;
+  }
+
+  .workflow-eval-scenario-card__header,
+  .workflow-eval-observed-header {
+    display: grid;
+  }
+
+  .workflow-eval-proof-strip__wide {
+    grid-column: span 1;
+  }
 }
 
 .workflow-eval-scenario-card__header p {
@@ -382,6 +313,9 @@
 }
 
 .workflow-eval-input-panel pre {
+  margin: 0.45rem 0 0;
+  overflow-x: auto;
+  white-space: pre-wrap;
   font-size: 0.78rem;
   line-height: 1.25;
   margin-top: 0.3rem;
@@ -393,14 +327,22 @@
 }
 
 .workflow-eval-proof-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 0.4rem;
 }
 
 .workflow-eval-proof-strip article {
+  border: 1px solid rgb(148 163 184 / 22%);
+  border-radius: 0.75rem;
+  display: grid;
+  gap: 0.2rem;
   padding: 0.45rem 0.5rem;
 }
 
 .workflow-eval-result-details {
+  border: 1px solid rgb(148 163 184 / 22%);
+  border-radius: 0.75rem;
   padding: 0.45rem 0.55rem;
 }
 
@@ -419,6 +361,11 @@
 }
 
 .workflow-eval-status {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 0.2rem 0.5rem;
   white-space: nowrap;
 }
 
@@ -441,5 +388,6 @@
 }
 
 .workflow-eval-page {
+  display: grid;
   gap: 0.75rem;
 }

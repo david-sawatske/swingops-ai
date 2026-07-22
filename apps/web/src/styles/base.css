@@ -123,20 +123,3 @@ h1 {
   background: #edf7ed;
   color: #2f6b31;
 }
-
-.form-message {
-  margin: 0;
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-weight: 700;
-}
-
-.form-message--error {
-  background: #fff0ed;
-  color: #9f2f1b;
-}
-
-.form-message--success {
-  background: #edf7ed;
-  color: #2f6b31;
-}

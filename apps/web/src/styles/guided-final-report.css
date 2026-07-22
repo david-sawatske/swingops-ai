@@ -227,15 +227,6 @@
   padding: 0.6rem 0.65rem;
 }
 
-.guided-model-execution-metrics dt {
-  color: rgb(20 36 23 / 58%);
-  font-size: 0.62rem;
-  font-weight: 900;
-  letter-spacing: 0.055em;
-  margin-bottom: 0.2rem;
-  text-transform: uppercase;
-}
-
 .guided-model-execution-metrics dd {
   color: #142417;
   font-size: 0.82rem;
@@ -310,6 +301,12 @@
 
 /* main-run-model-execution-visibility label cleanup */
 .guided-model-execution-metrics dt {
+  color: rgb(20 36 23 / 58%);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.055em;
+  margin-bottom: 0.2rem;
+  text-transform: uppercase;
   overflow-wrap: anywhere;
 }
 
@@ -335,10 +332,6 @@
   border-bottom: 1px solid rgb(39 57 44 / 12%);
   border-top: 1px solid rgb(39 57 44 / 12%);
   margin-top: 0.8rem;
-}
-
-.guided-final-provenance-record {
-  padding: 0.8rem 0;
 }
 
 .guided-final-provenance-record + .guided-final-provenance-record {

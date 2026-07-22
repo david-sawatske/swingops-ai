@@ -26,13 +26,6 @@
   margin: 0;
 }
 
-.guided-review-checkpoint__facts div {
-  padding: 0.75rem;
-  border: 1px solid rgb(148 163 184 / 18%);
-  border-radius: 0.85rem;
-  background: rgb(15 23 42 / 28%);
-}
-
 .guided-review-checkpoint__facts dt {
   margin: 0 0 0.25rem;
   color: rgb(226 232 240 / 68%);
@@ -52,22 +45,6 @@
   gap: 1rem;
 }
 
-.guided-record-review-card {
-  display: grid;
-  gap: 1rem;
-  padding: 1rem;
-  border: 1px solid rgb(148 163 184 / 24%);
-  border-radius: 1rem;
-  background: rgb(15 23 42 / 20%);
-}
-
-.guided-record-review-card__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
 .guided-record-review-card__header h4 {
   margin: 0.2rem 0 0;
 }
@@ -83,49 +60,12 @@
   text-transform: uppercase;
 }
 
-.guided-record-review-card__status--ready {
-  color: #bbf7d0;
-  background: rgb(22 101 52 / 28%);
-  border-color: rgb(74 222 128 / 28%);
-}
-
-.guided-record-review-card__status--needs-review {
-  color: #fde68a;
-  background: rgb(120 53 15 / 28%);
-  border-color: rgb(251 191 36 / 28%);
-}
-
-.guided-record-field-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
-  gap: 0.65rem;
-  margin: 0;
-}
-
-.guided-record-field-grid div {
-  padding: 0.7rem;
-  border: 1px solid rgb(148 163 184 / 16%);
-  border-radius: 0.8rem;
-  background: rgb(2 6 23 / 22%);
-}
-
 .guided-record-field-grid dt {
   margin: 0 0 0.25rem;
   color: rgb(226 232 240 / 60%);
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-}
-
-.guided-record-field-grid dd {
-  margin: 0;
-  font-weight: 750;
-}
-
-.guided-record-review-card__body-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(14rem, 0.7fr);
-  gap: 1rem;
 }
 
 .guided-record-review-card__body-grid h5,
@@ -145,28 +85,8 @@
   list-style: none;
 }
 
-.guided-record-attention-list li {
-  display: grid;
-  gap: 0.15rem;
-  padding-left: 0.75rem;
-  border-left: 3px solid rgb(251 191 36 / 50%);
-}
-
 .guided-record-attention-list span {
   color: rgb(226 232 240 / 72%);
-}
-
-.guided-record-evidence-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  gap: 0.75rem;
-}
-
-.guided-record-evidence-grid article {
-  padding: 0.8rem;
-  border: 1px solid rgb(148 163 184 / 16%);
-  border-radius: 0.85rem;
-  background: rgb(2 6 23 / 20%);
 }
 
 .guided-record-evidence-grid strong {
@@ -177,11 +97,6 @@
 .guided-record-evidence-grid p {
   margin: 0;
   color: rgb(226 232 240 / 72%);
-}
-
-.guided-record-review-details {
-  border-top: 1px solid rgb(148 163 184 / 18%);
-  padding-top: 0.85rem;
 }
 
 .guided-record-review-details summary {
@@ -255,17 +170,11 @@
 }
 
 .guided-review-checkpoint__facts div {
+  padding: 0.75rem;
+  border: 1px solid rgb(148 163 184 / 18%);
+  border-radius: 0.85rem;
   background: rgb(244 247 241 / 80%);
   border-color: rgb(15 23 42 / 10%);
-}
-
-.guided-record-review-card {
-  padding: 1.1rem;
-}
-
-.guided-record-review-card__header {
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid rgb(15 23 42 / 10%);
 }
 
 .guided-record-review-card__status--ready {
@@ -281,21 +190,30 @@
 }
 
 .guided-record-field-grid {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .guided-record-field-grid div {
+  border: 1px solid rgb(148 163 184 / 16%);
+  border-radius: 0.8rem;
   min-width: 0;
   padding: 0.75rem;
   background: rgb(244 247 241 / 82%);
 }
 
 .guided-record-field-grid dd {
+  margin: 0;
+  font-weight: 750;
   color: #142116;
   overflow-wrap: anywhere;
 }
 
 .guided-record-review-card__body-grid {
+  display: grid;
+  gap: 1rem;
   grid-template-columns: minmax(0, 1fr);
 }
 
@@ -307,18 +225,23 @@
 }
 
 .guided-record-attention-list li {
+  display: grid;
+  gap: 0.15rem;
+  padding-left: 0.75rem;
+  border-left: 3px solid rgb(251 191 36 / 50%);
   border-left-color: rgb(180 83 9 / 45%);
 }
 
-.guided-record-evidence-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
 .guided-record-evidence-grid article {
+  padding: 0.8rem;
+  border: 1px solid rgb(148 163 184 / 16%);
+  border-radius: 0.85rem;
   background: rgb(244 247 241 / 82%);
 }
 
 .guided-record-review-details {
+  border-top: 1px solid rgb(148 163 184 / 18%);
+  padding-top: 0.85rem;
   border-top-color: rgb(15 23 42 / 10%);
 }
 
@@ -403,11 +326,6 @@
   background: rgb(240 253 244 / 74%);
 }
 
-.guided-record-correction-panel {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-}
-
 .guided-record-correction-panel p,
 .guided-record-correction-form p {
   margin: 0.2rem 0 0;
@@ -474,34 +392,17 @@
 
 /* guided-step5-collapsed-review-cards */
 .guided-record-review-card {
+  display: grid;
+  gap: 1rem;
+  border: 1px solid rgb(15 23 42 / 12%);
+  border-radius: 1rem;
+  background: rgb(255 255 255 / 90%);
   padding: 0;
   overflow: hidden;
 }
 
-.guided-record-review-card__header {
-  cursor: pointer;
-  list-style: none;
-  padding: 0.95rem 1rem;
-}
-
-.guided-record-review-card__header::-webkit-details-marker {
-  display: none;
-}
-
-.guided-record-review-card__header::before {
-  content: "▸";
-  flex: 0 0 auto;
-  margin-top: 1.25rem;
-  color: rgb(20 33 22 / 58%);
-  transition: transform 0.16s ease;
-}
-
 .guided-record-review-card[open] .guided-record-review-card__header::before {
   transform: rotate(90deg);
-}
-
-.guided-record-review-card__header > div {
-  min-width: 0;
 }
 
 .guided-record-review-card__summary-line {
@@ -510,13 +411,9 @@
   font-size: 0.83rem;
 }
 
-.guided-record-review-card__content {
-  display: grid;
-  gap: 1rem;
-  padding: 0 1rem 1rem;
-}
-
 .guided-record-evidence-grid {
+  display: grid;
+  gap: 0.75rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -563,10 +460,6 @@
 }
 
 @media (width <= 640px) {
-  .guided-record-review-card__header {
-    grid-template-columns: auto 1fr;
-  }
-
   .guided-record-review-card__header .guided-record-review-card__status {
     justify-self: start;
   }
@@ -576,14 +469,14 @@
   }
 }
 
-.guided-record-review-card__status--resolved {
-  color: #1e3a8a;
-  background: rgb(219 234 254 / 95%);
-  border-color: rgb(59 130 246 / 18%);
-}
-
 /* guided-step5-card-header-spacing-fix */
 .guided-record-review-card__header {
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid rgb(15 23 42 / 10%);
+  cursor: pointer;
+  list-style: none;
+  padding: 0.95rem 1rem;
   display: grid;
   grid-template-columns: 1rem minmax(0, 1fr) auto;
   align-items: center;
@@ -591,12 +484,17 @@
 }
 
 .guided-record-review-card__header::before {
+  content: "▸";
+  flex: 0 0 auto;
+  color: rgb(20 33 22 / 58%);
+  transition: transform 0.16s ease;
   margin-top: 0;
   grid-column: 1;
   grid-row: 1;
 }
 
 .guided-record-review-card__header > div {
+  min-width: 0;
   grid-column: 2;
 }
 
@@ -727,10 +625,13 @@
 
 /* guided-step5-correction-first-record-ui */
 .guided-record-review-card__content {
+  display: grid;
+  padding: 0 1rem 1rem;
   gap: 0.7rem;
 }
 
 .guided-record-correction-panel {
+  align-items: center;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.65rem 1rem;
 }
@@ -738,11 +639,6 @@
 .guided-record-correction-panel .guided-correction-focus {
   grid-column: 1 / -1;
   padding: 0.65rem;
-}
-
-.guided-record-correction-form {
-  border-color: rgb(22 101 52 / 22%);
-  background: rgb(240 253 244 / 90%);
 }
 
 .guided-record-correction-grid--focused {
@@ -892,13 +788,6 @@
   font-weight: 500;
 }
 
-.guided-prior-review-suggestions {
-  border: 1px solid rgb(99 102 241 / 24%);
-  border-radius: 16px;
-  background: rgb(99 102 241 / 6%);
-  padding: 1rem;
-}
-
 .guided-prior-review-suggestions__header,
 .guided-prior-review-suggestion__actions {
   display: flex;
@@ -912,54 +801,15 @@
   margin: 0.25rem 0 0;
 }
 
-.guided-prior-review-suggestions__header span {
-  white-space: nowrap;
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
 .guided-prior-review-suggestions__list {
   display: grid;
   gap: 0.75rem;
   margin-top: 0.75rem;
 }
 
-.guided-prior-review-suggestion {
-  border: 1px solid rgb(15 23 42 / 10%);
-  border-radius: 14px;
-  background: rgb(255 255 255 / 72%);
-  padding: 0.85rem;
-}
-
-.guided-prior-review-suggestion dl {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 0.65rem;
-  margin: 0 0 0.65rem;
-}
-
-.guided-prior-review-suggestion dt {
-  color: var(--muted-foreground);
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.guided-prior-review-suggestion dd {
-  margin: 0.15rem 0 0;
-  font-weight: 700;
-}
-
 .guided-prior-review-suggestion small {
   display: block;
   margin-top: 0.5rem;
-}
-
-.guided-prior-review-suggestion__actions {
-  justify-content: flex-start;
-  margin-top: 0.75rem;
-  flex-wrap: wrap;
 }
 
 /* Prior review suggestion step polish */
@@ -976,6 +826,9 @@
 }
 
 .guided-prior-review-suggestions {
+  border: 1px solid rgb(99 102 241 / 24%);
+  border-radius: 16px;
+  padding: 1rem;
   width: 100%;
   max-width: 34rem;
   border-color: rgb(37 99 235 / 22%);
@@ -1005,6 +858,9 @@
 }
 
 .guided-prior-review-suggestions__header span {
+  white-space: nowrap;
+  font-size: 0.8rem;
+  font-weight: 700;
   border: 1px solid rgb(15 23 42 / 10%);
   border-radius: 999px;
   background: rgb(255 255 255 / 72%);
@@ -1013,19 +869,31 @@
 }
 
 .guided-prior-review-suggestion {
+  border: 1px solid rgb(15 23 42 / 10%);
+  border-radius: 14px;
+  padding: 0.85rem;
   background: rgb(255 255 255 / 86%);
   box-shadow: inset 0 0 0 1px rgb(15 23 42 / 3%);
 }
 
 .guided-prior-review-suggestion dl {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0 0 0.65rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .guided-prior-review-suggestion dt {
+  color: var(--muted-foreground);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   font-size: 0.68rem;
 }
 
 .guided-prior-review-suggestion dd {
+  margin: 0.15rem 0 0;
+  font-weight: 700;
   font-size: 0.92rem;
   line-height: 1.22;
 }
@@ -1034,17 +902,6 @@
   color: var(--muted-foreground);
   font-size: 0.84rem;
   line-height: 1.45;
-}
-
-.guided-prior-review-suggestion__actions {
-  gap: 0.55rem;
-}
-
-.guided-prior-review-suggestion__actions .guided-step-primary-action,
-.guided-prior-review-suggestion__actions .guided-review-secondary-action {
-  min-height: 2.35rem;
-  padding: 0.55rem 0.85rem;
-  font-size: 0.82rem;
 }
 
 @media (width <= 720px) {
@@ -1142,11 +999,17 @@
 
 /* Keep prior-review suggestion actions visually aligned */
 .guided-prior-review-suggestion__actions {
+  justify-content: flex-start;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.55rem;
   align-items: stretch;
 }
 
 .guided-prior-review-suggestion__actions .guided-step-primary-action,
 .guided-prior-review-suggestion__actions .guided-review-secondary-action {
+  padding: 0.55rem 0.85rem;
+  font-size: 0.82rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1157,45 +1020,6 @@
 }
 
 /* Applied prior-review correction confirmation */
-.guided-applied-correction-summary {
-  display: grid;
-  gap: 0.55rem;
-  padding: 0.75rem;
-  border: 1px solid rgb(22 101 52 / 22%);
-  border-radius: 0.75rem;
-  background: rgb(220 252 231 / 72%);
-}
-
-.guided-applied-correction-summary dl {
-  display: grid;
-  gap: 0.4rem;
-  margin: 0;
-}
-
-.guided-applied-correction-summary dl > div {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.55rem 0.65rem;
-  border: 1px solid rgb(22 101 52 / 14%);
-  border-radius: 0.6rem;
-  background: rgb(255 255 255 / 78%);
-}
-
-.guided-applied-correction-summary dt {
-  color: rgb(20 33 22 / 66%);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.guided-applied-correction-summary dd {
-  margin: 0;
-  font-weight: 850;
-  text-align: right;
-}
 
 .guided-applied-correction-summary small {
   color: rgb(20 33 22 / 68%);
@@ -1214,6 +1038,7 @@
 
 /* Simplified completed-correction review */
 .guided-record-correction-form {
+  border-color: rgb(22 101 52 / 22%);
   gap: 0.7rem;
   padding: 0.85rem;
   background: rgb(248 250 247 / 96%);
@@ -1253,6 +1078,8 @@
 }
 
 .guided-applied-correction-summary dl > div {
+  justify-content: space-between;
+  border-radius: 0.6rem;
   display: inline-flex;
   align-items: baseline;
   gap: 0.55rem;

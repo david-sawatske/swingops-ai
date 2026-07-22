@@ -17,12 +17,6 @@
   background: #f4f8f1;
 }
 
-.guided-execution-evidence-grid {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
 .guided-execution-evidence-card {
   border: 1px solid #d9dfd4;
   border-radius: 16px;
@@ -160,6 +154,8 @@
 }
 
 .guided-execution-evidence-grid {
+  display: grid;
+  gap: 12px;
   grid-template-columns: 1fr;
 }
 
@@ -229,14 +225,6 @@
   padding: 0 0.8rem 0.8rem;
 }
 
-.guided-workflow-check-status {
-  border-radius: 999px;
-  padding: 0.18rem 0.46rem;
-  font-size: 0.68rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
 .guided-workflow-check-status--pass {
   background: rgb(34 197 94 / 12%);
   color: #166534;
@@ -258,45 +246,12 @@
   background: rgb(255 255 255 / 72%);
 }
 
-.guided-workflow-club-details summary {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.65rem;
-  cursor: pointer;
-  padding: 0.72rem 0.8rem;
-  color: #142c17;
-  font-size: 0.86rem;
-  font-weight: 800;
-  line-height: 1.25;
-}
-
 .guided-workflow-club-details summary::-webkit-details-marker {
   display: none;
 }
 
-.guided-workflow-club-details summary::before {
-  content: "›";
-  color: #142c17;
-  font-weight: 900;
-}
-
 .guided-workflow-club-details[open] summary::before {
   transform: rotate(90deg);
-}
-
-.guided-workflow-club-details summary span:nth-of-type(2) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.guided-workflow-club-details summary small {
-  color: rgb(20 44 23 / 62%);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .guided-workflow-club-details .agentic-demo-metadata {
@@ -332,6 +287,14 @@
 }
 
 .guided-workflow-club-details summary {
+  display: grid;
+  align-items: center;
+  cursor: pointer;
+  padding: 0.72rem 0.8rem;
+  color: #142c17;
+  font-size: 0.86rem;
+  font-weight: 800;
+  line-height: 1.25;
   grid-template-columns: auto auto minmax(0, 1fr);
   grid-template-areas:
     "chevron status title"
@@ -340,6 +303,9 @@
 }
 
 .guided-workflow-club-details summary::before {
+  content: "›";
+  color: #142c17;
+  font-weight: 900;
   grid-area: chevron;
   align-self: center;
 }
@@ -361,6 +327,11 @@
 }
 
 .guided-workflow-club-details summary small {
+  color: rgb(20 44 23 / 62%);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   grid-area: meta;
   justify-self: start;
   min-width: 0;
@@ -368,6 +339,11 @@
 }
 
 .guided-workflow-check-status {
+  border-radius: 999px;
+  padding: 0.18rem 0.46rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   display: inline-flex;
   align-items: center;
   justify-content: center;

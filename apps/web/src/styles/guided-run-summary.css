@@ -31,81 +31,6 @@
   white-space: pre-wrap;
 }
 
-.guided-current-run-summary {
-  border: 1px solid rgb(148 163 184 / 22%);
-  border-radius: 24px;
-  background:
-    radial-gradient(circle at top left, rgb(34 197 94 / 12%), transparent 30%),
-    rgb(15 23 42 / 84%);
-  box-shadow: 0 24px 70px rgb(15 23 42 / 22%);
-  padding: 1.25rem;
-}
-
-.guided-current-run-summary__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.guided-current-run-summary__header h3 {
-  margin: 0.25rem 0;
-  font-size: 1.15rem;
-}
-
-.guided-current-run-summary__header p {
-  margin: 0;
-  color: rgb(226 232 240 / 74%);
-  max-width: 68ch;
-}
-
-.guided-current-run-summary__header button {
-  flex: 0 0 auto;
-  border: 1px solid rgb(148 163 184 / 34%);
-  background: rgb(15 23 42 / 72%);
-  color: #e2e8f0;
-}
-
-.guided-current-run-summary__metrics {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-
-.guided-run-summary-metric {
-  border: 1px solid rgb(148 163 184 / 18%);
-  border-radius: 18px;
-  background: rgb(15 23 42 / 62%);
-  padding: 0.85rem;
-}
-
-.guided-run-summary-metric strong {
-  display: block;
-  font-size: 1.35rem;
-  line-height: 1;
-}
-
-.guided-run-summary-metric span {
-  display: block;
-  margin-top: 0.35rem;
-  color: rgb(226 232 240 / 78%);
-  font-size: 0.82rem;
-}
-
-.guided-run-summary-metric small {
-  display: block;
-  margin-top: 0.25rem;
-  color: rgb(148 163 184 / 82%);
-  font-size: 0.76rem;
-}
-
-.guided-systems-touched {
-  border-top: 1px solid rgb(148 163 184 / 18%);
-  padding-top: 1rem;
-}
-
 .guided-run-section-heading {
   display: flex;
   align-items: flex-end;
@@ -114,34 +39,10 @@
   margin-bottom: 0.85rem;
 }
 
-.guided-run-section-heading h4 {
-  margin: 0.2rem 0 0;
-  font-size: 0.98rem;
-}
-
-.guided-run-section-heading p {
-  margin: 0;
-  color: rgb(148 163 184 / 86%);
-  font-size: 0.82rem;
-  max-width: 44ch;
-}
-
 .guided-systems-touched__grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.65rem;
-}
-
-.guided-system-card {
-  border: 1px solid rgb(148 163 184 / 18%);
-  border-radius: 18px;
-  background: rgb(15 23 42 / 45%);
-  padding: 0.8rem;
-}
-
-.guided-system-card--used {
-  border-color: rgb(34 197 94 / 34%);
-  background: rgb(20 83 45 / 22%);
 }
 
 .guided-system-card div {
@@ -149,42 +50,6 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.65rem;
-}
-
-.guided-system-card strong {
-  font-size: 0.88rem;
-}
-
-.guided-system-card span {
-  border: 1px solid rgb(148 163 184 / 24%);
-  border-radius: 999px;
-  color: rgb(226 232 240 / 82%);
-  font-size: 0.68rem;
-  line-height: 1;
-  padding: 0.25rem 0.45rem;
-  text-transform: uppercase;
-}
-
-.guided-system-card--used span {
-  border-color: rgb(34 197 94 / 36%);
-  color: #bbf7d0;
-}
-
-.guided-system-card p {
-  margin: 0.55rem 0 0;
-  color: rgb(226 232 240 / 72%);
-  font-size: 0.8rem;
-  line-height: 1.45;
-}
-
-.guided-system-card small {
-  display: inline-block;
-  margin-top: 0.6rem;
-  border-radius: 999px;
-  background: rgb(15 23 42 / 72%);
-  color: rgb(226 232 240 / 76%);
-  font-size: 0.7rem;
-  padding: 0.25rem 0.45rem;
 }
 
 .guided-what-happened {
@@ -217,11 +82,6 @@
 }
 
 @media (width <= 680px) {
-  .guided-current-run-summary {
-    border-radius: 18px;
-    padding: 1rem;
-  }
-
   .guided-current-run-summary__metrics,
   .guided-systems-touched__grid {
     grid-template-columns: 1fr;
@@ -234,6 +94,8 @@
 
 /* Demo Narrative + Run Summary Polish: compact run summary pass */
 .guided-current-run-summary {
+  border: 1px solid rgb(148 163 184 / 22%);
+  border-radius: 24px;
   background:
     radial-gradient(circle at top right, rgb(34 197 94 / 8%), transparent 34%),
     rgb(255 255 255 / 92%);
@@ -244,6 +106,9 @@
 }
 
 .guided-current-run-summary__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
   align-items: center;
   margin-bottom: 0.85rem;
 }
@@ -255,6 +120,7 @@
 }
 
 .guided-current-run-summary__header p {
+  margin: 0;
   color: rgb(20 36 23 / 72%);
   font-size: 0.88rem;
   line-height: 1.35;
@@ -262,6 +128,8 @@
 }
 
 .guided-current-run-summary__header button {
+  flex: 0 0 auto;
+  border: 1px solid rgb(148 163 184 / 34%);
   background: rgb(247 250 246 / 92%);
   border-color: rgb(39 57 44 / 18%);
   color: #243b29;
@@ -277,6 +145,7 @@
 }
 
 .guided-current-run-summary__metrics {
+  display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.55rem;
   margin-bottom: 0;
@@ -288,6 +157,7 @@
 }
 
 .guided-run-summary-metric {
+  border: 1px solid rgb(148 163 184 / 18%);
   background: rgb(248 250 247 / 96%);
   border-color: rgb(39 57 44 / 12%);
   border-radius: 15px;
@@ -295,16 +165,22 @@
 }
 
 .guided-run-summary-metric strong {
+  display: block;
+  line-height: 1;
   color: #18351f;
   font-size: 1.18rem;
 }
 
 .guided-run-summary-metric span {
+  display: block;
+  margin-top: 0.35rem;
   color: rgb(20 36 23 / 78%);
   font-size: 0.76rem;
 }
 
 .guided-run-summary-metric small {
+  display: block;
+  margin-top: 0.25rem;
   color: rgb(20 36 23 / 54%);
   font-size: 0.7rem;
 }
@@ -354,18 +230,28 @@
 }
 
 .guided-systems-touched {
+  border-top: 1px solid rgb(148 163 184 / 18%);
+  padding-top: 1rem;
   border-top-color: rgb(39 57 44 / 10%);
 }
 
 .guided-run-section-heading h4 {
+  margin: 0.2rem 0 0;
+  font-size: 0.98rem;
   color: #18351f;
 }
 
 .guided-run-section-heading p {
+  margin: 0;
+  font-size: 0.82rem;
+  max-width: 44ch;
   color: rgb(20 36 23 / 58%);
 }
 
 .guided-system-card {
+  border: 1px solid rgb(148 163 184 / 18%);
+  border-radius: 18px;
+  padding: 0.8rem;
   background: rgb(248 250 247 / 90%);
   border-color: rgb(39 57 44 / 12%);
 }
@@ -376,23 +262,39 @@
 }
 
 .guided-system-card strong {
+  font-size: 0.88rem;
   color: #18351f;
 }
 
 .guided-system-card span {
+  border: 1px solid rgb(148 163 184 / 24%);
+  border-radius: 999px;
+  font-size: 0.68rem;
+  line-height: 1;
+  padding: 0.25rem 0.45rem;
+  text-transform: uppercase;
   border-color: rgb(39 57 44 / 18%);
   color: rgb(20 36 23 / 72%);
 }
 
 .guided-system-card--used span {
+  border-color: rgb(34 197 94 / 36%);
   color: #166534;
 }
 
 .guided-system-card p {
+  margin: 0.55rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
   color: rgb(20 36 23 / 68%);
 }
 
 .guided-system-card small {
+  display: inline-block;
+  margin-top: 0.6rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  padding: 0.25rem 0.45rem;
   background: rgb(225 235 222 / 80%);
   color: rgb(20 36 23 / 70%);
 }
@@ -409,6 +311,11 @@
 }
 
 @media (width <= 680px) {
+  .guided-current-run-summary {
+    border-radius: 18px;
+    padding: 1rem;
+  }
+
   .guided-current-run-summary__metrics,
   .guided-current-run-summary__metrics--secondary {
     grid-template-columns: 1fr;
