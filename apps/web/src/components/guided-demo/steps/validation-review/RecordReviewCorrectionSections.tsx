@@ -21,6 +21,7 @@ import { getModelReviewOutcomeLabel } from "../GuidedModelReviewAssistance";
 import {
   applyPriorReviewSuggestionToDraft,
   canResolveReviewItem,
+  canResolveWithPriorReviewSuggestion,
   getActionablePriorReviewSuggestions,
   getAppliedCorrectionSummaries,
   getAppliedSuggestionFieldNames,
@@ -40,6 +41,7 @@ import {
   getVisibleCorrectionFieldsAfterAppliedSuggestions,
   isPriorReviewSuggestionLoadedInDraft,
   isSourceSupportedProductCatalogConfirmation,
+  isStoreInspectionRequired,
   type CorrectionFormFieldName,
   type ModelReviewSuggestion,
   type ReviewLearningSourceMatchField,
@@ -147,15 +149,23 @@ function AppliedCorrectionSummary({
 }
 
 function PriorReviewSuggestionsPanel({
+  canResolveSuggestion,
   draft,
   handledSuggestionIds,
+  isSaving,
+  onAcceptAndResolve,
   onApplySuggestion,
+  onEditSuggestion,
   onRequestManualValue,
   suggestions,
 }: {
+  canResolveSuggestion: (suggestion: PriorReviewLearningSuggestion) => boolean;
   draft: ReviewCorrectionDraft;
   handledSuggestionIds: Set<string>;
+  isSaving: boolean;
+  onAcceptAndResolve: (suggestion: PriorReviewLearningSuggestion) => void;
   onApplySuggestion: (suggestion: PriorReviewLearningSuggestion) => void;
+  onEditSuggestion: (suggestion: PriorReviewLearningSuggestion) => void;
   onRequestManualValue: (suggestion: PriorReviewLearningSuggestion) => void;
   suggestions: PriorReviewLearningSuggestion[];
 }) {
@@ -183,6 +193,7 @@ function PriorReviewSuggestionsPanel({
     draft,
     currentSuggestion,
   );
+  const resolvesReview = canApply && canResolveSuggestion(currentSuggestion);
 
   return (
     <div className="guided-prior-review-suggestions">
@@ -242,18 +253,33 @@ function PriorReviewSuggestionsPanel({
             <div className="guided-prior-review-suggestion__actions">
               <button
                 className="guided-step-primary-action"
-                disabled={!canApply}
-                onClick={() => onApplySuggestion(currentSuggestion)}
+                disabled={!canApply || isSaving}
+                onClick={() =>
+                  resolvesReview
+                    ? onAcceptAndResolve(currentSuggestion)
+                    : onApplySuggestion(currentSuggestion)
+                }
                 type="button"
               >
-                Use prior approved value
+                {isSaving
+                  ? "Resolving…"
+                  : resolvesReview
+                    ? `Accept ${formatDisplayValue(currentSuggestion.suggestedValue)} and resolve`
+                    : "Apply suggestion and continue"}
               </button>
               <button
                 className="guided-review-secondary-action"
-                onClick={() => onRequestManualValue(currentSuggestion)}
+                disabled={isSaving}
+                onClick={() =>
+                  resolvesReview
+                    ? onEditSuggestion(currentSuggestion)
+                    : onRequestManualValue(currentSuggestion)
+                }
                 type="button"
               >
-                Enter different value
+                {resolvesReview
+                  ? "Edit before resolving"
+                  : "Enter different value"}
               </button>
             </div>
           )}
@@ -264,23 +290,39 @@ function PriorReviewSuggestionsPanel({
 }
 
 export function ModelReviewAssistancePanel({
-  onApplySuggestion,
+  canResolveSuggestion,
+  isSaving,
+  onAcceptAndResolve,
+  onEditSuggestion,
+  onRequestManualCorrection,
   outcome,
 }: {
-  onApplySuggestion: ((suggestion: ModelReviewSuggestion) => void) | null;
+  canResolveSuggestion: ((suggestion: ModelReviewSuggestion) => boolean) | null;
+  isSaving: boolean;
+  onAcceptAndResolve: ((suggestion: ModelReviewSuggestion) => void) | null;
+  onEditSuggestion: ((suggestion: ModelReviewSuggestion) => void) | null;
+  onRequestManualCorrection: (() => void) | null;
   outcome: ModelReviewOutcome;
 }) {
   const outcomeModifier = outcome.outcomeType.toLowerCase().replace(/_/g, "-");
+  const heading =
+    outcome.outcomeType === "REPAIR_SUGGESTED"
+      ? "Suggested correction"
+      : outcome.outcomeType === "CANDIDATE_COMPARISON"
+        ? "Product match needs confirmation"
+        : "Insufficient evidence";
 
   return (
     <section
-      aria-label="Model review assistance for this record"
+      aria-label="Review guidance for this record"
       className={`guided-record-model-assistance guided-record-model-assistance--${outcomeModifier}`}
     >
       <div className="guided-record-model-assistance__header">
         <div>
-          <span className="model-route-card__eyebrow">Advisory evidence</span>
-          <strong>Model review assistance</strong>
+          <span className="model-route-card__eyebrow">
+            Model-assisted review
+          </span>
+          <strong>{heading}</strong>
         </div>
 
         <span className="guided-record-model-assistance__outcome">
@@ -323,14 +365,42 @@ export function ModelReviewAssistancePanel({
 
               <p>{suggestion.reason}</p>
 
-              {onApplySuggestion ? (
+              {onEditSuggestion ? (
                 <div className="guided-prior-review-suggestion__actions">
                   <button
                     className="guided-step-primary-action"
-                    onClick={() => onApplySuggestion(suggestion)}
+                    disabled={isSaving}
+                    onClick={() =>
+                      canResolveSuggestion?.(suggestion)
+                        ? onAcceptAndResolve?.(suggestion)
+                        : onEditSuggestion(suggestion)
+                    }
                     type="button"
                   >
-                    Review and save correction
+                    {isSaving
+                      ? "Resolving…"
+                      : canResolveSuggestion?.(suggestion)
+                        ? `Accept ${formatDisplayValue(
+                            suggestion.candidateValue,
+                            {
+                              currency: suggestion.fieldName === "tradeInValue",
+                            },
+                          )} and resolve`
+                        : "Apply suggestion and continue"}
+                  </button>
+                  <button
+                    className="guided-review-secondary-action"
+                    disabled={isSaving}
+                    onClick={() =>
+                      canResolveSuggestion?.(suggestion)
+                        ? onEditSuggestion(suggestion)
+                        : onRequestManualCorrection?.()
+                    }
+                    type="button"
+                  >
+                    {canResolveSuggestion?.(suggestion)
+                      ? "Edit before resolving"
+                      : "Enter different value"}
                   </button>
                 </div>
               ) : null}
@@ -340,14 +410,17 @@ export function ModelReviewAssistancePanel({
       ) : null}
 
       {outcome.outcomeType === "CANDIDATE_COMPARISON" ? (
-        <div className="guided-record-model-assistance__candidate-list">
-          <strong>Supplied product candidates</strong>
+        <details className="guided-record-model-assistance__candidate-list">
+          <summary>
+            Technical candidate references ({outcome.candidateProductIds.length}
+            )
+          </summary>
           <div>
             {outcome.candidateProductIds.map((candidateId) => (
               <code key={candidateId}>{candidateId}</code>
             ))}
           </div>
-        </div>
+        </details>
       ) : null}
 
       {outcome.outcomeType === "NO_SAFE_REPAIR" ? (
@@ -389,6 +462,7 @@ export function RecordCorrectionPanel({
   draft,
   isEditing,
   onDraftChange,
+  onRouteForInspection,
   onStartEditing,
   onCancelEditing,
   onSubmit,
@@ -398,9 +472,10 @@ export function RecordCorrectionPanel({
   draft: ReviewCorrectionDraft;
   isEditing: boolean;
   onDraftChange: (draft: ReviewCorrectionDraft) => void;
+  onRouteForInspection: () => void;
   onStartEditing: () => void;
   onCancelEditing: () => void;
-  onSubmit: () => void;
+  onSubmit: (draftOverride?: ReviewCorrectionDraft) => void;
 }) {
   const [handledSuggestionIds, setHandledSuggestionIds] = useState<Set<string>>(
     () => new Set(),
@@ -441,6 +516,33 @@ export function RecordCorrectionPanel({
     }
   }
 
+  function handleEditSuggestion(suggestion: PriorReviewLearningSuggestion) {
+    onDraftChange(applyPriorReviewSuggestionToDraft(draft, suggestion));
+    markSuggestionHandled(suggestion);
+
+    if (!isEditing) {
+      onStartEditing();
+    }
+  }
+
+  function handleAcceptSuggestion(suggestion: PriorReviewLearningSuggestion) {
+    if (!canResolveWithPriorReviewSuggestion(card, draft, suggestion)) {
+      return;
+    }
+
+    const nextDraft = applyPriorReviewSuggestionToDraft(draft, suggestion);
+
+    onDraftChange(nextDraft);
+    markSuggestionHandled(suggestion);
+    setAppliedSuggestionIds((current) => {
+      const next = new Set(current);
+      next.add(getPriorReviewSuggestionKey(suggestion));
+
+      return next;
+    });
+    onSubmit(nextDraft);
+  }
+
   if (!card.reviewItem) {
     return (
       <div className="guided-record-correction-panel guided-record-correction-panel--muted">
@@ -469,11 +571,13 @@ export function RecordCorrectionPanel({
     appliedSuggestionIds,
   );
 
-  for (const fieldName of getLoadedPriorReviewSuggestionFieldNames(
-    draft,
-    card.priorReviewSuggestions,
-  )) {
-    appliedSuggestionFieldNames.add(fieldName);
+  if (!isEditing) {
+    for (const fieldName of getLoadedPriorReviewSuggestionFieldNames(
+      draft,
+      card.priorReviewSuggestions,
+    )) {
+      appliedSuggestionFieldNames.add(fieldName);
+    }
   }
 
   const visibleFields = getVisibleCorrectionFieldsAfterAppliedSuggestions(
@@ -493,6 +597,189 @@ export function RecordCorrectionPanel({
     ).length > 0;
   const hasPriorReviewSuggestions =
     getActionablePriorReviewSuggestions(card.priorReviewSuggestions).length > 0;
+  const isSaving = activeReviewQueueItemId === card.reviewItem.id;
+  const storeInspectionRequired = isStoreInspectionRequired(card);
+  const inspectionRequested =
+    card.reviewItem.status === "IN_REVIEW" &&
+    card.reviewItem.reviewerNotes
+      ?.toLowerCase()
+      .includes("store inspection required");
+
+  function handleCatalogCandidate(candidateProductLine: string) {
+    const nextDraft = {
+      ...draft,
+      productLine: candidateProductLine,
+    };
+
+    onDraftChange(nextDraft);
+
+    if (getBlockingCorrectionFields(card, nextDraft).length === 0) {
+      onSubmit(nextDraft);
+      return;
+    }
+
+    if (!isEditing) {
+      onStartEditing();
+    }
+  }
+
+  if (!isEditing && storeInspectionRequired) {
+    const verifiedBrand = getCurrentValueForField(card, "brand");
+    const verifiedCategory = getCurrentValueForField(card, "category");
+    const inspectionFields = [
+      "productLine",
+      "shaftFlex",
+      "conditionGrade",
+      "demoValue",
+    ].filter((fieldName) =>
+      visibleFields.includes(fieldName as CorrectionFormFieldName),
+    );
+
+    return (
+      <div className="guided-record-correction-panel guided-review-decision-panel guided-review-decision-panel--inspection">
+        <div className="guided-review-decision-panel__header">
+          <div>
+            <strong>
+              {inspectionRequested
+                ? "Store inspection requested"
+                : "Store inspection required"}
+            </strong>
+            <p>
+              The source confirms {verifiedBrand} · {verifiedCategory}, but it
+              does not provide enough evidence to approve a catalog product or
+              the remaining trade-in details.
+            </p>
+          </div>
+          <span className="guided-review-decision-panel__status">
+            {inspectionRequested ? "In review" : "Evidence insufficient"}
+          </span>
+        </div>
+
+        <dl className="guided-review-decision-summary">
+          <div>
+            <dt>Verified from source</dt>
+            <dd>
+              {verifiedBrand} · {verifiedCategory}
+            </dd>
+          </div>
+          <div>
+            <dt>Still needs verification</dt>
+            <dd>{inspectionFields.map(getCorrectionFieldLabel).join(", ")}</dd>
+          </div>
+        </dl>
+
+        <p className="guided-review-decision-panel__guidance">
+          Do not infer these values from the current record. Route the item for
+          physical inspection, or enter details only after they have been
+          verified from an approved source.
+        </p>
+
+        <div className="guided-review-decision-panel__actions">
+          {inspectionRequested ? null : (
+            <button
+              className="guided-step-primary-action"
+              disabled={isSaving}
+              onClick={onRouteForInspection}
+              type="button"
+            >
+              {isSaving ? "Requesting inspection…" : "Send to store inspection"}
+            </button>
+          )}
+          <button
+            className="guided-review-secondary-action"
+            disabled={isSaving}
+            onClick={onStartEditing}
+            type="button"
+          >
+            Enter verified details
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isEditing && isCatalogIdentityConfirmation) {
+    const currentProductLine = getCurrentValueForField(card, "productLine");
+
+    return (
+      <div className="guided-record-correction-panel guided-review-decision-panel guided-review-decision-panel--catalog">
+        <div className="guided-review-decision-panel__header">
+          <div>
+            <strong>Choose the catalog product</strong>
+            <p>
+              The source identifies {currentProductLine}, but not the exact
+              catalog generation. Confirm only a candidate supported by the
+              available evidence.
+            </p>
+          </div>
+          <span className="guided-review-decision-panel__status">
+            Human decision
+          </span>
+        </div>
+
+        <div className="guided-review-source-value">
+          <span>Source product text</span>
+          <strong>{currentProductLine}</strong>
+        </div>
+
+        {inventoryProductLineCandidates.length > 0 ? (
+          <section
+            aria-label="Catalog identity candidates"
+            className="guided-inventory-candidate-suggestions"
+          >
+            <div className="guided-inventory-candidate-suggestions__header">
+              <strong>Matching catalog candidates</strong>
+              <p>Selecting a candidate records the reviewer decision.</p>
+            </div>
+            <div className="guided-inventory-candidate-suggestions__list">
+              {inventoryProductLineCandidates.map((candidate) => (
+                <button
+                  className="guided-inventory-candidate"
+                  disabled={isSaving}
+                  key={
+                    candidate.productId ??
+                    candidate.sku ??
+                    candidate.productLine
+                  }
+                  onClick={() => handleCatalogCandidate(candidate.productLine)}
+                  type="button"
+                >
+                  <span>Confirm {candidate.productLine} and resolve</span>
+                  <small>
+                    {Math.round(candidate.confidence * 100)}% catalog match
+                    {candidate.reason ? ` · ${candidate.reason}` : ""}
+                  </small>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : (
+          <p className="guided-review-decision-panel__guidance">
+            No eligible catalog candidates were returned for this record.
+          </p>
+        )}
+
+        <div className="guided-review-decision-panel__actions">
+          <button
+            className="guided-review-secondary-action"
+            disabled={isSaving}
+            onClick={onStartEditing}
+            type="button"
+          >
+            Enter another product
+          </button>
+          <button
+            className="guided-review-secondary-action"
+            disabled={isSaving}
+            onClick={onRouteForInspection}
+            type="button"
+          >
+            Cannot determine · send to inspection
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!isEditing) {
     return (
@@ -516,9 +803,15 @@ export function RecordCorrectionPanel({
           />
         )}
         <PriorReviewSuggestionsPanel
+          canResolveSuggestion={(suggestion) =>
+            canResolveWithPriorReviewSuggestion(card, draft, suggestion)
+          }
           draft={draft}
           handledSuggestionIds={handledSuggestionIds}
+          isSaving={isSaving}
+          onAcceptAndResolve={handleAcceptSuggestion}
           onApplySuggestion={handleApplySuggestion}
+          onEditSuggestion={handleEditSuggestion}
           onRequestManualValue={handleRequestManualValue}
           suggestions={card.priorReviewSuggestions}
         />
@@ -539,8 +832,12 @@ export function RecordCorrectionPanel({
     );
   }
 
-  const isSaving = activeReviewQueueItemId === card.reviewItem.id;
   const blockingCorrectionFields = getBlockingCorrectionFields(card, draft);
+  const displayedBlockingCorrectionFields = storeInspectionRequired
+    ? (
+        ["productLine", "shaftFlex", "conditionGrade", "demoValue"] as const
+      ).filter((fieldName) => blockingCorrectionFields.includes(fieldName))
+    : blockingCorrectionFields;
 
   if (hasOpenPriorReviewSuggestions) {
     return (
@@ -559,9 +856,15 @@ export function RecordCorrectionPanel({
         </div>
 
         <PriorReviewSuggestionsPanel
+          canResolveSuggestion={(suggestion) =>
+            canResolveWithPriorReviewSuggestion(card, draft, suggestion)
+          }
           draft={draft}
           handledSuggestionIds={handledSuggestionIds}
+          isSaving={isSaving}
+          onAcceptAndResolve={handleAcceptSuggestion}
           onApplySuggestion={handleApplySuggestion}
+          onEditSuggestion={handleEditSuggestion}
           onRequestManualValue={handleRequestManualValue}
           suggestions={card.priorReviewSuggestions}
         />
@@ -574,14 +877,18 @@ export function RecordCorrectionPanel({
       <div className="guided-record-correction-form__header">
         <div>
           <strong>
-            {isCatalogIdentityConfirmation
-              ? "Confirm catalog identity"
-              : "Confirm correction"}
+            {storeInspectionRequired
+              ? "Enter verified inspection details"
+              : isCatalogIdentityConfirmation
+                ? "Enter another catalog product"
+                : "Confirm correction"}
           </strong>
           <p>
-            {isCatalogIdentityConfirmation
-              ? "Keep the source-supported product line or select a verified catalog candidate, then resolve."
-              : "Review the corrected value, add a note if needed, then resolve."}
+            {storeInspectionRequired
+              ? "Use only details verified from the physical item or another approved source."
+              : isCatalogIdentityConfirmation
+                ? "Enter a catalog product only when the available evidence verifies it."
+                : "Review the corrected value, add a note if needed, then resolve."}
           </p>
         </div>
         <button disabled={isSaving} onClick={onCancelEditing} type="button">
@@ -606,10 +913,17 @@ export function RecordCorrectionPanel({
           className="guided-correction-focus guided-correction-focus--warning"
           role="alert"
         >
-          <strong>Complete the required correction before resolving</strong>
+          <strong>
+            {storeInspectionRequired
+              ? "Complete the verified inspection details before resolving"
+              : "Complete the required correction before resolving"}
+          </strong>
           <p>
             Choose or enter a corrected value for:{" "}
-            {blockingCorrectionFields.map(getCorrectionFieldLabel).join(", ")}.
+            {displayedBlockingCorrectionFields
+              .map(getCorrectionFieldLabel)
+              .join(", ")}
+            .
           </p>
         </div>
       ) : null}
@@ -815,12 +1129,14 @@ export function RecordCorrectionPanel({
           </dl>
         </details>
       ) : null}
-      <SourceTextMatchEditor
-        appliedSuggestionFieldNames={appliedSuggestionFieldNames}
-        card={card}
-        draft={draft}
-        onDraftChange={onDraftChange}
-      />
+      {storeInspectionRequired ? null : (
+        <SourceTextMatchEditor
+          appliedSuggestionFieldNames={appliedSuggestionFieldNames}
+          card={card}
+          draft={draft}
+          onDraftChange={onDraftChange}
+        />
+      )}
 
       {visibleFields.includes("demoValue") ||
       appliedSuggestionFieldNames.has("demoValue") ? (
@@ -855,10 +1171,14 @@ export function RecordCorrectionPanel({
         <button
           className="guided-step-primary-action"
           disabled={isSaving || blockingCorrectionFields.length > 0}
-          onClick={onSubmit}
+          onClick={() => onSubmit()}
           type="button"
         >
-          {isSaving ? "Saving correction…" : "Save correction and resolve"}
+          {isSaving
+            ? "Saving correction…"
+            : storeInspectionRequired
+              ? "Save verified details and resolve"
+              : "Save correction and resolve"}
         </button>
       </div>
     </div>

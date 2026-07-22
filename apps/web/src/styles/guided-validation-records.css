@@ -953,7 +953,8 @@
   gap: 0.45rem;
 }
 
-.guided-record-correction-form .guided-inventory-candidate {
+.guided-record-correction-form .guided-inventory-candidate,
+.guided-record-correction-panel .guided-inventory-candidate {
   display: grid;
   justify-items: start;
   gap: 0.15rem;
@@ -969,7 +970,9 @@
 }
 
 .guided-record-correction-form .guided-inventory-candidate:hover,
-.guided-record-correction-form .guided-inventory-candidate:focus-visible {
+.guided-record-correction-form .guided-inventory-candidate:focus-visible,
+.guided-record-correction-panel .guided-inventory-candidate:hover,
+.guided-record-correction-panel .guided-inventory-candidate:focus-visible {
   border-color: rgb(43 78 52 / 58%);
   background: rgb(240 253 244 / 90%);
 }
@@ -989,6 +992,127 @@
   font-size: 0.7rem;
   line-height: 1.35;
   opacity: 0.72;
+}
+
+/* Focused decisions for catalog ambiguity and insufficient source evidence */
+.guided-record-correction-panel.guided-review-decision-panel {
+  align-items: stretch;
+  grid-template-columns: 1fr;
+  gap: 0.8rem;
+}
+
+.guided-review-decision-panel--catalog {
+  border-color: rgb(37 99 235 / 20%);
+  background: rgb(239 246 255 / 68%);
+}
+
+.guided-review-decision-panel--inspection {
+  border-color: rgb(180 83 9 / 24%);
+  background: rgb(255 251 235 / 76%);
+}
+
+.guided-review-decision-panel__header,
+.guided-review-decision-panel__actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.guided-review-decision-panel__status {
+  flex: 0 0 auto;
+  border: 1px solid rgb(15 23 42 / 10%);
+  border-radius: 999px;
+  padding: 0.3rem 0.5rem;
+  background: rgb(255 255 255 / 74%);
+  color: rgb(20 33 22 / 70%);
+  font-size: 0.65rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.guided-review-decision-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.guided-review-decision-summary > div,
+.guided-review-source-value {
+  padding: 0.65rem;
+  border: 1px solid rgb(15 23 42 / 10%);
+  border-radius: 0.7rem;
+  background: rgb(255 255 255 / 72%);
+}
+
+.guided-review-decision-summary dt,
+.guided-review-source-value span {
+  color: rgb(20 33 22 / 58%);
+  font-size: 0.67rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.guided-review-decision-summary dd {
+  margin: 0.2rem 0 0;
+  font-weight: 800;
+}
+
+.guided-review-source-value {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.guided-review-decision-panel__guidance {
+  padding: 0.65rem 0.7rem;
+  border-left: 3px solid rgb(180 83 9 / 52%);
+  background: rgb(255 255 255 / 48%);
+}
+
+.guided-review-decision-panel__actions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.guided-review-decision-panel__actions .guided-review-secondary-action {
+  border: 1px solid rgb(42 62 41 / 24%);
+  background: rgb(255 255 255 / 76%);
+  color: #213522;
+  box-shadow: none;
+}
+
+.guided-review-decision-panel__actions
+  .guided-review-secondary-action:hover:not(:disabled),
+.guided-review-decision-panel__actions
+  .guided-review-secondary-action:focus-visible {
+  border-color: rgb(42 62 41 / 42%);
+  background: rgb(248 250 246 / 94%);
+  color: #213522;
+  box-shadow: none;
+}
+
+.guided-review-decision-panel--catalog .guided-inventory-candidate {
+  border-color: rgb(37 99 235 / 28%);
+  box-shadow: 0 1px 0 rgb(37 99 235 / 5%);
+}
+
+.guided-review-decision-panel--catalog .guided-inventory-candidate:hover,
+.guided-review-decision-panel--catalog
+  .guided-inventory-candidate:focus-visible {
+  border-color: rgb(37 99 235 / 52%);
+  background: rgb(239 246 255 / 96%);
+}
+
+@media (width <= 640px) {
+  .guided-review-decision-panel__header,
+  .guided-review-decision-panel__actions,
+  .guided-review-decision-summary {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (width <= 640px) {
@@ -1232,6 +1356,11 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
+}
+
+.guided-record-model-assistance__candidate-list summary {
+  cursor: pointer;
+  font-weight: 800;
 }
 
 .guided-record-model-assistance code {

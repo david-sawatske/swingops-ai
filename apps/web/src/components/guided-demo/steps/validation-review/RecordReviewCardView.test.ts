@@ -4,12 +4,19 @@ import {
   buildCorrectionDraft,
   buildLearningEvents,
   canApplyModelReviewSuggestion,
+  canResolveWithModelReviewSuggestion,
+  canResolveWithPriorReviewSuggestion,
   getAppliedCorrectionSummaries,
   getBlockingCorrectionFields,
   getInventoryProductLineCandidates,
   getRecordCardSummary,
+  isSourceSupportedProductCatalogConfirmation,
+  isStoreInspectionRequired,
 } from "./RecordReviewCardView";
-import type { RecordReviewCard } from "./validationReviewTypes";
+import type {
+  PriorReviewLearningSuggestion,
+  RecordReviewCard,
+} from "./validationReviewTypes";
 
 function buildReviewCard(
   overrides: Partial<RecordReviewCard> = {},
@@ -260,6 +267,28 @@ describe("buildCorrectionDraft", () => {
     ).toEqual(["TSR2", "TSR3"]);
   });
 
+  it("uses a candidate-comparison outcome to open catalog identity selection", () => {
+    const card = buildReviewCard({
+      parsedRecord: {
+        brand: "Titleist",
+        productLine: "TSR",
+        category: "FAIRWAY_WOOD",
+      },
+      modelReviewOutcome: {
+        outcomeType: "CANDIDATE_COMPARISON",
+        recordId: "parsed-item-1",
+        summary: "Multiple catalog products need reviewer confirmation.",
+        evidenceIds: ["parsed-item-1:inventory"],
+        reviewerQuestion: "Which catalog product matches the source?",
+        candidateProductIds: ["tsr2", "tsr3"],
+      },
+      missingFields: ["productLine"],
+      reviewReasons: ["model uncertain"],
+    });
+
+    expect(isSourceSupportedProductCatalogConfirmation(card)).toBe(true);
+  });
+
   it("requires an ambiguous product line to be replaced before resolution", () => {
     const card = buildReviewCard({
       parsedRecord: {
@@ -416,6 +445,69 @@ describe("buildCorrectionDraft", () => {
     ).toEqual([]);
   });
 
+  it("routes placeholder product identities with multiple unknown fields to inspection", () => {
+    const card = buildReviewCard({
+      label: "Callaway · mystery driver · Driver",
+      parsedRecord: {
+        brand: "Callaway",
+        productLine: "mystery driver",
+        category: "DRIVER",
+      },
+      reviewItem: {
+        id: "review-callaway-inspection",
+        workflowRunId: "workflow-1",
+        intakeItemId: "intake-item-callaway",
+        status: "OPEN",
+        golfClubId: null,
+        reason: "MISSING_REQUIRED_FIELDS",
+        resolvedAt: null,
+        proposedGolfClubJson: {
+          brand: "Callaway",
+          productLine: "mystery driver",
+          category: "DRIVER",
+          missingFields: ["shaftFlex", "conditionGrade", "tradeInValue"],
+        },
+        originalText:
+          "Callaway mystery driver shaft unknown condition unclear value pending store 207",
+        reviewerNotes: null,
+        createdAt: "2026-07-18T00:00:00.000Z",
+        updatedAt: "2026-07-18T00:00:00.000Z",
+      },
+      modelReviewOutcome: {
+        outcomeType: "NO_SAFE_REPAIR",
+        recordId: "parsed_item_5",
+        summary:
+          "Product unresolved with missing shaft flex, condition, and value.",
+        evidenceIds: ["parsed_item_5:parser"],
+        reviewerQuestion:
+          "Which values can be verified from an approved source?",
+        reasonCodes: [
+          "LOW_CONFIDENCE",
+          "MISSING_REQUIRED_FIELDS",
+          "PRODUCT_UNRESOLVED",
+        ],
+      },
+      sourceEvidence:
+        "Callaway mystery driver shaft unknown condition unclear value pending store 207",
+      missingFields: ["shaftFlex", "conditionGrade", "tradeInValue"],
+      reviewReasons: [
+        "Product resolution is unresolved.",
+        "Missing required fields.",
+      ],
+    });
+
+    const draft = buildCorrectionDraft(card);
+
+    expect(isStoreInspectionRequired(card)).toBe(true);
+    expect(getRecordCardSummary(card)).toBe(
+      "Store inspection required: insufficient source data.",
+    );
+    expect(draft.productLine).toBe("");
+    expect(new Set(getBlockingCorrectionFields(card, draft))).toEqual(
+      new Set(["productLine", "shaftFlex", "conditionGrade", "demoValue"]),
+    );
+  });
+
   it("treats a source-supported unresolved product as catalog confirmation instead of a missing-field correction", () => {
     const card = buildReviewCard({
       label: "PING G430 · Driver",
@@ -539,6 +631,33 @@ describe("model suggestion action availability", () => {
       },
     ],
   };
+  const shaftSuggestion = repairOutcome.suggestions[0];
+
+  function buildShaftOnlyReviewCard(overrides: Partial<RecordReviewCard> = {}) {
+    const baseCard = buildReviewCard();
+
+    return buildReviewCard({
+      parsedRecord: {
+        brand: "PING",
+        productLine: "G425",
+        category: "IRON_SET",
+        conditionGrade: "8.0 Average",
+        tradeInValue: 100,
+      },
+      reviewItem: baseCard.reviewItem
+        ? {
+            ...baseCard.reviewItem,
+            reason: "Shaft flex needs reviewer confirmation.",
+          }
+        : null,
+      modelReviewOutcome: repairOutcome,
+      sourceEvidence:
+        "TaylorMade Stealth 2 driver shaft firm condition 8.0 Average trade value $100",
+      missingFields: ["shaftFlex"],
+      reviewReasons: ["Shaft flex needs reviewer confirmation."],
+      ...overrides,
+    });
+  }
 
   it("allows the model suggestion action for active review work", () => {
     expect(
@@ -590,5 +709,64 @@ describe("model suggestion action availability", () => {
           : null,
       }),
     ).toBe(false);
+  });
+
+  it("allows one-click resolution when the model suggestion completes the review", () => {
+    const card = buildShaftOnlyReviewCard();
+
+    expect(
+      canResolveWithModelReviewSuggestion(
+        card,
+        buildCorrectionDraft(card),
+        shaftSuggestion,
+      ),
+    ).toBe(true);
+  });
+
+  it("continues into editing when the model suggestion leaves required fields unresolved", () => {
+    const card = buildReviewCard({
+      modelReviewOutcome: repairOutcome,
+    });
+
+    expect(
+      canResolveWithModelReviewSuggestion(
+        card,
+        buildCorrectionDraft(card),
+        shaftSuggestion,
+      ),
+    ).toBe(false);
+  });
+
+  it("allows one-click resolution when a prior-approved value completes the review", () => {
+    const priorSuggestion: PriorReviewLearningSuggestion = {
+      fieldName: "shaftFlex",
+      rawTextMatch: "shaft firm",
+      suggestedValue: "STIFF",
+      previousCorrectedValue: "STIFF",
+      proposedValue: null,
+      evidenceText: "TaylorMade Stealth 2 driver shaft firm",
+      confidence: 0.94,
+      strength: "STRONG",
+      confidenceImpact: "Strong prior review match.",
+      reasonCodes: ["EXACT_SOURCE_PHRASE_MATCH"],
+      summary: "A prior approved correction matches this source phrase.",
+      whySuggestionExists:
+        "A reviewer previously approved Stiff for the same phrase.",
+      sourceLearningEventId: "learning-event-1",
+      status: "SUGGESTED",
+      createdAt: "2026-07-04T00:00:00.000Z",
+    };
+    const card = buildShaftOnlyReviewCard({
+      modelReviewOutcome: null,
+      priorReviewSuggestions: [priorSuggestion],
+    });
+
+    expect(
+      canResolveWithPriorReviewSuggestion(
+        card,
+        buildCorrectionDraft(card),
+        priorSuggestion,
+      ),
+    ).toBe(true);
   });
 });

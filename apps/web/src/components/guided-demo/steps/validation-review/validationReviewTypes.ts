@@ -19,6 +19,11 @@ export type GuidedValidationReviewStepProps = {
     reviewQueueItemId: string,
     reviewerNotes: string,
   ) => void;
+  onRouteReviewQueueItemForInspection: (input: {
+    reviewQueueItemId: string;
+    workflowRunId?: string | null;
+    intakeBatchId?: string | null;
+  }) => void;
   onResolveReviewQueueItemWithCorrections: (input: {
     reviewQueueItemId: string;
     request: ResolveReviewQueueItemWithCorrectionsRequest;

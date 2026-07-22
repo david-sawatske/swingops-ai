@@ -254,6 +254,53 @@ export function getUnresolvedMissingFields(card: RecordReviewCard) {
   });
 }
 
+function isPlaceholderProductLine(card: RecordReviewCard, productLine: string) {
+  const normalizedProductLine = normalizeComparable(productLine);
+  const normalizedCategory = normalizeComparable(
+    getFirstString(card.parsedRecord, ["category"]) ??
+      getFirstString(getProposedRecord(card.reviewItem), ["category"]) ??
+      "",
+  );
+
+  return (
+    !normalizedProductLine ||
+    normalizedProductLine === normalizedCategory ||
+    [
+      "mystery",
+      "unknown",
+      "unclear",
+      "pending",
+      "unspecified",
+      "notprovided",
+      "tbd",
+    ].some((placeholder) => normalizedProductLine.includes(placeholder))
+  );
+}
+
+export function isStoreInspectionRequired(card: RecordReviewCard) {
+  if (card.modelReviewOutcome?.outcomeType !== "NO_SAFE_REPAIR") {
+    return false;
+  }
+
+  const currentProductLine = getCurrentValueForField(
+    card,
+    "productLine",
+  ).trim();
+  const normalizedReasonCodes =
+    card.modelReviewOutcome.reasonCodes.map(normalizeComparable);
+  const lacksRequiredEvidence = normalizedReasonCodes.some((reasonCode) =>
+    ["missingrequiredfields", "lowconfidence", "uncertaintynotes"].includes(
+      reasonCode,
+    ),
+  );
+
+  return (
+    lacksRequiredEvidence &&
+    (isPlaceholderProductLine(card, currentProductLine) ||
+      getUnresolvedMissingFields(card).length >= 2)
+  );
+}
+
 export function isSourceSupportedProductCatalogConfirmation(
   card: RecordReviewCard,
 ) {
@@ -262,7 +309,11 @@ export function isSourceSupportedProductCatalogConfirmation(
     "productLine",
   ).trim();
 
-  if (!currentProductLine || currentProductLine === "—") {
+  if (
+    !currentProductLine ||
+    currentProductLine === "—" ||
+    isPlaceholderProductLine(card, currentProductLine)
+  ) {
     return false;
   }
 
@@ -272,6 +323,10 @@ export function isSourceSupportedProductCatalogConfirmation(
 
   if (productLineIsMissing) {
     return false;
+  }
+
+  if (card.modelReviewOutcome?.outcomeType === "CANDIDATE_COMPARISON") {
+    return true;
   }
 
   const modelReasonCodes =
@@ -831,6 +886,7 @@ export function getBlockingCorrectionFields(
     const currentValue = getCurrentValueForField(card, fieldName).trim();
     if (
       isSourceSupportedProductCatalogConfirmation(card) &&
+      card.modelReviewOutcome?.outcomeType !== "CANDIDATE_COMPARISON" &&
       normalizeComparable(correctedValue) === normalizeComparable(currentValue)
     ) {
       return false;
@@ -858,6 +914,10 @@ export function getRecordCardSummary(card: RecordReviewCard) {
     if (card.status === "ready") {
       return "No action required. This record passed the current review gates.";
     }
+  }
+
+  if (isStoreInspectionRequired(card)) {
+    return "Store inspection required: insufficient source data.";
   }
 
   if (isSourceSupportedProductCatalogConfirmation(card)) {
@@ -1054,6 +1114,46 @@ export function applyModelReviewSuggestionToDraft(
     suggestedValue: suggestion.candidateValue,
     sourcePhrase: suggestion.sourcePhrase,
   });
+}
+
+function suggestionDraftCanResolveReview(
+  card: RecordReviewCard,
+  draft: ReviewCorrectionDraft,
+) {
+  return (
+    getBlockingCorrectionFields(card, draft).length === 0 &&
+    getOpenPriorReviewSuggestions(
+      card.priorReviewSuggestions,
+      new Set<string>(),
+      draft,
+    ).length === 0
+  );
+}
+
+export function canResolveWithModelReviewSuggestion(
+  card: RecordReviewCard,
+  draft: ReviewCorrectionDraft,
+  suggestion: ModelReviewSuggestion,
+) {
+  if (!canApplyModelReviewSuggestion(card)) return false;
+
+  return suggestionDraftCanResolveReview(
+    card,
+    applyModelReviewSuggestionToDraft(draft, suggestion),
+  );
+}
+
+export function canResolveWithPriorReviewSuggestion(
+  card: RecordReviewCard,
+  draft: ReviewCorrectionDraft,
+  suggestion: PriorReviewLearningSuggestion,
+) {
+  if (!cardHasActiveCorrectionWork(card)) return false;
+
+  return suggestionDraftCanResolveReview(
+    card,
+    applyPriorReviewSuggestionToDraft(draft, suggestion),
+  );
 }
 
 export function isPriorReviewSuggestionLoadedInDraft(

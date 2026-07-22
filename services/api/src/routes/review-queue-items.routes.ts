@@ -719,6 +719,78 @@ export async function reviewQueueItemRoutes(
   });
 
   app.post(
+    "/review-queue-items/:id/route-for-inspection",
+    async (request, reply) => {
+      const parsedParams = reviewQueueItemParamsSchema.safeParse(
+        request.params,
+      );
+      const parsedBody = reviewQueueActionBodySchema.safeParse(
+        request.body ?? {},
+      );
+
+      if (!parsedParams.success) {
+        return reply.status(400).send({
+          error: "Invalid review queue item id",
+          details: parsedParams.error.flatten(),
+        });
+      }
+
+      if (!parsedBody.success) {
+        return reply.status(400).send({
+          error: "Invalid store inspection request",
+          details: parsedBody.error.flatten(),
+        });
+      }
+
+      const existingItem = await prisma.reviewQueueItem.findUnique({
+        where: {
+          id: parsedParams.data.id,
+        },
+      });
+
+      if (!existingItem) {
+        return reply.status(404).send({
+          error: "Review queue item not found",
+        });
+      }
+
+      if (
+        existingItem.status !== "OPEN" &&
+        existingItem.status !== "IN_REVIEW"
+      ) {
+        return reply.status(400).send({
+          error: "Only active review work can be routed for inspection",
+        });
+      }
+
+      const reviewQueueItem = await prisma.reviewQueueItem.update({
+        where: {
+          id: existingItem.id,
+        },
+        data: {
+          status: "IN_REVIEW",
+          ...(parsedBody.data.reviewerNotes === undefined
+            ? {}
+            : { reviewerNotes: parsedBody.data.reviewerNotes }),
+          resolvedAt: null,
+        },
+      });
+      const workflowRun = reviewQueueItem.workflowRunId
+        ? await prisma.workflowRun.findUnique({
+            where: {
+              id: reviewQueueItem.workflowRunId,
+            },
+          })
+        : null;
+
+      return {
+        reviewQueueItem: serializeReviewQueueItem(reviewQueueItem),
+        workflowRun: workflowRun ? serializeWorkflowRun(workflowRun) : null,
+      };
+    },
+  );
+
+  app.post(
     "/review-queue-items/:id/resolve-with-corrections",
     async (request, reply) => {
       const parsedParams = reviewQueueItemParamsSchema.safeParse(

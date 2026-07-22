@@ -56,7 +56,7 @@ type GuidedDemoPathPageProps = {
   ) => void;
   onReviewQueueItemAction: (input: {
     reviewQueueItemId: string;
-    action: "resolve" | "dismiss";
+    action: "resolve" | "dismiss" | "inspect";
     workflowRunId?: string | null;
     intakeBatchId?: string | null;
   }) => void;
@@ -110,7 +110,6 @@ export function GuidedDemoPathPage({
   void workflowRuns;
   void openReviewQueueItemCount;
   void toolCallLogCount;
-  void onReviewQueueItemAction;
 
   const currentTradeInWorkflowRunId =
     tradeInResult?.persisted.workflowRunId ?? null;
@@ -304,6 +303,12 @@ export function GuidedDemoPathPage({
                 onContinue={() => setActiveStep("FINAL_RUN_REPORT")}
                 onOpenReviewQueue={() => onViewChange("REVIEW_QUEUE")}
                 onReviewQueueNotesChange={onReviewQueueNotesChange}
+                onRouteReviewQueueItemForInspection={(input) =>
+                  onReviewQueueItemAction({
+                    ...input,
+                    action: "inspect",
+                  })
+                }
                 onResolveReviewQueueItemWithCorrections={
                   onResolveReviewQueueItemWithCorrections
                 }

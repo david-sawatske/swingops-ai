@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { PassedGatesSection } from "./PassedGatesSection";
 import {
@@ -27,6 +27,7 @@ export function GuidedValidationReviewStep({
   onContinue,
   onOpenReviewQueue,
   onReviewQueueNotesChange,
+  onRouteReviewQueueItemForInspection,
   onResolveReviewQueueItemWithCorrections,
   result,
   reviewQueueNotesById,
@@ -38,6 +39,7 @@ export function GuidedValidationReviewStep({
     correctionDraftsByReviewQueueItemId,
     setCorrectionDraftsByReviewQueueItemId,
   ] = useState<Record<string, ReviewCorrectionDraft>>({});
+  const reviewRecordsSectionRef = useRef<HTMLElement | null>(null);
 
   const validationChecks = result?.validationChecks ?? [];
   const retryEvents = result?.retryEvents ?? [];
@@ -82,6 +84,25 @@ export function GuidedValidationReviewStep({
     unmappedActionableValidationChecks.length +
     unmappedActionableRetryEvents.length;
   const reviewItemsCreatedCount = result?.reviewQueueItemsCreated.length ?? 0;
+  const previousResolvedRecordCountRef = useRef(recordsResolvedByReview.length);
+
+  useEffect(() => {
+    const previousResolvedRecordCount = previousResolvedRecordCountRef.current;
+    const nextResolvedRecordCount = recordsResolvedByReview.length;
+
+    previousResolvedRecordCountRef.current = nextResolvedRecordCount;
+
+    if (nextResolvedRecordCount <= previousResolvedRecordCount) {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      reviewRecordsSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }, [recordsResolvedByReview.length]);
 
   function getDraftForCard(card: RecordReviewCard) {
     if (!card.reviewItem) {
@@ -127,14 +148,17 @@ export function GuidedValidationReviewStep({
     setEditingReviewQueueItemId(card.reviewItem.id);
   }
 
-  function submitCorrectionForCard(card: RecordReviewCard) {
+  function submitCorrectionForCard(
+    card: RecordReviewCard,
+    draftOverride?: ReviewCorrectionDraft,
+  ) {
     const reviewItem = card.reviewItem;
 
     if (!result || !reviewItem) {
       return;
     }
 
-    const draft = getDraftForCard(card);
+    const draft = draftOverride ?? getDraftForCard(card);
     const correctedRecord = buildCorrectedRecord(draft);
     const learningEvents = buildLearningEvents(card, draft);
 
@@ -152,6 +176,20 @@ export function GuidedValidationReviewStep({
     setEditingReviewQueueItemId(null);
   }
 
+  function routeCardForInspection(card: RecordReviewCard) {
+    if (!result || !card.reviewItem) {
+      return;
+    }
+
+    onRouteReviewQueueItemForInspection({
+      reviewQueueItemId: card.reviewItem.id,
+      workflowRunId:
+        card.reviewItem.workflowRunId ?? result.persisted.workflowRunId,
+      intakeBatchId: result.persisted.intakeBatchId,
+    });
+    setEditingReviewQueueItemId(null);
+  }
+
   function renderRecordReviewCard(card: RecordReviewCard) {
     return (
       <RecordReviewCardView
@@ -166,8 +204,11 @@ export function GuidedValidationReviewStep({
         key={card.id}
         onCancelEditing={() => setEditingReviewQueueItemId(null)}
         onDraftChange={(draft) => setDraftForCard(card, draft)}
+        onRouteForInspection={() => routeCardForInspection(card)}
         onStartEditing={() => startEditingCard(card)}
-        onSubmitCorrection={() => submitCorrectionForCard(card)}
+        onSubmitCorrection={(draftOverride) =>
+          submitCorrectionForCard(card, draftOverride)
+        }
       />
     );
   }
@@ -316,7 +357,10 @@ export function GuidedValidationReviewStep({
               </div>
             </section>
 
-            <section className="guided-validation-section">
+            <section
+              className="guided-validation-section"
+              ref={reviewRecordsSectionRef}
+            >
               <div className="guided-validation-section__header">
                 <div>
                   <h4>Current run review records</h4>

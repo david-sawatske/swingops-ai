@@ -1128,6 +1128,71 @@ describe("review queue item routes", () => {
     });
   });
 
+  describe("POST /review-queue-items/:id/route-for-inspection", () => {
+    it("keeps the review item active and records the inspection request", async () => {
+      const app = buildApp();
+      const reviewQueueItem = await createReviewQueueItem();
+
+      const response = await app.inject({
+        method: "POST",
+        url: `/review-queue-items/${reviewQueueItem.id}/route-for-inspection`,
+        payload: {
+          reviewerNotes:
+            "Store inspection required because the product model is not identifiable.",
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({
+        reviewQueueItem: {
+          id: reviewQueueItem.id,
+          status: "IN_REVIEW",
+          reviewerNotes:
+            "Store inspection required because the product model is not identifiable.",
+          resolvedAt: null,
+        },
+        workflowRun: {
+          id: reviewQueueItem.workflowRunId,
+          status: "NEEDS_REVIEW",
+        },
+      });
+
+      const persistedItem = await prisma.reviewQueueItem.findUniqueOrThrow({
+        where: {
+          id: reviewQueueItem.id,
+        },
+      });
+
+      expect(persistedItem.status).toBe("IN_REVIEW");
+      expect(persistedItem.resolvedAt).toBeNull();
+
+      await deleteWorkflowRun(reviewQueueItem.workflowRunId!);
+      await app.close();
+    });
+
+    it("does not reopen review work that has already been resolved", async () => {
+      const app = buildApp();
+      const workflowRun = await createWorkflowRunWithReviewItems(["RESOLVED"]);
+      const reviewQueueItem = workflowRun.reviewQueueItems[0]!;
+
+      const response = await app.inject({
+        method: "POST",
+        url: `/review-queue-items/${reviewQueueItem.id}/route-for-inspection`,
+        payload: {
+          reviewerNotes: "Store inspection required.",
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().error).toBe(
+        "Only active review work can be routed for inspection",
+      );
+
+      await deleteWorkflowRun(reviewQueueItem.workflowRunId!);
+      await app.close();
+    });
+  });
+
   describe("POST /review-queue-items/:id/dismiss", () => {
     it("dismisses an open review queue item and completes its workflow run", async () => {
       const app = buildApp();

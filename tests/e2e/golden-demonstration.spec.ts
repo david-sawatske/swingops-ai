@@ -87,17 +87,13 @@ test("completes the deterministic golden demonstration from intake to final repo
       .getByRole("heading", { name: "TaylorMade · Stealth 2 · Driver" })
       .click();
     await taylorMadeReview
-      .getByRole("button", { name: "Use prior approved value" })
-      .click();
-    const taylorMadeCorrections = taylorMadeReview.getByRole("region", {
-      name: "Applied corrections",
-    });
-    await expect(taylorMadeCorrections).toContainText("Shaft flex");
-    await expect(taylorMadeCorrections).toContainText("Stiff");
-    await taylorMadeReview
-      .getByRole("button", { name: "Save correction and resolve" })
+      .getByRole("button", { name: "Accept Stiff and resolve" })
       .click();
     await expect(taylorMadeReview).toContainText("Review status: resolved");
+    await expect(taylorMadeReview).not.toHaveAttribute("open", "");
+    await expect(
+      page.getByRole("heading", { name: "Current run review records" }),
+    ).toBeInViewport();
 
     const odysseyReview = page.getByLabel(
       "Odyssey · White Hot OG · Putter review record",
@@ -106,7 +102,7 @@ test("completes the deterministic golden demonstration from intake to final repo
       .getByRole("heading", { name: "Odyssey · White Hot OG · Putter" })
       .click();
     await odysseyReview
-      .getByRole("button", { name: "Review and save correction" })
+      .getByRole("button", { name: "Edit before resolving" })
       .click();
     await expect(
       odysseyReview.getByRole("combobox", {
@@ -119,11 +115,38 @@ test("completes the deterministic golden demonstration from intake to final repo
       .click();
     await expect(odysseyReview).toContainText("Review status: resolved");
 
+    const titleistReview = page.getByLabel(
+      "Titleist · TSR · Fairway Wood review record",
+    );
+    await titleistReview
+      .getByRole("heading", { name: "Titleist · TSR · Fairway Wood" })
+      .click();
+    await expect(titleistReview).toContainText("Choose the catalog product");
+    await titleistReview
+      .getByRole("button", { name: "Confirm TSR2 and resolve" })
+      .click();
+    await expect(titleistReview).toContainText("Review status: resolved");
+
+    const callawayReview = page.getByLabel(
+      "Callaway · mystery driver · Driver review record",
+    );
+    await callawayReview
+      .getByRole("heading", { name: "Callaway · mystery driver · Driver" })
+      .click();
+    await expect(callawayReview).toContainText("Store inspection required");
+    await expect(callawayReview).toContainText(
+      "Do not infer these values from the current record",
+    );
+    await callawayReview
+      .getByRole("button", { name: "Send to store inspection" })
+      .click();
+    await expect(callawayReview).toContainText("Store inspection requested");
+
     await expect(
-      page.getByText("2 active", { exact: true }).first(),
+      page.getByText("1 active", { exact: true }).first(),
     ).toBeVisible();
     await expect(
-      page.getByText("2 open · 2 resolved", { exact: true }),
+      page.getByText("1 open · 3 resolved", { exact: true }),
     ).toBeVisible();
 
     await page
@@ -138,25 +161,25 @@ test("completes the deterministic golden demonstration from intake to final repo
     const readyRecords = page
       .getByRole("heading", { name: "Ready records" })
       .locator("..");
-    await expect(readyRecords).toContainText("3");
+    await expect(readyRecords).toContainText("4");
     await expect(
       page.getByText(
-        "5 merged final record(s), 2 reviewed write(s), 2 learning event(s).",
+        "5 merged final record(s), 3 reviewed write(s), 3 learning event(s).",
         { exact: true },
       ),
     ).toBeVisible();
     await expect(
-      page.getByText("2 item(s) still need human review"),
+      page.getByText("1 item(s) still need human review"),
     ).toBeVisible();
     await expect(
       page.getByText("record(s) updated by review").locator(".."),
-    ).toContainText("2");
+    ).toContainText("3");
     await expect(
       page.getByText("field correction(s) captured").locator(".."),
-    ).toContainText("2");
+    ).toContainText("3");
     await expect(
       page.getByText("learning event(s) written").locator(".."),
-    ).toContainText("2");
+    ).toContainText("3");
   } finally {
     expect
       .soft(browserFailures, "browser console, page, and server failures")

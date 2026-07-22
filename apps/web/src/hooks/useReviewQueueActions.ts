@@ -4,6 +4,7 @@ import {
   dismissReviewQueueItem,
   resolveReviewQueueItem,
   resolveReviewQueueItemWithCorrections,
+  routeReviewQueueItemForInspection,
 } from "../api/workflows";
 import type {
   AiReadyIntakeRecord,
@@ -21,7 +22,7 @@ type UseReviewQueueActionsOptions = {
 
 type ReviewQueueItemActionInput = {
   reviewQueueItemId: string;
-  action: "resolve" | "dismiss";
+  action: "resolve" | "dismiss" | "inspect";
   workflowRunId?: string | null;
   intakeBatchId?: string | null;
 };
@@ -73,7 +74,9 @@ export function useReviewQueueActions({
   ) {
     const reviewerNotes =
       reviewQueueNotesById[input.reviewQueueItemId]?.trim() ||
-      getReviewActionFallbackNote(input.action);
+      (input.action === "inspect"
+        ? "Store inspection required because the available evidence could not verify the product identity or required trade-in details."
+        : getReviewActionFallbackNote(input.action));
 
     try {
       setActiveReviewQueueItemId(input.reviewQueueItemId);
@@ -84,8 +87,12 @@ export function useReviewQueueActions({
         await resolveReviewQueueItem(input.reviewQueueItemId, {
           reviewerNotes,
         });
-      } else {
+      } else if (input.action === "dismiss") {
         await dismissReviewQueueItem(input.reviewQueueItemId, {
+          reviewerNotes,
+        });
+      } else {
+        await routeReviewQueueItemForInspection(input.reviewQueueItemId, {
           reviewerNotes,
         });
       }
@@ -101,7 +108,9 @@ export function useReviewQueueActions({
       setReviewQueueActionSuccess(
         input.action === "resolve"
           ? "Review queue item resolved."
-          : "Review queue item dismissed.",
+          : input.action === "dismiss"
+            ? "Review queue item dismissed."
+            : "Store inspection requested. The review item remains open.",
       );
     } catch (error) {
       setReviewQueueActionError(

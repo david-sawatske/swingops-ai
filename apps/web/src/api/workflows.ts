@@ -64,6 +64,16 @@ export async function dismissReviewQueueItem(
   );
 }
 
+export async function routeReviewQueueItemForInspection(
+  reviewQueueItemId: string,
+  request: ReviewQueueItemActionRequest = {},
+): Promise<ReviewQueueItemActionResponse> {
+  return apiPost<ReviewQueueItemActionResponse, ReviewQueueItemActionRequest>(
+    `/review-queue-items/${reviewQueueItemId}/route-for-inspection`,
+    request,
+  );
+}
+
 export async function resolveReviewQueueItemWithCorrections(
   reviewQueueItemId: string,
   request: ResolveReviewQueueItemWithCorrectionsRequest,
