@@ -11,19 +11,9 @@ import type {
   ModelProviderFetch,
   ModelProviderRuntimeConfig,
 } from "../ai/model-provider-runtime-config.js";
-import type { InventoryProductLookupResult } from "../internal-systems/inventory-service.js";
 import type { ProductReferenceProvider } from "../product-reference/product-reference-provider.js";
-import {
-  estimateTradeInValuation,
-  type TradeInValuationResult,
-} from "../internal-systems/trade-in-valuation-service.js";
-import { ensureDemoKnowledgeBaseReady } from "../knowledge/knowledge-ingestion.js";
-import { searchKnowledgeBase } from "../knowledge/knowledge-search.js";
+import type { TradeInValuationResult } from "../internal-systems/trade-in-valuation-service.js";
 import { prisma } from "../lib/prisma.js";
-import {
-  buildPriorReviewLearningSuggestionsFromEvidence,
-  findPriorReviewLearningEvidence,
-} from "../review-learning/review-learning-evidence.js";
 import {
   executeReadOnlyToolInvocation,
   type ReadOnlyToolInvocationResult,
@@ -31,7 +21,6 @@ import {
 import {
   buildDeterministicPolicyFieldRepairAdvisoryCandidates,
   buildPriorReviewFieldRepairAdvisoryCandidates,
-  filterPriorReviewLearningSuggestionsForSourceSafety,
   mergeFieldRepairAdvisoryCandidates,
 } from "./field-repair-advisory-candidates.js";
 import { isShaftFlexApplicable } from "./golf-field-applicability.js";
@@ -64,7 +53,6 @@ import type {
   AgenticTradeInToolCallResult,
   EndToEndAgenticTradeInDemoResult,
 } from "./end-to-end-agentic-trade-in-demo.types.js";
-import { buildInventoryLookupFromProductResolution } from "./product-resolution-inventory-adapter.js";
 import { resolveSupersededIntakeReviewMarkers } from "./review-queue-supersession.js";
 import {
   parseTradeInDemoText,
@@ -77,6 +65,12 @@ import {
   completeTargetedFieldRetry,
   findTargetedFieldRetryCandidate,
 } from "./targeted-field-retry.js";
+import {
+  TRADE_IN_DEMO_MAX_KNOWLEDGE_RESULTS_PER_ITEM,
+  buildTradeInDemoEvidenceStepOutput,
+  buildTradeInInventoryLookupInput,
+  collectTradeInDemoEvidence,
+} from "./trade-in-demo-evidence.js";
 
 export type {
   EndToEndAgenticTradeInDemoAuditEvent,
@@ -142,24 +136,6 @@ function toInputJson(value: unknown): Prisma.InputJsonValue {
   return value as Prisma.InputJsonValue;
 }
 
-function buildKnowledgeQuery(item: ParsedTradeInDemoItem): string {
-  return [
-    item.brand,
-    item.productLine,
-    item.category,
-    item.loft,
-    item.clubNumber,
-    item.shaftBrand,
-    item.shaftModel,
-    item.shaftFlex,
-    ...item.conditionNotes,
-    ...item.accessoriesNotes,
-    item.rawLine,
-  ]
-    .filter(Boolean)
-    .join(" ");
-}
-
 function needsReview(item: ParsedTradeInDemoItem): boolean {
   return item.confidence < 0.72 || item.missingFields.length > 0;
 }
@@ -217,31 +193,6 @@ function getProviderExecutionOutputJson(
     | undefined;
 
   return responseJson?.providerExecution?.outputJson ?? null;
-}
-
-function buildInventoryLookupInput(
-  item: ParsedTradeInDemoItem,
-): Record<string, string> {
-  return {
-    ...(item.brand ? { brand: item.brand } : {}),
-    ...(item.productLine ? { productLine: item.productLine } : {}),
-    ...(item.category ? { category: item.category } : {}),
-    ...(item.shaftBrand ? { shaftBrand: item.shaftBrand } : {}),
-    ...(item.shaftModel ? { shaftModel: item.shaftModel } : {}),
-    rawText: item.rawLine,
-  };
-}
-
-function buildValuationInput(input: {
-  item: ParsedTradeInDemoItem;
-  inventoryMatch: InventoryProductLookupResult;
-}) {
-  return {
-    ...buildInventoryLookupInput(input.item),
-    inventoryMatch: input.inventoryMatch,
-    conditionNotes: input.item.conditionNotes,
-    accessoriesNotes: input.item.accessoriesNotes,
-  };
 }
 
 function valuationNeedsReview(estimate: TradeInValuationResult): boolean {
@@ -429,121 +380,18 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
     ),
     inputJson: {
       parsedItemIds: parsedItems.map((item) => item.id),
-      maxKnowledgeResultsPerItem: 3,
+      maxKnowledgeResultsPerItem: TRADE_IN_DEMO_MAX_KNOWLEDGE_RESULTS_PER_ITEM,
     },
-    async execute() {
-      await ensureDemoKnowledgeBaseReady();
-
-      const priorReviewLearningEvidenceByItem: EndToEndAgenticTradeInDemoResult["priorReviewLearningEvidenceByItem"] =
-        [];
-
-      for (const item of parsedItems) {
-        const evidence = await findPriorReviewLearningEvidence({
-          rawText: item.rawLine,
-          sourceType: "FREE_TEXT",
-          excludeWorkflowRunId: workflowRun.id,
-          parsedFields: {
-            brand: item.brand,
-            productLine: item.productLine,
-            category: item.category,
-            shaftFlex: item.shaftFlex,
-          },
-        });
-
-        priorReviewLearningEvidenceByItem.push({
-          parsedItemId: item.id,
-          evidence,
-        });
-      }
-
-      const parsedItemById = new Map(
-        parsedItems.map((item) => [item.id, item]),
-      );
-      const priorReviewLearningSuggestionsByItem =
-        priorReviewLearningEvidenceByItem.map((item) => ({
-          parsedItemId: item.parsedItemId,
-          suggestions: filterPriorReviewLearningSuggestionsForSourceSafety({
-            sourceText: parsedItemById.get(item.parsedItemId)?.rawLine ?? "",
-            suggestions: buildPriorReviewLearningSuggestionsFromEvidence(
-              item.evidence,
-            ),
-          }),
-        }));
-
-      const knowledgeMatchesByItem: EndToEndAgenticTradeInDemoResult["knowledgeMatchesByItem"] =
-        [];
-
-      for (const item of parsedItems) {
-        const query = buildKnowledgeQuery(item);
-        const search = await searchKnowledgeBase({
-          query,
-          ...(item.brand ? { brand: item.brand } : {}),
-          ...(item.category ? { category: item.category } : {}),
-          maxResults: 3,
-        });
-
-        knowledgeMatchesByItem.push({
-          parsedItemId: item.id,
-          query,
-          search,
-        });
-      }
-
-      const inventoryMatchesByItem = parsedItems.map((item) => ({
-        parsedItemId: item.id,
-        lookup: buildInventoryLookupFromProductResolution({
-          resolution: item.productResolution,
-          fallback: {
-            brand: item.brand,
-            productLine: item.productLine,
-            category: item.productResolution.normalizedInput.category,
-          },
-        }),
-      }));
-
-      const valuationEvidenceByItem = parsedItems.map((item) => {
-        const inventoryMatch = inventoryMatchesByItem.find(
-          (match) => match.parsedItemId === item.id,
-        );
-
-        return {
-          parsedItemId: item.id,
-          estimate: estimateTradeInValuation(
-            buildValuationInput({
-              item,
-              inventoryMatch: inventoryMatch!.lookup,
-            }),
-          ),
-        };
+    execute() {
+      return collectTradeInDemoEvidence({
+        parsedItems,
+        workflowRunId: workflowRun.id,
+        maxKnowledgeResultsPerItem:
+          TRADE_IN_DEMO_MAX_KNOWLEDGE_RESULTS_PER_ITEM,
       });
-
-      return {
-        priorReviewLearningEvidenceByItem,
-        priorReviewLearningSuggestionsByItem,
-        knowledgeMatchesByItem,
-        inventoryMatchesByItem,
-        valuationEvidenceByItem,
-      };
     },
     buildOutputJson(result) {
-      return {
-        parsedItemCount: parsedItems.length,
-        knowledgeResultCount: result.knowledgeMatchesByItem.reduce(
-          (count, item) => count + item.search.results.length,
-          0,
-        ),
-        inventoryMatchCount: result.inventoryMatchesByItem.filter(
-          (item) => item.lookup.productId !== null,
-        ).length,
-        valuationRangeCount: result.valuationEvidenceByItem.filter(
-          (item) => item.estimate.highValue > 0,
-        ).length,
-        priorReviewEvidenceCount:
-          result.priorReviewLearningEvidenceByItem.reduce(
-            (count, item) => count + item.evidence.length,
-            0,
-          ),
-      };
+      return buildTradeInDemoEvidenceStepOutput(result, parsedItems.length);
     },
   });
   const {
@@ -1099,7 +947,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
                   toolName: "swingops.inventory.lookupProduct",
                   reason:
                     "Use a read-only internal inventory lookup to corroborate the default reference-provider match for the first parsed record.",
-                  inputJson: buildInventoryLookupInput(firstParsedItem),
+                  inputJson: buildTradeInInventoryLookupInput(firstParsedItem),
                   expectedRiskLevel: "LOW" as const,
                   expectedMutatesData: false,
                   expectedRequiresHumanApproval: false,
@@ -1110,7 +958,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
                   reason:
                     "Use a read-only valuation lookup after the default reference provider authoritatively identified the first parsed record.",
                   inputJson: {
-                    ...buildInventoryLookupInput(firstParsedItem),
+                    ...buildTradeInInventoryLookupInput(firstParsedItem),
                     conditionNotes: firstParsedItem.conditionNotes.join("|"),
                     accessoriesNotes:
                       firstParsedItem.accessoriesNotes.join("|"),
