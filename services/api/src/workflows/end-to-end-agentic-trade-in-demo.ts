@@ -2,15 +2,10 @@ import { LEGACY_FREEFORM_NOTES_INTAKE_SOURCE_TYPE } from "../intake/legacy-intak
 
 import type { ProductReferenceProvider } from "../product-reference/product-reference-provider.js";
 import { prisma } from "../lib/prisma.js";
-import { createModelExecutionLogForWorkflowRun } from "./workflow-model-logging.js";
 import {
-  MAIN_RUN_FIELD_REPAIR_AGENT_NAME,
-  MAIN_RUN_FIELD_REPAIR_OUTPUT_SCHEMA,
   MAIN_RUN_FIELD_REPAIR_POLICY_KEY,
   MAIN_RUN_FIELD_REPAIR_TASK_TYPE,
-  buildMainRunFieldRepairExecutionInput,
   validateMainRunFieldRepairModelOutput,
-  type MainRunFieldRepairRecordInput,
 } from "./main-run-field-repair.js";
 import { buildWorkflowQualityBundle } from "./workflow-quality.js";
 import {
@@ -29,8 +24,8 @@ import { parseTradeInDemoText } from "./trade-in-demo-parser.js";
 import {
   TARGETED_FIELD_RETRY_MAX_ATTEMPTS,
   TARGETED_FIELD_RETRY_POLICY,
-  buildSkippedTargetedFieldRetry,
-  completeTargetedFieldRetry,
+  buildTargetedFieldRetryStepOutput,
+  executeTargetedFieldRetry,
   findTargetedFieldRetryCandidate,
 } from "./targeted-field-retry.js";
 import {
@@ -330,103 +325,20 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
       maxAttempts: TARGETED_FIELD_RETRY_MAX_ATTEMPTS,
     },
     async execute(step) {
-      if (!retryCandidate) {
-        return buildSkippedTargetedFieldRetry(parsedItems);
-      }
-
-      const retryRecord = fieldRepairRecords.find(
-        (record) => record.recordId === retryCandidate.id,
-      );
-
-      if (!retryRecord) {
-        throw new Error(
-          `Field-repair context is missing for retry candidate: ${retryCandidate.id}.`,
-        );
-      }
-
-      const targetedRetryRecord: MainRunFieldRepairRecordInput = {
-        ...retryRecord,
-        missingFields: ["shaftFlex"],
-        selectionReason: {
-          ...retryRecord.selectionReason,
-          missingFields: ["shaftFlex"],
-          uncertaintyNotes: retryRecord.selectionReason.uncertaintyNotes.filter(
-            (note) => /\bshaft\b/i.test(note),
-          ),
-        },
-        advisoryCandidates:
-          retryRecord.advisoryCandidates?.filter(
-            (candidate) => candidate.suggestion.fieldName === "shaftFlex",
-          ) ?? [],
-      };
-
-      await markPersistedWorkflowStepRetrying(step);
-
-      const retryInputJson = {
-        ...buildMainRunFieldRepairExecutionInput({
-          workflowRunId: workflowRun.id,
-          records: [targetedRetryRecord],
-        }),
-        retry: {
-          attempt: 1,
-          maxAttempts: TARGETED_FIELD_RETRY_MAX_ATTEMPTS,
-          targetField: "shaftFlex",
-          recordId: retryCandidate.id,
-          policy: TARGETED_FIELD_RETRY_POLICY,
-        },
-      };
-      const retryModelCallLog = await createModelExecutionLogForWorkflowRun({
+      return executeTargetedFieldRetry({
         workflowRunId: workflowRun.id,
         workflowStepId: step.id,
-        taskType: MAIN_RUN_FIELD_REPAIR_TASK_TYPE,
-        goal: "HIGH_QUALITY",
-        policyKey: MAIN_RUN_FIELD_REPAIR_POLICY_KEY,
-        agentName: MAIN_RUN_FIELD_REPAIR_AGENT_NAME,
-        workflowName: "main-run",
-        workflowStep: "targeted-field-retry",
-        requireJson: true,
-        allowDisabledProvidersForSimulation: false,
-        inputJson: retryInputJson,
-        outputSchema: MAIN_RUN_FIELD_REPAIR_OUTPUT_SCHEMA,
-        ...(input.signal ? { signal: input.signal } : {}),
-        validateOutput(outputJson) {
-          const validation = validateMainRunFieldRepairModelOutput(outputJson, {
-            records: [targetedRetryRecord],
-          });
-
-          return {
-            jsonValid: validation.jsonValid,
-            validationPassed: validation.validationPassed,
-            validationErrors: validation.validationErrors,
-          };
-        },
-      });
-      const retryValidation = validateMainRunFieldRepairModelOutput(
-        getTradeInDemoProviderExecutionOutputJson(retryModelCallLog),
-        {
-          records: [targetedRetryRecord],
-        },
-      );
-
-      return completeTargetedFieldRetry({
         parsedItems,
-        recordId: retryCandidate.id,
-        modelCallLogId: retryModelCallLog.id,
-        validationPassed: retryValidation.validationPassed,
-        validationErrors: retryValidation.validationErrors,
-        suggestions: retryValidation.output?.suggestions ?? [],
+        retryCandidate,
+        fieldRepairRecords,
+        onRetrying() {
+          return markPersistedWorkflowStepRetrying(step);
+        },
+        ...(input.signal ? { signal: input.signal } : {}),
       });
     },
     buildOutputJson(result) {
-      return {
-        retryEventId: result.retryEvent.id,
-        status: result.retryEvent.status,
-        recordId: result.retryEvent.recordId,
-        targetField: result.retryEvent.targetField,
-        attemptCount: result.retryEvent.attemptCount,
-        maxAttempts: result.retryEvent.maxAttempts,
-        modelCallLogId: result.retryEvent.modelCallLogId,
-      };
+      return buildTargetedFieldRetryStepOutput(result);
     },
     getTerminalStatus(result) {
       return result.retryEvent.status === "SKIPPED" ? "SKIPPED" : "COMPLETED";

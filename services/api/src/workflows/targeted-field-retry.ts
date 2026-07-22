@@ -1,9 +1,18 @@
 import {
   FIELD_REPAIR_AUTO_ACCEPT_CONFIDENCE_THRESHOLD,
+  MAIN_RUN_FIELD_REPAIR_AGENT_NAME,
+  MAIN_RUN_FIELD_REPAIR_OUTPUT_SCHEMA,
+  MAIN_RUN_FIELD_REPAIR_POLICY_KEY,
+  MAIN_RUN_FIELD_REPAIR_TASK_TYPE,
+  buildMainRunFieldRepairExecutionInput,
+  validateMainRunFieldRepairModelOutput,
   type FieldRepairSuggestion,
+  type MainRunFieldRepairRecordInput,
 } from "./main-run-field-repair.js";
 import { isShaftFlexApplicable } from "./golf-field-applicability.js";
 import type { ParsedTradeInDemoItem } from "./trade-in-demo-parser.js";
+import { getTradeInDemoProviderExecutionOutputJson } from "./trade-in-demo-model-assistance.js";
+import { createModelExecutionLogForWorkflowRun } from "./workflow-model-logging.js";
 import type { RetryEvent } from "./workflow-quality-types.js";
 
 export const TARGETED_FIELD_RETRY_MAX_ATTEMPTS = 1;
@@ -162,5 +171,122 @@ export function completeTargetedFieldRetry(input: {
         ? "One targeted extraction retry produced a validated, high-confidence shaft-flex value and repaired the record before review."
         : `One targeted extraction retry ran, but ${unresolvedReason}, so the record remains in human review.`,
     },
+  };
+}
+
+function buildTargetedFieldRetryRecord(
+  retryRecord: MainRunFieldRepairRecordInput,
+): MainRunFieldRepairRecordInput {
+  return {
+    ...retryRecord,
+    missingFields: ["shaftFlex"],
+    selectionReason: {
+      ...retryRecord.selectionReason,
+      missingFields: ["shaftFlex"],
+      uncertaintyNotes: retryRecord.selectionReason.uncertaintyNotes.filter(
+        (note) => /\bshaft\b/i.test(note),
+      ),
+    },
+    advisoryCandidates:
+      retryRecord.advisoryCandidates?.filter(
+        (candidate) => candidate.suggestion.fieldName === "shaftFlex",
+      ) ?? [],
+  };
+}
+
+export async function executeTargetedFieldRetry(input: {
+  workflowRunId: string;
+  workflowStepId: string;
+  parsedItems: ParsedTradeInDemoItem[];
+  retryCandidate: ParsedTradeInDemoItem | null;
+  fieldRepairRecords: MainRunFieldRepairRecordInput[];
+  onRetrying: () => Promise<void>;
+  signal?: AbortSignal;
+}): Promise<TargetedFieldRetryResult> {
+  if (!input.retryCandidate) {
+    return buildSkippedTargetedFieldRetry(input.parsedItems);
+  }
+
+  const retryCandidate = input.retryCandidate;
+  const retryRecord = input.fieldRepairRecords.find(
+    (record) => record.recordId === retryCandidate.id,
+  );
+
+  if (!retryRecord) {
+    throw new Error(
+      `Field-repair context is missing for retry candidate: ${retryCandidate.id}.`,
+    );
+  }
+
+  const targetedRetryRecord = buildTargetedFieldRetryRecord(retryRecord);
+  await input.onRetrying();
+
+  const retryInputJson = {
+    ...buildMainRunFieldRepairExecutionInput({
+      workflowRunId: input.workflowRunId,
+      records: [targetedRetryRecord],
+    }),
+    retry: {
+      attempt: 1,
+      maxAttempts: TARGETED_FIELD_RETRY_MAX_ATTEMPTS,
+      targetField: "shaftFlex",
+      recordId: retryCandidate.id,
+      policy: TARGETED_FIELD_RETRY_POLICY,
+    },
+  };
+  const retryModelCallLog = await createModelExecutionLogForWorkflowRun({
+    workflowRunId: input.workflowRunId,
+    workflowStepId: input.workflowStepId,
+    taskType: MAIN_RUN_FIELD_REPAIR_TASK_TYPE,
+    goal: "HIGH_QUALITY",
+    policyKey: MAIN_RUN_FIELD_REPAIR_POLICY_KEY,
+    agentName: MAIN_RUN_FIELD_REPAIR_AGENT_NAME,
+    workflowName: "main-run",
+    workflowStep: "targeted-field-retry",
+    requireJson: true,
+    allowDisabledProvidersForSimulation: false,
+    inputJson: retryInputJson,
+    outputSchema: MAIN_RUN_FIELD_REPAIR_OUTPUT_SCHEMA,
+    ...(input.signal ? { signal: input.signal } : {}),
+    validateOutput(outputJson) {
+      const validation = validateMainRunFieldRepairModelOutput(outputJson, {
+        records: [targetedRetryRecord],
+      });
+
+      return {
+        jsonValid: validation.jsonValid,
+        validationPassed: validation.validationPassed,
+        validationErrors: validation.validationErrors,
+      };
+    },
+  });
+  const retryValidation = validateMainRunFieldRepairModelOutput(
+    getTradeInDemoProviderExecutionOutputJson(retryModelCallLog),
+    {
+      records: [targetedRetryRecord],
+    },
+  );
+
+  return completeTargetedFieldRetry({
+    parsedItems: input.parsedItems,
+    recordId: retryCandidate.id,
+    modelCallLogId: retryModelCallLog.id,
+    validationPassed: retryValidation.validationPassed,
+    validationErrors: retryValidation.validationErrors,
+    suggestions: retryValidation.output?.suggestions ?? [],
+  });
+}
+
+export function buildTargetedFieldRetryStepOutput(
+  result: TargetedFieldRetryResult,
+) {
+  return {
+    retryEventId: result.retryEvent.id,
+    status: result.retryEvent.status,
+    recordId: result.retryEvent.recordId,
+    targetField: result.retryEvent.targetField,
+    attemptCount: result.retryEvent.attemptCount,
+    maxAttempts: result.retryEvent.maxAttempts,
+    modelCallLogId: result.retryEvent.modelCallLogId,
   };
 }
