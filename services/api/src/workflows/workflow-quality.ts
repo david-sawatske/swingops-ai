@@ -1,7 +1,13 @@
-import type { ReviewQueueItem } from "@prisma/client";
+import type { ModelCallLog, ReviewQueueItem } from "@prisma/client";
 
+import type {
+  AgenticTradeInInventoryMatch,
+  AgenticTradeInKnowledgeMatch,
+  AgenticTradeInToolCallingPlan,
+  AgenticTradeInToolCallResult,
+  AgenticTradeInValuationEvidence,
+} from "./end-to-end-agentic-trade-in-demo.types.js";
 import type { ParsedTradeInDemoItem } from "./trade-in-demo-parser.js";
-import type { EndToEndAgenticTradeInDemoResult } from "./end-to-end-agentic-trade-in-demo.js";
 
 import {
   buildExecutionPlan,
@@ -30,26 +36,16 @@ export type {
   WorkflowQualityBundle,
 } from "./workflow-quality-types.js";
 
-type ToolCallingPlan = EndToEndAgenticTradeInDemoResult["toolCallingPlan"];
-type ToolCallResults = EndToEndAgenticTradeInDemoResult["toolCallResults"];
-type KnowledgeMatchesByItem =
-  EndToEndAgenticTradeInDemoResult["knowledgeMatchesByItem"];
-type InventoryMatchesByItem =
-  EndToEndAgenticTradeInDemoResult["inventoryMatchesByItem"];
-type ValuationEvidenceByItem =
-  EndToEndAgenticTradeInDemoResult["valuationEvidenceByItem"];
-type ModelCallLog = EndToEndAgenticTradeInDemoResult["modelCallLog"];
-
 export function buildWorkflowQualityBundle(input: {
   parsedItems: ParsedTradeInDemoItem[];
-  knowledgeMatchesByItem: KnowledgeMatchesByItem;
-  inventoryMatchesByItem: InventoryMatchesByItem;
-  valuationEvidenceByItem: ValuationEvidenceByItem;
+  knowledgeMatchesByItem: AgenticTradeInKnowledgeMatch[];
+  inventoryMatchesByItem: AgenticTradeInInventoryMatch[];
+  valuationEvidenceByItem: AgenticTradeInValuationEvidence[];
   modelCallLog: ModelCallLog;
   providerFallbackSimulationRequested: boolean;
   retryEvents: WorkflowQualityBundle["retryEvents"];
-  toolCallingPlan: ToolCallingPlan;
-  toolCallResults: ToolCallResults;
+  toolCallingPlan: AgenticTradeInToolCallingPlan;
+  toolCallResults: AgenticTradeInToolCallResult[];
   reviewQueueItemsCreated: ReviewQueueItem[];
 }): WorkflowQualityBundle {
   const blockedMutationCount = input.toolCallResults.filter(

@@ -18,16 +18,11 @@ import {
   type TradeInValuationResult,
 } from "../internal-systems/trade-in-valuation-service.js";
 import { ensureDemoKnowledgeBaseReady } from "../knowledge/knowledge-ingestion.js";
-import {
-  searchKnowledgeBase,
-  type KnowledgeSearchResult,
-} from "../knowledge/knowledge-search.js";
+import { searchKnowledgeBase } from "../knowledge/knowledge-search.js";
 import { prisma } from "../lib/prisma.js";
 import {
   buildPriorReviewLearningSuggestionsFromEvidence,
   findPriorReviewLearningEvidence,
-  type PriorReviewLearningEvidence,
-  type PriorReviewLearningSuggestion,
 } from "../review-learning/review-learning-evidence.js";
 import {
   executeReadOnlyToolInvocation,
@@ -51,14 +46,9 @@ import {
   MAIN_RUN_FIELD_REPAIR_TASK_TYPE,
   buildMainRunFieldRepairExecutionInput,
   validateMainRunFieldRepairModelOutput,
-  type FieldRepairRecordOutcome,
-  type FieldRepairSuggestion,
   type MainRunFieldRepairRecordInput,
 } from "./main-run-field-repair.js";
-import {
-  buildWorkflowQualityBundle,
-  type WorkflowQualityBundle,
-} from "./workflow-quality.js";
+import { buildWorkflowQualityBundle } from "./workflow-quality.js";
 import {
   executePersistedWorkflowStep,
   markPersistedWorkflowStepRetrying,
@@ -67,10 +57,15 @@ import {
 import {
   TRADE_IN_WORKFLOW_STEP_NAMES,
   buildTradeInWorkflowOrchestrationTrace,
-  type WorkflowOrchestrationTrace,
 } from "./workflow-orchestration-trace.js";
 import { failIntakeBatchAfterWorkflowSetupError } from "./workflow-run-failure.js";
+import { buildEndToEndAgenticTradeInDemoAuditTrail } from "./end-to-end-agentic-trade-in-demo-audit.js";
+import type {
+  AgenticTradeInToolCallResult,
+  EndToEndAgenticTradeInDemoResult,
+} from "./end-to-end-agentic-trade-in-demo.types.js";
 import { buildInventoryLookupFromProductResolution } from "./product-resolution-inventory-adapter.js";
+import { resolveSupersededIntakeReviewMarkers } from "./review-queue-supersession.js";
 import {
   parseTradeInDemoText,
   type ParsedTradeInDemoItem,
@@ -83,121 +78,10 @@ import {
   findTargetedFieldRetryCandidate,
 } from "./targeted-field-retry.js";
 
-export type EndToEndAgenticTradeInDemoAuditEvent = {
-  orderIndex: number;
-  label: string;
-  status: "SUCCEEDED" | "NEEDS_REVIEW" | "BLOCKED" | "INFO";
-  summary: string;
-  details: unknown;
-};
-
-export type EndToEndAgenticTradeInDemoResult = {
-  rawInput: string;
-  parsedItems: ParsedTradeInDemoItem[];
-  knowledgeMatchesByItem: {
-    parsedItemId: string;
-    query: string;
-    search: KnowledgeSearchResult;
-  }[];
-  inventoryMatchesByItem: {
-    parsedItemId: string;
-    lookup: InventoryProductLookupResult;
-  }[];
-  valuationEvidenceByItem: {
-    parsedItemId: string;
-    estimate: TradeInValuationResult;
-  }[];
-  priorReviewLearningEvidenceByItem: {
-    parsedItemId: string;
-    evidence: PriorReviewLearningEvidence[];
-  }[];
-  priorReviewLearningSuggestionsByItem: {
-    parsedItemId: string;
-    suggestions: PriorReviewLearningSuggestion[];
-  }[];
-  modelAssistanceScope: {
-    eligibleRecordCount: number;
-    selectedRecordCount: number;
-    deferredRecordCount: number;
-    maxSelectedRecordCount: number;
-  };
-  modelRoutingDecision: ModelRouteDecision;
-  modelCallLog: ModelCallLog;
-  fieldRepairExecution: {
-    modelCallLogId: string;
-    recordOutcomes: FieldRepairRecordOutcome[];
-    suggestions: FieldRepairSuggestion[];
-    jsonValid: boolean;
-    validationPassed: boolean;
-    validationErrors: string[];
-  };
-  orchestrationTrace: WorkflowOrchestrationTrace;
-  toolCallingPlan: {
-    planId: string;
-    plannedCalls: {
-      orderIndex: number;
-      toolName: string;
-      reason: string;
-      inputJson: Record<string, unknown>;
-      expectedRiskLevel: "LOW" | "HIGH";
-      expectedMutatesData: boolean;
-      expectedRequiresHumanApproval: boolean;
-    }[];
-  };
-  toolCallResults: {
-    toolName: string;
-    status: "SUCCEEDED" | "FAILED" | "BLOCKED";
-    policyDecision: string;
-    policyReason: string;
-    executionAttempted: boolean;
-    toolCallLogId: string;
-    outputPreview: unknown | null;
-    errorMessage: string | null;
-  }[];
-  blockedToolCallResult: {
-    toolName: string;
-    status: "SUCCEEDED" | "FAILED" | "BLOCKED";
-    policyDecision: string;
-    policyReason: string;
-    executionAttempted: boolean;
-    toolCallLogId: string;
-    outputPreview: unknown | null;
-    errorMessage: string | null;
-  } | null;
-  reviewQueueItemsCreated: ReviewQueueItem[];
-  persisted: {
-    intakeBatchId: string;
-    intakeItemIds: string[];
-    workflowRunId: string;
-    modelCallLogId: string;
-    toolCallLogIds: string[];
-    reviewQueueItemIds: string[];
-  };
-  finalSummary: {
-    parsedItemCount: number;
-    knowledgeMatchCount: number;
-    lowConfidenceItemCount: number;
-    reviewQueueItemCount: number;
-    successfulReadOnlyToolCallCount: number;
-    blockedMutationToolCallCount: number;
-    inventoryMatchCount: number;
-    valuationRangeCount: number;
-    valuationReviewRequiredCount: number;
-    priorReviewEvidenceCount: number;
-    priorReviewSuggestionCount: number;
-    selectedProvider: string;
-    selectedModel: string;
-    productStory: string;
-  };
-  executionPlan: WorkflowQualityBundle["executionPlan"];
-  validationChecks: WorkflowQualityBundle["validationChecks"];
-  retryEvents: WorkflowQualityBundle["retryEvents"];
-  providerFallbackTrace: WorkflowQualityBundle["providerFallbackTrace"];
-  toolSelectionRationales: WorkflowQualityBundle["toolSelectionRationales"];
-  reviewOutcomes: WorkflowQualityBundle["reviewOutcomes"];
-  workflowQualitySummary: WorkflowQualityBundle["workflowQualitySummary"];
-  auditTrail: EndToEndAgenticTradeInDemoAuditEvent[];
-};
+export type {
+  EndToEndAgenticTradeInDemoAuditEvent,
+  EndToEndAgenticTradeInDemoResult,
+} from "./end-to-end-agentic-trade-in-demo.types.js";
 
 export const DEFAULT_AGENTIC_TRADE_IN_DEMO_INPUT = [
   "TM stealth2 drv 10.5 Ventus stiff, no hc, sky mark on crown",
@@ -227,9 +111,6 @@ function stripNonRecordDemoHeaderLines(rawInput: string): string {
 
   return recordLines.join("\n") || rawInput.trim();
 }
-
-type DemoToolResult =
-  EndToEndAgenticTradeInDemoResult["toolCallResults"][number];
 
 function buildProviderFallbackDemonstrationOptions(enabled: boolean): {
   runtimeConfig?: ModelProviderRuntimeConfig;
@@ -400,110 +281,9 @@ function summarizeReviewReason(input: {
   return reasons.join("; ");
 }
 
-function normalizeReviewSourceText(value: string | null | undefined) {
-  return String(value ?? "")
-    .replace(/^\s*\d+\s*[).:-]\s*/, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "");
-}
-
-async function resolveSupersededIntakeReviewMarkers(input: {
-  authoritativeReviewQueueItemId: string;
-  currentWorkflowRunId: string;
-  item: ParsedTradeInDemoItem;
-  sourceRowNumber: number;
-}) {
-  const normalizedSourceText = normalizeReviewSourceText(input.item.rawLine);
-
-  if (!normalizedSourceText) {
-    return 0;
-  }
-
-  const upstreamReviewItems = await prisma.reviewQueueItem.findMany({
-    where: {
-      id: {
-        not: input.authoritativeReviewQueueItemId,
-      },
-      workflowRunId: {
-        not: input.currentWorkflowRunId,
-      },
-      status: {
-        in: ["OPEN", "IN_REVIEW"],
-      },
-    },
-    include: {
-      workflowRun: true,
-      intakeItem: true,
-    },
-  });
-
-  const matchingReviewItemIds = upstreamReviewItems
-    .filter((reviewItem) => {
-      return (
-        reviewItem.workflowRun?.workflowName === "multi-source-intake-demo" &&
-        reviewItem.intakeItem?.sourceRowNumber === input.sourceRowNumber &&
-        normalizeReviewSourceText(reviewItem.originalText) ===
-          normalizedSourceText
-      );
-    })
-    .map((reviewItem) => reviewItem.id);
-
-  if (matchingReviewItemIds.length === 0) {
-    return 0;
-  }
-
-  const affectedWorkflowRunIds = [
-    ...new Set(
-      upstreamReviewItems
-        .filter((reviewItem) => matchingReviewItemIds.includes(reviewItem.id))
-        .map((reviewItem) => reviewItem.workflowRunId)
-        .filter((workflowRunId): workflowRunId is string =>
-          Boolean(workflowRunId),
-        ),
-    ),
-  ];
-
-  const result = await prisma.reviewQueueItem.updateMany({
-    where: {
-      id: {
-        in: matchingReviewItemIds,
-      },
-    },
-    data: {
-      status: "SUPERSEDED",
-      supersededByReviewQueueItemId: input.authoritativeReviewQueueItemId,
-      supersededAt: new Date(),
-      supersededReason: `Superseded by guarded workflow review item ${input.authoritativeReviewQueueItemId}.`,
-    },
-  });
-
-  for (const workflowRunId of affectedWorkflowRunIds) {
-    const remainingOpenReviewCount = await prisma.reviewQueueItem.count({
-      where: {
-        workflowRunId,
-        status: {
-          in: ["OPEN", "IN_REVIEW"],
-        },
-      },
-    });
-
-    if (remainingOpenReviewCount === 0) {
-      await prisma.workflowRun.update({
-        where: {
-          id: workflowRunId,
-        },
-        data: {
-          status: "COMPLETED",
-          completedAt: new Date(),
-        },
-      });
-    }
-  }
-
-  return result.count;
-}
-
-function toToolResult(result: ReadOnlyToolInvocationResult): DemoToolResult {
+function toToolResult(
+  result: ReadOnlyToolInvocationResult,
+): AgenticTradeInToolCallResult {
   return {
     toolName: result.invocation.toolName,
     status: result.invocation.status,
@@ -514,159 +294,6 @@ function toToolResult(result: ReadOnlyToolInvocationResult): DemoToolResult {
     outputPreview: result.connectorResult?.data ?? null,
     errorMessage: result.toolCallLog.errorMessage,
   };
-}
-
-function buildAuditTrail(input: {
-  rawInput: string;
-  parsedItems: ParsedTradeInDemoItem[];
-  knowledgeMatchesByItem: EndToEndAgenticTradeInDemoResult["knowledgeMatchesByItem"];
-  inventoryMatchesByItem: EndToEndAgenticTradeInDemoResult["inventoryMatchesByItem"];
-  valuationEvidenceByItem: EndToEndAgenticTradeInDemoResult["valuationEvidenceByItem"];
-  priorReviewLearningEvidenceByItem: EndToEndAgenticTradeInDemoResult["priorReviewLearningEvidenceByItem"];
-  priorReviewLearningSuggestionsByItem: EndToEndAgenticTradeInDemoResult["priorReviewLearningSuggestionsByItem"];
-  modelRoutingDecision: ModelRouteDecision;
-  fieldRepairExecution: EndToEndAgenticTradeInDemoResult["fieldRepairExecution"];
-  retryEvents: EndToEndAgenticTradeInDemoResult["retryEvents"];
-  toolCallResults: DemoToolResult[];
-  reviewQueueItemsCreated: ReviewQueueItem[];
-  finalSummary: EndToEndAgenticTradeInDemoResult["finalSummary"];
-}): EndToEndAgenticTradeInDemoAuditEvent[] {
-  return [
-    {
-      orderIndex: 1,
-      label: "Raw messy intake received",
-      status: "INFO",
-      summary:
-        "Captured freeform golf trade-in text for deterministic parsing.",
-      details: {
-        rawInput: input.rawInput,
-      },
-    },
-    {
-      orderIndex: 2,
-      label: "Structured equipment records parsed",
-      status: "SUCCEEDED",
-      summary: `Parsed ${input.parsedItems.length} equipment records with confidence and missing-field signals.`,
-      details: {
-        parsedItems: input.parsedItems,
-      },
-    },
-    {
-      orderIndex: 3,
-      label: "RAG knowledge retrieved",
-      status: "SUCCEEDED",
-      summary: `Retrieved ${input.finalSummary.knowledgeMatchCount} weighted knowledge matches across parsed items.`,
-      details: {
-        knowledgeMatchesByItem: input.knowledgeMatchesByItem,
-      },
-    },
-    {
-      orderIndex: 4,
-      label: "Inventory product matched",
-      status: "SUCCEEDED",
-      summary: `${input.finalSummary.inventoryMatchCount}/${input.parsedItems.length} parsed records matched seeded internal products or SKU candidates.`,
-      details: {
-        inventoryMatchesByItem: input.inventoryMatchesByItem,
-      },
-    },
-    {
-      orderIndex: 5,
-      label: "Demo valuation range estimated",
-      status:
-        input.finalSummary.valuationReviewRequiredCount > 0
-          ? "NEEDS_REVIEW"
-          : "SUCCEEDED",
-      summary: `${input.finalSummary.valuationRangeCount} demo valuation range(s) estimated with condition and accessory adjustments.`,
-      details: {
-        valuationEvidenceByItem: input.valuationEvidenceByItem,
-      },
-    },
-    {
-      orderIndex: 6,
-      label: "Model route selected",
-      status: input.fieldRepairExecution.validationPassed
-        ? "SUCCEEDED"
-        : "NEEDS_REVIEW",
-      summary: `${input.modelRoutingDecision.selectedProvider} / ${input.modelRoutingDecision.selectedModel} executed field repair with ${input.fieldRepairExecution.suggestions.length} validated suggestion(s).`,
-      details: {
-        routingDecision: input.modelRoutingDecision,
-        fieldRepairExecution: input.fieldRepairExecution,
-      },
-    },
-    {
-      orderIndex: 7,
-      label: "Targeted field retry evaluated",
-      status: input.retryEvents.some((event) => event.status === "UNRESOLVED")
-        ? "NEEDS_REVIEW"
-        : "SUCCEEDED",
-      summary:
-        input.retryEvents[0]?.message ??
-        "No targeted retry evidence was recorded.",
-      details: {
-        retryEvents: input.retryEvents,
-      },
-    },
-    {
-      orderIndex: 8,
-      label: "Read-only tools executed",
-      status: "SUCCEEDED",
-      summary: `${input.finalSummary.successfulReadOnlyToolCallCount} safe read-only tool calls executed and logged.`,
-      details: {
-        toolCallResults: input.toolCallResults.filter(
-          (result) => result.status === "SUCCEEDED",
-        ),
-      },
-    },
-    {
-      orderIndex: 9,
-      label: "Mutation tool blocked",
-      status: "BLOCKED",
-      summary: `${input.finalSummary.blockedMutationToolCallCount} mutation tool call was policy-blocked before execution.`,
-      details: {
-        toolCallResults: input.toolCallResults.filter(
-          (result) => result.status === "BLOCKED",
-        ),
-      },
-    },
-    {
-      orderIndex: 10,
-      label: "Human review surfaced",
-      status:
-        input.reviewQueueItemsCreated.length > 0 ? "NEEDS_REVIEW" : "SUCCEEDED",
-      summary:
-        input.reviewQueueItemsCreated.length > 0
-          ? `${input.reviewQueueItemsCreated.length} review queue item(s) created for low-confidence or incomplete parses.`
-          : "No parsed records required human review.",
-      details: {
-        reviewQueueItemsCreated: input.reviewQueueItemsCreated,
-      },
-    },
-    {
-      orderIndex: 11,
-      label: "Prior review evidence checked",
-      status:
-        input.finalSummary.priorReviewSuggestionCount > 0
-          ? "SUCCEEDED"
-          : "INFO",
-      summary:
-        input.finalSummary.priorReviewSuggestionCount > 0
-          ? `${input.finalSummary.priorReviewSuggestionCount} prior review suggestion(s) surfaced from resolved corrections.`
-          : "No prior review suggestions matched this run.",
-      details: {
-        priorReviewLearningEvidenceByItem:
-          input.priorReviewLearningEvidenceByItem,
-        priorReviewLearningSuggestionsByItem:
-          input.priorReviewLearningSuggestionsByItem,
-      },
-    },
-    {
-      orderIndex: 12,
-      label: "Final demo summary",
-      status: "INFO",
-      summary: input.finalSummary.productStory,
-      details: input.finalSummary,
-    },
-  ];
 }
 
 export async function executeEndToEndAgenticTradeInDemo(input: {
@@ -1522,7 +1149,7 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
           },
         ];
 
-      const toolCallResults: DemoToolResult[] = [];
+      const toolCallResults: AgenticTradeInToolCallResult[] = [];
       const toolCallLogs: ToolCallLog[] = [];
 
       for (const plannedCall of plannedCalls) {
@@ -1720,6 +1347,8 @@ export async function executeEndToEndAgenticTradeInDemo(input: {
 
   return {
     ...resultWithoutAuditTrail,
-    auditTrail: buildAuditTrail(resultWithoutAuditTrail),
+    auditTrail: buildEndToEndAgenticTradeInDemoAuditTrail(
+      resultWithoutAuditTrail,
+    ),
   };
 }

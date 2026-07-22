@@ -1,8 +1,14 @@
-import { isShaftFlexApplicable } from "./golf-field-applicability.js";
-import type { ReviewQueueItem } from "@prisma/client";
+import type { ModelCallLog, ReviewQueueItem } from "@prisma/client";
 
+import type {
+  AgenticTradeInInventoryMatch,
+  AgenticTradeInKnowledgeMatch,
+  AgenticTradeInToolCallingPlan,
+  AgenticTradeInToolCallResult,
+  AgenticTradeInValuationEvidence,
+} from "./end-to-end-agentic-trade-in-demo.types.js";
+import { isShaftFlexApplicable } from "./golf-field-applicability.js";
 import type { ParsedTradeInDemoItem } from "./trade-in-demo-parser.js";
-import type { EndToEndAgenticTradeInDemoResult } from "./end-to-end-agentic-trade-in-demo.js";
 import type {
   ExecutionPlanStep,
   ProviderFallbackTrace,
@@ -16,16 +22,6 @@ import type {
   WorkflowQualityStatus,
   WorkflowQualitySummary,
 } from "./workflow-quality-types.js";
-
-type ToolCallingPlan = EndToEndAgenticTradeInDemoResult["toolCallingPlan"];
-type ToolCallResults = EndToEndAgenticTradeInDemoResult["toolCallResults"];
-type KnowledgeMatchesByItem =
-  EndToEndAgenticTradeInDemoResult["knowledgeMatchesByItem"];
-type InventoryMatchesByItem =
-  EndToEndAgenticTradeInDemoResult["inventoryMatchesByItem"];
-type ValuationEvidenceByItem =
-  EndToEndAgenticTradeInDemoResult["valuationEvidenceByItem"];
-type ModelCallLog = EndToEndAgenticTradeInDemoResult["modelCallLog"];
 
 function itemNeedsReview(item: ParsedTradeInDemoItem): boolean {
   return item.confidence < 0.72 || item.missingFields.length > 0;
@@ -63,9 +59,9 @@ function validationSeverityForStatus(
 
 export function buildValidationChecks(input: {
   parsedItems: ParsedTradeInDemoItem[];
-  knowledgeMatchesByItem: KnowledgeMatchesByItem;
-  inventoryMatchesByItem: InventoryMatchesByItem;
-  valuationEvidenceByItem: ValuationEvidenceByItem;
+  knowledgeMatchesByItem: AgenticTradeInKnowledgeMatch[];
+  inventoryMatchesByItem: AgenticTradeInInventoryMatch[];
+  valuationEvidenceByItem: AgenticTradeInValuationEvidence[];
   blockedMutationCount: number;
 }): ValidationCheck[] {
   const checks: ValidationCheck[] = [];
@@ -334,7 +330,7 @@ export function buildProviderFallbackTrace(
 }
 
 export function buildToolSelectionRationales(
-  toolCallingPlan: ToolCallingPlan,
+  toolCallingPlan: AgenticTradeInToolCallingPlan,
 ): ToolSelectionRationale[] {
   return toolCallingPlan.plannedCalls.map((call) => ({
     toolName: call.toolName,
@@ -551,11 +547,11 @@ export function buildWorkflowQualitySummary(input: {
   validationChecks: ValidationCheck[];
   retryEvents: RetryEvent[];
   reviewOutcomes: ReviewOutcome[];
-  toolCallResults: ToolCallResults;
+  toolCallResults: AgenticTradeInToolCallResult[];
   providerFallbackTrace: ProviderFallbackTrace;
-  knowledgeMatchesByItem: KnowledgeMatchesByItem;
-  inventoryMatchesByItem: InventoryMatchesByItem;
-  valuationEvidenceByItem: ValuationEvidenceByItem;
+  knowledgeMatchesByItem: AgenticTradeInKnowledgeMatch[];
+  inventoryMatchesByItem: AgenticTradeInInventoryMatch[];
+  valuationEvidenceByItem: AgenticTradeInValuationEvidence[];
 }): WorkflowQualitySummary {
   const validationPassed = input.validationChecks.filter(
     (check) => check.status === "PASS",
