@@ -39,6 +39,7 @@ export {
   isPriorReviewSuggestionLoadedInDraft,
   isSourceSupportedProductCatalogConfirmation,
   isStoreInspectionRequired,
+  markPriorReviewSuggestionsHandled,
 } from "./recordReviewCorrectionUtils";
 
 export function RecordReviewCardView({

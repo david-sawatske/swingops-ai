@@ -334,6 +334,59 @@ export function getGroupedCorrectionSummaries(
   );
 }
 
+function recordMatchesIdentity(
+  record: RecordSummary,
+  identity: {
+    brand: string | null | undefined;
+    category: string | null | undefined;
+    productLine: string | null | undefined;
+  },
+) {
+  const brandMatches =
+    normalizeComparable(record.brand) &&
+    normalizeComparable(record.brand) === normalizeComparable(identity.brand);
+  const productMatches =
+    normalizeComparable(record.productLine) &&
+    normalizeComparable(record.productLine) ===
+      normalizeComparable(identity.productLine);
+  const categoryMatches =
+    !record.category ||
+    !identity.category ||
+    normalizeComparable(record.category) ===
+      normalizeComparable(identity.category);
+
+  return Boolean(brandMatches && productMatches && categoryMatches);
+}
+
+function recordMatchesReviewedRecord(
+  record: RecordSummary,
+  reviewedRecord: ReviewedTradeInRecord,
+) {
+  if (
+    !recordMatchesIdentity(record, {
+      brand: reviewedRecord.correctedBrand,
+      productLine: reviewedRecord.correctedProductLine,
+      category: reviewedRecord.correctedCategory,
+    })
+  ) {
+    return false;
+  }
+
+  const shaftFlexMatches =
+    !reviewedRecord.correctedShaftFlex ||
+    normalizeComparable(record.shaftFlex) ===
+      normalizeComparable(reviewedRecord.correctedShaftFlex);
+  const conditionMatches =
+    !reviewedRecord.correctedConditionGrade ||
+    normalizeComparable(record.conditionGrade) ===
+      normalizeComparable(reviewedRecord.correctedConditionGrade);
+  const valueMatches =
+    reviewedRecord.correctedDemoValue === null ||
+    record.tradeInValue === reviewedRecord.correctedDemoValue;
+
+  return shaftFlexMatches && conditionMatches && valueMatches;
+}
+
 function recordMatchesReviewItem(
   record: RecordSummary,
   item: GlobalReviewQueueItem,
@@ -380,35 +433,31 @@ function recordMatchesReviewItem(
     return true;
   }
 
-  const reviewBrand =
-    reviewed?.correctedBrand ??
-    getFirstString(proposed, ["brand", "correctedBrand"]);
-  const reviewProduct =
-    reviewed?.correctedProductLine ??
-    getFirstString(proposed, [
+  const proposedIdentity = {
+    brand: getFirstString(proposed, ["brand", "correctedBrand"]),
+    productLine: getFirstString(proposed, [
       "productLine",
       "model",
       "title",
       "correctedProductLine",
-    ]);
-  const reviewCategory =
-    reviewed?.correctedCategory ??
-    getFirstString(proposed, ["category", "correctedCategory"]);
+    ]),
+    category: getFirstString(proposed, ["category", "correctedCategory"]),
+  };
+  const reviewIdentities = [
+    proposedIdentity,
+    reviewed
+      ? {
+          brand: reviewed.correctedBrand ?? proposedIdentity.brand,
+          productLine:
+            reviewed.correctedProductLine ?? proposedIdentity.productLine,
+          category: reviewed.correctedCategory ?? proposedIdentity.category,
+        }
+      : null,
+  ].filter((identity) => identity !== null);
 
-  const brandMatches =
-    normalizeComparable(record.brand) &&
-    normalizeComparable(record.brand) === normalizeComparable(reviewBrand);
-  const productMatches =
-    normalizeComparable(record.productLine) &&
-    normalizeComparable(record.productLine) ===
-      normalizeComparable(reviewProduct);
-  const categoryMatches =
-    !record.category ||
-    !reviewCategory ||
-    normalizeComparable(record.category) ===
-      normalizeComparable(reviewCategory);
-
-  return Boolean(brandMatches && productMatches && categoryMatches);
+  return reviewIdentities.some((identity) =>
+    recordMatchesIdentity(record, identity),
+  );
 }
 
 function getMatchingReviewItem(
@@ -558,10 +607,17 @@ function getRecordEvidence(input: {
   const reviewedRecord = input.reviewItem?.reviewedTradeInRecord ?? null;
   const learningEventCount =
     input.reviewItem?.humanReviewLearningEvents.length ?? 0;
-  const activePersistedRecord =
+  const linkedPersistedRecord =
     input.finalRecords.find((record) =>
       recordMatchesRecord(input.candidateRecord, record),
     ) ?? null;
+  const reviewedPersistedRecord = reviewedRecord
+    ? (input.finalRecords.find((record) =>
+        recordMatchesReviewedRecord(record, reviewedRecord),
+      ) ?? null)
+    : null;
+  const activePersistedRecord =
+    linkedPersistedRecord ?? reviewedPersistedRecord;
 
   const entries: FinalRecordProvenanceEntry[] = [
     {

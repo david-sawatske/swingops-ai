@@ -4,6 +4,7 @@ import {
   applyModelReviewSuggestionToDraft,
   getOpenPriorReviewSuggestions,
   isPriorReviewSuggestionLoadedInDraft,
+  markPriorReviewSuggestionsHandled,
 } from "./RecordReviewCardView";
 
 const baseDraft = {
@@ -140,5 +141,34 @@ describe("model review suggestion application", () => {
         shaftFlex: "REGULAR",
       }),
     ).toEqual([priorSuggestion]);
+  });
+
+  it("opens manual entry after skipping a sequence of prior-review suggestions", () => {
+    const suggestions = [
+      {
+        fieldName: "productLine",
+        rawTextMatch: null,
+        suggestedValue: "Driver",
+        sourceLearningEventId: "learning-event-product",
+      },
+      {
+        fieldName: "tradeInValue",
+        rawTextMatch: null,
+        suggestedValue: 11,
+        sourceLearningEventId: "learning-event-value",
+      },
+    ] as Parameters<typeof getOpenPriorReviewSuggestions>[0];
+    const handledSuggestionIds = markPriorReviewSuggestionsHandled(
+      new Set<string>(),
+      suggestions,
+    );
+
+    expect(
+      getOpenPriorReviewSuggestions(
+        suggestions,
+        handledSuggestionIds,
+        baseDraft,
+      ),
+    ).toEqual([]);
   });
 });

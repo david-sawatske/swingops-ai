@@ -427,6 +427,98 @@ describe("finalRunReportUtils", () => {
     expect(mergedRecord.label).toBe("Callaway · Apex UW · Fairway Wood");
   });
 
+  it("keeps a resolved review associated when its corrected identity differs from the source candidate", () => {
+    const mergedRecord = buildMergedRecord({
+      candidateRecord: makeCandidateRecord({
+        id: "candidate-callaway-mystery-driver",
+        intakeItemId: "source-intake-item-5",
+        sourceRecordId: "source-record-5",
+        label: "Callaway · mystery driver · Driver",
+        brand: "Callaway",
+        productLine: "mystery driver",
+        category: "DRIVER",
+        shaftFlex: null,
+        conditionGrade: null,
+        tradeInValue: null,
+        valueLabel: "—",
+        status: "NEEDS_REVIEW",
+        reviewNeeded: true,
+        ragReady: false,
+        missingFields: ["shaftFlex", "conditionGrade", "tradeInValue"],
+        rawText:
+          "2026-07-18T16:48:11Z WARN review payload brand=Callaway model='mystery driver' cat=driver shaft=unknown condition=unclear value=pending store=207",
+        cleanedText:
+          "Callaway | mystery driver | Driver | unknown | unclear | pending | 207",
+      }),
+      finalRecords: [
+        makeCandidateRecord({
+          id: "final-callaway-driver",
+          intakeItemId: "reviewed-intake-item-5",
+          sourceRecordId: "reviewed-source-record-5",
+          label: "Callaway · Driver · Driver",
+          brand: "Callaway",
+          productLine: "Driver",
+          category: "DRIVER",
+          shaftFlex: "STIFF",
+          conditionGrade: "9.0 Above Average",
+          tradeInValue: 111,
+          valueLabel: "$111",
+          status: "READY_FOR_RAG",
+          reviewNeeded: false,
+          ragReady: true,
+          missingFields: [],
+        }),
+      ],
+      index: 4,
+      result: makeResult(),
+      reviewItems: [
+        makeReviewItem({
+          intakeItemId: "workflow-intake-item-5",
+          status: "RESOLVED",
+          originalText:
+            "Callaway mystery driver, shaft unknown, condition unclear, value pending, store 207.",
+          proposedGolfClubJson: {
+            id: "parsed-item-5",
+            brand: "Callaway",
+            productLine: "mystery driver",
+            category: "DRIVER",
+            shaftFlex: null,
+            conditionGrade: null,
+            tradeInValue: null,
+          },
+          reviewedTradeInRecord: {
+            id: "reviewed-record-5",
+            reviewQueueItemId: "review-item-1",
+            workflowRunId: "workflow-run-1",
+            intakeItemId: "workflow-intake-item-5",
+            originalText:
+              "Callaway mystery driver, shaft unknown, condition unclear, value pending, store 207.",
+            correctedBrand: "Callaway",
+            correctedProductLine: "Driver",
+            correctedCategory: "DRIVER",
+            correctedShaftFlex: "STIFF",
+            correctedConditionGrade: "9.0 Above Average",
+            correctedDemoValue: 111,
+            demoValuationNote: null,
+            reviewerNotes: "Verified during store inspection.",
+            approvedAt: "2026-08-04T00:00:00.000Z",
+            createdAt: "2026-08-04T00:00:00.000Z",
+            updatedAt: "2026-08-04T00:00:00.000Z",
+          },
+        }),
+      ],
+    });
+
+    expect(mergedRecord.finalReviewLabel).toBe("Resolved");
+    expect(mergedRecord.status).toBe("READY_FOR_RAG");
+    expect(mergedRecord.reviewNeeded).toBe(false);
+    expect(mergedRecord.shaftFlex).toBe("STIFF");
+    expect(mergedRecord.conditionGrade).toBe("9.0 Above Average");
+    expect(mergedRecord.tradeInValue).toBe(111);
+    expect(mergedRecord.persistenceLabel).toBe("Finalized after human review");
+    expect(mergedRecord.persistedRecordId).toBe("final-callaway-driver");
+  });
+
   it("keeps an open review item marked as needing review", () => {
     const mergedRecord = buildMergedRecord({
       candidateRecord: makeCandidateRecord({

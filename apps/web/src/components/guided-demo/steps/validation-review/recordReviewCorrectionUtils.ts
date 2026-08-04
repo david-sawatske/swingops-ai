@@ -1188,6 +1188,19 @@ export function getActionablePriorReviewSuggestions(
   );
 }
 
+export function markPriorReviewSuggestionsHandled(
+  handledSuggestionIds: Set<string>,
+  suggestions: PriorReviewLearningSuggestion[],
+) {
+  const next = new Set(handledSuggestionIds);
+
+  for (const suggestion of getActionablePriorReviewSuggestions(suggestions)) {
+    next.add(getPriorReviewSuggestionKey(suggestion));
+  }
+
+  return next;
+}
+
 export function getOpenPriorReviewSuggestions(
   suggestions: PriorReviewLearningSuggestion[],
   handledSuggestionIds: Set<string>,

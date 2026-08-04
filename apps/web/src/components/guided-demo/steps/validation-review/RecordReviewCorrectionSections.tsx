@@ -42,6 +42,7 @@ import {
   isPriorReviewSuggestionLoadedInDraft,
   isSourceSupportedProductCatalogConfirmation,
   isStoreInspectionRequired,
+  markPriorReviewSuggestionsHandled,
   type CorrectionFormFieldName,
   type ModelReviewSuggestion,
   type ReviewLearningSourceMatchField,
@@ -166,7 +167,7 @@ function PriorReviewSuggestionsPanel({
   onAcceptAndResolve: (suggestion: PriorReviewLearningSuggestion) => void;
   onApplySuggestion: (suggestion: PriorReviewLearningSuggestion) => void;
   onEditSuggestion: (suggestion: PriorReviewLearningSuggestion) => void;
-  onRequestManualValue: (suggestion: PriorReviewLearningSuggestion) => void;
+  onRequestManualValue: () => void;
   suggestions: PriorReviewLearningSuggestion[];
 }) {
   const actionableSuggestions =
@@ -273,7 +274,7 @@ function PriorReviewSuggestionsPanel({
                 onClick={() =>
                   resolvesReview
                     ? onEditSuggestion(currentSuggestion)
-                    : onRequestManualValue(currentSuggestion)
+                    : onRequestManualValue()
                 }
                 type="button"
               >
@@ -493,8 +494,10 @@ export function RecordCorrectionPanel({
     });
   }
 
-  function handleRequestManualValue(suggestion: PriorReviewLearningSuggestion) {
-    markSuggestionHandled(suggestion);
+  function handleRequestManualValue() {
+    setHandledSuggestionIds((current) =>
+      markPriorReviewSuggestionsHandled(current, card.priorReviewSuggestions),
+    );
 
     if (!isEditing) {
       onStartEditing();

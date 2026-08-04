@@ -137,16 +137,54 @@ test("completes the deterministic golden demonstration from intake to final repo
     await expect(callawayReview).toContainText(
       "Do not infer these values from the current record",
     );
-    await callawayReview
-      .getByRole("button", { name: "Send to store inspection" })
-      .click();
+    const sendToInspectionButton = callawayReview.getByRole("button", {
+      name: "Send to store inspection",
+    });
+    const enterVerifiedDetailsButton = callawayReview.getByRole("button", {
+      name: "Enter verified details",
+    });
+    const sendToInspectionBox = await sendToInspectionButton.boundingBox();
+    const enterVerifiedDetailsBox =
+      await enterVerifiedDetailsButton.boundingBox();
+
+    expect(sendToInspectionBox).not.toBeNull();
+    expect(enterVerifiedDetailsBox).not.toBeNull();
+    expect(
+      (sendToInspectionBox?.y ?? 0) + (sendToInspectionBox?.height ?? 0) / 2,
+    ).toBeCloseTo(
+      (enterVerifiedDetailsBox?.y ?? 0) +
+        (enterVerifiedDetailsBox?.height ?? 0) / 2,
+      0,
+    );
+
+    await sendToInspectionButton.click();
     await expect(callawayReview).toContainText("Store inspection requested");
 
+    await callawayReview
+      .getByRole("button", { name: "Enter verified details" })
+      .click();
+    await callawayReview
+      .getByRole("textbox", { name: "Product line" })
+      .fill("Driver");
+    await callawayReview
+      .getByRole("combobox", { name: "Shaft flex" })
+      .selectOption("STIFF");
+    await callawayReview
+      .getByRole("combobox", { name: "Condition grade" })
+      .selectOption("9.0 Above Average");
+    await callawayReview
+      .getByRole("spinbutton", { name: "Trade-in value" })
+      .fill("111");
+    await callawayReview
+      .getByRole("button", { name: "Save verified details and resolve" })
+      .click();
+    await expect(callawayReview).toContainText("Review status: resolved");
+
     await expect(
-      page.getByText("1 active", { exact: true }).first(),
+      page.getByText("0 active", { exact: true }).first(),
     ).toBeVisible();
     await expect(
-      page.getByText("1 open · 3 resolved", { exact: true }),
+      page.getByText("0 open · 4 resolved", { exact: true }),
     ).toBeVisible();
 
     await page
@@ -161,25 +199,31 @@ test("completes the deterministic golden demonstration from intake to final repo
     const readyRecords = page
       .getByRole("heading", { name: "Ready records" })
       .locator("..");
-    await expect(readyRecords).toContainText("4");
+    await expect(readyRecords).toContainText("5");
     await expect(
       page.getByText(
-        "5 merged final record(s), 3 reviewed write(s), 3 learning event(s).",
+        "5 merged final record(s), 4 reviewed write(s), 7 learning event(s).",
         { exact: true },
       ),
     ).toBeVisible();
     await expect(
-      page.getByText("1 item(s) still need human review"),
+      page.getByText("No current-run review items remain open"),
     ).toBeVisible();
     await expect(
       page.getByText("record(s) updated by review").locator(".."),
-    ).toContainText("3");
+    ).toContainText("4");
     await expect(
       page.getByText("field correction(s) captured").locator(".."),
-    ).toContainText("3");
+    ).toContainText("7");
     await expect(
       page.getByText("learning event(s) written").locator(".."),
-    ).toContainText("3");
+    ).toContainText("7");
+
+    const callawayFinalRow = page.getByRole("row", { name: /Callaway/ });
+    await expect(callawayFinalRow).toContainText("Driver");
+    await expect(callawayFinalRow).toContainText("Stiff");
+    await expect(callawayFinalRow).toContainText("9.0 Above Average");
+    await expect(callawayFinalRow).toContainText("Resolved");
 
     await page.getByRole("button", { name: /Admin Ops/ }).click();
     await expect(

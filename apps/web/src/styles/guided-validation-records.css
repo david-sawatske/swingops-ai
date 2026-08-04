@@ -1073,8 +1073,13 @@
 }
 
 .guided-review-decision-panel__actions {
+  align-items: center;
   justify-content: flex-start;
   flex-wrap: wrap;
+}
+
+.guided-review-decision-panel__actions .guided-step-primary-action {
+  margin-top: 0;
 }
 
 .guided-review-decision-panel__actions .guided-review-secondary-action {
