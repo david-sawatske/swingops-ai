@@ -44,6 +44,10 @@ function AppModeTabs({
 
 function App() {
   const [activeView, setActiveView] = useState<AppView>("GUIDED_DEMO");
+  const [reviewQueueReturnView, setReviewQueueReturnView] =
+    useState<Exclude<AppView, "REVIEW_QUEUE">>("GUIDED_DEMO");
+  const [focusedReviewQueueIntakeItemId, setFocusedReviewQueueIntakeItemId] =
+    useState<string | null>(null);
   const [guidedActiveStep, setGuidedActiveStep] = useState<GuidedStep>(
     "MESSY_SOURCE_INTAKE",
   );
@@ -169,6 +173,20 @@ function App() {
     void handleExecuteEndToEndAgenticDemo(event);
   }
 
+  function openReviewQueue(
+    returnView: Exclude<AppView, "REVIEW_QUEUE">,
+    intakeItemId: string | null = null,
+  ) {
+    setReviewQueueReturnView(returnView);
+    setFocusedReviewQueueIntakeItemId(intakeItemId);
+    setActiveView("REVIEW_QUEUE");
+  }
+
+  function returnFromReviewQueue() {
+    setFocusedReviewQueueIntakeItemId(null);
+    setActiveView(reviewQueueReturnView);
+  }
+
   useEffect(() => {
     void loadGlobalWorkflowRuns();
     void loadGlobalReviewQueueItems();
@@ -184,8 +202,11 @@ function App() {
 
       {activeView === "REVIEW_QUEUE" ? (
         <section className="guided-return-panel">
-          <button onClick={() => setActiveView("GUIDED_DEMO")} type="button">
-            ← Back to Main Workflow
+          <button onClick={returnFromReviewQueue} type="button">
+            ← Back to{" "}
+            {reviewQueueReturnView === "ADMIN_OPS"
+              ? "Admin Ops"
+              : "Main Workflow"}
           </button>
         </section>
       ) : null}
@@ -210,7 +231,14 @@ function App() {
           onTradeInRawInputChange={setEndToEndAgenticDemoRawInput}
           onRunSourceIntake={handleRunGuidedSourceIntake}
           onRunTradeInWorkflow={handleRunGuidedTradeInWorkflow}
-          onViewChange={setActiveView}
+          onViewChange={(view) => {
+            if (view === "REVIEW_QUEUE") {
+              openReviewQueue("GUIDED_DEMO");
+              return;
+            }
+
+            setActiveView(view);
+          }}
           reviewQueueActionSuccess={reviewQueueActionSuccess}
           reviewQueueActionError={reviewQueueActionError}
           activeReviewQueueItemId={activeReviewQueueItemId}
@@ -234,6 +262,9 @@ function App() {
           workflowRunCount={globalWorkflowRuns.length}
           openReviewQueueItemCount={openReviewQueueItemCount}
           toolCallLogCount={totalToolCallLogCount}
+          onOpenReviewQueueForRecord={(intakeItemId) =>
+            openReviewQueue("ADMIN_OPS", intakeItemId)
+          }
         />
       ) : null}
 
@@ -246,7 +277,9 @@ function App() {
           actionSuccess={reviewQueueActionSuccess}
           actionError={reviewQueueActionError}
           activeReviewQueueItemId={activeReviewQueueItemId}
+          focusedIntakeItemId={focusedReviewQueueIntakeItemId}
           reviewQueueNotesById={reviewQueueNotesById}
+          onReturnToSource={returnFromReviewQueue}
           onNotesChange={handleReviewQueueNotesChange}
           onReviewQueueItemAction={(input) =>
             void handleReviewQueueItemAction(input)

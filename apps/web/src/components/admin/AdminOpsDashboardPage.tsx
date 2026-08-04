@@ -13,6 +13,7 @@ type AdminOpsDashboardPageProps = {
   workflowRunCount: number;
   openReviewQueueItemCount: number;
   toolCallLogCount: number;
+  onOpenReviewQueueForRecord: (intakeItemId: string | null) => void;
 };
 
 type AdminOpsSection =
@@ -67,6 +68,7 @@ const ADMIN_OPS_SECTIONS: Array<{
 ];
 
 export function AdminOpsDashboardPage({
+  onOpenReviewQueueForRecord,
   workflowRuns,
 }: AdminOpsDashboardPageProps) {
   const [activeSection, setActiveSection] =
@@ -121,7 +123,9 @@ export function AdminOpsDashboardPage({
           id="admin-ops-records-panel"
           role="tabpanel"
         >
-          <AdminOpsAiReadyRecordsPanel />
+          <AdminOpsAiReadyRecordsPanel
+            onOpenReviewQueue={onOpenReviewQueueForRecord}
+          />
         </div>
       ) : null}
 

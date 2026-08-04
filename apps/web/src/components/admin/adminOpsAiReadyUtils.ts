@@ -1,10 +1,11 @@
 import type { AiReadyIntakeRecord } from "../../types/workflow";
+import { formatEnumLabel } from "../../utils/formatting";
 
 export type AiReadyStatusFilter =
   "ACTIVE" | "ALL" | AiReadyIntakeRecord["status"];
 export type AiReadyReadinessFilter =
   "ALL" | "REVIEW_NEEDED" | "GROUNDING_READY" | "MISSING_FIELDS" | "COMPLETE";
-export type AiReadySortOption = "NEWEST" | "STATUS" | "SOURCE";
+export type AiReadySortOption = "NEWEST" | "OLDEST" | "STATUS" | "SOURCE";
 export type AiReadyDateFilter =
   "ALL" | "TODAY" | "LAST_7_DAYS" | "LAST_30_DAYS";
 export type AiReadyInsightTab = "MISSING_FIELDS" | "SOURCE_QUALITY";
@@ -37,7 +38,17 @@ export const AI_READY_SORT_OPTIONS: {
   value: AiReadySortOption;
 }[] = [
   { label: "Newest first", value: "NEWEST" },
+  { label: "Oldest first", value: "OLDEST" },
   { label: "Lifecycle status", value: "STATUS" },
+  { label: "Source type", value: "SOURCE" },
+];
+
+export const AI_READY_HISTORY_SORT_OPTIONS: {
+  label: string;
+  value: AiReadySortOption;
+}[] = [
+  { label: "Newest record first", value: "NEWEST" },
+  { label: "Oldest record first", value: "OLDEST" },
   { label: "Source type", value: "SOURCE" },
 ];
 
@@ -61,6 +72,31 @@ export const AI_READY_INSIGHT_TABS: {
 
 export const AI_READY_RECORD_PAGE_SIZE = 25;
 
+const AI_READY_FIELD_LABELS: Record<string, string> = {
+  brand: "Brand",
+  category: "Category",
+  conditionGrade: "Condition grade",
+  productLine: "Product line",
+  shaftFlex: "Shaft flex",
+  storeId: "Store",
+  tradeInValue: "Trade-in value",
+};
+
+const AI_READY_SOURCE_TYPE_LABELS: Record<string, string> = {
+  EMAIL: "Email",
+  FREE_TEXT: "Free text",
+  LOG: "Operations log",
+  POORLY_FORMED_CSV: "Malformed CSV",
+};
+
+export function formatAiReadyFieldLabel(fieldName: string) {
+  return AI_READY_FIELD_LABELS[fieldName] ?? formatEnumLabel(fieldName);
+}
+
+export function formatAiReadySourceTypeLabel(sourceType: string) {
+  return AI_READY_SOURCE_TYPE_LABELS[sourceType] ?? formatEnumLabel(sourceType);
+}
+
 export function isSupersededAiReadyRecord(record: AiReadyIntakeRecord) {
   return record.status === "SUPERSEDED";
 }
@@ -76,14 +112,6 @@ export function formatAiReadyRecordDisplayName(record: AiReadyIntakeRecord) {
     .join(" ");
 
   return displayName || record.sourceName || "Unidentified intake candidate";
-}
-
-export function getSupersededRecordReplacementLabel(
-  record: AiReadyIntakeRecord,
-) {
-  return record.supersededByAiReadyIntakeRecordId
-    ? "replaced by final reviewed record"
-    : "replaced by later workflow output";
 }
 
 export function formatAiReadyStatusLabel(
@@ -159,6 +187,8 @@ export function getAiReadyExplorerReadinessFilters(
 
 export function getAiReadyExplorerSort(sortOption: AiReadySortOption) {
   switch (sortOption) {
+    case "OLDEST":
+      return "createdAt_asc" as const;
     case "STATUS":
       return "status_asc" as const;
     case "SOURCE":

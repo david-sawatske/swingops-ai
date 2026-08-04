@@ -8,6 +8,17 @@ import {
 } from "./golden-demonstration-history.js";
 
 async function removeGoldenDemonstrationHistory() {
+  await prisma.aiReadyIntakeRecord.deleteMany({
+    where: {
+      id: {
+        in: [
+          GOLDEN_DEMONSTRATION_HISTORY_IDS.aiReadySupersededRecordId,
+          GOLDEN_DEMONSTRATION_HISTORY_IDS.aiReadyReplacementRecordId,
+        ],
+      },
+    },
+  });
+
   await prisma.humanReviewLearningEvent.deleteMany({
     where: {
       id: GOLDEN_DEMONSTRATION_HISTORY_IDS.learningEventId,
@@ -82,6 +93,18 @@ describe("ensureGoldenDemonstrationHistory", () => {
           id: GOLDEN_DEMONSTRATION_HISTORY_IDS.learningEventId,
         },
       });
+    const previousAiReadyRecord =
+      await prisma.aiReadyIntakeRecord.findUniqueOrThrow({
+        where: {
+          id: GOLDEN_DEMONSTRATION_HISTORY_IDS.aiReadySupersededRecordId,
+        },
+      });
+    const replacementAiReadyRecord =
+      await prisma.aiReadyIntakeRecord.findUniqueOrThrow({
+        where: {
+          id: GOLDEN_DEMONSTRATION_HISTORY_IDS.aiReadyReplacementRecordId,
+        },
+      });
 
     expect(workflowRun).toMatchObject({
       workflowName: "golden-demonstration-historical-review-evidence",
@@ -104,6 +127,17 @@ describe("ensureGoldenDemonstrationHistory", () => {
       fieldName: "shaftFlex",
       rawTextMatch: "shaft firm",
       correctedValue: "STIFF",
+    });
+    expect(previousAiReadyRecord).toMatchObject({
+      status: "SUPERSEDED",
+      supersededByAiReadyIntakeRecordId: replacementAiReadyRecord.id,
+      reviewNeeded: true,
+      ragReady: false,
+    });
+    expect(replacementAiReadyRecord).toMatchObject({
+      status: "READY_FOR_RAG",
+      reviewNeeded: false,
+      ragReady: true,
     });
 
     const evidence = await findPriorReviewLearningEvidence({
@@ -158,5 +192,17 @@ describe("ensureGoldenDemonstrationHistory", () => {
         },
       }),
     ).resolves.toBe(1);
+    await expect(
+      prisma.aiReadyIntakeRecord.count({
+        where: {
+          id: {
+            in: [
+              GOLDEN_DEMONSTRATION_HISTORY_IDS.aiReadySupersededRecordId,
+              GOLDEN_DEMONSTRATION_HISTORY_IDS.aiReadyReplacementRecordId,
+            ],
+          },
+        },
+      }),
+    ).resolves.toBe(2);
   });
 });

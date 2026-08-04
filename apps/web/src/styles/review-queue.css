@@ -12,6 +12,63 @@
   background: #f8faf6;
 }
 
+.review-queue-card--focused {
+  border-color: #2563eb;
+  scroll-margin-top: 1rem;
+  box-shadow:
+    0 0 0 3px rgb(37 99 235 / 12%),
+    0 16px 36px rgb(37 99 235 / 10%);
+}
+
+.review-queue-card--focused:focus {
+  outline: none;
+}
+
+.review-queue-card__origin-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 999px;
+  margin-bottom: 0.45rem;
+}
+
+.review-queue-card__origin {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0.24rem 0.5rem;
+  background: #dbeafe;
+  color: #1e40af;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.review-queue-card__origin-row button {
+  border: 0;
+  border-radius: 6px;
+  padding: 0.2rem 0.25rem;
+  background: transparent;
+  color: #1d4ed8;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.review-queue-card__origin-row button:hover {
+  color: #1e40af;
+  text-decoration: underline;
+  text-underline-offset: 0.16rem;
+}
+
+.review-queue-card__origin-row button:focus-visible {
+  outline: 3px solid rgb(37 99 235 / 18%);
+  outline-offset: 2px;
+}
+
 .review-queue-card__header {
   display: flex;
   justify-content: space-between;

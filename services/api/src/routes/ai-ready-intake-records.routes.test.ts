@@ -176,6 +176,19 @@ describe("AI-ready intake record routes", () => {
       ),
     ).toBe(true);
 
+    const historySearchResponse = await app.inject({
+      method: "GET",
+      url: `/ai-ready-intake-records?intakeBatchId=${result.persistedIds.intakeBatchId}&status=SUPERSEDED&search=${encodeURIComponent("excluded from active explorer")}`,
+    });
+
+    expect(historySearchResponse.statusCode).toBe(200);
+    expect(historySearchResponse.json().records).toEqual([
+      expect.objectContaining({
+        id: supersededRecordId,
+        status: "SUPERSEDED",
+      }),
+    ]);
+
     await prisma.intakeBatch.delete({
       where: {
         id: result.persistedIds.intakeBatchId,

@@ -180,6 +180,95 @@ test("completes the deterministic golden demonstration from intake to final repo
     await expect(
       page.getByText("learning event(s) written").locator(".."),
     ).toContainText("3");
+
+    await page.getByRole("button", { name: /Admin Ops/ }).click();
+    await expect(
+      page.getByRole("heading", { name: "Created record visibility" }),
+    ).toBeVisible();
+
+    const recordWorkbench = page.getByRole("dialog", {
+      name: "Full AI-ready record workbench",
+    });
+
+    await page.getByRole("button", { name: "View history" }).click();
+    await expect(recordWorkbench).toBeVisible();
+    await expect(
+      recordWorkbench.getByRole("heading", {
+        name: "Replaced record history",
+      }),
+    ).toBeVisible();
+    await expect(
+      recordWorkbench.getByLabel("Replaced history controls"),
+    ).toBeVisible();
+    await expect(
+      recordWorkbench.getByRole("region", {
+        name: "Replaced record history results",
+      }),
+    ).toBeVisible();
+    await expect(
+      recordWorkbench.getByRole("combobox", { name: "Readiness" }),
+    ).toHaveCount(0);
+    await expect(recordWorkbench.getByRole("table")).toHaveCount(0);
+    await expect(
+      recordWorkbench.getByText(/No active AI-ready records/),
+    ).toHaveCount(0);
+    await expect(
+      recordWorkbench.getByRole("button", { name: "Previous page" }),
+    ).toHaveCount(0);
+
+    await recordWorkbench
+      .getByRole("button", {
+        name: "Inspect previous record for PING G425",
+      })
+      .click();
+    await expect(
+      recordWorkbench.getByRole("heading", {
+        name: "PING G425",
+      }),
+    ).toBeVisible();
+    await expect(recordWorkbench).toContainText("Why this record was replaced");
+    await expect(recordWorkbench).toContainText("Previous normalized record");
+    await recordWorkbench
+      .getByRole("button", { name: "Back to history" })
+      .click();
+    await recordWorkbench
+      .getByRole("button", { name: "Close AI-ready record workbench" })
+      .click();
+
+    await page.getByRole("button", { name: "Open active records" }).click();
+    await expect(recordWorkbench).toBeVisible();
+    await recordWorkbench
+      .getByRole("button", {
+        name: "View details for Callaway mystery driver",
+      })
+      .click();
+
+    await expect(
+      recordWorkbench.getByRole("heading", {
+        name: "Callaway mystery driver",
+      }),
+    ).toBeVisible();
+    await expect(recordWorkbench).toContainText(
+      "Why this record is in its current state",
+    );
+    await expect(recordWorkbench).toContainText("Normalized record");
+    await expect(recordWorkbench).toContainText("Source and workflow context");
+
+    await recordWorkbench
+      .getByRole("button", { name: "Open related review" })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Global Review Queue" }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Opened from AI-ready records", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Return to Admin Ops" }),
+    ).toBeInViewport();
+    await expect(
+      page.getByRole("button", { name: "Back to Admin Ops" }),
+    ).toBeVisible();
   } finally {
     expect
       .soft(browserFailures, "browser console, page, and server failures")

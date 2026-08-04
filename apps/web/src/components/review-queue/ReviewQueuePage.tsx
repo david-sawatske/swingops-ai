@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react";
+
 import type {
   GlobalReviewQueueItem,
   ReviewQueueItem,
@@ -21,7 +23,9 @@ export function ReviewQueuePage({
   actionSuccess,
   actionError,
   activeReviewQueueItemId,
+  focusedIntakeItemId,
   reviewQueueNotesById,
+  onReturnToSource,
   onNotesChange,
   onReviewQueueItemAction,
 }: {
@@ -32,7 +36,9 @@ export function ReviewQueuePage({
   actionSuccess: string | null;
   actionError: string | null;
   activeReviewQueueItemId: string | null;
+  focusedIntakeItemId: string | null;
   reviewQueueNotesById: Record<string, string>;
+  onReturnToSource: () => void;
   onNotesChange: (reviewQueueItemId: string, reviewerNotes: string) => void;
   onReviewQueueItemAction: (input: {
     reviewQueueItemId: string;
@@ -41,6 +47,19 @@ export function ReviewQueuePage({
     intakeBatchId?: string | null;
   }) => void;
 }) {
+  const focusedItemRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const focusedItem = focusedItemRef.current;
+
+    if (!focusedIntakeItemId || !focusedItem) {
+      return;
+    }
+
+    focusedItem.focus({ preventScroll: true });
+    focusedItem.scrollIntoView({ behavior: "auto", block: "start" });
+  }, [focusedIntakeItemId, items]);
+
   function renderReviewQueueActionControls(input: {
     item: ReviewQueueItem;
     workflowRunId?: string | null;
@@ -153,11 +172,31 @@ export function ReviewQueuePage({
             const evidence = getReviewQueueEvidenceSummary(item);
             const isClosed =
               item.status === "RESOLVED" || item.status === "DISMISSED";
+            const isFocused = item.intakeItemId === focusedIntakeItemId;
 
             return (
-              <article className="review-queue-card" key={item.id}>
+              <article
+                className={
+                  isFocused
+                    ? "review-queue-card review-queue-card--focused"
+                    : "review-queue-card"
+                }
+                key={item.id}
+                ref={isFocused ? focusedItemRef : undefined}
+                tabIndex={isFocused ? -1 : undefined}
+              >
                 <div className="review-queue-card__header">
                   <div>
+                    {isFocused ? (
+                      <div className="review-queue-card__origin-row">
+                        <span className="review-queue-card__origin">
+                          Opened from AI-ready records
+                        </span>
+                        <button onClick={onReturnToSource} type="button">
+                          ← Return to Admin Ops
+                        </button>
+                      </div>
+                    ) : null}
                     <span className="model-route-card__eyebrow">
                       {isClosed
                         ? "Human review recorded"

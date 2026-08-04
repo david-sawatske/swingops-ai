@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   getAdminOpsSummary,
@@ -8,8 +8,11 @@ import type {
   AiReadyIntakeRecord,
   GetAdminOpsSummaryResponse,
 } from "../../types/workflow";
+import { AdminOpsAiReadyRecordDetail } from "./AdminOpsAiReadyRecordDetail";
+import { AdminOpsAiReadyRecordHistory } from "./AdminOpsAiReadyRecordHistory";
 import {
   AI_READY_DATE_FILTERS,
+  AI_READY_HISTORY_SORT_OPTIONS,
   AI_READY_INSIGHT_TABS,
   AI_READY_READINESS_FILTERS,
   AI_READY_RECORD_PAGE_SIZE,
@@ -20,14 +23,15 @@ import {
   type AiReadyReadinessFilter,
   type AiReadySortOption,
   type AiReadyStatusFilter,
+  formatAiReadyFieldLabel,
   formatAiReadyRecordDisplayName,
+  formatAiReadySourceTypeLabel,
   formatAiReadyStatusLabel,
   getAiReadyCreatedDateRange,
   getAiReadyExplorerReadinessFilters,
   getAiReadyExplorerSort,
   getAiReadyExplorerStatusFilter,
   getAiReadyRecordMissingFields,
-  getSupersededRecordReplacementLabel,
   isSupersededAiReadyRecord,
 } from "./adminOpsAiReadyUtils";
 import {
@@ -36,10 +40,13 @@ import {
   formatAdminOpsDate,
   formatAdminOpsPercent,
   formatNullable,
-  formatShortId,
 } from "./adminOpsPresentation";
 
-export function AdminOpsAiReadyRecordsPanel() {
+export function AdminOpsAiReadyRecordsPanel({
+  onOpenReviewQueue,
+}: {
+  onOpenReviewQueue: (intakeItemId: string | null) => void;
+}) {
   const [summary, setSummary] = useState<GetAdminOpsSummaryResponse | null>(
     null,
   );
@@ -63,6 +70,10 @@ export function AdminOpsAiReadyRecordsPanel() {
     useState<AiReadyInsightTab>("MISSING_FIELDS");
   const [recordOffset, setRecordOffset] = useState(0);
   const [isRecordWorkbenchOpen, setIsRecordWorkbenchOpen] = useState(false);
+  const [selectedRecord, setSelectedRecord] =
+    useState<AiReadyIntakeRecord | null>(null);
+  const recordWorkbenchPanelRef = useRef<HTMLDivElement | null>(null);
+  const recordListScrollPositionRef = useRef(0);
 
   const aiReadySummary = summary?.aiReadyRecords;
   const sourceTypeOptions = useMemo(
@@ -74,11 +85,18 @@ export function AdminOpsAiReadyRecordsPanel() {
     (record) => !isSupersededAiReadyRecord(record),
   );
   const displayedSupersededRecords = records.filter(isSupersededAiReadyRecord);
-  const activeFilterCount = [
+  const isHistoryMode = statusFilter === "SUPERSEDED";
+  const activeRecordFilterCount = [
     searchQuery.trim() !== "",
     statusFilter !== "ACTIVE",
     sourceFilter !== "ALL",
     readinessFilter !== "ALL",
+    dateFilter !== "ALL",
+    sortOption !== "NEWEST",
+  ].filter(Boolean).length;
+  const historyFilterCount = [
+    searchQuery.trim() !== "",
+    sourceFilter !== "ALL",
     dateFilter !== "ALL",
     sortOption !== "NEWEST",
   ].filter(Boolean).length;
@@ -103,10 +121,15 @@ export function AdminOpsAiReadyRecordsPanel() {
     try {
       setIsRecordsLoading(true);
       setRecordsError(null);
+      setRecords([]);
+      setRecordTotalCount(0);
+      setRecordHasMore(false);
 
       const response = await listAiReadyIntakeRecords({
         ...getAiReadyCreatedDateRange(dateFilter),
-        ...getAiReadyExplorerReadinessFilters(readinessFilter),
+        ...(isHistoryMode
+          ? {}
+          : getAiReadyExplorerReadinessFilters(readinessFilter)),
         limit: AI_READY_RECORD_PAGE_SIZE,
         offset: recordOffset,
         activeOnly: statusFilter === "ACTIVE" ? true : undefined,
@@ -130,6 +153,7 @@ export function AdminOpsAiReadyRecordsPanel() {
     }
   }, [
     dateFilter,
+    isHistoryMode,
     readinessFilter,
     recordOffset,
     searchQuery,
@@ -147,6 +171,16 @@ export function AdminOpsAiReadyRecordsPanel() {
       void loadRecords();
     }
   }, [isRecordWorkbenchOpen, loadRecords]);
+
+  useEffect(() => {
+    const panel = recordWorkbenchPanelRef.current;
+
+    if (!panel) {
+      return;
+    }
+
+    panel.scrollTop = selectedRecord ? 0 : recordListScrollPositionRef.current;
+  }, [selectedRecord]);
 
   function openRecordWorkbenchWithFilters({
     status = "ACTIVE",
@@ -169,7 +203,20 @@ export function AdminOpsAiReadyRecordsPanel() {
     setDateFilter(date);
     setSortOption(sort);
     setRecordOffset(0);
+    setSelectedRecord(null);
+    recordListScrollPositionRef.current = 0;
     setIsRecordWorkbenchOpen(true);
+  }
+
+  function openRecordDetail(record: AiReadyIntakeRecord) {
+    recordListScrollPositionRef.current =
+      recordWorkbenchPanelRef.current?.scrollTop ?? 0;
+    setSelectedRecord(record);
+  }
+
+  function closeRecordWorkbench() {
+    setSelectedRecord(null);
+    setIsRecordWorkbenchOpen(false);
   }
 
   function submitSearchQuery() {
@@ -191,8 +238,25 @@ export function AdminOpsAiReadyRecordsPanel() {
     setRecordOffset(0);
   }
 
+  function resetHistoryFilters() {
+    setSearchDraft("");
+    setSearchQuery("");
+    setStatusFilter("SUPERSEDED");
+    setSourceFilter("ALL");
+    setReadinessFilter("ALL");
+    setDateFilter("ALL");
+    setSortOption("NEWEST");
+    setRecordOffset(0);
+  }
+
   function updateStatusFilter(value: AiReadyStatusFilter) {
     setStatusFilter(value);
+    if (value === "SUPERSEDED") {
+      setReadinessFilter("ALL");
+      setSortOption((currentSort) =>
+        currentSort === "STATUS" ? "NEWEST" : currentSort,
+      );
+    }
     setRecordOffset(0);
   }
 
@@ -409,24 +473,43 @@ export function AdminOpsAiReadyRecordsPanel() {
           className="guided-expanded-table-backdrop"
           role="dialog"
         >
-          <div className="guided-expanded-table-panel admin-ops-record-workbench-panel">
+          <div
+            className="guided-expanded-table-panel admin-ops-record-workbench-panel"
+            ref={recordWorkbenchPanelRef}
+          >
             <div className="guided-expanded-table-header">
               <div>
                 <span className="model-route-card__eyebrow">
-                  Expanded record view
+                  {selectedRecord
+                    ? isHistoryMode
+                      ? "Historical record detail"
+                      : "AI-ready record detail"
+                    : isHistoryMode
+                      ? "Historical record audit"
+                      : "Expanded record view"}
                 </span>
-                <h4>Full AI-ready record workbench</h4>
+                <h4>
+                  {selectedRecord
+                    ? formatAiReadyRecordDisplayName(selectedRecord)
+                    : isHistoryMode
+                      ? "Replaced record history"
+                      : "Full AI-ready record workbench"}
+                </h4>
                 <p>
-                  Search, filter, sort, page through records, and audit active
-                  records without treating replaced intake candidates as active
-                  issues.
+                  {selectedRecord
+                    ? isHistoryMode
+                      ? "Inspect the earlier candidate, its replacement context, source evidence, and workflow provenance."
+                      : "Review readiness, normalized fields, source evidence, and workflow provenance for this record."
+                    : isHistoryMode
+                      ? "Audit earlier intake candidates, understand why they were replaced, and trace the authoritative workflow result."
+                      : "Search, filter, sort, page through records, and audit active records without treating replaced intake candidates as active issues."}
                 </p>
               </div>
 
               <button
                 aria-label="Close AI-ready record workbench"
                 className="guided-expanded-table-close-button"
-                onClick={() => setIsRecordWorkbenchOpen(false)}
+                onClick={closeRecordWorkbench}
                 title="Close"
                 type="button"
               >
@@ -434,319 +517,405 @@ export function AdminOpsAiReadyRecordsPanel() {
               </button>
             </div>
 
-            <div
-              className="admin-ops-record-controls"
-              aria-label="AI-ready record controls"
-            >
-              <label className="admin-ops-field admin-ops-field--wide">
-                <span>Search records</span>
-                <div className="admin-ops-search-control">
-                  <input
-                    type="search"
-                    value={searchDraft}
-                    onChange={(event) => setSearchDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        submitSearchQuery();
+            {selectedRecord ? (
+              <AdminOpsAiReadyRecordDetail
+                onBack={() => setSelectedRecord(null)}
+                onOpenReviewQueue={onOpenReviewQueue}
+                record={selectedRecord}
+              />
+            ) : (
+              <>
+                <div
+                  className={
+                    isHistoryMode
+                      ? "admin-ops-record-controls admin-ops-record-controls--history"
+                      : "admin-ops-record-controls"
+                  }
+                  aria-label={
+                    isHistoryMode
+                      ? "Replaced history controls"
+                      : "AI-ready record controls"
+                  }
+                >
+                  <label className="admin-ops-field admin-ops-field--wide">
+                    <span>
+                      {isHistoryMode ? "Search history" : "Search records"}
+                    </span>
+                    <div className="admin-ops-search-control">
+                      <input
+                        type="search"
+                        value={searchDraft}
+                        onChange={(event) => setSearchDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            submitSearchQuery();
+                          }
+                        }}
+                        placeholder={
+                          isHistoryMode
+                            ? "Brand, product, source, or replacement reason"
+                            : "Brand, product, source, status, missing field"
+                        }
+                      />
+                      <button
+                        aria-label="Search AI-ready records"
+                        className="admin-ops-search-submit"
+                        disabled={searchDraft.trim() === searchQuery.trim()}
+                        onClick={submitSearchQuery}
+                        type="button"
+                      >
+                        →
+                      </button>
+                    </div>
+                  </label>
+
+                  {!isHistoryMode ? (
+                    <label className="admin-ops-field">
+                      <span>Status</span>
+                      <select
+                        value={statusFilter}
+                        onChange={(event) =>
+                          updateStatusFilter(
+                            event.target.value as AiReadyStatusFilter,
+                          )
+                        }
+                      >
+                        {AI_READY_STATUS_FILTERS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+
+                  <label className="admin-ops-field">
+                    <span>Source</span>
+                    <select
+                      value={sourceFilter}
+                      onChange={(event) =>
+                        updateSourceFilter(event.target.value)
                       }
-                    }}
-                    placeholder="Brand, product, source, status, missing field"
-                  />
+                    >
+                      <option value="ALL">All sources</option>
+                      {sourceTypeOptions.map((sourceType) => (
+                        <option key={sourceType} value={sourceType}>
+                          {formatAiReadySourceTypeLabel(sourceType)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  {!isHistoryMode ? (
+                    <label className="admin-ops-field">
+                      <span>Readiness</span>
+                      <select
+                        value={readinessFilter}
+                        onChange={(event) =>
+                          updateReadinessFilter(
+                            event.target.value as AiReadyReadinessFilter,
+                          )
+                        }
+                      >
+                        {AI_READY_READINESS_FILTERS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+
+                  <label className="admin-ops-field">
+                    <span>
+                      {isHistoryMode ? "Original record date" : "Created date"}
+                    </span>
+                    <select
+                      value={dateFilter}
+                      onChange={(event) =>
+                        updateDateFilter(
+                          event.target.value as AiReadyDateFilter,
+                        )
+                      }
+                    >
+                      {AI_READY_DATE_FILTERS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="admin-ops-field">
+                    <span>Sort</span>
+                    <select
+                      value={sortOption}
+                      onChange={(event) =>
+                        updateSortOption(
+                          event.target.value as AiReadySortOption,
+                        )
+                      }
+                    >
+                      {(isHistoryMode
+                        ? AI_READY_HISTORY_SORT_OPTIONS
+                        : AI_READY_SORT_OPTIONS
+                      ).map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
                   <button
-                    aria-label="Search AI-ready records"
-                    className="admin-ops-search-submit"
-                    disabled={searchDraft.trim() === searchQuery.trim()}
-                    onClick={submitSearchQuery}
+                    className="admin-ops-clear-button"
                     type="button"
+                    onClick={isHistoryMode ? resetHistoryFilters : clearFilters}
+                    disabled={
+                      isHistoryMode
+                        ? historyFilterCount === 0
+                        : activeRecordFilterCount === 0
+                    }
                   >
-                    →
+                    {isHistoryMode ? "Reset history filters" : "Clear filters"}
                   </button>
                 </div>
-              </label>
 
-              <label className="admin-ops-field">
-                <span>Status</span>
-                <select
-                  value={statusFilter}
-                  onChange={(event) =>
-                    updateStatusFilter(
-                      event.target.value as AiReadyStatusFilter,
-                    )
-                  }
-                >
-                  {AI_READY_STATUS_FILTERS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                {recordsError ? (
+                  <p className="admin-ops-error">{recordsError}</p>
+                ) : null}
 
-              <label className="admin-ops-field">
-                <span>Source</span>
-                <select
-                  value={sourceFilter}
-                  onChange={(event) => updateSourceFilter(event.target.value)}
-                >
-                  <option value="ALL">All sources</option>
-                  {sourceTypeOptions.map((sourceType) => (
-                    <option key={sourceType} value={sourceType}>
-                      {sourceType}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                {isHistoryMode ? (
+                  <>
+                    {isRecordsLoading ? (
+                      <p className="admin-ops-muted">
+                        Loading replaced record history...
+                      </p>
+                    ) : null}
 
-              <label className="admin-ops-field">
-                <span>Readiness</span>
-                <select
-                  value={readinessFilter}
-                  onChange={(event) =>
-                    updateReadinessFilter(
-                      event.target.value as AiReadyReadinessFilter,
-                    )
-                  }
-                >
-                  {AI_READY_READINESS_FILTERS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="admin-ops-field">
-                <span>Created date</span>
-                <select
-                  value={dateFilter}
-                  onChange={(event) =>
-                    updateDateFilter(event.target.value as AiReadyDateFilter)
-                  }
-                >
-                  {AI_READY_DATE_FILTERS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="admin-ops-field">
-                <span>Sort</span>
-                <select
-                  value={sortOption}
-                  onChange={(event) =>
-                    updateSortOption(event.target.value as AiReadySortOption)
-                  }
-                >
-                  {AI_READY_SORT_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <button
-                className="admin-ops-clear-button"
-                type="button"
-                onClick={clearFilters}
-                disabled={activeFilterCount === 0}
-              >
-                Clear filters
-              </button>
-            </div>
-
-            {recordsError ? (
-              <p className="admin-ops-error">{recordsError}</p>
-            ) : null}
-
-            {!isRecordsLoading && !recordsError && records.length === 0 ? (
-              <p className="admin-ops-muted">
-                No AI-ready records match the current search and filters.
-              </p>
-            ) : null}
-
-            <div className="admin-ops-record-summary">
-              Showing {records.length} records on this page. {recordTotalCount}{" "}
-              records match the current search and filters. Replaced history
-              stays available through the status filter.
-              {activeFilterCount > 0 ? (
-                <span>{activeFilterCount} controls active.</span>
-              ) : null}
-            </div>
-
-            <div className="admin-ops-pagination">
-              <button
-                type="button"
-                onClick={() =>
-                  setRecordOffset((currentOffset) =>
-                    Math.max(0, currentOffset - AI_READY_RECORD_PAGE_SIZE),
-                  )
-                }
-                disabled={recordOffset === 0 || isRecordsLoading}
-              >
-                Previous page
-              </button>
-              <span>
-                Page {Math.floor(recordOffset / AI_READY_RECORD_PAGE_SIZE) + 1}{" "}
-                · {isRecordsLoading ? "Loading..." : `${records.length} loaded`}
-              </span>
-              <button
-                type="button"
-                onClick={() =>
-                  setRecordOffset(
-                    (currentOffset) =>
-                      currentOffset + AI_READY_RECORD_PAGE_SIZE,
-                  )
-                }
-                disabled={!recordHasMore || isRecordsLoading}
-              >
-                Next page
-              </button>
-            </div>
-
-            {!isRecordsLoading &&
-            !recordsError &&
-            records.length > 0 &&
-            displayedActiveRecords.length === 0 ? (
-              <p className="admin-ops-muted">
-                No active AI-ready records match the current search and filters.
-                Replaced intake candidates remain available below when they
-                match the filters.
-              </p>
-            ) : null}
-
-            {displayedActiveRecords.length > 0 ? (
-              <div className="admin-ops-record-group">
-                <div className="admin-ops-table-wrap">
-                  <table className="admin-ops-table admin-ops-table--dense">
-                    <thead>
-                      <tr>
-                        <th>Status</th>
-                        <th>Record</th>
-                        <th>Source</th>
-                        <th>Missing fields</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {displayedActiveRecords.map((record) => {
-                        const normalized = record.normalizedJson;
-                        const missingFields =
-                          getAiReadyRecordMissingFields(record);
-
-                        return (
-                          <tr
-                            key={record.id}
-                            className="admin-ops-table-row-card"
-                          >
-                            <td>
-                              <div className="admin-ops-table-stack">
-                                <AdminOpsStatusBadge
-                                  tone={
-                                    record.reviewNeeded ? "warning" : "success"
-                                  }
-                                >
-                                  {formatAiReadyStatusLabel(record.status)}
-                                </AdminOpsStatusBadge>
-                              </div>
-                            </td>
-                            <td>
-                              <div className="admin-ops-table-stack">
-                                <strong>
-                                  {formatNullable(normalized.brand)}{" "}
-                                  {formatNullable(normalized.productLine)}
-                                </strong>
-                                <small>
-                                  {formatNullable(normalized.category)} · Shaft{" "}
-                                  {formatNullable(normalized.shaftFlex)} ·
-                                  Condition{" "}
-                                  {formatNullable(normalized.conditionGrade)}
-                                </small>
-                              </div>
-                            </td>
-                            <td>
-                              <div className="admin-ops-table-stack">
-                                <strong>{record.sourceType}</strong>
-                                <small className="admin-ops-source-meta">
-                                  <span>{record.sourceName}</span>
-                                  <span>
-                                    Created{" "}
-                                    {formatAdminOpsDate(record.createdAt)}
-                                  </span>
-                                </small>
-                              </div>
-                            </td>
-                            <td>
-                              {missingFields.length > 0
-                                ? missingFields.join(", ")
-                                : "None"}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ) : null}
-
-            {displayedSupersededRecords.length > 0 ? (
-              <details className="admin-ops-history-details">
-                <summary>
-                  Replaced record history ({displayedSupersededRecords.length})
-                </summary>
-                <div className="admin-ops-history-list">
-                  {displayedSupersededRecords.map((record) => (
-                    <article className="admin-ops-history-card" key={record.id}>
-                      <div className="admin-ops-history-card__main">
-                        <strong>
-                          {formatAiReadyRecordDisplayName(record)}
-                        </strong>
-                        <small>
-                          {getSupersededRecordReplacementLabel(record)}
-                        </small>
+                    {!isRecordsLoading &&
+                    !recordsError &&
+                    displayedSupersededRecords.length === 0 ? (
+                      <div className="admin-ops-history-empty">
+                        <strong>No replaced records found</strong>
+                        <p>
+                          Adjust the history search or filters to see earlier
+                          intake candidates.
+                        </p>
                       </div>
+                    ) : null}
 
-                      <div className="admin-ops-history-card__meta">
-                        <span>{record.sourceType}</span>
-                        <span>{formatAiReadyStatusLabel(record.status)}</span>
-                        {record.supersededAt ? (
-                          <span>{formatAdminOpsDate(record.supersededAt)}</span>
-                        ) : null}
+                    {!isRecordsLoading &&
+                    !recordsError &&
+                    displayedSupersededRecords.length > 0 ? (
+                      <AdminOpsAiReadyRecordHistory
+                        onInspectRecord={openRecordDetail}
+                        records={displayedSupersededRecords}
+                        totalCount={recordTotalCount}
+                      />
+                    ) : null}
+
+                    {recordOffset > 0 || recordHasMore ? (
+                      <div className="admin-ops-pagination">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setRecordOffset((currentOffset) =>
+                              Math.max(
+                                0,
+                                currentOffset - AI_READY_RECORD_PAGE_SIZE,
+                              ),
+                            )
+                          }
+                          disabled={recordOffset === 0 || isRecordsLoading}
+                        >
+                          Previous page
+                        </button>
+                        <span>
+                          Page{" "}
+                          {Math.floor(
+                            recordOffset / AI_READY_RECORD_PAGE_SIZE,
+                          ) + 1}{" "}
+                          · {records.length} loaded
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setRecordOffset(
+                              (currentOffset) =>
+                                currentOffset + AI_READY_RECORD_PAGE_SIZE,
+                            )
+                          }
+                          disabled={!recordHasMore || isRecordsLoading}
+                        >
+                          Next page
+                        </button>
                       </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    {!isRecordsLoading &&
+                    !recordsError &&
+                    records.length === 0 ? (
+                      <p className="admin-ops-muted">
+                        No AI-ready records match the current search and
+                        filters.
+                      </p>
+                    ) : null}
 
-                      {record.supersededReason ? (
-                        <p>{record.supersededReason}</p>
+                    <div className="admin-ops-record-summary">
+                      Showing {records.length} records on this page.{" "}
+                      {recordTotalCount} records match the current search and
+                      filters.
+                      {activeRecordFilterCount > 0 ? (
+                        <span>{activeRecordFilterCount} controls active.</span>
                       ) : null}
+                    </div>
 
-                      <details className="admin-ops-history-technical">
-                        <summary>Technical audit detail</summary>
-                        <div className="admin-ops-reference-list">
-                          <small>record: {record.id}</small>
-                          <small>
-                            replaced by:{" "}
-                            {formatShortId(
-                              record.supersededByAiReadyIntakeRecordId,
-                            )}
-                          </small>
-                          <small>
-                            run: {formatShortId(record.workflowRunId)}
-                          </small>
-                          <small>
-                            batch: {formatShortId(record.intakeBatchId)}
-                          </small>
-                          <small>
-                            item: {formatShortId(record.intakeItemId)}
-                          </small>
+                    <div className="admin-ops-pagination">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setRecordOffset((currentOffset) =>
+                            Math.max(
+                              0,
+                              currentOffset - AI_READY_RECORD_PAGE_SIZE,
+                            ),
+                          )
+                        }
+                        disabled={recordOffset === 0 || isRecordsLoading}
+                      >
+                        Previous page
+                      </button>
+                      <span>
+                        Page{" "}
+                        {Math.floor(recordOffset / AI_READY_RECORD_PAGE_SIZE) +
+                          1}{" "}
+                        ·{" "}
+                        {isRecordsLoading
+                          ? "Loading..."
+                          : `${records.length} loaded`}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setRecordOffset(
+                            (currentOffset) =>
+                              currentOffset + AI_READY_RECORD_PAGE_SIZE,
+                          )
+                        }
+                        disabled={!recordHasMore || isRecordsLoading}
+                      >
+                        Next page
+                      </button>
+                    </div>
+
+                    {displayedActiveRecords.length > 0 ? (
+                      <div className="admin-ops-record-group">
+                        <div className="admin-ops-table-wrap">
+                          <table className="admin-ops-table admin-ops-table--dense">
+                            <thead>
+                              <tr>
+                                <th>Status</th>
+                                <th>Record</th>
+                                <th>Source</th>
+                                <th>Missing fields</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {displayedActiveRecords.map((record) => {
+                                const normalized = record.normalizedJson;
+                                const missingFields =
+                                  getAiReadyRecordMissingFields(record);
+
+                                return (
+                                  <tr
+                                    key={record.id}
+                                    className="admin-ops-table-row-card"
+                                  >
+                                    <td>
+                                      <div className="admin-ops-table-stack">
+                                        <AdminOpsStatusBadge
+                                          tone={
+                                            record.reviewNeeded
+                                              ? "warning"
+                                              : "success"
+                                          }
+                                        >
+                                          {formatAiReadyStatusLabel(
+                                            record.status,
+                                          )}
+                                        </AdminOpsStatusBadge>
+                                      </div>
+                                    </td>
+                                    <td>
+                                      <div className="admin-ops-table-stack">
+                                        <button
+                                          aria-label={`View details for ${formatAiReadyRecordDisplayName(record)}`}
+                                          className="admin-ops-record-detail-link"
+                                          onClick={() =>
+                                            openRecordDetail(record)
+                                          }
+                                          type="button"
+                                        >
+                                          {formatAiReadyRecordDisplayName(
+                                            record,
+                                          )}
+                                        </button>
+                                        <small>
+                                          {formatAiReadyFieldLabel(
+                                            normalized.category ?? "",
+                                          )}{" "}
+                                          · Shaft{" "}
+                                          {formatAiReadyFieldLabel(
+                                            normalized.shaftFlex ?? "",
+                                          )}{" "}
+                                          · Condition{" "}
+                                          {formatNullable(
+                                            normalized.conditionGrade,
+                                          )}
+                                        </small>
+                                      </div>
+                                    </td>
+                                    <td>
+                                      <div className="admin-ops-table-stack">
+                                        <strong>
+                                          {formatAiReadySourceTypeLabel(
+                                            record.sourceType,
+                                          )}
+                                        </strong>
+                                        <small className="admin-ops-source-meta">
+                                          <span>{record.sourceName}</span>
+                                          <span>
+                                            Created{" "}
+                                            {formatAdminOpsDate(
+                                              record.createdAt,
+                                            )}
+                                          </span>
+                                        </small>
+                                      </div>
+                                    </td>
+                                    <td>
+                                      {missingFields.length > 0
+                                        ? missingFields
+                                            .map(formatAiReadyFieldLabel)
+                                            .join(", ")
+                                        : "None"}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
                         </div>
-                      </details>
-                    </article>
-                  ))}
-                </div>
-              </details>
-            ) : null}
+                      </div>
+                    ) : null}
+                  </>
+                )}
+              </>
+            )}
           </div>
         </div>
       ) : null}

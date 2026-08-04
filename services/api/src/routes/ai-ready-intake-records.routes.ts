@@ -150,6 +150,12 @@ function buildAiReadyRecordSearchWhere(
       },
     },
     {
+      supersededReason: {
+        contains: normalizedSearchTerm,
+        mode: "insensitive",
+      },
+    },
+    {
       normalizedJson: {
         path: ["brand"],
         string_contains: normalizedSearchTerm,
