@@ -10,6 +10,87 @@ The architecture emphasizes:
 - Human review before uncertain records are treated as final.
 - Persisted normalized records that can be inspected after the run.
 
+## System boundary map
+
+```mermaid
+flowchart LR
+  UI["React guided workflow"] --> API["Fastify API"]
+  API --> Intake["Intake normalization and reference resolution"]
+  Intake --> Records["Persisted AI-ready records"]
+  Records --> Workflow["Application-owned workflow state machine"]
+  Knowledge["Knowledge retrieval"] --> Workflow
+  Catalog["Product, inventory, and valuation providers"] --> Workflow
+  Models["Bounded model adapters"] --> Workflow
+  Tools["Read-only connector policy"] --> Workflow
+  Workflow --> Review["Run-scoped human review"]
+  Workflow --> Audit["Persisted model, tool, and state audit"]
+  Review --> Audit
+  Review --> Final["Final merged report"]
+  Audit --> Final
+```
+
+The API is the authority boundary. The UI requests actions and renders returned
+state, while application code owns workflow transitions, validation gates, tool
+selection, persistence, and review status. Models and internal services provide
+bounded evidence to that application-owned process.
+
+## Design decisions and tradeoffs
+
+### Deterministic orchestration over model planning
+
+The workflow uses a fixed, persisted state machine because ordering, retries,
+failure status, and transition ownership must be reconstructable from stored
+evidence. This is less open-ended than allowing a model to plan arbitrary next
+steps, and adding a workflow branch requires explicit implementation and tests.
+That constraint is intentional for an operational process where unsupported
+writes or skipped validation would be more costly than reduced autonomy.
+
+### Advisory model work over model authority
+
+The model sees only application-selected records and evidence for two bounded
+repair tasks. Schema validation and application policy decide what happens next.
+This produces more human-review work than automatically accepting plausible
+model output, but it keeps state transitions, tools, writes, and final approval
+under deterministic control.
+
+### Local determinism with replaceable provider boundaries
+
+Model behavior, product-reference data, inventory, valuation, knowledge
+documents, and embeddings all have deterministic local implementations. That
+makes setup and regression testing repeatable. Their contracts are separated
+from parsing and orchestration so production implementations can use remote
+model providers, catalog SQL, hybrid retrieval, or internal service APIs without
+moving aliases, ranking, or operational authority back into the workflow.
+
+The local implementations do not prove production scale, provider availability,
+or corpus quality. Those require representative data, live-provider acceptance,
+capacity testing, service-level objectives, and production monitoring.
+
+### Read-only tool execution over broad tool access
+
+The tool registry exposes both allowed and blocked capabilities so discovery,
+risk metadata, policy, and audit behavior are visible. Only supported low-risk
+reads execute. Production mutations would require authenticated identities,
+tenant-aware authorization, approval rules, idempotency, and service-specific
+executors before the policy could safely allow them.
+
+### Persisted learning signals over automatic retraining
+
+Human review creates structured learning events that preserve the field,
+evidence, proposed value, approved value, and confidence impact. They are useful
+for audit and future evaluation or training-data curation. The application does
+not automatically retrain or change extraction behavior from a saved event;
+promotion into a model, rule, or reference-data update remains a governed step.
+
+### Synchronous local execution over distributed workers
+
+The demonstration runs workflows synchronously through one API service and a
+local PostgreSQL database. This keeps the full execution trace easy to run and
+inspect. Larger workloads would move long-running work behind durable queues and
+workers, add concurrency and idempotency controls at service boundaries, and use
+distributed tracing and operational alerting while preserving the same run,
+step, provider, tool, and review ownership model.
+
 ## Workspace layout
 
     apps/web

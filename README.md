@@ -21,6 +21,7 @@ The guided run demonstrates:
 - Human validation and review through a run-scoped review queue.
 - Structured review corrections that persist improved records and learning events.
 - Audit trails across workflow runs, model calls, tool calls, review items, and final output.
+- Deterministic workflow and retrieval evaluations that protect expected behavior.
 
 ## Guided Workflow
 
@@ -44,6 +45,53 @@ It starts with an overview/setup page and then walks through five actionable ste
    Review the final merged output, readiness status, audit trace, review changes, learning events, and records ready for downstream use.
 
 For a deeper walkthrough, see [Guided Workflow](docs/guided-workflow.md).
+
+## Architecture at a glance
+
+```mermaid
+flowchart LR
+  UI["React guided workflow"] --> API["Fastify API"]
+  API --> Intake["Intake normalization and reference resolution"]
+  Intake --> Records["Persisted AI-ready records"]
+  Records --> Workflow["Application-owned workflow state machine"]
+  Knowledge["Knowledge retrieval"] --> Workflow
+  Catalog["Product, inventory, and valuation providers"] --> Workflow
+  Models["Bounded model adapters"] --> Workflow
+  Tools["Read-only connector policy"] --> Workflow
+  Workflow --> Review["Run-scoped human review"]
+  Workflow --> Audit["Persisted model, tool, and state audit"]
+  Review --> Audit
+  Review --> Final["Final merged report"]
+  Audit --> Final
+```
+
+The browser talks only to the API. Application code owns workflow transitions,
+validation, tool selection, writes, and review status. Models receive selected
+records and evidence for narrow advisory tasks; their responses are
+schema-validated and cannot directly advance the workflow or mutate records.
+
+## Design choices and tradeoffs
+
+| Choice                                                   | Why it fits this workflow                                                                                               | Tradeoff and production evolution                                                                                            |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Application-controlled state machine                     | Makes ordering, retries, terminal status, and transition authority inspectable.                                         | Less open-ended than model planning; new workflow branches require explicit code and tests.                                  |
+| Advisory model boundary                                  | Allows useful repairs and comparisons without giving a provider authority over tools or records.                        | Some tasks need human review even when a model could make a plausible guess.                                                 |
+| Deterministic local defaults                             | Keeps setup, tests, and the complete demonstration repeatable without secrets or external availability.                 | Live-provider quality and latency still require separate acceptance checks with configured credentials.                      |
+| Bounded product-reference provider                       | Parsers receive structured evidence and search a limited candidate set instead of owning aliases or scanning a catalog. | The local provider uses indexed demo data; production can implement the same contract with SQL, vector, or hybrid search.    |
+| Deterministic retrieval with pgvector-compatible storage | Exposes citations, weighted scoring, and degradation behavior while keeping local results stable.                       | Production retrieval would use managed ingestion, production embeddings, representative corpora, and larger evaluation sets. |
+| Read-only MCP-compatible execution                       | Demonstrates tool discovery and policy enforcement without allowing uncontrolled operational changes.                   | Production mutations need identity, authorization, approval, idempotency, and service-specific controls.                     |
+| Persisted human-review signals                           | Preserves the approved change and its evidence for audit and later improvement.                                         | Learning events are not automatically training data or an automated retraining pipeline.                                     |
+
+## Demo and production boundaries
+
+| Capability                   | Implemented here                                                                                                                                | Production evolution                                                                                                          |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Workflow reliability         | Persisted transition guards, schema validation, bounded retries, provider deadlines, transactional completion, and idempotent failure handling. | Add durable workers, queueing, distributed tracing, service-level objectives, and operational alerting.                       |
+| Model routing                | Provider adapters, selection, fallback, attempt logs, cost metadata, and deterministic mock behavior.                                           | Configure approved providers and credentials, then add provider-specific monitoring, rate limits, and live acceptance checks. |
+| Product and business systems | Replaceable product-reference, inventory, and valuation interfaces backed by deterministic local data.                                          | Connect the interfaces to governed catalog, inventory, pricing, and transaction systems.                                      |
+| Knowledge retrieval          | Seeded documents, deterministic embeddings, pgvector search, weighted ranking, citations, and retrieval evaluations.                            | Add production ingestion, access-aware retrieval, corpus monitoring, and representative offline and online evaluations.       |
+| Tool integration             | A real local MCP stdio transport over one policy-controlled connector registry; low-risk reads execute and mutations are blocked.               | Add authenticated remote transport, tenant-aware authorization, approval workflows, and audited mutation executors.           |
+| Data protection              | Audit-boundary redaction and prompt-injection indicators for synthetic or approved local data.                                                  | Add a reviewed data inventory, tenant isolation, retention and deletion controls, managed keys, DLP, and compliance review.   |
 
 ## Main systems involved
 
@@ -102,6 +150,22 @@ Or run them separately:
 
 Open the web app using the URL printed by Vite. The default product experience is **Guided Workflow**.
 
+## Five-minute reviewer walkthrough
+
+After starting the app:
+
+1. Continue to **Messy Source Intake**, select **Load golden demonstration**, and normalize the four staged sources.
+2. In **AI-Ready Records**, compare normalized fields with missing-field and review signals. Notice that structure does not imply approval.
+3. Run **Guarded Workflow Execution** and inspect the persisted state sequence, citations, inventory and valuation evidence, model boundary, read-only tool call, and blocked mutation. Enable the provider-outage option only when you want to exercise the explicit fallback path.
+4. In **Validation Review**, apply only corrections supported by prior review or verified evidence. Leave ambiguous or insufficiently supported records unresolved.
+5. In **Final Run Report**, confirm that final values, unresolved records, corrections, learning events, provider attempts, and tool-policy evidence agree.
+
+A clean local setup displays deterministic `MOCK` model assistance. To perform a
+separate live-provider acceptance check, configure a supported provider and
+explicitly enable real model calls as described below. The complete expected
+record-level outcomes are documented in
+[Golden demonstration run](docs/guided-workflow.md#golden-demonstration-run).
+
 ## Environment assumptions
 
 Environment files are workspace-local so the API, Prisma, and Vite use their
@@ -143,6 +207,24 @@ Run the app, open the connector/knowledge controls in the UI, and use the demo k
 The knowledge system stores local deterministic embeddings and weighted scoring metadata for trade-in policy, club reference, condition, brand alias, and shaft flex guide chunks.
 
 ## Validation commands
+
+### Reliability and evaluations
+
+The reliability story is enforced at several levels:
+
+- Workflow transition guards reject invalid ordering and duplicate entry.
+- Provider attempt and workflow deadlines bound fallback execution.
+- Transactional completion keeps the final step, run, and intake batch aligned.
+- Idempotent failure handling preserves the first terminal cause and completed evidence.
+- Workflow evaluation scenarios protect against invented values, missing source evidence, unnecessary review, and automatic application of prior-review suggestions.
+- Knowledge evaluations protect expected retrieval type, rank, evidence, and degradation behavior.
+- The Playwright suite exercises the complete five-step product journey against an isolated `_test` database.
+
+With the API running, the evaluation surfaces are:
+
+    GET  /workflow-evals/scenarios
+    POST /workflow-evals/run
+    POST /knowledge/evals/run
 
 Run code, stylesheet, and formatting checks:
 

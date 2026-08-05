@@ -59,6 +59,26 @@ Run all tests:
 
     pnpm -r test
 
+## Workflow and retrieval evaluations
+
+The API exposes deterministic evaluation runners in addition to unit,
+integration, and browser tests. With the API running:
+
+    GET  /workflow-evals/scenarios
+    POST /workflow-evals/run
+    POST /knowledge/evals/run
+
+Workflow evaluation scenarios execute the real intake or guarded workflow path,
+compare observed records and review routing with business-level expectations,
+and clean up temporary scenario data. They currently protect complete-record
+handling, safe abstention for unknown values, traceable parser evidence, and the
+rule that prior-review suggestions are never applied automatically.
+
+Knowledge evaluations run seeded queries and verify expected retrieval type,
+ranking, evidence, and diagnostic behavior. Both runners are deterministic local
+regression surfaces. They do not replace live-provider acceptance, evaluation on
+representative production data, load testing, or operational monitoring.
+
 ## Golden-demonstration browser test
 
 Install the Chromium runtime once:
@@ -188,6 +208,20 @@ These tests protect:
 - Review-needed behavior.
 - Model log persistence.
 - Workflow quality output.
+
+### Workflow evaluation tests
+
+Important areas include:
+
+    services/api/src/workflow-evals/workflow-eval-runner.test.ts
+    services/api/src/routes/workflow-evals.routes.test.ts
+
+These tests protect:
+
+- Scenario discovery.
+- End-to-end scenario execution through workflow services.
+- Business-level expectation reporting.
+- Cleanup of temporary evaluation records.
 
 ### Knowledge tests
 

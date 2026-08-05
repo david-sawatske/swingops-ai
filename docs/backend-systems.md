@@ -139,6 +139,24 @@ Responsibilities:
 - Expose model routing preview behavior.
 - Demonstrate provider selection and fallback metadata.
 
+### Workflow evaluations
+
+File:
+
+    services/api/src/routes/workflow-evals.routes.ts
+
+Routes:
+
+    GET /workflow-evals/scenarios
+    POST /workflow-evals/run
+
+Responsibilities:
+
+- Describe the deterministic workflow quality scenarios.
+- Execute the scenarios through the real intake and guarded workflow paths.
+- Compare observed records, review routing, and field evidence with explicit expectations.
+- Clean up temporary scenario records after evaluation.
+
 ## Key workflows
 
 ### Multi-source intake workflow
@@ -284,6 +302,26 @@ vector retrieval, or hybrid ranking would replace the in-memory index. A remote
 provider would also move this lookup across an asynchronous workflow boundary;
 the parser and deterministic resolution policy would not need to regain ownership
 of catalog aliases or retrieval logic.
+
+### Workflow quality evaluations
+
+Files:
+
+    services/api/src/workflow-evals/workflow-eval-scenarios.ts
+    services/api/src/workflow-evals/workflow-eval-runner.ts
+    services/api/src/workflow-evals/workflow-eval-types.ts
+
+The workflow evaluation runner protects business-level behaviors that are wider
+than one parser or route assertion. Current scenarios cover complete records,
+safe handling of unknown values, source-phrase evidence for normalized fields,
+and the rule that prior-review suggestions remain advisory. Scenarios execute
+the real workflow services with deterministic model behavior, report structured
+expectation failures, and remove their temporary persistence artifacts.
+
+These evaluations are a local regression surface, not evidence of production
+quality on a representative corpus. A production program would version larger
+datasets, track metrics over time, segment results by source and product class,
+and combine offline quality gates with live-provider and operational monitoring.
 
 ## Serializers
 
