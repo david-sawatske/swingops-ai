@@ -267,7 +267,7 @@ describe("product-reference-resolver", () => {
       productLine: "Nova X",
       matchKind: "ALIAS_EXACT",
     });
-    expect(result.providerRecordCount).toBe(1);
+    expect(result.providerCandidateCount).toBe(1);
   });
   it("matches an exact canonical product from raw text alone", () => {
     const result = resolveProductReference({

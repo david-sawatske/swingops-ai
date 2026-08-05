@@ -1,0 +1,67 @@
+import type { ProductReferenceData } from "./product-reference-types.js";
+
+export const demoProductReferenceData: ProductReferenceData = {
+  brandAliases: [
+    { value: "TaylorMade", alias: "TaylorMade", confidence: 1 },
+    { value: "TaylorMade", alias: "Taylor Made", confidence: 0.98 },
+    { value: "TaylorMade", alias: "TM", confidence: 0.9 },
+    { value: "Titleist", alias: "Titleist", confidence: 1 },
+    { value: "Callaway", alias: "Callaway", confidence: 1 },
+    { value: "Callaway", alias: "Cally", confidence: 0.9 },
+    { value: "PING", alias: "PING", confidence: 1 },
+    { value: "Cleveland", alias: "Cleveland", confidence: 1 },
+    { value: "Odyssey", alias: "Odyssey", confidence: 1 },
+    { value: "Mizuno", alias: "Mizuno", confidence: 1 },
+    { value: "Scotty Cameron", alias: "Scotty Cameron", confidence: 1 },
+  ],
+  categoryAliases: [
+    { value: "DRIVER", alias: "driver", confidence: 1 },
+    { value: "DRIVER", alias: "drv", confidence: 0.92 },
+    { value: "DRIVER", alias: "dr", confidence: 0.82 },
+    { value: "DRIVER", alias: "1w", confidence: 0.9 },
+    { value: "FAIRWAY_WOOD", alias: "fairway wood", confidence: 1 },
+    { value: "FAIRWAY_WOOD", alias: "fairway", confidence: 0.96 },
+    { value: "FAIRWAY_WOOD", alias: "wood", confidence: 0.82 },
+    { value: "FAIRWAY_WOOD", alias: "fw", confidence: 0.9 },
+    { value: "FAIRWAY_WOOD", alias: "fwy", confidence: 0.9 },
+    ...[3, 4, 5, 7, 9].flatMap((clubNumber) => [
+      {
+        value: "FAIRWAY_WOOD" as const,
+        alias: `${clubNumber}w`,
+        confidence: 0.94,
+      },
+      {
+        value: "FAIRWAY_WOOD" as const,
+        alias: `${clubNumber} wood`,
+        confidence: 0.94,
+      },
+    ]),
+    { value: "HYBRID", alias: "hybrid", confidence: 1 },
+    { value: "HYBRID", alias: "hy", confidence: 0.9 },
+    { value: "HYBRID", alias: "rescue", confidence: 0.94 },
+    { value: "IRON_SET", alias: "iron set", confidence: 1 },
+    { value: "IRON_SET", alias: "irons", confidence: 0.96 },
+    { value: "IRON_SET", alias: "iron", confidence: 0.9 },
+    ...[3, 4, 5, 6, 7, 8, 9].map((firstClub) => ({
+      value: "IRON_SET" as const,
+      alias: `${firstClub}-pw`,
+      confidence: 0.94,
+    })),
+    ...[5, 6, 7, 8, 9].map((firstClub) => ({
+      value: "IRON_SET" as const,
+      alias: `${firstClub}-gw`,
+      confidence: 0.94,
+    })),
+    { value: "WEDGE", alias: "wedge", confidence: 1 },
+    ...[46, 48, 50, 52, 54, 56, 58, 60, 62, 64].flatMap((loft) => [
+      { value: "WEDGE" as const, alias: `${loft} degree`, confidence: 0.9 },
+      { value: "WEDGE" as const, alias: `${loft} deg`, confidence: 0.9 },
+      { value: "WEDGE" as const, alias: `${loft}°`, confidence: 0.9 },
+    ]),
+    { value: "WEDGE", alias: "gw", confidence: 0.82 },
+    { value: "WEDGE", alias: "sw", confidence: 0.82 },
+    { value: "WEDGE", alias: "lw", confidence: 0.82 },
+    { value: "PUTTER", alias: "putter", confidence: 1 },
+    { value: "PUTTER", alias: "pt", confidence: 0.82 },
+  ],
+};

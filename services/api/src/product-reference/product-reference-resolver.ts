@@ -3,7 +3,10 @@ import type {
   ProductReferenceRecord,
 } from "./product-reference-types.js";
 import { demoProductReferenceProvider } from "./demo-product-reference-provider.js";
-import type { ProductReferenceProvider } from "./product-reference-provider.js";
+import {
+  normalizeProductReferenceText,
+  type ProductReferenceProvider,
+} from "./product-reference-provider.js";
 
 export type ProductReferenceMatchKind =
   | "CANONICAL_EXACT"
@@ -48,7 +51,7 @@ type ProductResolutionBase = {
     productText: string | null;
     year: number | null;
   };
-  providerRecordCount: number;
+  providerCandidateCount: number;
   reason: string;
 };
 
@@ -84,51 +87,10 @@ type IdentifierMatch = {
 const MINIMUM_CANDIDATE_SCORE = 0.65;
 const MINIMUM_AUTHORITATIVE_SCORE = 0.86;
 const AMBIGUOUS_SCORE_MARGIN = 0.05;
-
-const brandAliases = new Map<string, string>([
-  ["tm", "taylormade"],
-  ["taylor made", "taylormade"],
-  ["taylormade", "taylormade"],
-  ["cally", "callaway"],
-  ["callaway", "callaway"],
-  ["ping", "ping"],
-  ["titleist", "titleist"],
-  ["cleveland", "cleveland"],
-  ["odyssey", "odyssey"],
-  ["mizuno", "mizuno"],
-  ["scotty cameron", "scotty cameron"],
-]);
-
-const categoryAliases = new Map<string, ProductReferenceCategory>([
-  ["driver", "DRIVER"],
-  ["drv", "DRIVER"],
-  ["1w", "DRIVER"],
-  ["fairway", "FAIRWAY_WOOD"],
-  ["fairway wood", "FAIRWAY_WOOD"],
-  ["fw", "FAIRWAY_WOOD"],
-  ["fwy", "FAIRWAY_WOOD"],
-  ["3w", "FAIRWAY_WOOD"],
-  ["5w", "FAIRWAY_WOOD"],
-  ["7w", "FAIRWAY_WOOD"],
-  ["9w", "FAIRWAY_WOOD"],
-  ["hybrid", "HYBRID"],
-  ["hy", "HYBRID"],
-  ["rescue", "HYBRID"],
-  ["iron", "IRON_SET"],
-  ["irons", "IRON_SET"],
-  ["iron set", "IRON_SET"],
-  ["wedge", "WEDGE"],
-  ["putter", "PUTTER"],
-]);
+const PRODUCT_RESOLUTION_SEARCH_LIMIT = 50;
 
 function normalizeText(value: string | null | undefined): string {
-  return (value ?? "")
-    .replace(/([a-z])(\d)/gi, "$1 $2")
-    .replace(/(\d)([a-z])/gi, "$1 $2")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return normalizeProductReferenceText(value);
 }
 
 function compact(value: string): string {
@@ -233,24 +195,6 @@ function findLongestSupportedFamilyPhrase(input: {
   }
 
   return null;
-}
-
-function normalizeBrand(value: string | null | undefined): string {
-  const normalized = normalizeText(value);
-
-  return brandAliases.get(normalized) ?? normalized;
-}
-
-function normalizeCategory(
-  value: string | null | undefined,
-): ProductReferenceCategory | null {
-  const normalized = normalizeText(value);
-
-  return (
-    categoryAliases.get(normalized) ??
-    categoryAliases.get(compact(normalized)) ??
-    null
-  );
 }
 
 function containsNormalizedPhrase(haystack: string, needle: string): boolean {
@@ -466,7 +410,7 @@ function scoreProduct(input: {
   originalRawText: string;
   year: number | null;
 }): ProductResolutionCandidate | null {
-  const productBrand = normalizeBrand(input.product.brand);
+  const productBrand = normalizeText(input.product.brand);
 
   if (input.normalizedBrand && productBrand !== input.normalizedBrand) {
     return null;
@@ -559,7 +503,7 @@ function removeShadowedSpecificityCandidates(
       if (
         other.productId === candidate.productId ||
         other.matchKind === "FAMILY" ||
-        normalizeBrand(other.brand) !== normalizeBrand(candidate.brand) ||
+        normalizeText(other.brand) !== normalizeText(candidate.brand) ||
         other.category !== candidate.category ||
         other.score < candidate.score
       ) {
@@ -588,7 +532,7 @@ function buildBase(input: {
   normalizedCategory: ProductReferenceCategory | null;
   normalizedProductText: string;
   year: number | null;
-  providerRecordCount: number;
+  providerCandidateCount: number;
   reason: string;
 }): ProductResolutionBase {
   return {
@@ -600,7 +544,7 @@ function buildBase(input: {
       productText: input.normalizedProductText || null,
       year: input.year,
     },
-    providerRecordCount: input.providerRecordCount,
+    providerCandidateCount: input.providerCandidateCount,
     reason: input.reason,
   };
 }
@@ -609,15 +553,25 @@ export function resolveProductReference(
   input: ProductResolutionInput,
   provider: ProductReferenceProvider = demoProductReferenceProvider,
 ): ProductResolution {
-  const products = provider.listProducts();
   const originalBrand = input.brand?.trim() || null;
   const originalCategory = input.category?.trim() || null;
   const originalProductText = input.productText?.trim() || null;
-  const normalizedBrand = normalizeBrand(originalBrand);
-  const normalizedCategory = normalizeCategory(originalCategory);
+  const detectedBrand = originalBrand
+    ? provider.detectBrand(originalBrand)
+    : null;
+  const detectedCategory = originalCategory
+    ? provider.detectCategory(originalCategory)
+    : null;
+  const normalizedBrand = normalizeText(detectedBrand?.value ?? originalBrand);
+  const normalizedCategory = detectedCategory?.value ?? null;
   const normalizedProductText = normalizeText(originalProductText);
   const normalizedRawText = normalizeText(input.rawText);
   const year = input.year ?? null;
+  const searchResult = provider.searchCandidates({
+    ...input,
+    limit: PRODUCT_RESOLUTION_SEARCH_LIMIT,
+  });
+  const products = searchResult.candidates;
 
   const scoredCandidates = products
     .map((product) =>
@@ -657,7 +611,7 @@ export function resolveProductReference(
         normalizedCategory,
         normalizedProductText,
         year,
-        providerRecordCount: products.length,
+        providerCandidateCount: searchResult.totalMatches,
         reason:
           "No authoritative product reference matched the supplied identity evidence.",
       }),
@@ -684,7 +638,7 @@ export function resolveProductReference(
           normalizedCategory,
           normalizedProductText,
           year,
-          providerRecordCount: products.length,
+          providerCandidateCount: searchResult.totalMatches,
           reason:
             "The source identified a product family but did not provide enough generation evidence for one authoritative product.",
         }),
@@ -701,7 +655,7 @@ export function resolveProductReference(
         normalizedCategory,
         normalizedProductText,
         year,
-        providerRecordCount: products.length,
+        providerCandidateCount: searchResult.totalMatches,
         reason:
           "A broad product-family candidate was found, but the source did not provide an exact canonical name or approved alias.",
       }),
@@ -719,7 +673,7 @@ export function resolveProductReference(
         normalizedCategory,
         normalizedProductText,
         year,
-        providerRecordCount: products.length,
+        providerCandidateCount: searchResult.totalMatches,
         reason: candidatesAreNearTied
           ? "Multiple product references had nearly equal deterministic evidence and require human confirmation."
           : "The source expressed product-identity uncertainty while multiple reference candidates remained possible.",
@@ -738,7 +692,7 @@ export function resolveProductReference(
         normalizedCategory,
         normalizedProductText,
         year,
-        providerRecordCount: products.length,
+        providerCandidateCount: searchResult.totalMatches,
         reason:
           "Product candidates were found, but none had enough deterministic evidence for an authoritative match.",
       }),
@@ -755,7 +709,7 @@ export function resolveProductReference(
       normalizedCategory,
       normalizedProductText,
       year,
-      providerRecordCount: products.length,
+      providerCandidateCount: searchResult.totalMatches,
       reason:
         "One product reference had authoritative deterministic identity evidence.",
     }),

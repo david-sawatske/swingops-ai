@@ -257,6 +257,34 @@ Files:
 
 These are simulated internal systems. They behave like read-only operational services that return evidence the workflow can use.
 
+### Product reference resolution
+
+Files:
+
+    services/api/src/product-reference/product-reference-provider.ts
+    services/api/src/product-reference/product-reference-resolver.ts
+    services/api/src/product-reference/demo-product-reference-data.ts
+    services/api/src/product-reference/demo-product-reference-provider.ts
+
+The parsers do not own golf-brand, club-category, or product-alias rules. They
+request structured detections from the product reference provider. Each detection
+includes the canonical value, the exact matched source text, and a deterministic
+confidence score, which lets parsing and evidence display share one result.
+
+Product resolution calls the provider's bounded `searchCandidates` contract and
+scores only the returned records. The local provider builds in-memory brand,
+category, and identity-token indexes when it starts; it does not expose or scan a
+full-catalog list for each parsed record. Product aliases remain attached to their
+canonical product records, while brand and category aliases live in provider-owned
+reference data.
+
+This implementation is intentionally deterministic for the local demonstration.
+In a production system, the same provider boundary is where catalog SQL search,
+vector retrieval, or hybrid ranking would replace the in-memory index. A remote
+provider would also move this lookup across an asynchronous workflow boundary;
+the parser and deterministic resolution policy would not need to regain ownership
+of catalog aliases or retrieval logic.
+
 ## Serializers
 
 Serializers keep database shape separate from API response shape.

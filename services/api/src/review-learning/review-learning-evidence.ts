@@ -1,4 +1,6 @@
 import { prisma } from "../lib/prisma.js";
+import { demoProductReferenceProvider } from "../product-reference/demo-product-reference-provider.js";
+import type { ProductReferenceCategory } from "../product-reference/product-reference-types.js";
 
 export type PriorReviewLearningEvidenceStrength = "WEAK" | "MEDIUM" | "STRONG";
 
@@ -78,38 +80,14 @@ const FIELD_LABELS: Record<string, string> = {
   storeId: "storeId",
 };
 
-const CATEGORY_PATTERNS = [
-  {
-    category: "IRON_SET",
-    pattern: /\b(?:[3-9]\s*-\s*(?:pw|gw|sw)|irons?|iron\s+set)\b/i,
-    reasonCode: "CATEGORY_SET_COMPOSITION_MATCH",
-  },
-  {
-    category: "FAIRWAY_WOOD",
-    pattern: /\b(?:[357]\s*w|fairway|fw)\b/i,
-    reasonCode: "CATEGORY_FAIRWAY_TOKEN_MATCH",
-  },
-  {
-    category: "DRIVER",
-    pattern: /\b(?:driver|drv|1\s*w)\b/i,
-    reasonCode: "CATEGORY_DRIVER_TOKEN_MATCH",
-  },
-  {
-    category: "HYBRID",
-    pattern: /\b(?:hybrid|hy|rescue)\b/i,
-    reasonCode: "CATEGORY_HYBRID_TOKEN_MATCH",
-  },
-  {
-    category: "WEDGE",
-    pattern: /\b(?:wedge|gw|sw|lw|(?:5[02468]|6[024])\s*(?:deg|degree)?)\b/i,
-    reasonCode: "CATEGORY_WEDGE_TOKEN_MATCH",
-  },
-  {
-    category: "PUTTER",
-    pattern: /\b(?:putter|pt)\b/i,
-    reasonCode: "CATEGORY_PUTTER_TOKEN_MATCH",
-  },
-];
+const CATEGORY_REASON_CODES: Record<ProductReferenceCategory, string> = {
+  DRIVER: "CATEGORY_DRIVER_TOKEN_MATCH",
+  FAIRWAY_WOOD: "CATEGORY_FAIRWAY_TOKEN_MATCH",
+  HYBRID: "CATEGORY_HYBRID_TOKEN_MATCH",
+  IRON_SET: "CATEGORY_SET_COMPOSITION_MATCH",
+  WEDGE: "CATEGORY_WEDGE_TOKEN_MATCH",
+  PUTTER: "CATEGORY_PUTTER_TOKEN_MATCH",
+};
 
 function normalizePhrase(value: unknown) {
   return String(value ?? "")
@@ -183,24 +161,30 @@ function hasSameCategoryPattern(
   evidenceText: string,
   correctedValue: string | null,
 ) {
-  return CATEGORY_PATTERNS.some((categoryPattern) => {
-    if (correctedValue && categoryPattern.category !== correctedValue) {
-      return false;
-    }
+  const inputCategory =
+    demoProductReferenceProvider.detectCategory(inputText)?.value ?? null;
+  const evidenceCategory =
+    demoProductReferenceProvider.detectCategory(evidenceText)?.value ?? null;
 
-    return (
-      categoryPattern.pattern.test(inputText) &&
-      categoryPattern.pattern.test(evidenceText)
-    );
-  });
+  return Boolean(
+    inputCategory &&
+    inputCategory === evidenceCategory &&
+    (!correctedValue || inputCategory === correctedValue),
+  );
 }
 
 function categoryReasonCode(inputText: string, correctedValue: string | null) {
-  return CATEGORY_PATTERNS.find(
-    (categoryPattern) =>
-      (!correctedValue || categoryPattern.category === correctedValue) &&
-      categoryPattern.pattern.test(inputText),
-  )?.reasonCode;
+  const detectedCategory =
+    demoProductReferenceProvider.detectCategory(inputText)?.value ?? null;
+
+  if (
+    !detectedCategory ||
+    (correctedValue && detectedCategory !== correctedValue)
+  ) {
+    return undefined;
+  }
+
+  return CATEGORY_REASON_CODES[detectedCategory];
 }
 
 function hasNumericValueMatch(

@@ -1,14 +1,13 @@
 import { isShaftFlexApplicable } from "./golf-field-applicability.js";
-import {
-  findTextParserEvidence,
-  omitEmptyParserEvidence,
-} from "./parser-evidence.js";
+import { omitEmptyParserEvidence } from "./parser-evidence.js";
 import {
   detectApprovedConditionGradeWithEvidence,
   detectShaftFlexWithEvidence,
   detectTradeInValueWithEvidence,
 } from "./parser-normalizers.js";
+import { demoProductReferenceProvider } from "../product-reference/demo-product-reference-provider.js";
 import type { ProductReferenceProvider } from "../product-reference/product-reference-provider.js";
+import type { ProductReferenceDetection } from "../product-reference/product-reference-types.js";
 import { resolveProductReference } from "../product-reference/product-reference-resolver.js";
 import { resolveParsedProductIdentity } from "./product-resolution-parser.js";
 import type { ParserEvidence, ParserFieldEvidence } from "./parser-evidence.js";
@@ -39,133 +38,31 @@ export function cleanText(rawContent: string): string {
     .trim();
 }
 
-function detectBrand(text: string): string | null {
-  if (/\btm\b|\btaylormade\b/i.test(text)) {
-    return "TaylorMade";
-  }
-
-  if (/\btitleist\b/i.test(text)) {
-    return "Titleist";
-  }
-
-  if (/\bcally\b|\bcallaway\b/i.test(text)) {
-    return "Callaway";
-  }
-
-  if (/\bping\b/i.test(text)) {
-    return "PING";
-  }
-
-  if (/\bcleveland\b/i.test(text)) {
-    return "Cleveland";
-  }
-
-  if (/\bodyssey\b/i.test(text)) {
-    return "Odyssey";
-  }
-
-  if (/\bmizuno\b/i.test(text)) {
-    return "Mizuno";
-  }
-
-  return null;
+function resolveProductReferenceProvider(
+  provider?: ProductReferenceProvider,
+): ProductReferenceProvider {
+  return provider ?? demoProductReferenceProvider;
 }
 
-function detectCategory(text: string): string | null {
-  if (/\bdriver\b|\bdrv\b/i.test(text)) {
-    return "DRIVER";
-  }
-
-  if (/\b(?:3|4|5|7|9)\s*-?\s*(?:w|wood)\b|\bfairway\b/i.test(text)) {
-    return "FAIRWAY_WOOD";
-  }
-
-  if (/\b(?:hybrid|hy|rescue)\b/i.test(text)) {
-    return "HYBRID";
-  }
-
-  if (
-    /\bwedge\b|\b(?:46|48|50|52|54|56|58|60)\s*(?:deg|degree|°)?\b/i.test(text)
-  ) {
-    return "WEDGE";
-  }
-
-  if (/\bputter\b/i.test(text)) {
-    return "PUTTER";
-  }
-
-  if (/\birons?\b|\b[4-9]-pw\b/i.test(text)) {
-    return "IRON_SET";
-  }
-
-  return null;
+function detectBrand(
+  text: string,
+  provider: ProductReferenceProvider,
+): ProductReferenceDetection<string> | null {
+  return provider.detectBrand(text);
 }
 
-function getDetectedBrandSourcePattern(brand: string): RegExp | null {
-  if (brand === "TaylorMade") {
-    return /\b(?:taylormade|tm)\b/i;
-  }
-
-  if (brand === "Titleist") {
-    return /\btitleist\b/i;
-  }
-
-  if (brand === "Callaway") {
-    return /\b(?:callaway|cally)\b/i;
-  }
-
-  if (brand === "PING") {
-    return /\bping\b/i;
-  }
-
-  if (brand === "Cleveland") {
-    return /\bcleveland\b/i;
-  }
-
-  if (brand === "Odyssey") {
-    return /\bodyssey\b/i;
-  }
-
-  if (brand === "Mizuno") {
-    return /\bmizuno\b/i;
-  }
-
-  return null;
-}
-
-function getDetectedCategorySourcePattern(category: string): RegExp | null {
-  if (category === "DRIVER") {
-    return /\b(?:driver|drv)\b/i;
-  }
-
-  if (category === "FAIRWAY_WOOD") {
-    return /\b(?:(?:3|4|5|7|9)\s*-?\s*(?:w|wood)|fairway)\b/i;
-  }
-
-  if (category === "HYBRID") {
-    return /\b(?:hybrid|hy|rescue)\b/i;
-  }
-
-  if (category === "WEDGE") {
-    return /\b(?:wedge|(?:46|48|50|52|54|56|58|60)\s*(?:deg|degree|°)?)\b/i;
-  }
-
-  if (category === "PUTTER") {
-    return /\bputter\b/i;
-  }
-
-  if (category === "IRON_SET") {
-    return /\b(?:irons?|[4-9]-pw)\b/i;
-  }
-
-  return null;
+function detectCategory(
+  text: string,
+  provider: ProductReferenceProvider,
+): ReturnType<ProductReferenceProvider["detectCategory"]> {
+  return provider.detectCategory(text);
 }
 
 function detectSourceSupportedProductText(input: {
   sourceType: MultiSourceIntakeSourceType;
   text: string;
-  detectedBrand: string | null;
-  detectedCategory: string | null;
+  detectedBrand: ProductReferenceDetection<string> | null;
+  detectedCategory: ReturnType<ProductReferenceProvider["detectCategory"]>;
 }): string | null {
   if (
     input.sourceType === "POORLY_FORMED_CSV" ||
@@ -175,29 +72,20 @@ function detectSourceSupportedProductText(input: {
     return null;
   }
 
-  const brandPattern = getDetectedBrandSourcePattern(input.detectedBrand);
-  const categoryPattern = getDetectedCategorySourcePattern(
-    input.detectedCategory,
+  const normalizedText = input.text.toLocaleLowerCase();
+  const brandIndex = normalizedText.indexOf(
+    input.detectedBrand.matchedText.toLocaleLowerCase(),
+  );
+  const categoryIndex = normalizedText.indexOf(
+    input.detectedCategory.matchedText.toLocaleLowerCase(),
   );
 
-  if (!brandPattern || !categoryPattern) {
+  if (brandIndex < 0 || categoryIndex < 0) {
     return null;
   }
 
-  const brandMatch = input.text.match(brandPattern);
-  const categoryMatch = input.text.match(categoryPattern);
-
-  if (
-    !brandMatch?.[0] ||
-    brandMatch.index === undefined ||
-    !categoryMatch?.[0] ||
-    categoryMatch.index === undefined
-  ) {
-    return null;
-  }
-
-  const productStart = brandMatch.index + brandMatch[0].length;
-  const productEnd = categoryMatch.index;
+  const productStart = brandIndex + input.detectedBrand.matchedText.length;
+  const productEnd = categoryIndex;
 
   if (productEnd <= productStart) {
     return null;
@@ -215,45 +103,35 @@ function buildParserEvidence(
   text: string,
   values: {
     brand: string | null;
+    brandDetection: ProductReferenceDetection<string> | null;
     productLineEvidence: ParserFieldEvidence | undefined;
     category: string | null;
+    categoryDetection: ReturnType<ProductReferenceProvider["detectCategory"]>;
     shaftFlex: string | null;
     conditionGrade: string | null;
     tradeInValue: number | null;
   },
 ): ParserEvidence {
   return omitEmptyParserEvidence({
-    brand: findTextParserEvidence(text, values.brand, [
-      { value: "TaylorMade", aliases: [/\btaylormade\b/i, /\btm\b/i] },
-      { value: "Titleist", aliases: [/\btitleist\b/i] },
-      { value: "Callaway", aliases: [/\bcallaway\b/i, /\bcally\b/i] },
-      { value: "PING", aliases: [/\bping\b/i] },
-      { value: "Cleveland", aliases: [/\bcleveland\b/i] },
-      { value: "Odyssey", aliases: [/\bodyssey\b/i] },
-      { value: "Mizuno", aliases: [/\bmizuno\b/i] },
-    ]),
+    brand:
+      values.brand && values.brandDetection?.value === values.brand
+        ? {
+            value: values.brand,
+            sourceText: values.brandDetection.matchedText,
+          }
+        : undefined,
     ...(values.productLineEvidence
       ? {
           productLine: values.productLineEvidence,
         }
       : {}),
-    category: findTextParserEvidence(text, values.category, [
-      { value: "DRIVER", aliases: [/\bdriver\b/i, /\bdrv\b/i] },
-      {
-        value: "FAIRWAY_WOOD",
-        aliases: [/\b(?:3|4|5|7|9)\s*-?\s*(?:w|wood)\b/i, /\bfairway\b/i],
-      },
-      { value: "HYBRID", aliases: [/\bhybrid\b/i, /\bhy\b/i, /\brescue\b/i] },
-      {
-        value: "WEDGE",
-        aliases: [
-          /\bwedge\b/i,
-          /\b(?:46|48|50|52|54|56|58|60)\s*(?:deg|degree|°)?\b/i,
-        ],
-      },
-      { value: "PUTTER", aliases: [/\bputter\b/i] },
-      { value: "IRON_SET", aliases: [/\birons?\b/i, /\b[4-9]-pw\b/i] },
-    ]),
+    category:
+      values.category && values.categoryDetection?.value === values.category
+        ? {
+            value: values.category,
+            sourceText: values.categoryDetection.matchedText,
+          }
+        : undefined,
     shaftFlex: isShaftFlexApplicable(values.category)
       ? detectShaftFlexWithEvidence(text).evidence
       : undefined,
@@ -339,9 +217,9 @@ function normalizeDelimitedProductText(value: string | null): string | null {
 }
 
 type StructuredLogValues = {
-  brand: string | null;
+  brandDetection: ProductReferenceDetection<string> | null;
   productText: string | null;
-  category: string | null;
+  categoryDetection: ReturnType<ProductReferenceProvider["detectCategory"]>;
   shaftFlex: string | null;
   shaftFlexSourceText: string | null;
   conditionGrade: string | null;
@@ -427,6 +305,7 @@ function stripOtherStructuredFieldNegativeEvidence(
 function parseStructuredLogValues(
   source: MultiSourceParserInput,
   fragment: string,
+  provider: ProductReferenceProvider,
 ): StructuredLogValues | null {
   if (source.sourceType !== "LOG") {
     return null;
@@ -497,9 +376,11 @@ function parseStructuredLogValues(
   }
 
   return {
-    brand: brandText ? detectBrand(brandText) : null,
+    brandDetection: brandText ? detectBrand(brandText, provider) : null,
     productText,
-    category: categoryText ? detectCategory(categoryText) : null,
+    categoryDetection: categoryText
+      ? detectCategory(categoryText, provider)
+      : null,
     shaftFlex: detectedShaftFlex.value,
     shaftFlexSourceText: detectedShaftFlex.evidence?.sourceText ?? null,
     conditionGrade: detectedConditionGrade.value,
@@ -681,23 +562,24 @@ function resolveLineProductReference(
   line: string,
   provider?: ProductReferenceProvider,
 ) {
+  const productReferenceProvider = resolveProductReferenceProvider(provider);
   const resolutionInput = {
     rawText: line,
-    brand: detectBrand(line),
-    category: detectCategory(line),
+    brand: detectBrand(line, productReferenceProvider)?.value ?? null,
+    category: detectCategory(line, productReferenceProvider)?.value ?? null,
   };
 
-  return provider
-    ? resolveProductReference(resolutionInput, provider)
-    : resolveProductReference(resolutionInput);
+  return resolveProductReference(resolutionInput, productReferenceProvider);
 }
 
 function isLikelyEquipmentRecordLine(
   line: string,
   provider?: ProductReferenceProvider,
 ): boolean {
-  const brand = detectBrand(line);
-  const category = detectCategory(line);
+  const productReferenceProvider = resolveProductReferenceProvider(provider);
+  const brand = detectBrand(line, productReferenceProvider)?.value ?? null;
+  const category =
+    detectCategory(line, productReferenceProvider)?.value ?? null;
   const resolution = resolveLineProductReference(line, provider);
 
   if (resolution.status !== "UNRESOLVED") {
@@ -790,24 +672,34 @@ export function buildRecord(
   index: number,
   provider?: ProductReferenceProvider,
 ): MultiSourceIntakeRecord {
+  const productReferenceProvider = resolveProductReferenceProvider(provider);
   const sourceContext = `${source.rawContent}\n${fragment}`;
   const csvRowValues = parsePoorlyFormedCsvRowValues(source, fragment);
-  const structuredLogValues = parseStructuredLogValues(source, fragment);
+  const structuredLogValues = parseStructuredLogValues(
+    source,
+    fragment,
+    productReferenceProvider,
+  );
   const fallbackCategoryText =
     source.sourceType === "LOG"
       ? stripOperationalLogTimestamps(fragment)
       : fragment;
-  const detectedBrand = structuredLogValues?.brand ?? detectBrand(fragment);
-  const detectedCategory =
-    structuredLogValues?.category ?? detectCategory(fallbackCategoryText);
+  const brandDetection =
+    structuredLogValues?.brandDetection ??
+    detectBrand(fragment, productReferenceProvider);
+  const categoryDetection =
+    structuredLogValues?.categoryDetection ??
+    detectCategory(fallbackCategoryText, productReferenceProvider);
+  const detectedBrand = brandDetection?.value ?? null;
+  const detectedCategory = categoryDetection?.value ?? null;
   const sourceSupportedProductText =
     csvRowValues?.productText ??
     structuredLogValues?.productText ??
     detectSourceSupportedProductText({
       sourceType: source.sourceType,
       text: fragment,
-      detectedBrand,
-      detectedCategory,
+      detectedBrand: brandDetection,
+      detectedCategory: categoryDetection,
     });
   const productIdentity = resolveParsedProductIdentity({
     rawText: fragment,
@@ -818,11 +710,7 @@ export function buildRecord(
           productText: sourceSupportedProductText,
         }
       : {}),
-    ...(provider
-      ? {
-          provider,
-        }
-      : {}),
+    provider: productReferenceProvider,
   });
   const brand = productIdentity.brand;
   const productLine = productIdentity.productLine;
@@ -860,8 +748,10 @@ export function buildRecord(
     detectedTradeInValue.value ?? csvRowValues?.tradeInValue ?? null;
   let parserEvidence = buildParserEvidence(fragment, {
     brand,
+    brandDetection,
     productLineEvidence: productIdentity.productLineEvidence,
     category,
+    categoryDetection,
     shaftFlex,
     conditionGrade,
     tradeInValue,

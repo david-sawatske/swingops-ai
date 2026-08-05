@@ -3,6 +3,7 @@ import {
   type DemoInventoryProduct,
   type InventoryProductCategory,
 } from "./inventory-demo-data.js";
+import { demoProductReferenceProvider } from "../product-reference/demo-product-reference-provider.js";
 
 export type InventoryLookupInput = {
   brand?: string | null | undefined;
@@ -50,35 +51,6 @@ type ScoredProduct = {
 const MINIMUM_MATCH_CONFIDENCE = 0.38;
 const AMBIGUOUS_MATCH_SCORE_MARGIN = 0.05;
 
-const brandAliases = new Map<string, string>([
-  ["tm", "taylormade"],
-  ["taylor made", "taylormade"],
-  ["cally", "callaway"],
-  ["titleist", "titleist"],
-  ["ping", "ping"],
-]);
-
-const categoryAliases = new Map<string, InventoryProductCategory>([
-  ["driver", "DRIVER"],
-  ["drv", "DRIVER"],
-  ["fairway", "FAIRWAY_WOOD"],
-  ["fairway wood", "FAIRWAY_WOOD"],
-  ["fw", "FAIRWAY_WOOD"],
-  ["fwy", "FAIRWAY_WOOD"],
-  ["3w", "FAIRWAY_WOOD"],
-  ["5w", "FAIRWAY_WOOD"],
-  ["7w", "FAIRWAY_WOOD"],
-  ["9w", "FAIRWAY_WOOD"],
-  ["hybrid", "HYBRID"],
-  ["hy", "HYBRID"],
-  ["rescue", "HYBRID"],
-  ["iron", "IRON_SET"],
-  ["irons", "IRON_SET"],
-  ["iron set", "IRON_SET"],
-  ["wedge", "WEDGE"],
-  ["putter", "PUTTER"],
-]);
-
 function normalizeText(value: string | null | undefined): string {
   return (value ?? "")
     .toLowerCase()
@@ -92,15 +64,19 @@ function compact(value: string): string {
 }
 
 function normalizeBrand(value: string | null | undefined): string {
-  const normalized = normalizeText(value);
-  return brandAliases.get(normalized) ?? normalized;
+  const detectedBrand = value
+    ? demoProductReferenceProvider.detectBrand(value)
+    : null;
+
+  return normalizeText(detectedBrand?.value ?? value);
 }
 
 function normalizeCategory(
   value: string | null | undefined,
 ): InventoryProductCategory | null {
-  const normalized = normalizeText(value);
-  return categoryAliases.get(normalized) ?? null;
+  return value
+    ? (demoProductReferenceProvider.detectCategory(value)?.value ?? null)
+    : null;
 }
 
 function includesNormalized(haystack: string, needle: string): boolean {

@@ -32,15 +32,83 @@ describe("product-reference-provider", () => {
   it("returns defensive record copies", () => {
     const provider = createInMemoryProductReferenceProvider([product]);
 
-    const firstList = provider.listProducts();
-    const secondList = provider.listProducts();
+    const firstSearch = provider.searchCandidates({
+      rawText: "Test Golf Test Driver driver",
+    });
+    const secondSearch = provider.searchCandidates({
+      rawText: "Test Golf Test Driver driver",
+    });
     const firstById = provider.findByProductId("prod_test_driver");
     const secondById = provider.findByProductId("prod_test_driver");
 
-    expect(firstList).not.toBe(secondList);
-    expect(firstList[0]).not.toBe(secondList[0]);
-    expect(firstList[0]?.aliases).not.toBe(secondList[0]?.aliases);
+    expect(firstSearch).not.toBe(secondSearch);
+    expect(firstSearch.candidates[0]).not.toBe(secondSearch.candidates[0]);
+    expect(firstSearch.candidates[0]?.aliases).not.toBe(
+      secondSearch.candidates[0]?.aliases,
+    );
     expect(firstById).not.toBe(secondById);
+  });
+
+  it("returns structured alias evidence managed by the provider", () => {
+    const provider = createInMemoryProductReferenceProvider([product], {
+      brandAliases: [{ value: "Test Golf", alias: "TG", confidence: 0.88 }],
+      categoryAliases: [
+        { value: "DRIVER", alias: "big stick", confidence: 0.82 },
+      ],
+    });
+
+    expect(provider.detectBrand("TG prototype")).toEqual({
+      value: "Test Golf",
+      matchedText: "TG",
+      confidence: 0.88,
+    });
+    expect(provider.detectCategory("TG big stick")).toEqual({
+      value: "DRIVER",
+      matchedText: "big stick",
+      confidence: 0.82,
+    });
+  });
+
+  it("searches a bounded candidate set instead of returning the catalog", () => {
+    const provider = createInMemoryProductReferenceProvider([
+      product,
+      {
+        ...product,
+        productId: "prod_test_second_driver",
+        sku: "TEST-SECOND-DRIVER-2026",
+        productLine: "Second Driver",
+        aliases: ["second prototype driver"],
+      },
+      {
+        ...product,
+        productId: "prod_test_third_driver",
+        sku: "TEST-THIRD-DRIVER-2026",
+        productLine: "Third Driver",
+        aliases: ["third prototype driver"],
+      },
+      {
+        ...product,
+        productId: "prod_other_putter",
+        sku: "OTHER-PUTTER-2026",
+        brand: "Other Golf",
+        productLine: "Other Putter",
+        category: "PUTTER",
+        aliases: ["other flat stick"],
+      },
+    ]);
+
+    const result = provider.searchCandidates({
+      rawText: "Test Golf Test Driver driver",
+      brand: "Test Golf",
+      category: "driver",
+      limit: 1,
+    });
+
+    expect(result).toMatchObject({
+      totalMatches: 3,
+      candidates: [{ productId: "prod_test_driver" }],
+    });
+    expect(result.candidates).toHaveLength(1);
   });
 
   it("rejects duplicate stable product IDs", () => {

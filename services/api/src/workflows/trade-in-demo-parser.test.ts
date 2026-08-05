@@ -746,7 +746,7 @@ describe("parseTradeInDemoText", () => {
       missingFields: [],
       productResolution: {
         status: "MATCHED",
-        providerRecordCount: 1,
+        providerCandidateCount: 1,
         match: {
           productId: "prod_test_nova_x_driver_2026",
           sku: "TEST-NOVAX-DRV-2026",
