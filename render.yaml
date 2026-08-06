@@ -6,7 +6,7 @@ services:
     region: ohio
     branch: main
     autoDeployTrigger: checksPass
-    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @swingops/api prisma:generate && pnpm --filter @swingops/api build
+    buildCommand: pnpm install --frozen-lockfile --prod=false && pnpm --filter @swingops/api prisma:generate && pnpm --filter @swingops/api build
     startCommand: pnpm --filter @swingops/api exec prisma migrate deploy && pnpm --filter @swingops/api start
     healthCheckPath: /health
     envVars:
@@ -36,7 +36,7 @@ services:
     runtime: static
     branch: main
     autoDeployTrigger: checksPass
-    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @swingops/web build
+    buildCommand: pnpm install --frozen-lockfile --prod=false && pnpm --filter @swingops/web build
     staticPublishPath: apps/web/dist
     envVars:
       - key: VITE_API_BASE_URL
