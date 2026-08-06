@@ -20,8 +20,10 @@ static site's build environment.
    Blueprint.
 4. Wait for the database, API, and static site to finish deploying.
 
-The Blueprint starts in deterministic mock mode and does not require model
-provider credentials. Database migrations run before the API starts serving
+The API starts in deterministic mock mode because real provider calls default
+to disabled. The Blueprint does not manage provider credentials or the
+real-call toggle, so later Blueprint syncs cannot overwrite those
+dashboard-owned values. Database migrations run before the API starts serving
 traffic.
 
 ## Free-preview limitations
@@ -38,16 +40,23 @@ plan.
 ## Enable live model assistance
 
 Keep real model calls disabled until the deterministic deployed workflow has
-passed its smoke test. To enable OpenAI assistance, add these environment
-variables to the API service in Render:
+passed its smoke test. In the Render dashboard, open the API service's
+**Environment** page and add these service-level environment variables:
 
     ENABLE_REAL_MODEL_CALLS=true
     OPENAI_API_KEY=<secret value>
-    OPENAI_MODEL=gpt-4.1-mini
 
-Do not add provider credentials to `render.yaml` or commit them to the
-repository. Other supported provider variables are documented in
-`services/api/.env.example`.
+`OPENAI_MODEL=gpt-4.1-mini` is already managed by the Blueprint. Save the API
+key as a secret value, never paste it into issue comments or deployment logs,
+and do not add it to `render.yaml` or commit it to the repository. Keep
+`ENABLE_REAL_MODEL_CALLS` dashboard-owned as well so a later Blueprint sync
+does not silently disable live assistance. Other supported provider variables
+are documented in `services/api/.env.example`.
+
+After saving the variables, deploy the API service and verify its startup logs
+without exposing the key. To return the hosted demo to deterministic mode, set
+`ENABLE_REAL_MODEL_CALLS=false` and redeploy; the credential can remain stored
+as a secret.
 
 ## Deployment smoke test
 
