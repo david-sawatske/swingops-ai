@@ -236,7 +236,11 @@ Files:
     services/api/src/ai/model-provider-fallback-executor.ts
     services/api/src/ai/model-provider-health.ts
     services/api/src/ai/model-provider-costs.ts
-    services/api/src/ai/model-provider-adapters.ts
+    services/api/src/ai/providers/openai.provider.ts
+    services/api/src/ai/providers/anthropic.provider.ts
+    services/api/src/ai/providers/azure-openai.provider.ts
+    services/api/src/ai/providers/ollama.provider.ts
+    services/api/src/ai/providers/mock.provider.ts
 
 The model routing layer demonstrates provider choice, fallback behavior, cost/latency metadata, and attempt logging.
 

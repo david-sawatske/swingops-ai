@@ -4,6 +4,15 @@ SwingOps AI is a guided golf retail workflow demo for turning messy trade-in int
 
 The main product experience is the **Guided Workflow**. It walks through messy source intake, normalized record creation, guarded workflow execution, human validation, review corrections, audit data, and a final run report.
 
+## Product preview
+
+![SwingOps AI guided workflow overview](docs/images/guided-workflow-overview.jpg)
+
+| Guarded model assistance                                                                                                                                         | Human review checkpoint                                                                                                            |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| ![Validated model assistance with provider, latency, cost, and record-level evidence](docs/images/guarded-model-assistance.jpg)                                  | ![Run-scoped validation and human review checkpoint](docs/images/human-review-checkpoint.jpg)                                      |
+| A live-provider acceptance run shows schema-validated, record-level advice that remains advisory. Clean local runs use deterministic mock assistance by default. | Records remain grouped behind a human checkpoint, with unresolved work and saved corrections kept distinct before final reporting. |
+
 ## What the app demonstrates
 
 SwingOps AI shows how an AI-assisted operational workflow can be structured around safety, traceability, and human review instead of a single black-box model response.
@@ -166,12 +175,25 @@ explicitly enable real model calls as described below. The complete expected
 record-level outcomes are documented in
 [Golden demonstration run](docs/guided-workflow.md#golden-demonstration-run).
 
+## Additional sample inputs
+
+The repository includes intentionally messy source files for trying intake
+behavior outside the canonical walkthrough:
+
+- [Free-form counter notes](data/sample-inputs/freeform-notes.txt)
+- [Malformed CSV export](data/sample-inputs/bad-trade-in.csv)
+- [Email-style trade-in batch](data/sample-inputs/email-trade-in.txt)
+
+These samples preserve uncertainty, conflicting fields, and missing details so
+review routing and source-evidence behavior remain visible. They are not
+expected to produce the golden demonstration's exact record counts.
+
 ## Environment assumptions
 
 Environment files are workspace-local so the API, Prisma, and Vite use their
 native loading behavior:
 
-- Node.js and pnpm. CI uses Node.js 22 and the package-manager version declared in `package.json`.
+- Node.js 22 (see [`.nvmrc`](.nvmrc)) and the pnpm version declared in `package.json`.
 - Docker for the local PostgreSQL service.
 - `services/api/.env`, copied from `services/api/.env.example`, for the API and Prisma.
 - `apps/web/.env` only when overriding the web app's default `http://localhost:4000` API URL; use `apps/web/.env.example` as the template.
@@ -307,3 +329,7 @@ This local transport does not claim hosted deployment, tenant isolation, product
 
 See [Development](docs/development.md#local-mcp-server) for copy-pasteable local
 client configuration and the focused transport test command.
+
+## License
+
+This project is available under the [MIT License](LICENSE).
