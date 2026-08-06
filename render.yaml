@@ -1,0 +1,56 @@
+services:
+  - type: web
+    name: swingops-ai-api-david-sawatske
+    runtime: node
+    plan: free
+    region: ohio
+    branch: main
+    autoDeployTrigger: checksPass
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @swingops/api prisma:generate && pnpm --filter @swingops/api build
+    startCommand: pnpm --filter @swingops/api exec prisma migrate deploy && pnpm --filter @swingops/api start
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: swingops-ai-db-david-sawatske
+          property: connectionString
+      - key: NODE_ENV
+        value: production
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: API_PORT
+        value: 10000
+      - key: LOG_LEVEL
+        value: info
+      - key: WEB_ORIGIN
+        value: https://swingops-ai-david-sawatske.onrender.com
+      - key: ENABLE_REAL_MODEL_CALLS
+        value: "false"
+      - key: MODEL_PROVIDER_ATTEMPT_TIMEOUT_MS
+        value: "10000"
+      - key: MODEL_PROVIDER_WORKFLOW_TIMEOUT_MS
+        value: "25000"
+
+  - type: web
+    name: swingops-ai-david-sawatske
+    runtime: static
+    branch: main
+    autoDeployTrigger: checksPass
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @swingops/web build
+    staticPublishPath: apps/web/dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://swingops-ai-api-david-sawatske.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+databases:
+  - name: swingops-ai-db-david-sawatske
+    plan: free
+    region: ohio
+    postgresMajorVersion: "16"
+    databaseName: swingops_ai
+    user: swingops
+    ipAllowList: []

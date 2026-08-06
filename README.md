@@ -302,6 +302,7 @@ model behavior, and refuses to use a database whose name does not end in
 
 - [Architecture](docs/architecture.md)
 - [Guided Workflow](docs/guided-workflow.md)
+- [Deployment](docs/deployment.md)
 - [Backend Systems](docs/backend-systems.md)
 - [Data Models](docs/data-models.md)
 - [Data Handling Boundaries](docs/data-handling.md)
