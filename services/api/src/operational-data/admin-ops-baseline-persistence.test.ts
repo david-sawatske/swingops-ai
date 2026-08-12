@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { buildApp } from "../app.js";
 import { prisma } from "../lib/prisma.js";
+import { executeMultiSourceIntakeDemo } from "../workflows/multi-source-intake-demo.js";
 import { replaceAdminOpsBaseline } from "./admin-ops-baseline-persistence.js";
 
 const BASELINE_ORIGIN = "SEEDED_BASELINE" as const;
@@ -55,6 +56,19 @@ describe("Admin Ops operational baseline persistence", () => {
           modelCalls: 0,
           toolCalls: 0,
         },
+        persisted: {
+          intakeBatches: 14,
+          intakeItems: 48,
+          workflowRuns: 14,
+          workflowSteps: 53,
+          aiReadyRecords: 56,
+          reviewQueueItems: 34,
+          reviewedTradeInRecords: 9,
+          humanReviewLearningEvents: 0,
+          modelCalls: 20,
+          modelCallAttempts: 22,
+          toolCalls: 126,
+        },
         reconciliation: {
           aiReadyRecords: {
             total: 56,
@@ -106,7 +120,9 @@ describe("Admin Ops operational baseline persistence", () => {
       });
 
       expect(summaryResponse.statusCode).toBe(200);
-      expect(summaryResponse.json()).toMatchObject({
+      const summary = summaryResponse.json();
+
+      expect(summary).toMatchObject({
         scope: { dataOrigin: BASELINE_ORIGIN },
         aiReadyRecords: {
           total: 56,
@@ -177,6 +193,108 @@ describe("Admin Ops operational baseline persistence", () => {
           totalTokens: 28_600,
         },
       });
+      expect(summary.aiReadyRecords.byStatus).toEqual({
+        NEEDS_REVIEW: 17,
+        READY_FOR_RAG: 31,
+        SUPERSEDED: 8,
+      });
+      expect(summary.aiReadyRecords.bySourceType).toEqual({
+        EMAIL: 11,
+        FREE_TEXT: 21,
+        LOG: 10,
+        POORLY_FORMED_CSV: 14,
+      });
+      expect(summary.aiReadyRecords.missingFieldCounts).toEqual({
+        brand: 1,
+        category: 2,
+        conditionGrade: 10,
+        productLine: 4,
+        shaftFlex: 8,
+        tradeInValue: 7,
+      });
+      expect(summary.aiReadyRecords.categoryMix).toEqual([
+        { label: "DRIVER", count: 14 },
+        { label: "PUTTER", count: 8 },
+        { label: "WEDGE", count: 8 },
+        { label: "FAIRWAY_WOOD", count: 7 },
+        { label: "IRON_SET", count: 6 },
+        { label: "HYBRID", count: 4 },
+        { label: "Blank", count: 1 },
+      ]);
+      expect(summary.aiReadyRecords.storeMix).toEqual([
+        { label: "104", count: 21 },
+        { label: "207", count: 16 },
+        { label: "312", count: 11 },
+      ]);
+      expect(summary.aiReadyRecords.sourceQuality).toEqual([
+        {
+          sourceType: "FREE_TEXT",
+          total: 21,
+          active: 18,
+          reviewNeeded: 6,
+          groundingReady: 12,
+          superseded: 3,
+        },
+        {
+          sourceType: "POORLY_FORMED_CSV",
+          total: 14,
+          active: 12,
+          reviewNeeded: 3,
+          groundingReady: 9,
+          superseded: 2,
+        },
+        {
+          sourceType: "EMAIL",
+          total: 11,
+          active: 10,
+          reviewNeeded: 2,
+          groundingReady: 8,
+          superseded: 1,
+        },
+        {
+          sourceType: "LOG",
+          total: 10,
+          active: 8,
+          reviewNeeded: 6,
+          groundingReady: 2,
+          superseded: 2,
+        },
+      ]);
+      expect(summary.reviewQueue.byStatus).toEqual({
+        IN_REVIEW: 7,
+        OPEN: 10,
+        RESOLVED: 9,
+        SUPERSEDED: 8,
+      });
+      expect(summary.toolActivity.byTool).toEqual([
+        { label: "swingops.knowledgeBase.search", count: 44 },
+        { label: "swingops.inventory.lookupProduct", count: 42 },
+        { label: "swingops.tradeInValuation.estimate", count: 38 },
+        { label: "swingops.inventory.createSku", count: 2 },
+      ]);
+      expect(
+        Object.values(summary.aiReadyRecords.byStatus).reduce(
+          (total: number, count) => total + Number(count),
+          0,
+        ),
+      ).toBe(summary.aiReadyRecords.total);
+      expect(
+        Object.values(summary.workflowRuns.byStatus).reduce(
+          (total: number, count) => total + Number(count),
+          0,
+        ),
+      ).toBe(summary.workflowRuns.total);
+      expect(
+        Object.values(summary.reviewQueue.byStatus).reduce(
+          (total: number, count) => total + Number(count),
+          0,
+        ),
+      ).toBe(summary.reviewQueue.total);
+      expect(summary.modelExecutions.assistance.recordOutcomes).toBe(
+        summary.modelExecutions.assistance.repairSuggested +
+          summary.modelExecutions.assistance.candidateComparison +
+          summary.modelExecutions.assistance.noSafeRepair,
+      );
     } finally {
       await app.close();
     }
@@ -232,6 +350,69 @@ describe("Admin Ops operational baseline persistence", () => {
       });
     } finally {
       await prisma.workflowRun.delete({ where: { id: liveRun.id } });
+    }
+  });
+
+  it("does not change deterministic live intake behavior", async () => {
+    const source = {
+      sourceType: "FREE_TEXT" as const,
+      sourceName: "Baseline isolation check",
+      rawContent:
+        "Store 207: Callaway Rogue ST Max driver, HZRDUS X-Stiff, condition 7.0 Below Average, value $190.",
+    };
+    const liveResults = [];
+
+    try {
+      const beforeRefresh = await executeMultiSourceIntakeDemo({
+        sources: [source],
+      });
+      liveResults.push(beforeRefresh);
+      await replaceAdminOpsBaseline(new Date("2026-08-12T12:00:00.000Z"));
+      const afterRefresh = await executeMultiSourceIntakeDemo({
+        sources: [source],
+      });
+      liveResults.push(afterRefresh);
+
+      const getDeterministicResult = (
+        result: Awaited<ReturnType<typeof executeMultiSourceIntakeDemo>>,
+      ) => ({
+        sourcesProcessed: result.sourcesProcessed,
+        recordsExtracted: result.recordsExtracted,
+        reviewNeeded: result.reviewNeeded,
+        sourceResults: result.sourceResults,
+        cleanedDatasetPreview: result.cleanedDatasetPreview,
+        metadataSummary: result.metadataSummary,
+        ragReadinessSummary: result.ragReadinessSummary,
+        finalSummary: result.finalSummary,
+      });
+
+      expect(getDeterministicResult(afterRefresh)).toEqual(
+        getDeterministicResult(beforeRefresh),
+      );
+      await expect(
+        prisma.workflowRun.findMany({
+          where: {
+            id: {
+              in: liveResults.map(
+                (result) => result.persistedIds.workflowRunId,
+              ),
+            },
+          },
+          select: { dataOrigin: true },
+        }),
+      ).resolves.toEqual([
+        { dataOrigin: "LIVE_DEMO" },
+        { dataOrigin: "LIVE_DEMO" },
+      ]);
+    } finally {
+      for (const result of liveResults) {
+        await prisma.intakeBatch.delete({
+          where: { id: result.persistedIds.intakeBatchId },
+        });
+        await prisma.workflowRun.delete({
+          where: { id: result.persistedIds.workflowRunId },
+        });
+      }
     }
   });
 });

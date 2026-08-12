@@ -13,6 +13,9 @@ documented total from the individual fixture records before they are eligible
 for persistence. Building the fixtures remains side-effect free. The
 `pnpm baseline:refresh` operator command performs database replacement in one
 serializable transaction and deletes only records marked `SEEDED_BASELINE`.
+Before that transaction commits, it recounts every persisted fixture
+collection and rolls back if any database total differs from the validated
+fixture graph.
 The `pnpm maintenance:run` operation combines this refresh with bounded
 retention for expired `LIVE_DEMO` activity. The Render Blueprint schedules it
 daily at `09:15 UTC`; protected golden-demonstration history is excluded.

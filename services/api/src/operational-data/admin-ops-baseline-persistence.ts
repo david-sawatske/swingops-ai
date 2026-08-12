@@ -25,7 +25,22 @@ export type ReplaceAdminOpsBaselineResult = {
     modelCalls: number;
     toolCalls: number;
   };
+  persisted: AdminOpsBaselinePersistedCounts;
   reconciliation: AdminOpsBaselineReconciliation;
+};
+
+export type AdminOpsBaselinePersistedCounts = {
+  intakeBatches: number;
+  intakeItems: number;
+  workflowRuns: number;
+  workflowSteps: number;
+  aiReadyRecords: number;
+  reviewQueueItems: number;
+  reviewedTradeInRecords: number;
+  humanReviewLearningEvents: number;
+  modelCalls: number;
+  modelCallAttempts: number;
+  toolCalls: number;
 };
 
 function toJson(value: unknown): Prisma.InputJsonValue {
@@ -62,6 +77,96 @@ async function getExistingBaselineCounts(tx: TransactionClient) {
     modelCalls,
     toolCalls,
   };
+}
+
+async function getPersistedBaselineCounts(
+  tx: TransactionClient,
+): Promise<AdminOpsBaselinePersistedCounts> {
+  const [
+    intakeBatches,
+    intakeItems,
+    workflowRuns,
+    workflowSteps,
+    aiReadyRecords,
+    reviewQueueItems,
+    reviewedTradeInRecords,
+    humanReviewLearningEvents,
+    modelCalls,
+    modelCallAttempts,
+    toolCalls,
+  ] = await Promise.all([
+    tx.intakeBatch.count({ where: { dataOrigin: BASELINE_ORIGIN } }),
+    tx.intakeItem.count({
+      where: { intakeBatch: { dataOrigin: BASELINE_ORIGIN } },
+    }),
+    tx.workflowRun.count({ where: { dataOrigin: BASELINE_ORIGIN } }),
+    tx.workflowStep.count({
+      where: { workflowRun: { dataOrigin: BASELINE_ORIGIN } },
+    }),
+    tx.aiReadyIntakeRecord.count({
+      where: { dataOrigin: BASELINE_ORIGIN },
+    }),
+    tx.reviewQueueItem.count({ where: { dataOrigin: BASELINE_ORIGIN } }),
+    tx.reviewedTradeInRecord.count({
+      where: { dataOrigin: BASELINE_ORIGIN },
+    }),
+    tx.humanReviewLearningEvent.count({
+      where: { dataOrigin: BASELINE_ORIGIN },
+    }),
+    tx.modelCallLog.count({ where: { dataOrigin: BASELINE_ORIGIN } }),
+    tx.modelCallAttemptLog.count({
+      where: { modelCallLog: { dataOrigin: BASELINE_ORIGIN } },
+    }),
+    tx.toolCallLog.count({ where: { dataOrigin: BASELINE_ORIGIN } }),
+  ]);
+
+  return {
+    intakeBatches,
+    intakeItems,
+    workflowRuns,
+    workflowSteps,
+    aiReadyRecords,
+    reviewQueueItems,
+    reviewedTradeInRecords,
+    humanReviewLearningEvents,
+    modelCalls,
+    modelCallAttempts,
+    toolCalls,
+  };
+}
+
+function assertPersistedBaselineCounts(
+  fixtures: AdminOpsBaselineFixtures,
+  persisted: AdminOpsBaselinePersistedCounts,
+): void {
+  const expected: AdminOpsBaselinePersistedCounts = {
+    intakeBatches: fixtures.intakeBatches.length,
+    intakeItems: fixtures.intakeItems.length,
+    workflowRuns: fixtures.workflowRuns.length,
+    workflowSteps: fixtures.workflowSteps.length,
+    aiReadyRecords: fixtures.aiReadyRecords.length,
+    reviewQueueItems: fixtures.reviewQueueItems.length,
+    reviewedTradeInRecords: fixtures.reviewedTradeInRecords.length,
+    humanReviewLearningEvents: fixtures.humanReviewLearningEvents.length,
+    modelCalls: fixtures.modelCalls.length,
+    modelCallAttempts: fixtures.modelCallAttempts.length,
+    toolCalls: fixtures.toolCalls.length,
+  };
+  const differences = Object.entries(expected).filter(
+    ([key, count]) =>
+      persisted[key as keyof AdminOpsBaselinePersistedCounts] !== count,
+  );
+
+  if (differences.length > 0) {
+    throw new Error(
+      `Admin Ops baseline persistence reconciliation failed for: ${differences
+        .map(
+          ([key, expectedCount]) =>
+            `${key} (expected ${expectedCount}, persisted ${persisted[key as keyof AdminOpsBaselinePersistedCounts]})`,
+        )
+        .join(", ")}.`,
+    );
+  }
 }
 
 async function deleteExistingBaseline(tx: TransactionClient): Promise<void> {
@@ -202,6 +307,9 @@ export async function replaceAdminOpsBaseline(
       await createBaselineAiReadyRecords(tx, fixtures);
       await createBaselineReviewRows(tx, fixtures);
       await createBaselineAuditRows(tx, fixtures);
+      const persisted = await getPersistedBaselineCounts(tx);
+
+      assertPersistedBaselineCounts(fixtures, persisted);
 
       return {
         anchor: fixtures.anchor.toISOString(),
@@ -209,6 +317,7 @@ export async function replaceAdminOpsBaseline(
           (count) => count > 0,
         ),
         previous,
+        persisted,
         reconciliation,
       };
     },

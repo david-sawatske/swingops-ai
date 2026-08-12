@@ -1,6 +1,7 @@
 export { buildAdminOpsBaselineFixtures } from "./admin-ops-baseline-fixtures.js";
 export {
   replaceAdminOpsBaseline,
+  type AdminOpsBaselinePersistedCounts,
   type ReplaceAdminOpsBaselineResult,
 } from "./admin-ops-baseline-persistence.js";
 export type * from "./admin-ops-baseline-types.js";

@@ -194,6 +194,9 @@ These tests protect:
 - Health endpoint behavior.
 - Transactional operational-baseline replacement, reconciliation, and origin
   isolation.
+- Post-write baseline count reconciliation across every persisted fixture
+  collection, complete dashboard aggregate reconciliation, and unchanged live
+  intake behavior before and after a baseline refresh.
 - Dry-run and deletion reconciliation for bounded live-demo retention, including
   preservation of recent, seeded, and protected demonstration data.
 
