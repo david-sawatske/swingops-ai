@@ -178,6 +178,7 @@ Important areas include:
     services/api/src/routes/knowledge.routes.test.ts
     services/api/src/routes/ai.routes.test.ts
     services/api/src/routes/health.routes.test.ts
+    services/api/src/operational-data/admin-ops-baseline-persistence.test.ts
 
 These tests protect:
 
@@ -190,6 +191,8 @@ These tests protect:
 - Knowledge ingestion/search behavior.
 - Model routing preview behavior.
 - Health endpoint behavior.
+- Transactional operational-baseline replacement, reconciliation, and origin
+  isolation.
 
 ### Workflow tests
 

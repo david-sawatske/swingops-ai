@@ -10,8 +10,10 @@ The deterministic fixture builder is implemented in
 database-shaped records with stable identifiers and timestamps relative to a
 caller-supplied anchor. The accompanying reconciliation validator derives every
 documented total from the individual fixture records before they are eligible
-for persistence. Building the fixtures is side-effect free; database replacement
-and automatic refresh remain separate operational steps.
+for persistence. Building the fixtures remains side-effect free. The
+`pnpm baseline:refresh` operator command performs database replacement in one
+serializable transaction and deletes only records marked `SEEDED_BASELINE`.
+Automatic scheduling remains a separate operational step.
 
 ## Purpose
 

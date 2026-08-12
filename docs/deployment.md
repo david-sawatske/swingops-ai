@@ -12,6 +12,28 @@ The API and database run in the Ohio region and communicate over Render's
 private network. The browser calls the public API origin configured in the
 static site's build environment.
 
+## Operational baseline refresh
+
+The baseline is replaced through an operator command rather than a public API
+route:
+
+    pnpm baseline:refresh
+
+The command generates and reconciles the complete fixture graph before it
+writes. It then acquires a PostgreSQL transaction-scoped advisory lock and
+replaces only rows marked `SEEDED_BASELINE` in one serializable transaction.
+Ordinary guided runs and protected golden-demonstration history are not
+deleted. A failed refresh rolls back without exposing a partially replaced
+baseline.
+
+An optional anchor is available for repeatable operator testing:
+
+    pnpm baseline:refresh -- --anchor=2026-08-12T17:00:00.000Z
+
+Automatic scheduling is intentionally separate from persistence. Configure a
+scheduled job only after the command has been verified against the deployed
+database and an appropriate refresh cadence has been selected.
+
 ## Create the preview deployment
 
 1. Sign in to Render and create a new Blueprint.

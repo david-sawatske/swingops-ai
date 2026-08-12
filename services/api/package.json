@@ -13,6 +13,7 @@
     "test:db:prepare": "tsx src/test/prepare-test-database.ts",
     "pretest": "pnpm test:db:prepare",
     "test": "vitest run --no-file-parallelism",
+    "baseline:refresh": "tsx src/scripts/refresh-admin-ops-baseline.ts",
     "config:check": "tsx src/config/check-env.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

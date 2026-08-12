@@ -148,6 +148,14 @@ Prepare Prisma locally:
     pnpm --filter @swingops/api prisma:generate
     pnpm --filter @swingops/api prisma:migrate
 
+Populate the isolated seven-day Admin Ops operational baseline:
+
+    pnpm baseline:refresh
+
+The refresh validates every fixture total before opening one serializable
+transaction. It replaces only `SEEDED_BASELINE` rows; guided and live
+demonstration history is preserved.
+
 Start the API and web app together:
 
     pnpm dev
@@ -215,6 +223,7 @@ external request.
 Useful database commands:
 
     pnpm db:up
+    pnpm baseline:refresh
     pnpm db:logs
     pnpm db:down
 
