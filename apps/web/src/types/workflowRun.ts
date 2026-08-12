@@ -2,6 +2,7 @@ import type {
   ReviewQueueIntakeBatchSummary,
   ReviewQueueIntakeItemSummary,
 } from "./reviewQueue";
+import type { OperationalDataOrigin } from "./operationalData";
 
 export type WorkflowRunStatus =
   "QUEUED" | "RUNNING" | "COMPLETED" | "FAILED" | "NEEDS_REVIEW" | "CANCELLED";
@@ -61,6 +62,7 @@ export type WorkflowRunSummary = {
   intakeItemId: string | null;
   workflowName: string;
   status: WorkflowRunStatus;
+  dataOrigin?: OperationalDataOrigin;
   startedAt: string | null;
   completedAt: string | null;
   errorMessage: string | null;
@@ -111,6 +113,7 @@ export type ModelCallLog = {
   provider: ModelProviderName;
   model: string;
   status: ModelCallStatus;
+  dataOrigin?: OperationalDataOrigin;
   promptTokens: number | null;
   completionTokens: number | null;
   totalTokens: number | null;
@@ -131,6 +134,7 @@ export type ToolCallLog = {
   workflowStepId: string | null;
   toolName: string;
   status: string;
+  dataOrigin?: OperationalDataOrigin;
   inputJson: unknown;
   outputJson: unknown;
   errorMessage: string | null;

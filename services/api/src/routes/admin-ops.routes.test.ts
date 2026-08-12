@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { buildApp } from "../app.js";
+import { prisma } from "../lib/prisma.js";
+import { executeMultiSourceIntakeDemo } from "../workflows/multi-source-intake-demo.js";
 import {
   getAdminOpsModelAssistanceTelemetry,
   getAdminOpsProviderAttemptTelemetry,
@@ -21,6 +23,9 @@ describe("admin ops routes", () => {
 
     expect(body).toEqual(
       expect.objectContaining({
+        scope: {
+          dataOrigin: "ALL",
+        },
         aiReadyRecords: expect.objectContaining({
           total: expect.any(Number),
           active: expect.any(Number),
@@ -91,6 +96,79 @@ describe("admin ops routes", () => {
       averageLatencyMs === null || typeof averageLatencyMs === "number",
     ).toBe(true);
 
+    await app.close();
+  });
+
+  it("scopes operational summary metrics by data origin", async () => {
+    const app = buildApp();
+    const baselineBeforeResponse = await app.inject({
+      method: "GET",
+      url: "/admin/ops/summary?dataOrigin=SEEDED_BASELINE",
+    });
+    const baselineBefore = baselineBeforeResponse.json();
+    const result = await executeMultiSourceIntakeDemo({
+      sourceTypes: ["EMAIL"],
+    });
+
+    await prisma.$transaction([
+      prisma.intakeBatch.update({
+        where: { id: result.persistedIds.intakeBatchId },
+        data: { dataOrigin: "SEEDED_BASELINE" },
+      }),
+      prisma.workflowRun.update({
+        where: { id: result.persistedIds.workflowRunId },
+        data: { dataOrigin: "SEEDED_BASELINE" },
+      }),
+      prisma.aiReadyIntakeRecord.updateMany({
+        where: { intakeBatchId: result.persistedIds.intakeBatchId },
+        data: { dataOrigin: "SEEDED_BASELINE" },
+      }),
+      prisma.reviewQueueItem.updateMany({
+        where: { workflowRunId: result.persistedIds.workflowRunId },
+        data: { dataOrigin: "SEEDED_BASELINE" },
+      }),
+      prisma.toolCallLog.updateMany({
+        where: { workflowRunId: result.persistedIds.workflowRunId },
+        data: { dataOrigin: "SEEDED_BASELINE" },
+      }),
+    ]);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/admin/ops/summary?dataOrigin=SEEDED_BASELINE",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      scope: {
+        dataOrigin: "SEEDED_BASELINE",
+      },
+      aiReadyRecords: {
+        total: baselineBefore.aiReadyRecords.total + result.recordsExtracted,
+      },
+      workflowRuns: {
+        total: baselineBefore.workflowRuns.total + 1,
+      },
+      modelExecutions: {
+        totalCalls: baselineBefore.modelExecutions.totalCalls,
+      },
+    });
+
+    await prisma.toolCallLog.deleteMany({
+      where: { workflowRunId: result.persistedIds.workflowRunId },
+    });
+    await prisma.reviewQueueItem.deleteMany({
+      where: { workflowRunId: result.persistedIds.workflowRunId },
+    });
+    await prisma.aiReadyIntakeRecord.deleteMany({
+      where: { workflowRunId: result.persistedIds.workflowRunId },
+    });
+    await prisma.intakeBatch.delete({
+      where: { id: result.persistedIds.intakeBatchId },
+    });
+    await prisma.workflowRun.delete({
+      where: { id: result.persistedIds.workflowRunId },
+    });
     await app.close();
   });
 

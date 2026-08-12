@@ -3,6 +3,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import { prisma } from "../lib/prisma.js";
+import { OPERATIONAL_DATA_ORIGINS } from "../operational-data/operational-data-origin.js";
 import {
   serializeHumanReviewLearningEvent,
   serializeReviewedTradeInRecord,
@@ -52,6 +53,7 @@ const reviewQueueItemStatusSchema = z.enum([
 const listReviewQueueItemsQuerySchema = z.object({
   status: reviewQueueItemStatusSchema.optional(),
   workflowRunId: z.string().min(1).optional(),
+  dataOrigin: z.enum(OPERATIONAL_DATA_ORIGINS).default("LIVE_DEMO"),
 });
 
 const reviewQueueActionBodySchema = z.object({
@@ -168,6 +170,7 @@ async function supersedeUpstreamAiReadyCandidates(input: {
   finalWorkflowRunId: string | null;
   finalIntakeItemId: string | null;
   finalSourceText: string | null;
+  finalDataOrigin: (typeof OPERATIONAL_DATA_ORIGINS)[number];
 }) {
   const normalizedFinalSourceText = normalizeReviewSourceText(
     input.finalSourceText,
@@ -194,6 +197,7 @@ async function supersedeUpstreamAiReadyCandidates(input: {
         not: input.finalAiReadyIntakeRecordId,
       },
       status: "NEEDS_REVIEW",
+      dataOrigin: input.finalDataOrigin,
     },
     include: {
       workflowRun: true,
@@ -368,6 +372,7 @@ async function resolveReviewQueueItemWithCorrections(input: {
         correctedDemoValue,
         demoValuationNote,
         reviewerNotes,
+        dataOrigin: reviewQueueItem.dataOrigin,
       },
       update: {
         workflowRunId: reviewQueueItem.workflowRunId,
@@ -383,6 +388,7 @@ async function resolveReviewQueueItemWithCorrections(input: {
         demoValuationNote,
         reviewerNotes,
         approvedAt: new Date(),
+        dataOrigin: reviewQueueItem.dataOrigin,
       },
     });
 
@@ -492,6 +498,7 @@ async function resolveReviewQueueItemWithCorrections(input: {
           evidenceText: event.evidenceText ?? null,
           confidenceImpact: event.confidenceImpact ?? null,
           reviewerNotes,
+          dataOrigin: reviewQueueItem.dataOrigin,
         })),
       });
     }
@@ -559,6 +566,7 @@ async function resolveReviewQueueItemWithCorrections(input: {
             reviewNeeded: false,
             embeddingReady: true,
             ragReady: reviewedAiReadyShapeIsRagReady,
+            dataOrigin: reviewQueueItem.dataOrigin,
           },
         })
       : await tx.aiReadyIntakeRecord.create({
@@ -583,6 +591,7 @@ async function resolveReviewQueueItemWithCorrections(input: {
             reviewNeeded: false,
             embeddingReady: true,
             ragReady: reviewedAiReadyShapeIsRagReady,
+            dataOrigin: reviewQueueItem.dataOrigin,
           },
         });
 
@@ -593,6 +602,7 @@ async function resolveReviewQueueItemWithCorrections(input: {
       finalWorkflowRunId: reviewQueueItem.workflowRunId,
       finalIntakeItemId: reviewQueueItem.intakeItemId,
       finalSourceText: reviewQueueItem.originalText,
+      finalDataOrigin: reviewQueueItem.dataOrigin,
     });
 
     const learningEvents = await tx.humanReviewLearningEvent.findMany({
@@ -639,6 +649,7 @@ export async function reviewQueueItemRoutes(
 
     const reviewQueueItems = await prisma.reviewQueueItem.findMany({
       where: {
+        dataOrigin: parsedQuery.data.dataOrigin,
         ...(parsedQuery.data.status
           ? {
               status: parsedQuery.data.status,

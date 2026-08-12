@@ -4,6 +4,7 @@ export function serializeWorkflowRun(run: {
   intakeItemId: string | null;
   workflowName: string;
   status: string;
+  dataOrigin: string;
   startedAt: Date | null;
   completedAt: Date | null;
   errorMessage: string | null;
@@ -17,6 +18,7 @@ export function serializeWorkflowRun(run: {
     intakeItemId: run.intakeItemId,
     workflowName: run.workflowName,
     status: run.status,
+    dataOrigin: run.dataOrigin,
     startedAt: run.startedAt?.toISOString() ?? null,
     completedAt: run.completedAt?.toISOString() ?? null,
     errorMessage: run.errorMessage,
@@ -33,6 +35,7 @@ export function serializeIntakeBatch(batch: {
   sourceType: string;
   status: string;
   itemCount: number;
+  dataOrigin: string;
   createdAt: Date;
   updatedAt: Date;
 }) {
@@ -43,6 +46,7 @@ export function serializeIntakeBatch(batch: {
     sourceType: batch.sourceType,
     status: batch.status,
     itemCount: batch.itemCount,
+    dataOrigin: batch.dataOrigin,
     createdAt: batch.createdAt.toISOString(),
     updatedAt: batch.updatedAt.toISOString(),
   };
@@ -108,6 +112,7 @@ export function serializeToolCallLog(log: {
   workflowStepId: string | null;
   toolName: string;
   status: string;
+  dataOrigin: string;
   inputJson: unknown;
   outputJson: unknown;
   errorMessage: string | null;
@@ -121,6 +126,7 @@ export function serializeToolCallLog(log: {
     workflowStepId: log.workflowStepId,
     toolName: log.toolName,
     status: log.status,
+    dataOrigin: log.dataOrigin,
     inputJson: log.inputJson,
     outputJson: log.outputJson,
     errorMessage: log.errorMessage,
@@ -137,6 +143,7 @@ export function serializeReviewQueueItem(item: {
   workflowRunId: string | null;
   reason: string;
   status: string;
+  dataOrigin: string;
   originalText: string | null;
   proposedGolfClubJson: unknown;
   reviewerNotes: string | null;
@@ -154,6 +161,7 @@ export function serializeReviewQueueItem(item: {
     workflowRunId: item.workflowRunId,
     reason: item.reason,
     status: item.status,
+    dataOrigin: item.dataOrigin,
     originalText: item.originalText,
     proposedGolfClubJson: item.proposedGolfClubJson,
     reviewerNotes: item.reviewerNotes,

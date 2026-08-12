@@ -4,6 +4,7 @@ import type {
   MultiSourceIntakeSourceResult,
   MultiSourceIntakeSourceType,
 } from "./multiSourceIntake";
+import type { OperationalDataOrigin } from "./operationalData";
 
 export type AiReadyIntakeRecordStatus =
   "READY_FOR_REVIEW" | "READY_FOR_RAG" | "NEEDS_REVIEW" | "SUPERSEDED";
@@ -23,6 +24,7 @@ export type AiReadyIntakeRecord = {
   metadataJson: MultiSourceIntakeSourceResult["metadata"] | null;
   qualitySignalsJson: MultiSourceIntakeSourceResult["qualitySignals"] | null;
   status: AiReadyIntakeRecordStatus;
+  dataOrigin?: OperationalDataOrigin;
   reviewNeeded: boolean;
   embeddingReady: boolean;
   ragReady: boolean;

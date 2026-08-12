@@ -6,6 +6,26 @@ The primary data models are defined in:
 
 This document explains the main persisted records from the perspective of the Guided Workflow.
 
+## Operational data origin
+
+Operational records that can appear in workflow, review, audit, or Admin Ops
+queries carry an `OperationalDataOrigin` value:
+
+- `LIVE_DEMO` for ordinary user-triggered demonstration activity.
+- `GOLDEN_DEMONSTRATION` for protected historical evidence used by the guided
+  run.
+- `SEEDED_BASELINE` for the synthetic seven-day Admin Ops baseline.
+
+Existing records migrate to `LIVE_DEMO`, except the fixed golden historical
+records, which are backfilled to `GOLDEN_DEMONSTRATION`. The origin is indexed
+on independently queried operational roots. Child records such as workflow
+steps and model attempts inherit their scope through their parent.
+
+Origin filtering prevents baseline review-learning events or supersession
+records from changing live guided workflow behavior. It also gives retention
+and reseeding work a safe boundary that does not depend on names or identifier
+patterns.
+
 ## IntakeBatch
 
 Represents a group of intake items.

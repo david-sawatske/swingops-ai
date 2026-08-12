@@ -28,6 +28,7 @@ export function serializeReviewedTradeInRecord(record: {
   demoValuationNote: string | null;
   reviewerNotes: string | null;
   approvedAt: Date;
+  dataOrigin: string;
   createdAt: Date;
   updatedAt: Date;
 }) {
@@ -47,6 +48,7 @@ export function serializeReviewedTradeInRecord(record: {
     demoValuationNote: record.demoValuationNote,
     reviewerNotes: record.reviewerNotes,
     approvedAt: record.approvedAt.toISOString(),
+    dataOrigin: record.dataOrigin,
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
   };
@@ -65,6 +67,7 @@ export function serializeHumanReviewLearningEvent(event: {
   evidenceText: string | null;
   confidenceImpact: string | null;
   reviewerNotes: string | null;
+  dataOrigin: string;
   createdAt: Date;
 }) {
   return {
@@ -80,6 +83,7 @@ export function serializeHumanReviewLearningEvent(event: {
     evidenceText: event.evidenceText ?? null,
     confidenceImpact: event.confidenceImpact ?? null,
     reviewerNotes: event.reviewerNotes,
+    dataOrigin: event.dataOrigin,
     createdAt: event.createdAt.toISOString(),
   };
 }
@@ -91,6 +95,7 @@ export function serializeReviewQueueItemWithContext(item: {
   workflowRunId: string | null;
   reason: string;
   status: string;
+  dataOrigin: string;
   originalText: string | null;
   proposedGolfClubJson: unknown;
   reviewerNotes: string | null;
@@ -106,6 +111,7 @@ export function serializeReviewQueueItemWithContext(item: {
     intakeItemId: string | null;
     workflowName: string;
     status: string;
+    dataOrigin: string;
     startedAt: Date | null;
     completedAt: Date | null;
     errorMessage: string | null;
@@ -127,6 +133,7 @@ export function serializeReviewQueueItemWithContext(item: {
       sourceType: string;
       status: string;
       itemCount: number;
+      dataOrigin: string;
       createdAt: Date;
       updatedAt: Date;
     };
@@ -147,6 +154,7 @@ export function serializeReviewQueueItemWithContext(item: {
     demoValuationNote: string | null;
     reviewerNotes: string | null;
     approvedAt: Date;
+    dataOrigin: string;
     createdAt: Date;
     updatedAt: Date;
   } | null;
@@ -163,6 +171,7 @@ export function serializeReviewQueueItemWithContext(item: {
     evidenceText: string | null;
     confidenceImpact: string | null;
     reviewerNotes: string | null;
+    dataOrigin: string;
     createdAt: Date;
   }[];
 }) {

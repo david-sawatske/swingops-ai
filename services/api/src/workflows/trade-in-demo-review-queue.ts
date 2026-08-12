@@ -111,6 +111,7 @@ export async function createTradeInDemoReviewQueueItems(input: {
     await resolveSupersededIntakeReviewMarkers({
       authoritativeReviewQueueItemId: reviewQueueItem.id,
       currentWorkflowRunId: input.workflowRunId,
+      dataOrigin: reviewQueueItem.dataOrigin,
       item,
       sourceRowNumber: index + 1,
     });

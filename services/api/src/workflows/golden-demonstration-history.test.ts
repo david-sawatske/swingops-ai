@@ -109,16 +109,19 @@ describe("ensureGoldenDemonstrationHistory", () => {
     expect(workflowRun).toMatchObject({
       workflowName: "golden-demonstration-historical-review-evidence",
       status: "COMPLETED",
+      dataOrigin: "GOLDEN_DEMONSTRATION",
     });
     expect(reviewQueueItem).toMatchObject({
       workflowRunId: workflowRun.id,
       status: "RESOLVED",
       reason: "MISSING_REQUIRED_FIELDS",
+      dataOrigin: "GOLDEN_DEMONSTRATION",
     });
     expect(reviewedTradeInRecord).toMatchObject({
       reviewQueueItemId: reviewQueueItem.id,
       workflowRunId: workflowRun.id,
       correctedShaftFlex: "STIFF",
+      dataOrigin: "GOLDEN_DEMONSTRATION",
     });
     expect(learningEvent).toMatchObject({
       reviewedTradeInRecordId: reviewedTradeInRecord.id,
@@ -127,17 +130,20 @@ describe("ensureGoldenDemonstrationHistory", () => {
       fieldName: "shaftFlex",
       rawTextMatch: "shaft firm",
       correctedValue: "STIFF",
+      dataOrigin: "GOLDEN_DEMONSTRATION",
     });
     expect(previousAiReadyRecord).toMatchObject({
       status: "SUPERSEDED",
       supersededByAiReadyIntakeRecordId: replacementAiReadyRecord.id,
       reviewNeeded: true,
       ragReady: false,
+      dataOrigin: "GOLDEN_DEMONSTRATION",
     });
     expect(replacementAiReadyRecord).toMatchObject({
       status: "READY_FOR_RAG",
       reviewNeeded: false,
       ragReady: true,
+      dataOrigin: "GOLDEN_DEMONSTRATION",
     });
 
     const evidence = await findPriorReviewLearningEvidence({
@@ -163,6 +169,38 @@ describe("ensureGoldenDemonstrationHistory", () => {
     );
 
     expect(reusableShaftFlexEvidence).toBeDefined();
+
+    await prisma.humanReviewLearningEvent.update({
+      where: {
+        id: GOLDEN_DEMONSTRATION_HISTORY_IDS.learningEventId,
+      },
+      data: {
+        dataOrigin: "SEEDED_BASELINE",
+      },
+    });
+
+    const evidenceAfterBaselineIsolation =
+      await findPriorReviewLearningEvidence({
+        rawText:
+          "TaylorMade Stealth 2 driver shaft firm condition 9.0 Above Average trade value $155 store 104",
+        parsedFields: {
+          brand: "TaylorMade",
+          productLine: "Stealth 2",
+          category: "DRIVER",
+          shaftFlex: null,
+          conditionGrade: "9.0 Above Average",
+          storeId: "104",
+        },
+        sourceType: "FREE_TEXT",
+      });
+
+    expect(
+      evidenceAfterBaselineIsolation.some(
+        (item) =>
+          item.learningEventId ===
+          GOLDEN_DEMONSTRATION_HISTORY_IDS.learningEventId,
+      ),
+    ).toBe(false);
 
     await expect(
       prisma.workflowRun.count({

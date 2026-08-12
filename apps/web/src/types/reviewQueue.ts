@@ -1,5 +1,6 @@
 import type { AiReadyIntakeRecord } from "./aiReadyRecords";
 import type { WorkflowRunSummary } from "./workflowRun";
+import type { OperationalDataOrigin } from "./operationalData";
 
 export type ReviewQueueItemStatus =
   "OPEN" | "IN_REVIEW" | "RESOLVED" | "DISMISSED" | "SUPERSEDED";
@@ -18,6 +19,7 @@ export type ReviewedTradeInRecord = {
   correctedDemoValue: number | null;
   demoValuationNote: string | null;
   reviewerNotes: string | null;
+  dataOrigin?: OperationalDataOrigin;
   approvedAt: string;
   createdAt: string;
   updatedAt: string;
@@ -36,6 +38,7 @@ export type HumanReviewLearningEvent = {
   evidenceText: string | null;
   confidenceImpact: string | null;
   reviewerNotes: string | null;
+  dataOrigin?: OperationalDataOrigin;
   createdAt: string;
 };
 
@@ -46,6 +49,7 @@ export type ReviewQueueItem = {
   workflowRunId: string | null;
   reason: string;
   status: ReviewQueueItemStatus;
+  dataOrigin?: OperationalDataOrigin;
   originalText: string | null;
   proposedGolfClubJson: unknown;
   reviewerNotes: string | null;
@@ -74,6 +78,7 @@ export type ReviewQueueIntakeBatchSummary = {
   sourceType: string;
   status: string;
   itemCount: number;
+  dataOrigin?: OperationalDataOrigin;
   createdAt: string;
   updatedAt: string;
 };

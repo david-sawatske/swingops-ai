@@ -174,13 +174,20 @@ enum AiReadyIntakeRecordStatus {
   SUPERSEDED
 }
 
+enum OperationalDataOrigin {
+  LIVE_DEMO
+  GOLDEN_DEMONSTRATION
+  SEEDED_BASELINE
+}
+
 model IntakeBatch {
-  id          String            @id @default(cuid())
+  id          String                @id @default(cuid())
   name        String
   description String?
-  sourceType  IntakeSourceType  @map("source_type")
-  status      IntakeBatchStatus @default(DRAFT)
-  itemCount   Int               @default(0) @map("item_count")
+  sourceType  IntakeSourceType      @map("source_type")
+  status      IntakeBatchStatus     @default(DRAFT)
+  itemCount   Int                   @default(0) @map("item_count")
+  dataOrigin  OperationalDataOrigin @default(LIVE_DEMO) @map("data_origin")
 
   items                IntakeItem[]
   workflowRuns         WorkflowRun[]
@@ -191,6 +198,7 @@ model IntakeBatch {
 
   @@index([status])
   @@index([sourceType])
+  @@index([dataOrigin])
   @@map("intake_batches")
 }
 
@@ -253,11 +261,12 @@ model GolfClub {
 }
 
 model WorkflowRun {
-  id            String            @id @default(cuid())
-  intakeBatchId String?           @map("intake_batch_id")
-  intakeItemId  String?           @map("intake_item_id")
-  workflowName  String            @map("workflow_name")
-  status        WorkflowRunStatus @default(QUEUED)
+  id            String                @id @default(cuid())
+  intakeBatchId String?               @map("intake_batch_id")
+  intakeItemId  String?               @map("intake_item_id")
+  workflowName  String                @map("workflow_name")
+  status        WorkflowRunStatus     @default(QUEUED)
+  dataOrigin    OperationalDataOrigin @default(LIVE_DEMO) @map("data_origin")
 
   startedAt    DateTime? @map("started_at")
   completedAt  DateTime? @map("completed_at")
@@ -281,6 +290,7 @@ model WorkflowRun {
   @@index([intakeItemId])
   @@index([status])
   @@index([workflowName])
+  @@index([dataOrigin])
   @@map("workflow_runs")
 }
 
@@ -309,10 +319,10 @@ model WorkflowStep {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  @@unique([workflowRunId, orderIndex])
   @@index([workflowRunId])
   @@index([status])
   @@index([stepType])
-  @@unique([workflowRunId, orderIndex])
   @@map("workflow_steps")
 }
 
@@ -321,8 +331,9 @@ model ToolCallLog {
   workflowRunId  String? @map("workflow_run_id")
   workflowStepId String? @map("workflow_step_id")
 
-  toolName String         @map("tool_name")
-  status   ToolCallStatus @default(STARTED)
+  toolName   String                @map("tool_name")
+  status     ToolCallStatus        @default(STARTED)
+  dataOrigin OperationalDataOrigin @default(LIVE_DEMO) @map("data_origin")
 
   inputJson  Json? @map("input_json")
   outputJson Json? @map("output_json")
@@ -341,6 +352,7 @@ model ToolCallLog {
   @@index([workflowStepId])
   @@index([toolName])
   @@index([status])
+  @@index([dataOrigin])
   @@map("tool_call_logs")
 }
 
@@ -349,9 +361,10 @@ model ModelCallLog {
   workflowRunId  String? @map("workflow_run_id")
   workflowStepId String? @map("workflow_step_id")
 
-  provider ModelProviderName
-  model    String
-  status   ModelCallStatus   @default(STARTED)
+  provider   ModelProviderName
+  model      String
+  status     ModelCallStatus       @default(STARTED)
+  dataOrigin OperationalDataOrigin @default(LIVE_DEMO) @map("data_origin")
 
   promptTokens     Int?   @map("prompt_tokens")
   completionTokens Int?   @map("completion_tokens")
@@ -378,6 +391,7 @@ model ModelCallLog {
   @@index([provider])
   @@index([model])
   @@index([status])
+  @@index([dataOrigin])
   @@map("model_call_logs")
 }
 
@@ -414,8 +428,9 @@ model ReviewQueueItem {
   golfClubId    String? @map("golf_club_id")
   workflowRunId String? @map("workflow_run_id")
 
-  reason ReviewReason
-  status ReviewQueueStatus @default(OPEN)
+  reason     ReviewReason
+  status     ReviewQueueStatus     @default(OPEN)
+  dataOrigin OperationalDataOrigin @default(LIVE_DEMO) @map("data_origin")
 
   originalText         String? @map("original_text")
   proposedGolfClubJson Json?   @map("proposed_golf_club_json")
@@ -427,15 +442,12 @@ model ReviewQueueItem {
   supersededAt                  DateTime? @map("superseded_at")
   supersededReason              String?   @map("superseded_reason")
 
-
   intakeItem  IntakeItem?  @relation(fields: [intakeItemId], references: [id], onDelete: SetNull)
   golfClub    GolfClub?    @relation(fields: [golfClubId], references: [id], onDelete: SetNull)
   workflowRun WorkflowRun? @relation(fields: [workflowRunId], references: [id], onDelete: SetNull)
 
   supersededByReviewQueueItem ReviewQueueItem?  @relation("ReviewQueueItemSupersession", fields: [supersededByReviewQueueItemId], references: [id], onDelete: SetNull)
   supersededReviewQueueItems  ReviewQueueItem[] @relation("ReviewQueueItemSupersession")
-
-
 
   createdAt                 DateTime                   @default(now()) @map("created_at")
   updatedAt                 DateTime                   @updatedAt @map("updated_at")
@@ -445,10 +457,10 @@ model ReviewQueueItem {
   @@index([intakeItemId])
   @@index([golfClubId])
   @@index([workflowRunId])
-
   @@index([supersededByReviewQueueItemId])
   @@index([reason])
   @@index([status])
+  @@index([dataOrigin])
   @@map("review_queue_items")
 }
 
@@ -473,6 +485,7 @@ model AiReadyIntakeRecord {
 
   status       AiReadyIntakeRecordStatus @default(READY_FOR_REVIEW)
   reviewNeeded Boolean                   @default(false) @map("review_needed")
+  dataOrigin   OperationalDataOrigin     @default(LIVE_DEMO) @map("data_origin")
 
   embeddingReady Boolean @default(false) @map("embedding_ready")
   ragReady       Boolean @default(false) @map("rag_ready")
@@ -494,11 +507,11 @@ model AiReadyIntakeRecord {
   @@index([intakeBatchId])
   @@index([intakeItemId])
   @@index([workflowRunId])
-
   @@index([supersededByAiReadyIntakeRecordId])
   @@index([sourceType])
   @@index([status])
   @@index([reviewNeeded])
+  @@index([dataOrigin])
   @@map("ai_ready_intake_records")
 }
 
@@ -595,8 +608,9 @@ model ReviewedTradeInRecord {
   correctedDemoValue      Int?    @map("corrected_demo_value")
   demoValuationNote       String? @map("demo_valuation_note")
 
-  reviewerNotes String?  @map("reviewer_notes")
-  approvedAt    DateTime @default(now()) @map("approved_at")
+  reviewerNotes String?               @map("reviewer_notes")
+  approvedAt    DateTime              @default(now()) @map("approved_at")
+  dataOrigin    OperationalDataOrigin @default(LIVE_DEMO) @map("data_origin")
 
   reviewQueueItem ReviewQueueItem @relation(fields: [reviewQueueItemId], references: [id], onDelete: Cascade)
   workflowRun     WorkflowRun?    @relation(fields: [workflowRunId], references: [id], onDelete: SetNull)
@@ -612,6 +626,7 @@ model ReviewedTradeInRecord {
   @@index([correctedBrand])
   @@index([correctedCategory])
   @@index([correctedConditionGrade])
+  @@index([dataOrigin])
   @@map("reviewed_trade_in_records")
 }
 
@@ -623,13 +638,14 @@ model HumanReviewLearningEvent {
   workflowRunId           String? @map("workflow_run_id")
   intakeItemId            String? @map("intake_item_id")
 
-  fieldName        String  @map("field_name")
-  rawTextMatch     String? @map("raw_text_match")
-  proposedValue    String? @map("proposed_value")
-  correctedValue   String? @map("corrected_value")
-  evidenceText     String? @map("evidence_text")
-  confidenceImpact String? @map("confidence_impact")
-  reviewerNotes    String? @map("reviewer_notes")
+  fieldName        String                @map("field_name")
+  rawTextMatch     String?               @map("raw_text_match")
+  proposedValue    String?               @map("proposed_value")
+  correctedValue   String?               @map("corrected_value")
+  evidenceText     String?               @map("evidence_text")
+  confidenceImpact String?               @map("confidence_impact")
+  reviewerNotes    String?               @map("reviewer_notes")
+  dataOrigin       OperationalDataOrigin @default(LIVE_DEMO) @map("data_origin")
 
   reviewedTradeInRecord ReviewedTradeInRecord @relation(fields: [reviewedTradeInRecordId], references: [id], onDelete: Cascade)
   reviewQueueItem       ReviewQueueItem       @relation(fields: [reviewQueueItemId], references: [id], onDelete: Cascade)
@@ -644,5 +660,6 @@ model HumanReviewLearningEvent {
   @@index([intakeItemId])
   @@index([fieldName])
   @@index([rawTextMatch])
+  @@index([dataOrigin])
   @@map("human_review_learning_events")
 }

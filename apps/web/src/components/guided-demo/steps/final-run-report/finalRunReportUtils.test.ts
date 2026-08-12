@@ -1013,6 +1013,7 @@ describe("finalRunReportUtils", () => {
         metadataJson: null,
         qualitySignalsJson: null,
         status: "NEEDS_REVIEW",
+        dataOrigin: "LIVE_DEMO",
         reviewNeeded: true,
         embeddingReady: true,
         ragReady: false,

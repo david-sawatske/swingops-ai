@@ -26,6 +26,60 @@ describe("workflow run routes", () => {
       await app.close();
     });
 
+    it("defaults to live runs and supports explicit origin filtering", async () => {
+      const app = buildApp();
+      const liveRun = await prisma.workflowRun.create({
+        data: {
+          workflowName: "origin-filter-live-run",
+        },
+      });
+      const baselineRun = await prisma.workflowRun.create({
+        data: {
+          workflowName: "origin-filter-baseline-run",
+          dataOrigin: "SEEDED_BASELINE",
+        },
+      });
+
+      const liveResponse = await app.inject({
+        method: "GET",
+        url: "/workflow-runs",
+      });
+      const baselineResponse = await app.inject({
+        method: "GET",
+        url: "/workflow-runs?dataOrigin=SEEDED_BASELINE",
+      });
+
+      expect(liveResponse.statusCode).toBe(200);
+      expect(
+        liveResponse
+          .json()
+          .workflowRuns.some((run: { id: string }) => run.id === liveRun.id),
+      ).toBe(true);
+      expect(
+        liveResponse
+          .json()
+          .workflowRuns.some(
+            (run: { id: string }) => run.id === baselineRun.id,
+          ),
+      ).toBe(false);
+      expect(baselineResponse.statusCode).toBe(200);
+      expect(baselineResponse.json().workflowRuns).toEqual([
+        expect.objectContaining({
+          id: baselineRun.id,
+          dataOrigin: "SEEDED_BASELINE",
+        }),
+      ]);
+
+      await prisma.workflowRun.deleteMany({
+        where: {
+          id: {
+            in: [liveRun.id, baselineRun.id],
+          },
+        },
+      });
+      await app.close();
+    });
+
     it("returns workflow runs with intake context", async () => {
       const app = buildApp();
 

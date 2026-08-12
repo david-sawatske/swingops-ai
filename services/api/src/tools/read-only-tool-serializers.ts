@@ -23,6 +23,7 @@ export function serializeModelCallLog(log: {
   provider: string;
   model: string;
   status: string;
+  dataOrigin: string;
   promptTokens: number | null;
   completionTokens: number | null;
   totalTokens: number | null;
@@ -42,6 +43,7 @@ export function serializeModelCallLog(log: {
     provider: log.provider,
     model: log.model,
     status: log.status,
+    dataOrigin: log.dataOrigin,
     promptTokens: log.promptTokens,
     completionTokens: log.completionTokens,
     totalTokens: log.totalTokens,
@@ -62,6 +64,7 @@ export function serializeWorkflowRunListItem(run: {
   intakeItemId: string | null;
   workflowName: string;
   status: string;
+  dataOrigin: string;
   startedAt: Date | null;
   completedAt: Date | null;
   errorMessage: string | null;
@@ -74,6 +77,7 @@ export function serializeWorkflowRunListItem(run: {
     sourceType: string;
     status: string;
     itemCount: number;
+    dataOrigin: string;
     createdAt: Date;
     updatedAt: Date;
   } | null;
@@ -93,6 +97,7 @@ export function serializeWorkflowRunListItem(run: {
     provider: string;
     model: string;
     status: string;
+    dataOrigin: string;
     promptTokens: number | null;
     completionTokens: number | null;
     totalTokens: number | null;
@@ -111,6 +116,7 @@ export function serializeWorkflowRunListItem(run: {
     workflowStepId: string | null;
     toolName: string;
     status: string;
+    dataOrigin: string;
     inputJson: unknown;
     outputJson: unknown;
     errorMessage: string | null;
@@ -159,6 +165,7 @@ export function serializeReviewQueueItemWithContext(item: {
   workflowRunId: string | null;
   reason: string;
   status: string;
+  dataOrigin: string;
   originalText: string | null;
   proposedGolfClubJson: unknown;
   reviewerNotes: string | null;
@@ -171,6 +178,7 @@ export function serializeReviewQueueItemWithContext(item: {
     intakeItemId: string | null;
     workflowName: string;
     status: string;
+    dataOrigin: string;
     startedAt: Date | null;
     completedAt: Date | null;
     errorMessage: string | null;
@@ -192,6 +200,7 @@ export function serializeReviewQueueItemWithContext(item: {
       sourceType: string;
       status: string;
       itemCount: number;
+      dataOrigin: string;
       createdAt: Date;
       updatedAt: Date;
     };

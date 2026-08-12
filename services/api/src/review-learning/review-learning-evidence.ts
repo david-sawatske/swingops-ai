@@ -1,4 +1,5 @@
 import { prisma } from "../lib/prisma.js";
+import { PRIOR_REVIEW_EVIDENCE_ORIGINS } from "../operational-data/operational-data-origin.js";
 import { demoProductReferenceProvider } from "../product-reference/demo-product-reference-provider.js";
 import type { ProductReferenceCategory } from "../product-reference/product-reference-types.js";
 
@@ -674,6 +675,9 @@ export async function findPriorReviewLearningEvidence(
 ): Promise<PriorReviewLearningEvidence[]> {
   const events = await prisma.humanReviewLearningEvent.findMany({
     where: {
+      dataOrigin: {
+        in: [...PRIOR_REVIEW_EVIDENCE_ORIGINS],
+      },
       ...(input.excludeWorkflowRunId
         ? {
             NOT: {

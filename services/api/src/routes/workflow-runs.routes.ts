@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import { prisma } from "../lib/prisma.js";
+import { OPERATIONAL_DATA_ORIGINS } from "../operational-data/operational-data-origin.js";
 import {
   serializeModelCallLog,
   serializeReviewQueueItem,
@@ -21,6 +22,12 @@ import { ensureGoldenDemonstrationHistory } from "../workflows/golden-demonstrat
 const workflowRunParamsSchema = z.object({
   id: z.string().min(1),
 });
+
+const listWorkflowRunsQuerySchema = z
+  .object({
+    dataOrigin: z.enum(OPERATIONAL_DATA_ORIGINS).default("LIVE_DEMO"),
+  })
+  .strict();
 
 const agenticTradeInDemoBodySchema = z
   .object({
@@ -143,8 +150,22 @@ export async function workflowRunRoutes(app: FastifyInstance): Promise<void> {
     }
   });
 
-  app.get("/workflow-runs", async () => {
+  app.get("/workflow-runs", async (request, reply) => {
+    const parsedQuery = listWorkflowRunsQuerySchema.safeParse(
+      request.query ?? {},
+    );
+
+    if (!parsedQuery.success) {
+      return reply.status(400).send({
+        error: "Invalid workflow run filters",
+        details: parsedQuery.error.flatten(),
+      });
+    }
+
     const workflowRuns = await prisma.workflowRun.findMany({
+      where: {
+        dataOrigin: parsedQuery.data.dataOrigin,
+      },
       orderBy: {
         createdAt: "desc",
       },
@@ -176,6 +197,7 @@ export async function workflowRunRoutes(app: FastifyInstance): Promise<void> {
             workflowStepId: true,
             toolName: true,
             status: true,
+            dataOrigin: true,
             errorMessage: true,
             startedAt: true,
             completedAt: true,

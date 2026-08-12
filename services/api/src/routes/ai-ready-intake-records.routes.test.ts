@@ -37,12 +37,18 @@ describe("AI-ready intake record routes", () => {
           conditionGrade: expect.any(String),
         }),
         status: expect.any(String),
+        dataOrigin: "LIVE_DEMO",
         reviewNeeded: expect.any(Boolean),
         embeddingReady: expect.any(Boolean),
         ragReady: expect.any(Boolean),
       }),
     );
 
+    await prisma.aiReadyIntakeRecord.deleteMany({
+      where: {
+        workflowRunId: result.persistedIds.workflowRunId,
+      },
+    });
     await prisma.intakeBatch.delete({
       where: {
         id: result.persistedIds.intakeBatchId,
@@ -221,6 +227,63 @@ describe("AI-ready intake record routes", () => {
       ),
     ).toBe(true);
 
+    await prisma.intakeBatch.delete({
+      where: {
+        id: result.persistedIds.intakeBatchId,
+      },
+    });
+    await prisma.workflowRun.delete({
+      where: {
+        id: result.persistedIds.workflowRunId,
+      },
+    });
+    await app.close();
+  });
+
+  it("filters records by operational data origin", async () => {
+    const app = buildApp();
+    const result = await executeMultiSourceIntakeDemo({
+      sourceTypes: ["EMAIL"],
+    });
+    const baselineRecordId = result.persistedIds.aiReadyIntakeRecordIds[0];
+
+    expect(baselineRecordId).toBeDefined();
+
+    await prisma.aiReadyIntakeRecord.update({
+      where: {
+        id: baselineRecordId!,
+      },
+      data: {
+        dataOrigin: "SEEDED_BASELINE",
+      },
+    });
+
+    const baselineResponse = await app.inject({
+      method: "GET",
+      url: `/ai-ready-intake-records?intakeBatchId=${result.persistedIds.intakeBatchId}&dataOrigin=SEEDED_BASELINE&limit=100`,
+    });
+    const liveResponse = await app.inject({
+      method: "GET",
+      url: `/ai-ready-intake-records?intakeBatchId=${result.persistedIds.intakeBatchId}&dataOrigin=LIVE_DEMO&limit=100`,
+    });
+
+    expect(baselineResponse.statusCode).toBe(200);
+    expect(baselineResponse.json().records).toEqual([
+      expect.objectContaining({
+        id: baselineRecordId,
+        dataOrigin: "SEEDED_BASELINE",
+      }),
+    ]);
+    expect(liveResponse.statusCode).toBe(200);
+    expect(liveResponse.json().records).toHaveLength(
+      result.recordsExtracted - 1,
+    );
+
+    await prisma.aiReadyIntakeRecord.deleteMany({
+      where: {
+        workflowRunId: result.persistedIds.workflowRunId,
+      },
+    });
     await prisma.intakeBatch.delete({
       where: {
         id: result.persistedIds.intakeBatchId,

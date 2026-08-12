@@ -7,6 +7,7 @@ import type {
   GetAdminOpsNormalizationMatrixResponse,
   GetAdminOpsSummaryResponse,
   GetAdminOpsWorkflowConfigResponse,
+  OperationalDataOrigin,
   ListAiReadyIntakeRecordsResponse,
   ListReviewQueueItemsResponse,
   ListWorkflowRunsResponse,
@@ -19,14 +20,27 @@ import type {
   ReviewQueueItemActionResponse,
 } from "../types/workflow";
 
-export async function listWorkflowRuns(): Promise<ListWorkflowRunsResponse> {
-  return apiGet<ListWorkflowRunsResponse>("/workflow-runs");
+export async function listWorkflowRuns(
+  filters: { dataOrigin?: OperationalDataOrigin } = {},
+): Promise<ListWorkflowRunsResponse> {
+  const searchParams = new URLSearchParams();
+
+  if (filters.dataOrigin) {
+    searchParams.set("dataOrigin", filters.dataOrigin);
+  }
+
+  const queryString = searchParams.toString();
+
+  return apiGet<ListWorkflowRunsResponse>(
+    queryString ? `/workflow-runs?${queryString}` : "/workflow-runs",
+  );
 }
 
 export async function listReviewQueueItems(
   filters: {
     status?: string;
     workflowRunId?: string;
+    dataOrigin?: OperationalDataOrigin;
   } = {},
 ): Promise<ListReviewQueueItemsResponse> {
   const searchParams = new URLSearchParams();
@@ -130,6 +144,7 @@ export async function listAiReadyIntakeRecords(
     search?: string;
     sourceType?: string;
     status?: string;
+    dataOrigin?: OperationalDataOrigin;
     activeOnly?: boolean;
     reviewNeeded?: boolean;
     ragReady?: boolean;
@@ -158,8 +173,20 @@ export async function listAiReadyIntakeRecords(
   );
 }
 
-export async function getAdminOpsSummary(): Promise<GetAdminOpsSummaryResponse> {
-  return apiGet<GetAdminOpsSummaryResponse>("/admin/ops/summary");
+export async function getAdminOpsSummary(
+  filters: { dataOrigin?: OperationalDataOrigin } = {},
+): Promise<GetAdminOpsSummaryResponse> {
+  const searchParams = new URLSearchParams();
+
+  if (filters.dataOrigin) {
+    searchParams.set("dataOrigin", filters.dataOrigin);
+  }
+
+  const queryString = searchParams.toString();
+
+  return apiGet<GetAdminOpsSummaryResponse>(
+    queryString ? `/admin/ops/summary?${queryString}` : "/admin/ops/summary",
+  );
 }
 
 export async function getAdminOpsNormalizationMatrix(): Promise<GetAdminOpsNormalizationMatrixResponse> {

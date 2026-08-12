@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 import { prisma } from "../lib/prisma.js";
+import { OPERATIONAL_DATA_ORIGINS } from "../operational-data/operational-data-origin.js";
 
 const aiReadyIntakeRecordParamsSchema = z.object({
   id: z.string().min(1),
@@ -55,6 +56,7 @@ const listAiReadyIntakeRecordsQuerySchema = z.object({
   search: z.string().trim().min(1).max(120).optional(),
   sourceType: aiReadyIntakeRecordSourceTypeSchema.optional(),
   status: aiReadyIntakeRecordStatusSchema.optional(),
+  dataOrigin: z.enum(OPERATIONAL_DATA_ORIGINS).optional(),
   activeOnly: booleanQuerySchema.optional(),
   reviewNeeded: booleanQuerySchema.optional(),
   ragReady: booleanQuerySchema.optional(),
@@ -81,6 +83,7 @@ function serializeAiReadyIntakeRecord(record: {
   metadataJson: unknown;
   qualitySignalsJson: unknown;
   status: string;
+  dataOrigin: string;
   reviewNeeded: boolean;
   embeddingReady: boolean;
   ragReady: boolean;
@@ -105,6 +108,7 @@ function serializeAiReadyIntakeRecord(record: {
     metadataJson: record.metadataJson,
     qualitySignalsJson: record.qualitySignalsJson,
     status: record.status,
+    dataOrigin: record.dataOrigin,
     reviewNeeded: record.reviewNeeded,
     embeddingReady: record.embeddingReady,
     ragReady: record.ragReady,
@@ -276,6 +280,10 @@ export async function aiReadyIntakeRecordRoutes(
       where.status = {
         not: "SUPERSEDED",
       };
+    }
+
+    if (parsedQuery.data.dataOrigin) {
+      where.dataOrigin = parsedQuery.data.dataOrigin;
     }
 
     if (parsedQuery.data.reviewNeeded !== undefined) {

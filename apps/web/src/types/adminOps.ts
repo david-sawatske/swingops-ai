@@ -1,3 +1,5 @@
+import type { OperationalDataOriginFilter } from "./operationalData";
+
 export type AdminOpsNormalizationField =
   "shaftFlex" | "category" | "conditionGrade" | "tradeInValue";
 
@@ -150,6 +152,9 @@ export type AdminOpsModelExecutionsSummary = {
 };
 
 export type GetAdminOpsSummaryResponse = {
+  scope?: {
+    dataOrigin: OperationalDataOriginFilter;
+  };
   aiReadyRecords: AdminOpsAiReadyRecordsSummary;
   workflowRuns: AdminOpsWorkflowRunsSummary;
   modelExecutions: AdminOpsModelExecutionsSummary;

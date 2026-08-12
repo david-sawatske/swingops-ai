@@ -38,6 +38,10 @@ The baseline represents the seven days ending at the time it is seeded.
 The dashboard should eventually identify this data as a synthetic operational
 baseline and allow it to be distinguished from live demonstration activity.
 
+Operational origin support is implemented through `OperationalDataOrigin`.
+The baseline fixture must use `SEEDED_BASELINE`; ordinary user-triggered runs
+use `LIVE_DEMO`; and protected guided history uses `GOLDEN_DEMONSTRATION`.
+
 ## Operating context
 
 The week covers three stores with distinct operating characteristics.

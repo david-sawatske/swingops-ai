@@ -6,3 +6,4 @@ export * from "./aiReadyRecords";
 export * from "./workflowEvals";
 export * from "./goldenDemonstration";
 export * from "./adminOps";
+export * from "./operationalData";

@@ -1,3 +1,5 @@
+import type { OperationalDataOrigin } from "@prisma/client";
+
 import { prisma } from "../lib/prisma.js";
 
 import type { ParsedTradeInDemoItem } from "./trade-in-demo-parser.js";
@@ -12,6 +14,7 @@ function normalizeReviewSourceText(value: string | null | undefined) {
 export async function resolveSupersededIntakeReviewMarkers(input: {
   authoritativeReviewQueueItemId: string;
   currentWorkflowRunId: string;
+  dataOrigin: OperationalDataOrigin;
   item: ParsedTradeInDemoItem;
   sourceRowNumber: number;
 }) {
@@ -32,6 +35,7 @@ export async function resolveSupersededIntakeReviewMarkers(input: {
       status: {
         in: ["OPEN", "IN_REVIEW"],
       },
+      dataOrigin: input.dataOrigin,
     },
     include: {
       workflowRun: true,

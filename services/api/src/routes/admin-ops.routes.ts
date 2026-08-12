@@ -1,9 +1,17 @@
 import type { FastifyInstance } from "fastify";
+import { z } from "zod";
 
 import { prisma } from "../lib/prisma.js";
+import { OPERATIONAL_DATA_ORIGINS } from "../operational-data/operational-data-origin.js";
 import { getGolfTermNormalizationMatrix } from "../workflows/golf-term-normalization.js";
 
 const SUCCESSFUL_MODEL_ATTEMPT_STATUSES = new Set(["SUCCESS", "SUCCEEDED"]);
+
+const adminOpsSummaryQuerySchema = z
+  .object({
+    dataOrigin: z.enum(OPERATIONAL_DATA_ORIGINS).optional(),
+  })
+  .strict();
 
 const WORKFLOW_CONFIG_SNAPSHOT = {
   confidenceThresholds: [
@@ -343,9 +351,24 @@ function getMissingFieldsFromNormalizedJson(normalizedJson: unknown): string[] {
 }
 
 export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
-  app.get("/admin/ops/summary", async () => {
+  app.get("/admin/ops/summary", async (request, reply) => {
+    const parsedQuery = adminOpsSummaryQuerySchema.safeParse(
+      request.query ?? {},
+    );
+
+    if (!parsedQuery.success) {
+      return reply.status(400).send({
+        error: "Invalid Admin Ops summary filters",
+        details: parsedQuery.error.flatten(),
+      });
+    }
+
+    const dataOriginWhere = parsedQuery.data.dataOrigin
+      ? { dataOrigin: parsedQuery.data.dataOrigin }
+      : {};
     const [aiReadyRecords, workflowRuns, modelCallLogs] = await Promise.all([
       prisma.aiReadyIntakeRecord.findMany({
+        where: dataOriginWhere,
         select: {
           sourceType: true,
           status: true,
@@ -359,6 +382,7 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
         },
       }),
       prisma.workflowRun.findMany({
+        where: dataOriginWhere,
         select: {
           status: true,
         },
@@ -368,6 +392,7 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
         take: 500,
       }),
       prisma.modelCallLog.findMany({
+        where: dataOriginWhere,
         select: {
           provider: true,
           model: true,
@@ -687,6 +712,9 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
     );
 
     return {
+      scope: {
+        dataOrigin: parsedQuery.data.dataOrigin ?? "ALL",
+      },
       aiReadyRecords: {
         total: aiReadyRecords.length,
         active: activeAiReadyRecords.length,
