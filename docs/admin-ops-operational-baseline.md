@@ -1,9 +1,17 @@
 # Admin Ops Operational Baseline
 
 This document defines the synthetic operational story that the Admin Ops
-dashboard should present. It is a fixture contract for later schema, seed,
-summary API, and interface work. It does not describe randomly generated sample
-data.
+dashboard should present. It is the shared contract for the origin schema,
+deterministic fixtures, persistence, summary API, and interface work. It does
+not describe randomly generated sample data.
+
+The deterministic fixture builder is implemented in
+`services/api/src/operational-data/admin-ops-baseline-fixtures.ts`. It produces
+database-shaped records with stable identifiers and timestamps relative to a
+caller-supplied anchor. The accompanying reconciliation validator derives every
+documented total from the individual fixture records before they are eligible
+for persistence. Building the fixtures is side-effect free; database replacement
+and automatic refresh remain separate operational steps.
 
 ## Purpose
 
