@@ -31,6 +31,24 @@ services:
       - key: MODEL_PROVIDER_WORKFLOW_TIMEOUT_MS
         value: "25000"
 
+  - type: cron
+    name: swingops-ai-maintenance-david-sawatske
+    runtime: node
+    plan: starter
+    region: ohio
+    branch: main
+    autoDeployTrigger: checksPass
+    schedule: "15 9 * * *"
+    buildCommand: pnpm install --frozen-lockfile --prod=false && pnpm --filter @swingops/api prisma:generate && pnpm --filter @swingops/api build
+    startCommand: node services/api/dist/scripts/run-admin-ops-maintenance.js
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: swingops-ai-db-david-sawatske
+          property: connectionString
+      - key: LIVE_DEMO_RETENTION_DAYS
+        value: "14"
+
   - type: web
     name: swingops-ai-david-sawatske
     runtime: static

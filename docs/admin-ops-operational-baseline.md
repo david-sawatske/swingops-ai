@@ -13,7 +13,9 @@ documented total from the individual fixture records before they are eligible
 for persistence. Building the fixtures remains side-effect free. The
 `pnpm baseline:refresh` operator command performs database replacement in one
 serializable transaction and deletes only records marked `SEEDED_BASELINE`.
-Automatic scheduling remains a separate operational step.
+The `pnpm maintenance:run` operation combines this refresh with bounded
+retention for expired `LIVE_DEMO` activity. The Render Blueprint schedules it
+daily at `09:15 UTC`; protected golden-demonstration history is excluded.
 
 ## Purpose
 
@@ -44,6 +46,8 @@ The baseline represents the seven days ending at the time it is seeded.
 - Nine records fall within the most recent 24 hours.
 - Re-running the seed moves the baseline window forward without changing its
   identifiers, relationships, or totals.
+- Daily maintenance keeps this relative window current while pruning live demo
+  activity older than the configured 14-day preview retention period.
 
 The dashboard should eventually identify this data as a synthetic operational
 baseline and allow it to be distinguished from live demonstration activity.

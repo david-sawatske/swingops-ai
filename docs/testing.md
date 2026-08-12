@@ -179,6 +179,7 @@ Important areas include:
     services/api/src/routes/ai.routes.test.ts
     services/api/src/routes/health.routes.test.ts
     services/api/src/operational-data/admin-ops-baseline-persistence.test.ts
+    services/api/src/operational-data/live-demo-retention.test.ts
 
 These tests protect:
 
@@ -193,6 +194,8 @@ These tests protect:
 - Health endpoint behavior.
 - Transactional operational-baseline replacement, reconciliation, and origin
   isolation.
+- Dry-run and deletion reconciliation for bounded live-demo retention, including
+  preservation of recent, seeded, and protected demonstration data.
 
 ### Workflow tests
 

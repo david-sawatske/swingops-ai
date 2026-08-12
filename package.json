@@ -21,6 +21,8 @@
     "format:check": "prettier --check .",
     "config:check": "pnpm --filter @swingops/api config:check",
     "baseline:refresh": "pnpm --filter @swingops/api baseline:refresh",
+    "maintenance:run": "pnpm --filter @swingops/api maintenance:run",
+    "maintenance:preview": "pnpm --filter @swingops/api maintenance:preview",
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f postgres"

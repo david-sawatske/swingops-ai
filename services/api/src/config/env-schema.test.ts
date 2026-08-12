@@ -19,6 +19,7 @@ describe("API environment configuration", () => {
       "/swingops_ai_test",
     );
     expect(parsed.API_PORT).toBe(4000);
+    expect(parsed.LIVE_DEMO_RETENTION_DAYS).toBe(14);
     expect(parsed.WEB_ORIGIN).toBe("http://localhost:5173");
   });
 
@@ -30,6 +31,7 @@ describe("API environment configuration", () => {
     expect(parsed).toMatchObject({
       API_HOST: "0.0.0.0",
       API_PORT: 4000,
+      LIVE_DEMO_RETENTION_DAYS: 14,
       LOG_LEVEL: "info",
       WEB_ORIGIN: "http://localhost:5173",
     });
@@ -41,5 +43,20 @@ describe("API environment configuration", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it("rejects retention windows outside the bounded operator range", () => {
+    expect(
+      apiEnvSchema.safeParse({
+        DATABASE_URL: "postgresql://user:password@localhost:5433/database",
+        LIVE_DEMO_RETENTION_DAYS: 0,
+      }).success,
+    ).toBe(false);
+    expect(
+      apiEnvSchema.safeParse({
+        DATABASE_URL: "postgresql://user:password@localhost:5433/database",
+        LIVE_DEMO_RETENTION_DAYS: 366,
+      }).success,
+    ).toBe(false);
   });
 });

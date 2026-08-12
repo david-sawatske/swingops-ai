@@ -156,6 +156,16 @@ The refresh validates every fixture total before opening one serializable
 transaction. It replaces only `SEEDED_BASELINE` rows; guided and live
 demonstration history is preserved.
 
+Preview the complete operator maintenance cycle without changing the database:
+
+    pnpm maintenance:preview
+
+The maintenance job refreshes the same isolated baseline and prunes only
+`LIVE_DEMO` activity older than 14 days. It never targets the protected golden
+demonstration or seeded baseline. The checked-in Render Blueprint schedules
+this operation daily; see [Deployment](docs/deployment.md) before approving the
+additional scheduled service.
+
 Start the API and web app together:
 
     pnpm dev
@@ -224,6 +234,8 @@ Useful database commands:
 
     pnpm db:up
     pnpm baseline:refresh
+    pnpm maintenance:preview
+    pnpm maintenance:run
     pnpm db:logs
     pnpm db:down
 

@@ -14,6 +14,8 @@
     "pretest": "pnpm test:db:prepare",
     "test": "vitest run --no-file-parallelism",
     "baseline:refresh": "tsx src/scripts/refresh-admin-ops-baseline.ts",
+    "maintenance:run": "tsx src/scripts/run-admin-ops-maintenance.ts",
+    "maintenance:preview": "tsx src/scripts/run-admin-ops-maintenance.ts --dry-run",
     "config:check": "tsx src/config/check-env.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

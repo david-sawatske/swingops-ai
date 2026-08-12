@@ -19,6 +19,8 @@ export const apiEnvSchema = z.object({
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
     .default("info"),
 
+  LIVE_DEMO_RETENTION_DAYS: z.coerce.number().int().min(1).max(365).default(14),
+
   WEB_ORIGIN: z.string().url().default("http://localhost:5173"),
 });
 

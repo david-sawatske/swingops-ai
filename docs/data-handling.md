@@ -48,8 +48,10 @@ This repository is configured as a local demonstration environment. It should
 use synthetic or otherwise approved sample data. The current controls are
 intentionally limited:
 
-- Audit-log retention is classified but automated expiration or deletion is
-  not configured.
+- The hosted demo has bounded automated deletion for `LIVE_DEMO` workflow,
+  intake, review, model, tool, and AI-ready records after 14 days. The command
+  supports a no-write preview and explicitly excludes seeded and protected
+  demonstration data.
 - Intake, review, workflow, and domain records may still persist the source
   business data needed by the demonstration.
 - The local database is not a tenant-isolated production datastore.

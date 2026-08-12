@@ -12,10 +12,24 @@ The API and database run in the Ohio region and communicate over Render's
 private network. The browser calls the public API origin configured in the
 static site's build environment.
 
-## Operational baseline refresh
+## Operational maintenance
 
-The baseline is replaced through an operator command rather than a public API
-route:
+The deployed demo uses one bounded maintenance operation for baseline freshness
+and live-demo retention. Preview its exact plan without changing the database:
+
+    pnpm maintenance:preview
+
+Apply the operation manually with:
+
+    pnpm maintenance:run
+
+The operation first refreshes the isolated baseline, then prunes only
+`LIVE_DEMO` graphs whose retention timestamps are older than 14 days. It never
+targets `SEEDED_BASELINE` or `GOLDEN_DEMONSTRATION`. Both phases use
+transaction-scoped advisory locks, serializable transactions, and count
+reconciliation. A failed phase rolls back its own writes.
+
+The lower-level baseline-only command remains available for fixture work:
 
     pnpm baseline:refresh
 
@@ -30,15 +44,25 @@ An optional anchor is available for repeatable operator testing:
 
     pnpm baseline:refresh -- --anchor=2026-08-12T17:00:00.000Z
 
-Automatic scheduling is intentionally separate from persistence. Configure a
-scheduled job only after the command has been verified against the deployed
-database and an appropriate refresh cadence has been selected.
+The Render Blueprint declares a daily cron job at `09:15 UTC`. Render cron jobs
+are paid services, so Blueprint sync presents the new resource for approval.
+Preview maintenance locally and verify the deployed database connection before
+approving it. The default retention window can be changed with
+`LIVE_DEMO_RETENTION_DAYS`, bounded to 1–365 days.
+
+After the cron job is deployed:
+
+1. Trigger one manual run from its **Runs** page.
+2. Confirm the result reports a 56-record baseline and the expected retention
+   cutoff.
+3. Verify the Admin Ops baseline scope and golden demonstration still load.
+4. Review scheduled run logs after the next `09:15 UTC` execution.
 
 ## Create the preview deployment
 
 1. Sign in to Render and create a new Blueprint.
 2. Connect the `david-sawatske/swingops-ai` GitHub repository.
-3. Render detects `render.yaml`; review the three resources and apply the
+3. Render detects `render.yaml`; review the four resources and apply the
    Blueprint.
 4. Wait for the database, API, and static site to finish deploying.
 
@@ -50,10 +74,11 @@ traffic.
 
 ## Free-preview limitations
 
-The checked-in Blueprint uses free resources so creating the preview does not
-implicitly authorize paid infrastructure. Render's free API service can spin
-down after inactivity and take about a minute to wake. A free Render PostgreSQL
-database expires after 30 days and does not include backups.
+The web app, API, and database use free preview plans. The scheduled maintenance
+job uses Render's paid cron service and requires approval during Blueprint sync.
+Render's free API service can spin down after inactivity and take about a minute
+to wake. A free Render PostgreSQL database expires after 30 days and does not
+include backups.
 
 Before sharing a durable link, upgrade the API service and PostgreSQL database
 to appropriate paid plans in Render. The static site can remain on its free

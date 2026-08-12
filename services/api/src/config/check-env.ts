@@ -25,6 +25,7 @@ console.log(
 console.log(`Test database: ${getDatabaseDisplayName(testDatabaseUrl)}`);
 console.log(`API listener: ${env.API_HOST}:${env.API_PORT}`);
 console.log(`Allowed web origin: ${env.WEB_ORIGIN}`);
+console.log(`Live demo retention: ${env.LIVE_DEMO_RETENTION_DAYS} days`);
 console.log(
   `Real model calls: ${providerConfig.enableRealModelCalls ? "enabled" : "disabled"}`,
 );
