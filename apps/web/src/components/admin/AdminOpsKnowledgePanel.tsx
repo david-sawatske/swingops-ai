@@ -1,26 +1,35 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { getAdminOpsSummary } from "../../api/workflows";
-import type { GetAdminOpsSummaryResponse } from "../../types/workflow";
+import type {
+  GetAdminOpsSummaryResponse,
+  OperationalDataOriginFilter,
+} from "../../types/workflow";
 import {
   AdminOpsInspectionGuide,
   AdminOpsMetricCard,
   formatAdminOpsPercent,
 } from "./adminOpsPresentation";
 
-export function AdminOpsKnowledgePanel() {
+export function AdminOpsKnowledgePanel({
+  dataOrigin,
+}: {
+  dataOrigin: OperationalDataOriginFilter;
+}) {
   const [summary, setSummary] = useState<GetAdminOpsSummaryResponse | null>(
     null,
   );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  async function loadKnowledgeSummary() {
+  const loadKnowledgeSummary = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      const response = await getAdminOpsSummary();
+      const response = await getAdminOpsSummary({
+        dataOrigin: dataOrigin === "ALL" ? undefined : dataOrigin,
+      });
 
       setSummary(response);
     } catch (loadError) {
@@ -32,11 +41,11 @@ export function AdminOpsKnowledgePanel() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [dataOrigin]);
 
   useEffect(() => {
     void loadKnowledgeSummary();
-  }, []);
+  }, [loadKnowledgeSummary]);
 
   const aiReadyRecords = summary?.aiReadyRecords ?? null;
   const activeSourceCount =

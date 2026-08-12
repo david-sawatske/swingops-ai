@@ -128,6 +128,25 @@ describe("Admin Ops operational baseline persistence", () => {
             FAILED: 1,
           },
         },
+        reviewQueue: {
+          total: 34,
+          active: 17,
+          handled: 17,
+          handledRate: 50,
+          byStatus: {
+            OPEN: 10,
+            IN_REVIEW: 7,
+            RESOLVED: 9,
+            SUPERSEDED: 8,
+          },
+        },
+        toolActivity: {
+          total: 126,
+          succeeded: 124,
+          failed: 2,
+          successRate: 98.4,
+          blockedMutations: 2,
+        },
         modelExecutions: {
           totalCalls: 20,
           succeededCalls: 20,

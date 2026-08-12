@@ -37,6 +37,7 @@ describe("admin ops routes", () => {
           missingFieldCounts: expect.any(Object),
           missingFieldHotspots: expect.any(Array),
           categoryMix: expect.any(Array),
+          storeMix: expect.any(Array),
           sourceQuality: expect.any(Array),
           freshness: expect.objectContaining({
             last24Hours: expect.any(Number),
@@ -47,6 +48,23 @@ describe("admin ops routes", () => {
         workflowRuns: expect.objectContaining({
           total: expect.any(Number),
           byStatus: expect.any(Object),
+        }),
+        reviewQueue: expect.objectContaining({
+          total: expect.any(Number),
+          active: expect.any(Number),
+          handled: expect.any(Number),
+          handledRate: expect.any(Number),
+          byStatus: expect.any(Object),
+          byReason: expect.any(Object),
+          reasonHotspots: expect.any(Array),
+        }),
+        toolActivity: expect.objectContaining({
+          total: expect.any(Number),
+          succeeded: expect.any(Number),
+          failed: expect.any(Number),
+          successRate: expect.any(Number),
+          blockedMutations: expect.any(Number),
+          byTool: expect.any(Array),
         }),
         modelExecutions: expect.objectContaining({
           totalCalls: expect.any(Number),

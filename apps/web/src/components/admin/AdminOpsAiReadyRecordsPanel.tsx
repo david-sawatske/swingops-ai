@@ -7,6 +7,7 @@ import {
 import type {
   AiReadyIntakeRecord,
   GetAdminOpsSummaryResponse,
+  OperationalDataOriginFilter,
 } from "../../types/workflow";
 import { AdminOpsAiReadyRecordDetail } from "./AdminOpsAiReadyRecordDetail";
 import { AdminOpsAiReadyRecordHistory } from "./AdminOpsAiReadyRecordHistory";
@@ -43,8 +44,10 @@ import {
 } from "./adminOpsPresentation";
 
 export function AdminOpsAiReadyRecordsPanel({
+  dataOrigin,
   onOpenReviewQueue,
 }: {
+  dataOrigin: OperationalDataOriginFilter;
   onOpenReviewQueue: (intakeItemId: string | null) => void;
 }) {
   const [summary, setSummary] = useState<GetAdminOpsSummaryResponse | null>(
@@ -101,11 +104,15 @@ export function AdminOpsAiReadyRecordsPanel({
     sortOption !== "NEWEST",
   ].filter(Boolean).length;
 
-  async function loadSummary() {
+  const loadSummary = useCallback(async () => {
     try {
       setIsSummaryLoading(true);
       setSummaryError(null);
-      setSummary(await getAdminOpsSummary());
+      setSummary(
+        await getAdminOpsSummary({
+          dataOrigin: dataOrigin === "ALL" ? undefined : dataOrigin,
+        }),
+      );
     } catch (loadError) {
       setSummaryError(
         loadError instanceof Error
@@ -115,7 +122,7 @@ export function AdminOpsAiReadyRecordsPanel({
     } finally {
       setIsSummaryLoading(false);
     }
-  }
+  }, [dataOrigin]);
 
   const loadRecords = useCallback(async () => {
     try {
@@ -133,6 +140,7 @@ export function AdminOpsAiReadyRecordsPanel({
         limit: AI_READY_RECORD_PAGE_SIZE,
         offset: recordOffset,
         activeOnly: statusFilter === "ACTIVE" ? true : undefined,
+        dataOrigin: dataOrigin === "ALL" ? undefined : dataOrigin,
         sourceType: sourceFilter === "ALL" ? undefined : sourceFilter,
         status: getAiReadyExplorerStatusFilter(statusFilter),
         search: searchQuery.trim() === "" ? undefined : searchQuery.trim(),
@@ -153,6 +161,7 @@ export function AdminOpsAiReadyRecordsPanel({
     }
   }, [
     dateFilter,
+    dataOrigin,
     isHistoryMode,
     readinessFilter,
     recordOffset,
@@ -164,7 +173,12 @@ export function AdminOpsAiReadyRecordsPanel({
 
   useEffect(() => {
     void loadSummary();
-  }, []);
+  }, [loadSummary]);
+
+  useEffect(() => {
+    setRecordOffset(0);
+    setSelectedRecord(null);
+  }, [dataOrigin]);
 
   useEffect(() => {
     if (isRecordWorkbenchOpen) {

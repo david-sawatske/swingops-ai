@@ -6,6 +6,7 @@ import { OPERATIONAL_DATA_ORIGINS } from "../operational-data/operational-data-o
 import { getGolfTermNormalizationMatrix } from "../workflows/golf-term-normalization.js";
 
 const SUCCESSFUL_MODEL_ATTEMPT_STATUSES = new Set(["SUCCESS", "SUCCEEDED"]);
+const ACTIVE_REVIEW_QUEUE_STATUSES = new Set(["OPEN", "IN_REVIEW"]);
 
 const adminOpsSummaryQuerySchema = z
   .object({
@@ -366,7 +367,15 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
     const dataOriginWhere = parsedQuery.data.dataOrigin
       ? { dataOrigin: parsedQuery.data.dataOrigin }
       : {};
-    const [aiReadyRecords, workflowRuns, modelCallLogs] = await Promise.all([
+    const [
+      aiReadyRecords,
+      workflowRunStatusGroups,
+      modelCallLogs,
+      reviewQueueStatusGroups,
+      reviewQueueReasonGroups,
+      toolCallGroups,
+      blockedMutationCalls,
+    ] = await Promise.all([
       prisma.aiReadyIntakeRecord.findMany({
         where: dataOriginWhere,
         select: {
@@ -381,15 +390,12 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
           createdAt: "desc",
         },
       }),
-      prisma.workflowRun.findMany({
+      prisma.workflowRun.groupBy({
+        by: ["status"],
         where: dataOriginWhere,
-        select: {
-          status: true,
+        _count: {
+          _all: true,
         },
-        orderBy: {
-          createdAt: "desc",
-        },
-        take: 500,
       }),
       prisma.modelCallLog.findMany({
         where: dataOriginWhere,
@@ -422,6 +428,37 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
           createdAt: "desc",
         },
         take: 500,
+      }),
+      prisma.reviewQueueItem.groupBy({
+        by: ["status"],
+        where: dataOriginWhere,
+        _count: {
+          _all: true,
+        },
+      }),
+      prisma.reviewQueueItem.groupBy({
+        by: ["reason"],
+        where: dataOriginWhere,
+        _count: {
+          _all: true,
+        },
+      }),
+      prisma.toolCallLog.groupBy({
+        by: ["toolName", "status"],
+        where: dataOriginWhere,
+        _count: {
+          _all: true,
+        },
+      }),
+      prisma.toolCallLog.count({
+        where: {
+          ...dataOriginWhere,
+          status: "FAILED",
+          outputJson: {
+            path: ["policyDecision"],
+            equals: "BLOCKED",
+          },
+        },
       }),
     ]);
 
@@ -462,6 +499,18 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
           "Blank";
 
         incrementCount(counts, category);
+
+        return counts;
+      },
+      {},
+    );
+    const storeCounts = activeAiReadyRecords.reduce<Record<string, number>>(
+      (counts, record) => {
+        const storeId =
+          getStringFromNormalizedJson(record.normalizedJson, "storeId") ??
+          "Unassigned";
+
+        incrementCount(counts, storeId);
 
         return counts;
       },
@@ -510,12 +559,63 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
       ).length,
     };
 
-    const workflowRunsByStatus = workflowRuns.reduce<Record<string, number>>(
-      (counts, run) => ({
+    const workflowRunsByStatus = workflowRunStatusGroups.reduce<
+      Record<string, number>
+    >(
+      (counts, group) => ({
         ...counts,
-        [run.status]: (counts[run.status] ?? 0) + 1,
+        [group.status]: group._count._all,
       }),
       {},
+    );
+    const workflowRunCount = workflowRunStatusGroups.reduce(
+      (total, group) => total + group._count._all,
+      0,
+    );
+
+    const reviewQueueByStatus = Object.fromEntries(
+      reviewQueueStatusGroups.map((group) => [group.status, group._count._all]),
+    );
+    const reviewQueueByReason = Object.fromEntries(
+      reviewQueueReasonGroups.map((group) => [group.reason, group._count._all]),
+    );
+    const reviewQueueTotal = reviewQueueStatusGroups.reduce(
+      (total, group) => total + group._count._all,
+      0,
+    );
+    const activeReviewQueueItemCount = reviewQueueStatusGroups.reduce(
+      (total, group) =>
+        total +
+        (ACTIVE_REVIEW_QUEUE_STATUSES.has(group.status)
+          ? group._count._all
+          : 0),
+      0,
+    );
+    const handledReviewQueueItemCount =
+      reviewQueueTotal - activeReviewQueueItemCount;
+
+    const toolCallsByName = toolCallGroups.reduce<Record<string, number>>(
+      (counts, group) => {
+        counts[group.toolName] =
+          (counts[group.toolName] ?? 0) + group._count._all;
+
+        return counts;
+      },
+      {},
+    );
+    const toolCallCount = toolCallGroups.reduce(
+      (total, group) => total + group._count._all,
+      0,
+    );
+    const succeededToolCalls = toolCallGroups.reduce(
+      (total, group) =>
+        total + (group.status === "SUCCEEDED" ? group._count._all : 0),
+      0,
+    );
+    const failedToolCalls = toolCallGroups.reduce(
+      (total, group) =>
+        total + (group.status === "FAILED" ? group._count._all : 0),
+      0,
     );
 
     const callsWithLatency = modelCallLogs.filter(
@@ -731,12 +831,33 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
         missingFieldCounts,
         missingFieldHotspots: getSortedCountEntries(missingFieldCounts),
         categoryMix: getSortedCountEntries(categoryCounts),
+        storeMix: getSortedCountEntries(storeCounts),
         sourceQuality,
         freshness: aiReadyFreshness,
       },
       workflowRuns: {
-        total: workflowRuns.length,
+        total: workflowRunCount,
         byStatus: workflowRunsByStatus,
+      },
+      reviewQueue: {
+        total: reviewQueueTotal,
+        active: activeReviewQueueItemCount,
+        handled: handledReviewQueueItemCount,
+        handledRate: calculateRate(
+          handledReviewQueueItemCount,
+          reviewQueueTotal,
+        ),
+        byStatus: reviewQueueByStatus,
+        byReason: reviewQueueByReason,
+        reasonHotspots: getSortedCountEntries(reviewQueueByReason),
+      },
+      toolActivity: {
+        total: toolCallCount,
+        succeeded: succeededToolCalls,
+        failed: failedToolCalls,
+        successRate: calculateRate(succeededToolCalls, toolCallCount),
+        blockedMutations: blockedMutationCalls,
+        byTool: getSortedCountEntries(toolCallsByName),
       },
       modelExecutions: {
         totalCalls: modelCallLogs.length,

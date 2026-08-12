@@ -77,6 +77,7 @@ export type AdminOpsAiReadyRecordsSummary = {
   missingFieldCounts: Record<string, number>;
   missingFieldHotspots: AdminOpsCountEntry[];
   categoryMix: AdminOpsCountEntry[];
+  storeMix: AdminOpsCountEntry[];
   sourceQuality: AdminOpsSourceQualityEntry[];
   freshness: AdminOpsAiReadyFreshnessSummary;
 };
@@ -84,6 +85,25 @@ export type AdminOpsAiReadyRecordsSummary = {
 export type AdminOpsWorkflowRunsSummary = {
   total: number;
   byStatus: Record<string, number>;
+};
+
+export type AdminOpsReviewQueueSummary = {
+  total: number;
+  active: number;
+  handled: number;
+  handledRate: number;
+  byStatus: Record<string, number>;
+  byReason: Record<string, number>;
+  reasonHotspots: AdminOpsCountEntry[];
+};
+
+export type AdminOpsToolActivitySummary = {
+  total: number;
+  succeeded: number;
+  failed: number;
+  successRate: number;
+  blockedMutations: number;
+  byTool: AdminOpsCountEntry[];
 };
 
 export type AdminOpsModelExecutionsSummary = {
@@ -157,5 +177,7 @@ export type GetAdminOpsSummaryResponse = {
   };
   aiReadyRecords: AdminOpsAiReadyRecordsSummary;
   workflowRuns: AdminOpsWorkflowRunsSummary;
+  reviewQueue: AdminOpsReviewQueueSummary;
+  toolActivity: AdminOpsToolActivitySummary;
   modelExecutions: AdminOpsModelExecutionsSummary;
 };

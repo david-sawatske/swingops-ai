@@ -1,11 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import type { GlobalWorkflowRunSummary } from "../../types/workflow";
+import { getAdminOpsSummary } from "../../api/workflows";
+import type {
+  GetAdminOpsSummaryResponse,
+  GlobalWorkflowRunSummary,
+  OperationalDataOriginFilter,
+} from "../../types/workflow";
 import { WorkflowQualityChecksPage } from "../workflow-evals/WorkflowQualityChecksPage";
 import { AdminOpsAiReadyRecordsPanel } from "./AdminOpsAiReadyRecordsPanel";
 import { AdminOpsKnowledgePanel } from "./AdminOpsKnowledgePanel";
 import { AdminOpsModelTelemetryPanel } from "./AdminOpsModelTelemetryPanel";
 import { AdminOpsNormalizationMatrixPanel } from "./AdminOpsNormalizationMatrixPanel";
+import { AdminOpsOperationalBriefing } from "./AdminOpsOperationalBriefing";
 import { AdminOpsQualitySafeguards } from "./AdminOpsQualitySafeguards";
 
 type AdminOpsDashboardPageProps = {
@@ -73,6 +79,51 @@ export function AdminOpsDashboardPage({
 }: AdminOpsDashboardPageProps) {
   const [activeSection, setActiveSection] =
     useState<AdminOpsSection>("AI_READY_RECORDS");
+  const [reportScope, setReportScope] =
+    useState<OperationalDataOriginFilter>("SEEDED_BASELINE");
+  const [summary, setSummary] = useState<GetAdminOpsSummaryResponse | null>(
+    null,
+  );
+  const [isSummaryLoading, setIsSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    async function loadOperationalBriefing() {
+      try {
+        setIsSummaryLoading(true);
+        setSummaryError(null);
+
+        const response = await getAdminOpsSummary({
+          dataOrigin: reportScope === "ALL" ? undefined : reportScope,
+        });
+
+        if (isCurrent) {
+          setSummary(response);
+        }
+      } catch (loadError) {
+        if (isCurrent) {
+          setSummary(null);
+          setSummaryError(
+            loadError instanceof Error
+              ? loadError.message
+              : "Unable to load the operational briefing.",
+          );
+        }
+      } finally {
+        if (isCurrent) {
+          setIsSummaryLoading(false);
+        }
+      }
+    }
+
+    void loadOperationalBriefing();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [reportScope]);
 
   return (
     <section className="admin-ops-page" aria-labelledby="admin-ops-title">
@@ -85,6 +136,14 @@ export function AdminOpsDashboardPage({
           read-only control surface.
         </p>
       </div>
+
+      <AdminOpsOperationalBriefing
+        error={summaryError}
+        isLoading={isSummaryLoading}
+        onScopeChange={setReportScope}
+        scope={reportScope}
+        summary={summary}
+      />
 
       <nav
         aria-label="Admin Ops dashboard sections"
@@ -124,6 +183,7 @@ export function AdminOpsDashboardPage({
           role="tabpanel"
         >
           <AdminOpsAiReadyRecordsPanel
+            dataOrigin={reportScope}
             onOpenReviewQueue={onOpenReviewQueueForRecord}
           />
         </div>
@@ -148,6 +208,10 @@ export function AdminOpsDashboardPage({
               parser behavior, review routing, correction suggestions, and
               protected execution remain verifiable.
             </p>
+            <p className="admin-ops-scope-note">
+              Live executable checks — these scenarios verify current code and
+              are not filtered by the reporting data selection above.
+            </p>
           </div>
 
           <AdminOpsQualitySafeguards />
@@ -163,7 +227,10 @@ export function AdminOpsDashboardPage({
           id="admin-ops-model-panel"
           role="tabpanel"
         >
-          <AdminOpsModelTelemetryPanel workflowRuns={workflowRuns} />
+          <AdminOpsModelTelemetryPanel
+            dataOrigin={reportScope}
+            workflowRuns={workflowRuns}
+          />
         </div>
       ) : null}
 
@@ -174,6 +241,10 @@ export function AdminOpsDashboardPage({
           id="admin-ops-normalization-panel"
           role="tabpanel"
         >
+          <p className="admin-ops-scope-note">
+            Current application configuration — normalization rules are not
+            filtered by reporting data.
+          </p>
           <AdminOpsNormalizationMatrixPanel />
         </div>
       ) : null}
@@ -185,7 +256,7 @@ export function AdminOpsDashboardPage({
           id="admin-ops-knowledge-panel"
           role="tabpanel"
         >
-          <AdminOpsKnowledgePanel />
+          <AdminOpsKnowledgePanel dataOrigin={reportScope} />
         </div>
       ) : null}
     </section>

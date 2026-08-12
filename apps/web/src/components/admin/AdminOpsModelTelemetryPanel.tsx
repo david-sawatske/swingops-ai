@@ -4,6 +4,7 @@ import { getAdminOpsSummary } from "../../api/workflows";
 import type {
   GetAdminOpsSummaryResponse,
   GlobalWorkflowRunSummary,
+  OperationalDataOriginFilter,
 } from "../../types/workflow";
 import {
   AdminOpsMetricCard,
@@ -30,8 +31,10 @@ const ADMIN_OPS_MODEL_TELEMETRY_TABS: {
 ];
 
 export function AdminOpsModelTelemetryPanel({
+  dataOrigin,
   workflowRuns,
 }: {
+  dataOrigin: OperationalDataOriginFilter;
   workflowRuns: GlobalWorkflowRunSummary[];
 }) {
   const [summary, setSummary] = useState<GetAdminOpsSummaryResponse | null>(
@@ -43,6 +46,7 @@ export function AdminOpsModelTelemetryPanel({
     useState<AdminOpsModelTelemetryTab>("PROVIDER_MIX");
 
   const recentModelCalls = workflowRuns
+    .filter((run) => dataOrigin === "ALL" || run.dataOrigin === dataOrigin)
     .map((run) =>
       run.latestModelCallLog
         ? {
@@ -102,7 +106,11 @@ export function AdminOpsModelTelemetryPanel({
       try {
         setIsSummaryLoading(true);
         setSummaryError(null);
-        setSummary(await getAdminOpsSummary());
+        setSummary(
+          await getAdminOpsSummary({
+            dataOrigin: dataOrigin === "ALL" ? undefined : dataOrigin,
+          }),
+        );
       } catch (loadError) {
         setSummaryError(
           loadError instanceof Error
@@ -115,7 +123,7 @@ export function AdminOpsModelTelemetryPanel({
     }
 
     void loadModelTelemetrySummary();
-  }, []);
+  }, [dataOrigin]);
 
   return (
     <section
