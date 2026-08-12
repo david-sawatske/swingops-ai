@@ -305,6 +305,7 @@ model behavior, and refuses to use a database whose name does not end in
 - [Deployment](docs/deployment.md)
 - [Backend Systems](docs/backend-systems.md)
 - [Data Models](docs/data-models.md)
+- [Admin Ops Operational Baseline](docs/admin-ops-operational-baseline.md)
 - [Data Handling Boundaries](docs/data-handling.md)
 - [AI Workflow Concepts](docs/ai-workflow-concepts.md)
 - [Development](docs/development.md)
