@@ -160,11 +160,12 @@ Preview the complete operator maintenance cycle without changing the database:
 
     pnpm maintenance:preview
 
-The maintenance job refreshes the same isolated baseline and prunes only
+The maintenance operation refreshes the same isolated baseline and prunes only
 `LIVE_DEMO` activity older than 14 days. It never targets the protected golden
-demonstration or seeded baseline. The checked-in Render Blueprint schedules
-this operation daily; see [Deployment](docs/deployment.md) before approving the
-additional scheduled service.
+demonstration or seeded baseline. The checked-in Render Blueprint runs this
+operation after database migrations whenever the API process starts, avoiding
+a separate paid scheduled service. See [Deployment](docs/deployment.md) for
+the freshness and startup-latency tradeoff.
 
 Start the API and web app together:
 

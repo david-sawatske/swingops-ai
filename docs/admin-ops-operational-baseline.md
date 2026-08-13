@@ -17,8 +17,9 @@ Before that transaction commits, it recounts every persisted fixture
 collection and rolls back if any database total differs from the validated
 fixture graph.
 The `pnpm maintenance:run` operation combines this refresh with bounded
-retention for expired `LIVE_DEMO` activity. The Render Blueprint schedules it
-daily at `09:15 UTC`; protected golden-demonstration history is excluded.
+retention for expired `LIVE_DEMO` activity. The Render Blueprint runs it after
+database migrations and before the API server accepts traffic whenever the API
+process starts; protected golden-demonstration history is excluded.
 
 ## Purpose
 
@@ -49,7 +50,7 @@ The baseline represents the seven days ending at the time it is seeded.
 - Nine records fall within the most recent 24 hours.
 - Re-running the seed moves the baseline window forward without changing its
   identifiers, relationships, or totals.
-- Daily maintenance keeps this relative window current while pruning live demo
+- Startup-time maintenance advances this relative window and prunes live demo
   activity older than the configured 14-day preview retention period.
 
 ## Fixture realism

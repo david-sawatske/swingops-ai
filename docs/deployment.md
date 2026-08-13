@@ -44,41 +44,51 @@ An optional anchor is available for repeatable operator testing:
 
     pnpm baseline:refresh -- --anchor=2026-08-12T17:00:00.000Z
 
-The Render Blueprint declares a daily cron job at `09:15 UTC`. Render cron jobs
-are paid services, so Blueprint sync presents the new resource for approval.
-Preview maintenance locally and verify the deployed database connection before
-approving it. The default retention window can be changed with
+The Render Blueprint runs maintenance after Prisma migrations and before the
+API server accepts traffic whenever its process starts. This includes a new
+deployment, a service restart, and a cold wake after free-tier inactivity. It
+keeps the hosted preview within Render's free service types and guarantees that
+the current fixture code is represented in Admin Ops before the API becomes
+healthy. Startup fails instead of serving a partially refreshed baseline if
+maintenance fails.
+
+This preview intentionally does not purchase a continuously scheduled reset.
+The baseline reporting window advances whenever the API starts, and live demo
+retention is applied at the same time. This adds a small amount of cold-start
+latency in exchange for reliable preview data without another service. For a
+long-running production environment, move the same command to an approved
+scheduler. The default retention window can be changed with
 `LIVE_DEMO_RETENTION_DAYS`, bounded to 1–365 days.
 
-After the cron job is deployed:
+After an API deployment or restart:
 
-1. Trigger one manual run from its **Runs** page.
+1. Confirm the startup logs report successful migrations and Admin Ops
+   maintenance.
 2. Confirm the result reports a 56-record baseline and the expected retention
    cutoff.
-3. Verify the Admin Ops baseline scope and golden demonstration still load.
-4. Review scheduled run logs after the next `09:15 UTC` execution.
+3. Verify the API health check, Admin Ops baseline scope, and golden
+   demonstration still load.
 
 ## Create the preview deployment
 
 1. Sign in to Render and create a new Blueprint.
 2. Connect the `david-sawatske/swingops-ai` GitHub repository.
-3. Render detects `render.yaml`; review the four resources and apply the
+3. Render detects `render.yaml`; review the three resources and apply the
    Blueprint.
 4. Wait for the database, API, and static site to finish deploying.
 
 The API starts in deterministic mock mode because real provider calls default
 to disabled. The Blueprint does not manage provider credentials or the
 real-call toggle, so later Blueprint syncs cannot overwrite those
-dashboard-owned values. Database migrations run before the API starts serving
-traffic.
+dashboard-owned values. Database migrations and bounded Admin Ops maintenance
+run before the API starts serving traffic.
 
 ## Free-preview limitations
 
-The web app, API, and database use free preview plans. The scheduled maintenance
-job uses Render's paid cron service and requires approval during Blueprint sync.
-Render's free API service can spin down after inactivity and take about a minute
-to wake. A free Render PostgreSQL database expires after 30 days and does not
-include backups.
+The web app, API, and database use free preview plans. No separate scheduled
+service is provisioned. Render's free API service can spin down after inactivity
+and take about a minute to wake. A free Render PostgreSQL database expires after
+30 days and does not include backups.
 
 Before sharing a durable link, upgrade the API service and PostgreSQL database
 to appropriate paid plans in Render. The static site can remain on its free
