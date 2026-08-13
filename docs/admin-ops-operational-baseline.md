@@ -52,8 +52,30 @@ The baseline represents the seven days ending at the time it is seeded.
 - Daily maintenance keeps this relative window current while pruning live demo
   activity older than the configured 14-day preview retention period.
 
-The dashboard should eventually identify this data as a synthetic operational
-baseline and allow it to be distinguished from live demonstration activity.
+## Fixture realism
+
+The baseline reuses the same checked-in product catalog and demonstration
+valuation ranges as the guarded workflow. Its records cover 30 supported
+product lines, all six accepted shaft-flex values, all five condition grades,
+and a range of catalog-backed trade values. Category volume is distributed
+across the reporting window and source channels rather than grouped into
+generated-looking blocks.
+
+Each source channel has its own deterministic writing style:
+
+- Counter notes use retail shorthand, equipment details, and accessory notes.
+- CSV rows preserve recoverable columns and show the exact gaps caused by a
+  shifted or incomplete export.
+- Emails include a subject, store context, and inspection references.
+- Operations logs include timestamps, structured fields, parser versions, and
+  explicit placeholders only where the source actually omitted a value.
+
+Review metadata distinguishes verified source fields from candidate values that
+still require verification. All records remain synthetic and contain no
+customer names, email addresses, or other customer activity.
+
+The dashboard identifies this data as a synthetic operational baseline and
+keeps it selectable independently from live demonstration activity.
 
 Operational origin support is implemented through `OperationalDataOrigin`.
 The baseline fixture must use `SEEDED_BASELINE`; ordinary user-triggered runs

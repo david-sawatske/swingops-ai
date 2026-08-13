@@ -13,6 +13,7 @@ import {
   formatCurrency,
   formatShortId,
 } from "./adminOpsPresentation";
+import { getReviewAttentionMessage } from "./adminOpsReviewAttention";
 
 function formatConfidence(confidence: number) {
   return `${Math.round(confidence * 100)}%`;
@@ -151,7 +152,10 @@ export function AdminOpsAiReadyRecordDetail({
               ? (record.supersededReason ??
                 "A later workflow result replaced this intake candidate.")
               : record.reviewNeeded
-                ? "Review the unresolved fields and quality signals before this record moves downstream."
+                ? getReviewAttentionMessage({
+                    missingFieldCount: missingFields.length,
+                    qualitySignalCount: attentionSignals.length,
+                  })
                 : "This record has no active human-review hold and is ready for its next grounded workflow step."}
           </p>
         </div>
