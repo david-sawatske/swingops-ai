@@ -10,6 +10,7 @@ import {
   buildMergedRecord,
   getCorrectionSummaries,
   getRecordSummary,
+  getRunSummaryText,
   getSourceCandidateRecords,
 } from "./finalRunReportUtils";
 
@@ -116,6 +117,37 @@ function makeReviewItem(
 }
 
 describe("finalRunReportUtils", () => {
+  it("uses singular and plural verbs in the final run narrative", () => {
+    const baseInput = {
+      candidateRecordCount: 5,
+      currentRunFinalRecordCount: 5,
+      parsedItemCount: 5,
+      reviewItemCount: 4,
+      resolvedReviewItemCount: 0,
+      openReviewItemCount: 4,
+      reviewedRecordCount: 0,
+    };
+
+    expect(
+      getRunSummaryText({
+        ...baseInput,
+        learningEventCount: 0,
+        ragReadyRecordCount: 0,
+      }),
+    ).toContain(
+      "0 records are ready for RAG or downstream use, and 0 learning events were captured from review.",
+    );
+    expect(
+      getRunSummaryText({
+        ...baseInput,
+        learningEventCount: 1,
+        ragReadyRecordCount: 1,
+      }),
+    ).toContain(
+      "1 record is ready for RAG or downstream use, and 1 learning event was captured from review.",
+    );
+  });
+
   it("keeps reviewed final records out of the Step 2 candidate lineage", () => {
     const sourceCandidate = {
       id: "source-candidate-1",

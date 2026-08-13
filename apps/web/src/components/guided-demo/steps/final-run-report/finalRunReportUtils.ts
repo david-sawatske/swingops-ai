@@ -972,6 +972,9 @@ export function getRunSummaryText(input: {
   learningEventCount: number;
   ragReadyRecordCount: number;
 }) {
+  const readinessVerb = input.ragReadyRecordCount === 1 ? "is" : "are";
+  const learningEventVerb = input.learningEventCount === 1 ? "was" : "were";
+
   return [
     `This run started with ${pluralize(input.parsedItemCount, "messy source record")}.`,
     `Step 2 produced ${pluralize(input.candidateRecordCount, "candidate AI-ready record")} from the intake data.`,
@@ -980,6 +983,6 @@ export function getRunSummaryText(input: {
       ? `Step 4 resolved ${pluralize(input.resolvedReviewItemCount, "review item")}.`
       : `Step 4 still has ${pluralize(input.openReviewItemCount, "open review item")}.`,
     `The final merged table now shows Step 2 records with Step 3 evidence and Step 4 corrections applied where available.`,
-    `${pluralize(input.ragReadyRecordCount, "record")} is ready for RAG or downstream use, and ${pluralize(input.learningEventCount, "learning event")} was captured from review.`,
+    `${pluralize(input.ragReadyRecordCount, "record")} ${readinessVerb} ready for RAG or downstream use, and ${pluralize(input.learningEventCount, "learning event")} ${learningEventVerb} captured from review.`,
   ].join(" ");
 }

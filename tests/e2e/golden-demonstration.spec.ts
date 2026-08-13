@@ -230,6 +230,18 @@ test("completes the deterministic golden demonstration from intake to final repo
       page.getByRole("heading", { name: "Created record visibility" }),
     ).toBeVisible();
 
+    await page
+      .getByRole("combobox", { name: "Admin Ops reporting data" })
+      .selectOption("ALL");
+
+    const replacedHistoryCard = page
+      .getByRole("article")
+      .filter({ hasText: "Replaced history" });
+    await expect(
+      replacedHistoryCard.getByRole("button", { name: "View history" }),
+    ).toBeVisible();
+    await expect(replacedHistoryCard.locator("strong")).not.toHaveText("0");
+
     const recordWorkbench = page.getByRole("dialog", {
       name: "Full AI-ready record workbench",
     });
@@ -245,9 +257,7 @@ test("completes the deterministic golden demonstration from intake to final repo
       recordWorkbench.getByLabel("Replaced history controls"),
     ).toBeVisible();
     await expect(
-      recordWorkbench.getByRole("region", {
-        name: "Replaced record history results",
-      }),
+      recordWorkbench.getByLabel("Replaced record history results"),
     ).toBeVisible();
     await expect(
       recordWorkbench.getByRole("combobox", { name: "Readiness" }),

@@ -20,6 +20,7 @@ import { GuidedWorkflowStepper } from "./GuidedWorkflowStepper";
 import { formatGuidedWorkflowInputFromSourceResult } from "./formatGuidedWorkflowInput";
 import {
   GUIDED_STEPS,
+  getCompletedGuidedStepStatus,
   getGuidedStepIndex,
   type GuidedStep,
 } from "./guidedWorkflowSteps";
@@ -118,6 +119,9 @@ export function GuidedDemoPathPage({
         (item) => item.workflowRunId === currentTradeInWorkflowRunId,
       )
     : [];
+  const hasOpenCurrentRunReviewItems = currentRunReviewQueueItems.some(
+    (item) => item.status === "OPEN" || item.status === "IN_REVIEW",
+  );
 
   function scrollToStepPanel() {
     window.requestAnimationFrame(() => {
@@ -210,7 +214,7 @@ export function GuidedDemoPathPage({
 
   function getStepStatus(step: GuidedStep, index: number) {
     if (isStepComplete(step)) {
-      return "Done";
+      return getCompletedGuidedStepStatus(step, hasOpenCurrentRunReviewItems);
     }
 
     if (index === getGuidedStepIndex(activeStep)) {

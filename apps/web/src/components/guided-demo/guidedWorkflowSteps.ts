@@ -49,3 +49,12 @@ export const GUIDED_STEPS: GuidedWorkflowStepDefinition[] = [
 export function getGuidedStepIndex(step: GuidedStep) {
   return GUIDED_STEPS.findIndex((item) => item.id === step);
 }
+
+export function getCompletedGuidedStepStatus(
+  step: GuidedStep,
+  hasOpenReviewItems: boolean,
+): "Done" | "Review open" {
+  return step === "VALIDATION_REVIEW" && hasOpenReviewItems
+    ? "Review open"
+    : "Done";
+}

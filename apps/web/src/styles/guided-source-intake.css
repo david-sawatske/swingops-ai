@@ -304,10 +304,24 @@
 }
 
 .guided-source-builder
-  .multi-source-intake-progressive-section--disabled
+  .multi-source-intake-progressive-section--tabs.multi-source-intake-progressive-section--disabled
   .multi-source-intake-step-label
   strong::after {
-  content: " · complete previous step first";
+  content: " · enter a source name first";
+  color: #8a9586;
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.guided-source-builder
+  .multi-source-intake-progressive-section--disabled:not(
+    .multi-source-intake-progressive-section--tabs
+  )
+  .multi-source-intake-step-label
+  strong::after {
+  content: " · choose an input method first";
   color: #8a9586;
   font-size: 0.78rem;
   font-weight: 750;

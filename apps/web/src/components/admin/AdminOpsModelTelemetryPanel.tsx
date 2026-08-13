@@ -30,6 +30,16 @@ const ADMIN_OPS_MODEL_TELEMETRY_TABS: {
   { label: "Reliability", value: "VALIDATION" },
 ];
 
+export function getRecentModelEvidenceEmptyMessage(
+  dataOrigin: OperationalDataOriginFilter,
+): string {
+  if (dataOrigin === "SEEDED_BASELINE") {
+    return "The complete synthetic baseline is represented in the scoped aggregate telemetry above. Individual call rows are not available in the currently loaded recent-run window.";
+  }
+
+  return "No recent workflow model-call evidence found yet. Run the main workflow with field repair enabled to capture provider execution evidence.";
+}
+
 export function AdminOpsModelTelemetryPanel({
   dataOrigin,
   workflowRuns,
@@ -545,9 +555,7 @@ export function AdminOpsModelTelemetryPanel({
 
       {recentModelCalls.length === 0 ? (
         <p className="admin-ops-muted">
-          No recent workflow model-call evidence found yet. Run the main
-          workflow with field repair enabled to capture provider execution
-          evidence.
+          {getRecentModelEvidenceEmptyMessage(dataOrigin)}
         </p>
       ) : (
         <div className="admin-ops-table-wrap">
