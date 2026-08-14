@@ -20,6 +20,7 @@ describe("API environment configuration", () => {
     );
     expect(parsed.API_PORT).toBe(4000);
     expect(parsed.LIVE_DEMO_RETENTION_DAYS).toBe(14);
+    expect(parsed.ADMIN_OPS_MAINTENANCE_INTERVAL_HOURS).toBe(0);
     expect(parsed.WEB_ORIGIN).toBe("http://localhost:5173");
   });
 
@@ -31,6 +32,7 @@ describe("API environment configuration", () => {
     expect(parsed).toMatchObject({
       API_HOST: "0.0.0.0",
       API_PORT: 4000,
+      ADMIN_OPS_MAINTENANCE_INTERVAL_HOURS: 0,
       LIVE_DEMO_RETENTION_DAYS: 14,
       LOG_LEVEL: "info",
       WEB_ORIGIN: "http://localhost:5173",
@@ -56,6 +58,25 @@ describe("API environment configuration", () => {
       apiEnvSchema.safeParse({
         DATABASE_URL: "postgresql://user:password@localhost:5433/database",
         LIVE_DEMO_RETENTION_DAYS: 366,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("bounds the scheduled maintenance interval", () => {
+    const input = {
+      DATABASE_URL: "postgresql://user:password@localhost:5433/database",
+    };
+
+    expect(
+      apiEnvSchema.safeParse({
+        ...input,
+        ADMIN_OPS_MAINTENANCE_INTERVAL_HOURS: -1,
+      }).success,
+    ).toBe(false);
+    expect(
+      apiEnvSchema.safeParse({
+        ...input,
+        ADMIN_OPS_MAINTENANCE_INTERVAL_HOURS: 169,
       }).success,
     ).toBe(false);
   });

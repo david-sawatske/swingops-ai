@@ -19,7 +19,8 @@ fixture graph.
 The `pnpm maintenance:run` operation combines this refresh with bounded
 retention for expired `LIVE_DEMO` activity. The Render Blueprint runs it after
 database migrations and before the API server accepts traffic whenever the API
-process starts; protected golden-demonstration history is excluded.
+process starts. The always-on portfolio API repeats the same guarded operation
+every 24 hours; protected golden-demonstration history is excluded.
 
 ## Purpose
 
@@ -50,8 +51,8 @@ The baseline represents the seven days ending at the time it is seeded.
 - Nine records fall within the most recent 24 hours.
 - Re-running the seed moves the baseline window forward without changing its
   identifiers, relationships, or totals.
-- Startup-time maintenance advances this relative window and prunes live demo
-  activity older than the configured 14-day preview retention period.
+- Startup-time and scheduled maintenance advance this relative window and prune
+  live demo activity older than the configured 14-day retention period.
 
 ## Fixture realism
 
