@@ -428,7 +428,7 @@
   background: #fff7f4 !important;
 }
 
-@media (width <= 1023px) {
+@media (width <= 720px) {
   .guided-workflow-hero,
   .guided-workflow-shell {
     grid-template-columns: 1fr;
@@ -436,24 +436,12 @@
 
   .guided-workflow-stepper {
     position: static;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .guided-workflow-plan,
-  .guided-workflow-proof-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .guided-workflow-metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .guided-workflow-card--hero {
     min-height: auto;
   }
-}
 
-@media (width <= 720px) {
   .guided-workflow-hero,
   .guided-workflow-card {
     padding: 18px;
@@ -481,9 +469,7 @@
   .guided-workflow-timeline article {
     grid-template-columns: 1fr;
   }
-}
 
-@media (width <= 900px) {
   .guided-workflow-flowline {
     grid-template-columns: 1fr;
     overflow: visible;

@@ -226,7 +226,7 @@
   color: #fff;
 }
 
-@media (width <= 820px) {
+@media (width <= 720px) {
   .guided-source-builder__golden-setup {
     flex-direction: column;
     align-items: stretch;
@@ -248,9 +248,7 @@
   .guided-source-builder .guided-source-builder__final-action button {
     width: 100%;
   }
-}
 
-@media (width <= 720px) {
   .guided-workflow-intake-toolbar__actions {
     justify-content: stretch;
   }
@@ -336,81 +334,6 @@
   .multi-source-intake-progressive-section--disabled
   select {
   cursor: not-allowed;
-}
-
-@media (width >= 901px) and (width <= 1023px) {
-  .guided-workflow-shell {
-    grid-template-columns: 1fr;
-  }
-
-  .guided-workflow-stepper {
-    position: static;
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 6px;
-    padding: 8px;
-  }
-
-  .guided-workflow-stepper__item {
-    grid-template-columns: 1fr;
-    justify-items: center;
-    gap: 6px;
-    min-height: 104px;
-    padding: 10px 8px;
-    text-align: center;
-  }
-
-  .guided-workflow-stepper__item > span {
-    width: 30px;
-    height: 30px;
-  }
-
-  .guided-workflow-stepper__item small {
-    display: none;
-  }
-
-  .guided-workflow-stepper__item strong {
-    margin: 0;
-    font-size: 0.82rem;
-    line-height: 1.15;
-  }
-
-  .guided-workflow-stepper__item em {
-    font-size: 0.62rem;
-  }
-}
-
-@media (width >= 721px) and (width <= 900px) {
-  .guided-workflow-stepper {
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 6px;
-    padding: 8px;
-  }
-
-  .guided-workflow-stepper__item {
-    grid-template-columns: 1fr;
-    justify-items: center;
-    gap: 6px;
-    min-height: 92px;
-    padding: 9px 6px;
-    text-align: center;
-  }
-
-  .guided-workflow-stepper__item > span {
-    width: 28px;
-    height: 28px;
-  }
-
-  .guided-workflow-stepper__item small,
-  .guided-workflow-stepper__item em {
-    display: none;
-  }
-
-  .guided-workflow-stepper__item strong {
-    margin: 0;
-    font-size: 0.76rem;
-    line-height: 1.12;
-  }
 }
 
 .guided-workflow-card__header--ai-ready {
