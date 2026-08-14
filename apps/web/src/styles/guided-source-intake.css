@@ -30,15 +30,24 @@
 
 .guided-source-builder .guided-source-builder__golden-setup button {
   flex: 0 0 auto;
-  border: 1px solid #2e402b;
-  background: #fff;
+  border: 1px solid #7f9d75;
+  background: #e4f0da;
   color: #2e402b;
+  box-shadow: 0 4px 12px rgb(46 64 43 / 12%);
 }
 
 .guided-source-builder
   .guided-source-builder__golden-setup
   button:hover:not(:disabled) {
-  background: #eef4ea;
+  border-color: #5f7f57;
+  background: #d5e8c8;
+}
+
+.guided-source-builder
+  .guided-source-builder__golden-setup
+  button:focus-visible {
+  outline: 3px solid rgb(127 157 117 / 32%);
+  outline-offset: 3px;
 }
 
 .guided-source-builder__list {

@@ -12,6 +12,7 @@ import { type GuidedStep } from "./components/guided-demo/guidedWorkflowSteps";
 import { useGuidedWorkflowRun } from "./hooks/useGuidedWorkflowRun";
 import { useReviewQueueActions } from "./hooks/useReviewQueueActions";
 import { AppHeroNav } from "./components/layout/AppHeroNav";
+import { DemoDataScopeNotice } from "./components/layout/DemoDataScopeNotice";
 
 function AppModeTabs({
   activeView,
@@ -210,6 +211,8 @@ function App() {
           </button>
         </section>
       ) : null}
+
+      <DemoDataScopeNotice />
 
       {activeView === "GUIDED_DEMO" ? (
         <GuidedDemoPathPage

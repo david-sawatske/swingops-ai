@@ -48,6 +48,77 @@ h1 {
   font-weight: 650;
 }
 
+.demo-data-scope-notice {
+  display: grid;
+  gap: 0.8rem;
+  margin: 1rem 0 1.25rem;
+  border: 1px solid #d8cfb5;
+  border-radius: 18px;
+  padding: 1rem;
+  background: linear-gradient(135deg, #fffdf6, #f8faf6);
+  box-shadow: 0 10px 30px rgb(23 32 23 / 5%);
+}
+
+.demo-data-scope-notice__heading {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.demo-data-scope-notice__heading > span {
+  color: #7c5c16;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.demo-data-scope-notice__heading > strong {
+  color: #263322;
+  font-size: 1.05rem;
+  letter-spacing: -0.015em;
+}
+
+.demo-data-scope-notice__limits {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.demo-data-scope-notice__limits p {
+  margin: 0;
+  border: 1px solid rgb(124 92 22 / 14%);
+  border-radius: 12px;
+  padding: 0.7rem 0.75rem;
+  background: rgb(255 255 255 / 72%);
+  color: #566252;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.demo-data-scope-notice__limits strong {
+  color: #263322;
+}
+
+.demo-data-scope-notice__production-path {
+  margin: 0;
+  color: #465642;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.demo-data-scope-notice__recommended-path {
+  margin: 0;
+  border-top: 1px solid rgb(124 92 22 / 16%);
+  padding-top: 0.75rem;
+  color: #465642;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.demo-data-scope-notice__recommended-path strong {
+  color: #263322;
+}
+
 .dashboard-section {
   padding: 24px;
   border: 1px solid #d9dfd4;
@@ -97,6 +168,10 @@ h1 {
   .app-shell {
     width: min(100% - 24px, 960px);
     padding: 32px 0;
+  }
+
+  .demo-data-scope-notice__limits {
+    grid-template-columns: 1fr;
   }
 }
 
