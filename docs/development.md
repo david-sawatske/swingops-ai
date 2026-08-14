@@ -42,6 +42,10 @@ Real provider calls are disabled by default. The API example lists the opt-in
 flag and supported provider variables; deterministic/mock behavior works
 without credentials.
 
+Scheduled Admin Ops maintenance is disabled locally by default. Set
+`ADMIN_OPS_MAINTENANCE_INTERVAL_HOURS` to a positive integer only when testing
+the long-running deployment behavior; the Render portfolio service uses `24`.
+
 ## Start PostgreSQL
 
     pnpm db:up

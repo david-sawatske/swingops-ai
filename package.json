@@ -5,6 +5,11 @@
   "description": "Guarded golf retail workflow platform with deterministic orchestration, bounded model assistance, structured records, review queues, and operational audit trails.",
   "type": "module",
   "packageManager": "pnpm@9.15.4",
+  "pnpm": {
+    "overrides": {
+      "nanoid": "3.3.18"
+    }
+  },
   "scripts": {
     "dev": "pnpm -r --parallel dev",
     "build": "pnpm -r build",

@@ -4,9 +4,9 @@ The repository includes a Render Blueprint that provisions the complete hosted
 demo from `main`:
 
 - A globally distributed static site for the React app.
-- A Node.js web service for the Fastify API.
-- A managed PostgreSQL 16 database with the `pgvector` extension enabled by the
-  existing Prisma migration.
+- An always-on Starter Node.js web service for the Fastify API.
+- A persistent Basic-256mb PostgreSQL 16 database with 1 GB of storage and the
+  `pgvector` extension enabled by the existing Prisma migration.
 
 The API and database run in the Ohio region and communicate over Render's
 private network. The browser calls the public API origin configured in the
@@ -45,20 +45,18 @@ An optional anchor is available for repeatable operator testing:
     pnpm baseline:refresh -- --anchor=2026-08-12T17:00:00.000Z
 
 The Render Blueprint runs maintenance after Prisma migrations and before the
-API server accepts traffic whenever its process starts. This includes a new
-deployment, a service restart, and a cold wake after free-tier inactivity. It
-keeps the hosted preview within Render's free service types and guarantees that
+API server accepts traffic whenever its process starts. This guarantees that
 the current fixture code is represented in Admin Ops before the API becomes
 healthy. Startup fails instead of serving a partially refreshed baseline if
 maintenance fails.
 
-This preview intentionally does not purchase a continuously scheduled reset.
-The baseline reporting window advances whenever the API starts, and live demo
-retention is applied at the same time. This adds a small amount of cold-start
-latency in exchange for reliable preview data without another service. For a
-long-running production environment, move the same command to an approved
-scheduler. The default retention window can be changed with
-`LIVE_DEMO_RETENTION_DAYS`, bounded to 1–365 days.
+Because the portfolio API remains running, it also schedules the same operation
+every 24 hours through `ADMIN_OPS_MAINTENANCE_INTERVAL_HOURS`. Scheduled failures
+are logged without terminating the API, and the next interval remains active.
+Transaction-scoped advisory locks prevent overlapping refresh or retention
+writes. Local development defaults the interval to `0` (disabled); supported
+values are 0–168 hours. The retention window remains independently configurable
+through `LIVE_DEMO_RETENTION_DAYS`, bounded to 1–365 days.
 
 After an API deployment or restart:
 
@@ -69,12 +67,12 @@ After an API deployment or restart:
 3. Verify the API health check, Admin Ops baseline scope, and golden
    demonstration still load.
 
-## Create the preview deployment
+## Create the portfolio deployment
 
 1. Sign in to Render and create a new Blueprint.
 2. Connect the `david-sawatske/swingops-ai` GitHub repository.
-3. Render detects `render.yaml`; review the three resources and apply the
-   Blueprint.
+3. Render detects `render.yaml`; review the free static site, Starter API, and
+   Basic-256mb database, then apply the Blueprint.
 4. Wait for the database, API, and static site to finish deploying.
 
 The API starts in deterministic mock mode because real provider calls default
@@ -83,16 +81,18 @@ real-call toggle, so later Blueprint syncs cannot overwrite those
 dashboard-owned values. Database migrations and bounded Admin Ops maintenance
 run before the API starts serving traffic.
 
-## Free-preview limitations
+## Portfolio hosting profile
 
-The web app, API, and database use free preview plans. No separate scheduled
-service is provisioned. Render's free API service can spin down after inactivity
-and take about a minute to wake. A free Render PostgreSQL database expires after
-30 days and does not include backups.
+The static site remains free. The API uses Render's Starter instance so it does
+not spin down after inactivity, and PostgreSQL uses the smallest paid Basic
+instance so the database does not expire after 30 days. The Blueprint fixes
+database storage at 1 GB and disables storage autoscaling to keep billing
+bounded. At the prices verified in August 2026, the expected total is $13.30
+per month ($7 API, $6 database compute, and $0.30 database storage); confirm
+current pricing in Render before applying future plan changes.
 
-Before sharing a durable link, upgrade the API service and PostgreSQL database
-to appropriate paid plans in Render. The static site can remain on its free
-plan.
+The account must have a payment method before Render can apply either paid
+instance type. Render bills instance changes on a prorated basis.
 
 ## Enable live model assistance
 
@@ -122,9 +122,10 @@ After all three resources report healthy:
 1. Open the static site and load the golden demonstration.
 2. Complete all five workflow steps using deterministic model assistance.
 3. Confirm the API health endpoint returns a successful response.
-4. Refresh the browser on both the main workflow and Admin Ops views to verify
+4. Confirm repeated health requests return without a free-tier wake-up delay.
+5. Refresh the browser on both the main workflow and Admin Ops views to verify
    the single-page application rewrite.
-5. If live model assistance is enabled, rerun guarded execution once normally
+6. If live model assistance is enabled, rerun guarded execution once normally
    and once with the provider-outage option enabled.
 
 Render automatically deploys later commits to `main` after the repository's CI

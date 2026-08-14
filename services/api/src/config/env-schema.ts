@@ -20,6 +20,12 @@ export const apiEnvSchema = z.object({
     .default("info"),
 
   LIVE_DEMO_RETENTION_DAYS: z.coerce.number().int().min(1).max(365).default(14),
+  ADMIN_OPS_MAINTENANCE_INTERVAL_HOURS: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(168)
+    .default(0),
 
   WEB_ORIGIN: z.string().url().default("http://localhost:5173"),
 });

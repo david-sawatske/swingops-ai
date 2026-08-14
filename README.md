@@ -1,5 +1,10 @@
 # SwingOps AI
 
+[![CI](https://github.com/david-sawatske/swingops-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/david-sawatske/swingops-ai/actions/workflows/ci.yml)
+[![Live demo](https://img.shields.io/badge/live_demo-open-2f6f54)](https://swingops-ai-david-sawatske.onrender.com/)
+
+**[Open the live demo](https://swingops-ai-david-sawatske.onrender.com/)** to walk through the deterministic guided workflow and inspect the Admin Ops control surface.
+
 SwingOps AI is a guided golf retail workflow demo for turning messy trade-in intake into normalized, reviewable, AI-ready operational records.
 
 The main product experience is the **Guided Workflow**. It walks through messy source intake, normalized record creation, guarded workflow execution, human validation, review corrections, audit data, and a final run report.
@@ -163,9 +168,11 @@ Preview the complete operator maintenance cycle without changing the database:
 The maintenance operation refreshes the same isolated baseline and prunes only
 `LIVE_DEMO` activity older than 14 days. It never targets the protected golden
 demonstration or seeded baseline. The checked-in Render Blueprint runs this
-operation after database migrations whenever the API process starts, avoiding
-a separate paid scheduled service. See [Deployment](docs/deployment.md) for
-the freshness and startup-latency tradeoff.
+operation after database migrations whenever the API process starts. The
+always-on portfolio API also repeats it every 24 hours through a bounded
+in-process scheduler, keeping the seven-day reporting window fresh without a
+separate cron service. See [Deployment](docs/deployment.md) for the hosting and
+maintenance contract.
 
 Start the API and web app together:
 

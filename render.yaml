@@ -2,7 +2,7 @@ services:
   - type: web
     name: swingops-ai-api-david-sawatske
     runtime: node
-    plan: free
+    plan: starter
     region: ohio
     branch: main
     autoDeployTrigger: checksPass
@@ -32,6 +32,8 @@ services:
         value: "25000"
       - key: LIVE_DEMO_RETENTION_DAYS
         value: "14"
+      - key: ADMIN_OPS_MAINTENANCE_INTERVAL_HOURS
+        value: "24"
 
   - type: web
     name: swingops-ai-david-sawatske
@@ -50,7 +52,9 @@ services:
 
 databases:
   - name: swingops-ai-db-david-sawatske
-    plan: free
+    plan: basic-256mb
+    diskSizeGB: 1
+    storageAutoscalingEnabled: false
     region: ohio
     postgresMajorVersion: "16"
     databaseName: swingops_ai
