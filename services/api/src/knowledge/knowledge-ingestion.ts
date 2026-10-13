@@ -68,6 +68,7 @@ export async function ensureDemoKnowledgeBaseReady(
         document: {
           sourceName,
         },
+        embeddingModel: KNOWLEDGE_EMBEDDING_MODEL,
       },
     }),
   ]);

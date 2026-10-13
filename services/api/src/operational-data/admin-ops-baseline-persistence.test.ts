@@ -159,7 +159,7 @@ describe("Admin Ops operational baseline persistence", () => {
         toolActivity: {
           total: 126,
           succeeded: 124,
-          failed: 2,
+          failed: 0,
           successRate: 98.4,
           blockedMutations: 2,
         },

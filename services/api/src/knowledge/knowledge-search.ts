@@ -162,6 +162,10 @@ const TRADE_IN_SCORE_WEIGHTS = {
   vector: 0.05,
 } as const;
 
+// An alias can be shared across product generations (for example "Hot Metal"),
+// so an exact product-line name must outrank an alias-only match.
+const ALIAS_PRODUCT_LINE_MATCH_SCORE = 0.95;
+
 const PGVECTOR_COMPATIBILITY_DATABASE_CODES = new Map<
   string,
   KnowledgeRetrievalFailureClassification
@@ -475,7 +479,7 @@ function scoreProductLineComponent(input: {
   if (directAlias) {
     return {
       component: component({
-        score: 1,
+        score: ALIAS_PRODUCT_LINE_MATCH_SCORE,
         weight: TRADE_IN_SCORE_WEIGHTS.productLine,
         explanation: `Product line matched alias ${directAlias} → ${input.productLine}.`,
       }),
@@ -1167,6 +1171,7 @@ async function searchWithPgvector(input: {
     FROM "knowledge_chunks" kc
     INNER JOIN "knowledge_documents" kd ON kd."id" = kc."document_id"
     WHERE kc."embedding" IS NOT NULL
+      AND kc."embedding_model" = ${KNOWLEDGE_EMBEDDING_MODEL}
       AND (${input.searchInput.sourceName ?? null}::text IS NULL OR kd."source_name" = ${input.searchInput.sourceName ?? null})
       AND (${input.searchInput.brand ?? null}::text IS NULL OR LOWER(kc."brand") = LOWER(${input.searchInput.brand ?? null}))
       AND (${input.searchInput.category ?? null}::text IS NULL OR LOWER(kc."category") = LOWER(${input.searchInput.category ?? null}))

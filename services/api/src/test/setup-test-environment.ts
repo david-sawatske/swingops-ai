@@ -7,3 +7,7 @@ const parsedEnv = apiEnvSchema.parse(process.env);
 
 process.env.DATABASE_URL = resolveTestDatabaseUrl(parsedEnv);
 process.env.NODE_ENV = "test";
+// Route tests issue many requests from one address; rate-limit tests opt in
+// through buildApp options instead.
+process.env.RATE_LIMIT_MAX_PER_MINUTE ??= "0";
+process.env.WORKFLOW_RATE_LIMIT_MAX_PER_MINUTE ??= "0";

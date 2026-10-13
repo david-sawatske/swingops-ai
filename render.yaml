@@ -34,6 +34,14 @@ services:
         value: "14"
       - key: ADMIN_OPS_MAINTENANCE_INTERVAL_HOURS
         value: "24"
+      - key: TRUST_PROXY_HOPS
+        value: "1"
+      - key: RATE_LIMIT_MAX_PER_MINUTE
+        value: "300"
+      - key: WORKFLOW_RATE_LIMIT_MAX_PER_MINUTE
+        value: "10"
+      - key: KNOWLEDGE_INGEST_ROUTE_ENABLED
+        value: "false"
 
   - type: web
     name: swingops-ai-david-sawatske

@@ -453,11 +453,7 @@ export async function adminOpsRoutes(app: FastifyInstance): Promise<void> {
       prisma.toolCallLog.count({
         where: {
           ...dataOriginWhere,
-          status: "FAILED",
-          outputJson: {
-            path: ["policyDecision"],
-            equals: "BLOCKED",
-          },
+          status: "BLOCKED",
         },
       }),
     ]);

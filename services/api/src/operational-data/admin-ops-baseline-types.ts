@@ -183,7 +183,7 @@ export type BaselineToolCallFixture = {
   workflowRunId: string;
   workflowStepId: string;
   toolName: string;
-  status: "SUCCEEDED" | "FAILED";
+  status: "SUCCEEDED" | "FAILED" | "BLOCKED";
   dataOrigin: "SEEDED_BASELINE";
   inputJson: Record<string, unknown>;
   outputJson: Record<string, unknown>;

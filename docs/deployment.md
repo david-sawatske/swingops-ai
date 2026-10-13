@@ -58,6 +58,27 @@ writes. Local development defaults the interval to `0` (disabled); supported
 values are 0–168 hours. The retention window remains independently configurable
 through `LIVE_DEMO_RETENTION_DAYS`, bounded to 1–365 days.
 
+## Request limits and proxy trust
+
+The public API limits requests per client IP address. All routes share
+`RATE_LIMIT_MAX_PER_MINUTE` (300 by default). Routes that run workflows,
+evaluations, or paid model calls share the tighter
+`WORKFLOW_RATE_LIMIT_MAX_PER_MINUTE` (10 by default). A value of `0` disables a
+limit; the test setup disables both, and rate-limit tests opt in explicitly.
+
+Behind a reverse proxy, the client address comes from `X-Forwarded-For`.
+`TRUST_PROXY_HOPS` sets how many proxy hops to trust. Trusting every hop would
+let a client prepend a forged address and bypass the limits, so the Blueprint
+trusts exactly one. After a deployment, confirm that the `remoteAddress` in the
+API request logs matches your own public IP address. If it shows an internal
+proxy address instead, increase the hop count; otherwise every visitor shares
+one limit.
+
+The Blueprint also sets `KNOWLEDGE_INGEST_ROUTE_ENABLED=false`, which removes
+`POST /knowledge/ingest-demo` from the public API. The guided workflow still
+ingests the demo corpus when it is missing or was embedded with an older
+embedding model version.
+
 After an API deployment or restart:
 
 1. Confirm the startup logs report successful migrations and Admin Ops

@@ -28,6 +28,24 @@ export const apiEnvSchema = z.object({
     .default(0),
 
   WEB_ORIGIN: z.string().url().default("http://localhost:5173"),
+
+  // Number of reverse-proxy hops to trust for the client IP. Trusting every
+  // hop would let a client spoof X-Forwarded-For and bypass rate limits.
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
+
+  // Per-client-IP request limits; 0 disables a limit.
+  RATE_LIMIT_MAX_PER_MINUTE: z.coerce.number().int().min(0).default(300),
+  WORKFLOW_RATE_LIMIT_MAX_PER_MINUTE: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .default(10),
+
+  // The demo knowledge ingest route deletes and rebuilds the corpus.
+  KNOWLEDGE_INGEST_ROUTE_ENABLED: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((value) => value === "true"),
 });
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>;

@@ -278,7 +278,7 @@ async function createStartedToolCallLog(input: {
 
 async function completeToolCallLog(input: {
   toolCallLogId: string;
-  status: "SUCCEEDED" | "FAILED";
+  status: "SUCCEEDED" | "FAILED" | "BLOCKED";
   outputJson: Prisma.InputJsonObject;
   errorMessage?: string;
 }) {
@@ -659,7 +659,7 @@ export async function executeReadOnlyToolInvocation(
 
     const completedLog = await completeToolCallLog({
       toolCallLogId: startedLog.id,
-      status: "FAILED",
+      status: "BLOCKED",
       outputJson,
       errorMessage: readOnlyBlock.reason,
     });

@@ -185,7 +185,7 @@ describe("MCP stdio server", () => {
           expect.objectContaining({
             id: blockedToolCallLogId,
             toolName: "swingops.reviewQueueItems.resolve",
-            status: "FAILED",
+            status: "BLOCKED",
             errorMessage: "Tool is disabled and cannot be executed.",
           }),
         ]),

@@ -1378,7 +1378,7 @@ export function buildAdminOpsBaselineFixtures(
       workflowRunId: record.workflowRunId,
       workflowStepId: workflowStep.id,
       toolName: "swingops.inventory.createSku",
-      status: "FAILED",
+      status: "BLOCKED",
       dataOrigin: DATA_ORIGIN,
       inputJson: { recordId: record.id, requestedMutation: true },
       outputJson: {

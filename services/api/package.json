@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^10.1.0",
+    "@fastify/rate-limit": "^10.3.0",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@prisma/client": "^6.19.3",
     "dotenv": "^16.6.1",

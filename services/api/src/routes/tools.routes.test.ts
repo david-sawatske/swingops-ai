@@ -556,7 +556,7 @@ describe("tool routes", () => {
       expect(body.connectorResult).toBeNull();
       expect(body.toolCallLog).toMatchObject({
         toolName: "swingops.reviewQueueItems.resolve",
-        status: "FAILED",
+        status: "BLOCKED",
         errorMessage: "Tool is disabled and cannot be executed.",
       });
 
@@ -606,7 +606,7 @@ describe("tool routes", () => {
       await prisma.toolCallLog.create({
         data: {
           toolName: "swingops.reviewQueueItems.resolve",
-          status: "FAILED",
+          status: "BLOCKED",
           outputJson: {
             connectorInvocation: true,
             executionAttempted: false,
@@ -1102,7 +1102,7 @@ describe("tool routes", () => {
 
       expect(persistedLog).toMatchObject({
         toolName: "swingops.reviewQueueItems.resolve",
-        status: "FAILED",
+        status: "BLOCKED",
         errorMessage: "Tool is disabled and cannot be executed.",
       });
       expect(persistedLog.outputJson).toMatchObject({

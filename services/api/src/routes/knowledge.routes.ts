@@ -27,10 +27,19 @@ const knowledgeSearchBodySchema = z
   })
   .strict();
 
-export async function knowledgeRoutes(app: FastifyInstance): Promise<void> {
-  app.post("/knowledge/ingest-demo", async () => {
-    return ingestDemoKnowledgeBase();
-  });
+export type KnowledgeRoutesOptions = {
+  ingestRouteEnabled?: boolean;
+};
+
+export async function knowledgeRoutes(
+  app: FastifyInstance,
+  options: KnowledgeRoutesOptions = {},
+): Promise<void> {
+  if (options.ingestRouteEnabled ?? true) {
+    app.post("/knowledge/ingest-demo", async () => {
+      return ingestDemoKnowledgeBase();
+    });
+  }
 
   app.get("/knowledge/chunks", async () => {
     return listKnowledgeChunks();
