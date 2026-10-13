@@ -817,7 +817,7 @@ export function buildRecord(
   const hasProductResolutionIssue =
     productIdentity.productResolution.status !== "MATCHED";
   const hasExplicitUncertainty =
-    /\bmaybe|unclear|malformed|missing|pending review|generation\s+(?:not\s+listed|unknown|unclear)|ERROR\b/i.test(
+    /\b(?:maybe|unclear|malformed|missing|pending review|generation\s+(?:not\s+listed|unknown|unclear)|ERROR)\b/i.test(
       fragment,
     );
 

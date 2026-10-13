@@ -62,6 +62,21 @@ describe("multi-source intake parser normalization matrix", () => {
     });
   });
 
+  it("applies the uncertainty penalty only to whole uncertainty words", () => {
+    const baseline = parseRecord(
+      "TaylorMade Stealth 2 driver shaft stiff cond avg trade value $150",
+    );
+    const embeddedWord = parseRecord(
+      "TaylorMade Stealth 2 driver shaft stiff cond avg trade value $150 after dismissing a duplicate quote",
+    );
+    const explicitUncertainty = parseRecord(
+      "TaylorMade Stealth 2 driver shaft stiff cond avg trade value $150 maybe a demo unit",
+    );
+
+    expect(embeddedWord.confidence).toBe(baseline.confidence);
+    expect(explicitUncertainty.confidence).toBeLessThan(baseline.confidence);
+  });
+
   it("normalizes trade value variants", () => {
     const cases = [
       "Titleist TSR 7w shaft stf condition 8.0 Average value $145",
