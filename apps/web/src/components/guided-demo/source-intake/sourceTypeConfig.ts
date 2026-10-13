@@ -38,6 +38,6 @@ export function getUploadSourceFileHelp(sourceType: string | null | undefined) {
     case "LOG":
       return "Upload a .log or .txt file with operations logs, system notes, or handoff activity.";
     default:
-      return "{getUploadSourceFileHelp(selectedSourceTypes[index])}";
+      return "Select a source type first, then upload a matching .txt, .csv, .eml, or .log file.";
   }
 }
