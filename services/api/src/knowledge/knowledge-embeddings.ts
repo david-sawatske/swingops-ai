@@ -1,6 +1,7 @@
 export const KNOWLEDGE_EMBEDDING_PROVIDER = "swingops.local";
+// Bump the version whenever vectors change so stale chunks are re-embedded.
 export const KNOWLEDGE_EMBEDDING_MODEL =
-  "deterministic-token-hash-embedding-v1";
+  "deterministic-token-hash-embedding-v2";
 export const KNOWLEDGE_EMBEDDING_DIMENSION = 64;
 
 export type KnowledgeEmbeddingMetadata = {
@@ -61,7 +62,9 @@ export function buildDeterministicKnowledgeEmbedding(
   for (const token of tokens) {
     const hash = hashToken(token);
     const index = hash % KNOWLEDGE_EMBEDDING_DIMENSION;
-    const sign = hash % 2 === 0 ? 1 : -1;
+    // The sign must come from a bit the bucket index does not use; with an
+    // even dimension, hash % 2 would tie every bucket to a fixed sign.
+    const sign = hash >>> 31 === 0 ? 1 : -1;
 
     vector[index] = (vector[index] ?? 0) + sign * tokenWeight(token);
   }
