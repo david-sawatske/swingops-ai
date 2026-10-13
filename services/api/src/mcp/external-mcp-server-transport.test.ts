@@ -168,7 +168,7 @@ describe("external MCP server transport adapter", () => {
 
     expect(log).toMatchObject({
       toolName: "swingops.reviewQueueItems.resolve",
-      status: "FAILED",
+      status: "BLOCKED",
       errorMessage: "Tool is disabled and cannot be executed.",
     });
   });

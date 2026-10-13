@@ -101,6 +101,7 @@ enum ToolCallStatus {
   SUCCEEDED
   FAILED
   RETRIED
+  BLOCKED
 }
 
 enum ModelCallStatus {

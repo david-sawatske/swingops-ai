@@ -613,7 +613,7 @@ export function validateAdminOpsBaselineFixtures(
     fixtures.toolCalls.filter(
       (call) =>
         call.toolName === "swingops.inventory.createSku" &&
-        call.status === "FAILED",
+        call.status === "BLOCKED",
     ).length,
     2,
   );

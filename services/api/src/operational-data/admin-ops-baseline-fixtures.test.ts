@@ -102,7 +102,7 @@ describe("Admin Ops operational baseline fixtures", () => {
     expect(
       fixtures.toolCalls.filter(
         (call) =>
-          call.status === "FAILED" &&
+          call.status === "BLOCKED" &&
           call.outputJson.policyDecision === "BLOCKED",
       ),
     ).toHaveLength(2);

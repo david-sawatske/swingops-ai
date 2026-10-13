@@ -466,7 +466,7 @@ describe("read-only tool invocation", () => {
     expect(result.connectorResult).toBeNull();
     expect(result.toolCallLog).toMatchObject({
       toolName: "swingops.notRegistered",
-      status: "FAILED",
+      status: "BLOCKED",
       errorMessage: "Tool is not registered and cannot be exposed to an agent.",
     });
     expect(result.toolCallLog.completedAt).not.toBeNull();
@@ -507,7 +507,7 @@ describe("read-only tool invocation", () => {
     });
     expect(result.toolCallLog).toMatchObject({
       toolName: "swingops.inventory.createSku",
-      status: "FAILED",
+      status: "BLOCKED",
       errorMessage: "Tool is disabled and cannot be executed.",
     });
     expect(result.toolCallLog.outputJson).toMatchObject({
