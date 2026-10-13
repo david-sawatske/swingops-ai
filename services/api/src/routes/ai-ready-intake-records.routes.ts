@@ -333,7 +333,8 @@ export async function aiReadyIntakeRecordRoutes(
     const [records, totalCount] = await Promise.all([
       prisma.aiReadyIntakeRecord.findMany({
         where,
-        orderBy,
+        // The id tiebreaker keeps offset pages stable when sort keys tie.
+        orderBy: [orderBy, { id: "asc" }],
         skip: parsedQuery.data.offset,
         take: parsedQuery.data.limit,
       }),

@@ -3,7 +3,7 @@ import { type FormEvent, useState } from "react";
 import {
   executeEndToEndAgenticTradeInDemo,
   executeMultiSourceIntakeDemo,
-  listAiReadyIntakeRecords,
+  listAllAiReadyIntakeRecordsForRun,
 } from "../api/workflows";
 import { formatGuidedWorkflowInputFromSourceResult } from "../components/guided-demo/formatGuidedWorkflowInput";
 import {
@@ -71,12 +71,9 @@ export function useGuidedWorkflowRun({
       return;
     }
 
-    const response = await listAiReadyIntakeRecords({
-      workflowRunId,
-      limit: 100,
-    });
+    const records = await listAllAiReadyIntakeRecordsForRun(workflowRunId);
 
-    setCurrentRunAiReadyIntakeRecords(response.records);
+    setCurrentRunAiReadyIntakeRecords(records);
   }
 
   function upsertAiReadyIntakeRecord(record: AiReadyIntakeRecord) {
@@ -182,13 +179,12 @@ export function useGuidedWorkflowRun({
       setEndToEndAgenticDemoSuccess(null);
 
       const result = await executeMultiSourceIntakeDemo(request);
-      const persistedRecordsResponse = await listAiReadyIntakeRecords({
-        workflowRunId: result.persistedIds.workflowRunId,
-        limit: result.recordsExtracted,
-      });
+      const persistedRecords = await listAllAiReadyIntakeRecordsForRun(
+        result.persistedIds.workflowRunId,
+      );
 
       setMultiSourceIntakeDemoResult(result);
-      setPersistedAiReadyIntakeRecords(persistedRecordsResponse.records);
+      setPersistedAiReadyIntakeRecords(persistedRecords);
 
       const generatedTradeInRawInput =
         formatGuidedWorkflowInputFromSourceResult(result, {
@@ -203,7 +199,7 @@ export function useGuidedWorkflowRun({
 
       setMultiSourceIntakeDemoSuccess(
         "Persisted " +
-          persistedRecordsResponse.count +
+          persistedRecords.length +
           " AI-ready records from " +
           result.sourcesProcessed +
           " source types into " +

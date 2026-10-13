@@ -1,5 +1,6 @@
 import { apiGet, apiPost } from "./client";
 import type {
+  AiReadyIntakeRecord,
   ExecuteEndToEndAgenticTradeInDemoRequest,
   ExecuteMultiSourceIntakeDemoRequest,
   ExecuteEndToEndAgenticTradeInDemoResponse,
@@ -171,6 +172,30 @@ export async function listAiReadyIntakeRecords(
       ? `/ai-ready-intake-records?${queryString}`
       : "/ai-ready-intake-records",
   );
+}
+
+// The list route accepts limit 1–100, so a run's records are read page by page.
+export const AI_READY_INTAKE_RECORDS_PAGE_SIZE = 100;
+
+export async function listAllAiReadyIntakeRecordsForRun(
+  workflowRunId: string,
+  fetchPage: typeof listAiReadyIntakeRecords = listAiReadyIntakeRecords,
+): Promise<AiReadyIntakeRecord[]> {
+  const records: AiReadyIntakeRecord[] = [];
+  let hasMore = true;
+
+  while (hasMore) {
+    const page = await fetchPage({
+      workflowRunId,
+      limit: AI_READY_INTAKE_RECORDS_PAGE_SIZE,
+      offset: records.length,
+    });
+
+    records.push(...page.records);
+    hasMore = page.hasMore && page.records.length > 0;
+  }
+
+  return records;
 }
 
 export async function getAdminOpsSummary(
