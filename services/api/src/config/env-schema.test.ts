@@ -36,6 +36,10 @@ describe("API environment configuration", () => {
       LIVE_DEMO_RETENTION_DAYS: 14,
       LOG_LEVEL: "info",
       WEB_ORIGIN: "http://localhost:5173",
+      TRUST_PROXY_HOPS: 0,
+      RATE_LIMIT_MAX_PER_MINUTE: 300,
+      WORKFLOW_RATE_LIMIT_MAX_PER_MINUTE: 10,
+      KNOWLEDGE_INGEST_ROUTE_ENABLED: true,
     });
   });
 
